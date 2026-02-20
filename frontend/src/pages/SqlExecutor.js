@@ -317,10 +317,22 @@ const SqlExecutor = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
-          <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-3">
+            {connection.db_type_color && (
+              <div 
+                className="w-4 h-4 rounded-full" 
+                style={{ backgroundColor: connection.db_type_color }}
+              />
+            )}
             <div>
-              <h1 className="text-xl font-semibold">{connection.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold">{connection.name}</h1>
+                {connection.db_type_name && (
+                  <Badge variant="outline" className="text-xs">
+                    {connection.db_type_name}
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground font-mono truncate max-w-md">
                 {connection.connection_string.substring(0, 60)}...
               </p>
