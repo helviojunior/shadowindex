@@ -913,6 +913,97 @@ async def download_server_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/servers/{server_id}/file-content")
+async def get_file_content(
+    server_id: int,
+    file_path: str,
+    share_name: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Lê o conteúdo de um arquivo sincronizado"""
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Verificar se o arquivo foi sincronizado
+    result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.server_guid == server.guid,
+            DownloadedFile.file_path == file_path
+        )
+    )
+    downloaded = result.scalar_one_or_none()
+    if not downloaded:
+        raise HTTPException(status_code=404, detail="Arquivo não sincronizado")
+    
+    # Ler o conteúdo do arquivo
+    from storage_utils import get_file_path
+    full_path = get_file_path(server.guid, share_name, downloaded.sanitized_path)
+    
+    try:
+        import os
+        if not os.path.exists(full_path):
+            raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
+        
+        with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        
+        return {
+            "success": True,
+            "content": content,
+            "file_path": file_path,
+            "size": len(content)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/servers/{server_id}/file-download")
+async def download_file_to_client(
+    server_id: int,
+    file_path: str,
+    share_name: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Baixa um arquivo sincronizado para o cliente"""
+    from fastapi.responses import FileResponse
+    import os
+    
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Verificar se o arquivo foi sincronizado
+    result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.server_guid == server.guid,
+            DownloadedFile.file_path == file_path
+        )
+    )
+    downloaded = result.scalar_one_or_none()
+    if not downloaded:
+        raise HTTPException(status_code=404, detail="Arquivo não sincronizado")
+    
+    # Obter caminho do arquivo
+    from storage_utils import get_file_path
+    full_path = get_file_path(server.guid, share_name, downloaded.sanitized_path)
+    
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
+    
+    # Extrair nome do arquivo
+    filename = os.path.basename(file_path)
+    
+    return FileResponse(
+        path=full_path,
+        filename=filename,
+        media_type='application/octet-stream'
+    )
+
 
 # Include router
 app.include_router(api_router)
