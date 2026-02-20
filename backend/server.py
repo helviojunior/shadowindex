@@ -85,6 +85,7 @@ class SoapOperationRequest(BaseModel):
     connStr: Optional[str] = None
     query: Optional[str] = None
     ignore_cache: bool = False
+    server_id: Optional[int] = None  # Para rastrear operações por servidor
 
 class SoapOperationResponse(BaseModel):
     operation: str
