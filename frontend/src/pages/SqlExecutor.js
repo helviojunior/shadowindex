@@ -165,13 +165,14 @@ const SqlExecutor = () => {
     ));
   };
 
-  const addNewTab = (initialQuery = '') => {
+  const addNewTab = (initialQuery = '', initialResult = null, historyInfo = null) => {
     const newTab = {
       id: tabIdCounter.current++,
       name: `Query ${tabIdCounter.current - 1}`,
       query: initialQuery,
-      result: null,
-      loading: false
+      result: initialResult,
+      loading: false,
+      historyInfo: historyInfo // Data/hora da execução do histórico
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabIndex(tabs.length);
