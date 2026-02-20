@@ -27,6 +27,23 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-20 (Session 3 - SQL Module)
+- [x] **SQL Presets CRUD** - Comandos SQL pré-definidos com nome, query e descrição
+- [x] **Default Presets** - 6 presets MS-SQL carregados automaticamente no startup (Is Admin, List Databases, Current User, Database Size, List Tables, Server Version)
+- [x] **SQL Query History** - Histórico de todas queries executadas com resultado, tempo e status
+- [x] **SQL Executor Page** - Interface tipo phpMyAdmin para executar comandos SQL
+- [x] **Presets Dropdown** - Botão para selecionar query pré-definida e preencher automaticamente
+- [x] **History Dropdown** - Botão para visualizar histórico e re-executar queries
+- [x] **Connection Verification** - Conexões são marcadas como "Verificado" após execução bem-sucedida
+- [x] **Result Table** - Exibe resultados em tabela com colunas dinâmicas
+- [x] **Error Handling** - Exibe mensagens de erro detalhadas em caso de falha
+- [x] Backend endpoints: GET/POST/PUT/DELETE `/api/sql-presets`
+- [x] Backend endpoints: GET/POST `/api/sql/execute`, GET/DELETE `/api/sql/history`
+- [x] Frontend pages: `SqlExecutor.js`, `SqlPresets.js`
+- [x] Updated `DatabaseConnections.js` with verification status and executor link
+- [x] Fixed: Subdirectory color scheme now works correctly (uses `childrenFetched` from DB)
+- [x] Fixed: Directories no longer auto-expand on page load
+
 ### 2026-02-20 (Session 2)
 - [x] **P0: Pre-load children from database** - `loadDirectory` now checks `/api/servers/{id}/items?parent_path=...` before making SOAP calls
 - [x] **P1: Verified cache storage mechanism** - Confirmed `soap_cache` table structure is correct and insert/read operations work properly
