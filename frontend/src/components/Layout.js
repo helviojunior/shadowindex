@@ -51,13 +51,28 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
   });
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
   const location = useLocation();
   const { ignoreCache, setIgnoreCache, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
+
+  // Detect small screen
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsSmallScreen(window.innerWidth < 1024);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   // Persist sidebar state
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', sidebarCollapsed);
   }, [sidebarCollapsed]);
+
+  // Em telas pequenas, sempre mostra como colapsado
+  const effectiveCollapsed = isSmallScreen || sidebarCollapsed;
 
   const handleProxyChange = async (value) => {
     const proxyId = value === 'none' ? null : parseInt(value);
