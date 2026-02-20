@@ -258,7 +258,7 @@ const ServerBrowser = () => {
               handleSelectItem(item, item.type, path, currentShareName);
             }
           }}
-          data-testid={`tree-node-${nodeId}`}
+          data-testid={`tree-node-${safeTestId}`}
         >
           {/* Expand/Collapse Arrow */}
           {isDirectory ? (
