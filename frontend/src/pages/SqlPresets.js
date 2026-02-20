@@ -5,6 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Trash2, Plus, Pencil, Check, X, Code } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,14 +21,26 @@ const API = `${BACKEND_URL}/api`;
 
 const SqlPresets = () => {
   const [presets, setPresets] = useState([]);
-  const [formData, setFormData] = useState({ name: '', query: '', description: '' });
+  const [dbTypes, setDbTypes] = useState([]);
+  const [formData, setFormData] = useState({ db_type_id: '', name: '', query: '', description: '' });
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState({ name: '', query: '', description: '' });
+  const [editData, setEditData] = useState({ db_type_id: '', name: '', query: '', description: '' });
+  const [filterDbType, setFilterDbType] = useState('all');
 
   useEffect(() => {
+    loadDbTypes();
     loadPresets();
   }, []);
+
+  const loadDbTypes = async () => {
+    try {
+      const response = await axios.get(`${API}/db-types`);
+      setDbTypes(response.data);
+    } catch (error) {
+      console.error('Error loading db types:', error);
+    }
+  };
 
   const loadPresets = async () => {
     try {
@@ -37,9 +57,16 @@ const SqlPresets = () => {
     setLoading(true);
 
     try {
-      await axios.post(`${API}/sql-presets`, formData);
+      const payload = {
+        name: formData.name,
+        query: formData.query,
+        description: formData.description || null,
+        db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null
+      };
+      
+      await axios.post(`${API}/sql-presets`, payload);
       toast.success('Preset cadastrado com sucesso');
-      setFormData({ name: '', query: '', description: '' });
+      setFormData({ db_type_id: '', name: '', query: '', description: '' });
       loadPresets();
     } catch (error) {
       console.error('Error creating preset:', error);
@@ -63,6 +90,7 @@ const SqlPresets = () => {
   const startEditing = (preset) => {
     setEditingId(preset.id);
     setEditData({
+      db_type_id: preset.db_type_id ? preset.db_type_id.toString() : '',
       name: preset.name,
       query: preset.query,
       description: preset.description || ''
@@ -71,12 +99,19 @@ const SqlPresets = () => {
 
   const cancelEditing = () => {
     setEditingId(null);
-    setEditData({ name: '', query: '', description: '' });
+    setEditData({ db_type_id: '', name: '', query: '', description: '' });
   };
 
   const saveEditing = async () => {
     try {
-      await axios.put(`${API}/sql-presets/${editingId}`, editData);
+      const payload = {
+        name: editData.name,
+        query: editData.query,
+        description: editData.description || null,
+        db_type_id: editData.db_type_id ? parseInt(editData.db_type_id) : null
+      };
+      
+      await axios.put(`${API}/sql-presets/${editingId}`, payload);
       toast.success('Preset atualizado com sucesso');
       setEditingId(null);
       loadPresets();
@@ -86,11 +121,22 @@ const SqlPresets = () => {
     }
   };
 
+  const filteredPresets = filterDbType === 'all' 
+    ? presets 
+    : filterDbType === 'universal'
+      ? presets.filter(p => !p.db_type_id)
+      : presets.filter(p => p.db_type_id === parseInt(filterDbType));
+
+  const getDbTypeColor = (dbTypeId) => {
+    const type = dbTypes.find(t => t.id === dbTypeId);
+    return type?.color || '#666';
+  };
+
   return (
     <div className="space-y-6" data-testid="sql-presets-page">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">SQL Presets</h1>
-        <p className="text-muted-foreground mt-2">Gerencie comandos SQL pré-definidos</p>
+        <p className="text-muted-foreground mt-2">Gerencie comandos SQL pré-definidos por tipo de banco</p>
       </div>
 
       {/* Form Card */}
@@ -101,13 +147,38 @@ const SqlPresets = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="db_type">Tipo de Banco</Label>
+                <Select
+                  value={formData.db_type_id}
+                  onValueChange={(value) => setFormData({ ...formData, db_type_id: value })}
+                >
+                  <SelectTrigger data-testid="preset-db-type-select">
+                    <SelectValue placeholder="Universal (todos)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Universal (todos)</SelectItem>
+                    {dbTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: type.color || '#666' }}
+                          />
+                          {type.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Nome</Label>
                 <Input
                   id="name"
                   data-testid="preset-name-input"
-                  placeholder="Ex: MS-SQL: List Users"
+                  placeholder="Ex: List Users"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -118,7 +189,7 @@ const SqlPresets = () => {
                 <Input
                   id="description"
                   data-testid="preset-description-input"
-                  placeholder="Ex: Lista todos os usuários do sistema"
+                  placeholder="Ex: Lista todos os usuários"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
@@ -129,10 +200,10 @@ const SqlPresets = () => {
               <Textarea
                 id="query"
                 data-testid="preset-query-input"
-                placeholder="SELECT * FROM sys.database_principals WHERE type = 'S'"
+                placeholder="SELECT * FROM users WHERE active = 1"
                 value={formData.query}
                 onChange={(e) => setFormData({ ...formData, query: e.target.value })}
-                rows={4}
+                rows={3}
                 className="font-mono text-sm"
                 required
               />
@@ -148,15 +219,42 @@ const SqlPresets = () => {
       {/* List Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Presets Cadastrados</CardTitle>
-          <CardDescription>{presets.length} presets no sistema</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Presets Cadastrados</CardTitle>
+              <CardDescription>{presets.length} presets no sistema</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Filtrar:</Label>
+              <Select value={filterDbType} onValueChange={setFilterDbType}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="universal">Universal</SelectItem>
+                  {dbTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: type.color || '#666' }}
+                        />
+                        {type.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {presets.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhum preset cadastrado</p>
+          {filteredPresets.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">Nenhum preset encontrado</p>
           ) : (
             <div className="space-y-3">
-              {presets.map((preset) => (
+              {filteredPresets.map((preset) => (
                 <div
                   key={preset.id}
                   data-testid={`preset-item-${preset.id}`}
@@ -165,7 +263,23 @@ const SqlPresets = () => {
                   {editingId === preset.id ? (
                     // Edit Mode
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-3 gap-3">
+                        <Select
+                          value={editData.db_type_id}
+                          onValueChange={(value) => setEditData({ ...editData, db_type_id: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Universal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Universal</SelectItem>
+                            {dbTypes.map((type) => (
+                              <SelectItem key={type.id} value={type.id.toString()}>
+                                {type.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Input
                           value={editData.name}
                           onChange={(e) => setEditData({ ...editData, name: e.target.value })}
@@ -204,6 +318,16 @@ const SqlPresets = () => {
                         <div className="flex items-center gap-2">
                           <Code className="w-4 h-4 text-primary" />
                           <span className="font-medium">{preset.name}</span>
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs"
+                            style={{ 
+                              borderColor: preset.db_type_id ? getDbTypeColor(preset.db_type_id) : '#666',
+                              color: preset.db_type_id ? getDbTypeColor(preset.db_type_id) : '#666'
+                            }}
+                          >
+                            {preset.db_type_name || 'Universal'}
+                          </Badge>
                         </div>
                         {preset.description && (
                           <p className="text-sm text-muted-foreground">{preset.description}</p>
