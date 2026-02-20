@@ -214,7 +214,16 @@ class DownloadedFileResponse(BaseModel):
     file_path: str
     sanitized_path: str
     file_size: Optional[int]
+    sha1_hash: Optional[str] = None
     downloaded_at: datetime
+
+class FileVersionResponse(BaseModel):
+    id: int
+    version_number: int
+    sha1_hash: str
+    file_size: Optional[int]
+    is_current: bool
+    created_at: datetime
 
 # Routes
 @api_router.get("/")
