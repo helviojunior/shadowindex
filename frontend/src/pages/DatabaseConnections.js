@@ -90,6 +90,28 @@ const DatabaseConnections = () => {
     navigate(`/sql/execute/${connId}`);
   };
 
+  // Test connection function
+  const testConnection = async (connId) => {
+    setTestingConnectionId(connId);
+    try {
+      const response = await axios.post(`${API}/sql/execute`, {
+        connection_id: connId,
+        query: 'SELECT 1 AS test'
+      });
+
+      if (response.data.success) {
+        toast.success(`Conexão OK! (${response.data.execution_time_ms}ms)`);
+        loadConnections(); // Reload to update verified status
+      } else {
+        toast.error(`Falha na conexão: ${response.data.error_message}`);
+      }
+    } catch (error) {
+      toast.error(`Erro ao testar: ${error.response?.data?.detail || error.message}`);
+    } finally {
+      setTestingConnectionId(null);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '---';
     try {
