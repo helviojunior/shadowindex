@@ -158,7 +158,7 @@ const SqlPresets = () => {
                     <SelectValue placeholder="Universal (todos)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Universal (todos)</SelectItem>
+                    <SelectItem value="universal">Universal (todos)</SelectItem>
                     {dbTypes.map((type) => (
                       <SelectItem key={type.id} value={type.id.toString()}>
                         <div className="flex items-center gap-2">
