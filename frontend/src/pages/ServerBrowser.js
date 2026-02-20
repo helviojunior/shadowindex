@@ -319,15 +319,8 @@ const ServerBrowser = () => {
         beautifiedContent = formatXml(rawFileContent);
       }
       
-      // Escapar HTML e aplicar syntax highlighting
-      const escaped = beautifiedContent
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-      
-      const highlighted = applySyntaxHighlight(escaped, fileType);
+      // Aplicar syntax highlighting
+      const highlighted = applySyntaxHighlight(beautifiedContent, fileType);
       
       setFileContent(highlighted);
       setBeautified(true);
