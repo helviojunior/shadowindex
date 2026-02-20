@@ -149,7 +149,12 @@ const Servers = () => {
                       className="border-b border-border hover:bg-muted/50 transition-colors"
                     >
                       <td className="p-3">
-                        <div className="font-medium">{server.name}</div>
+                        <div 
+                          className="font-medium cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => navigate(`/servers/${server.id}/browse`)}
+                        >
+                          {server.name}
+                        </div>
                         <div className="text-xs text-muted-foreground">{server.guid.substring(0, 8)}...</div>
                       </td>
                       <td className="p-3">
