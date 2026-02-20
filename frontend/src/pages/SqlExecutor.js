@@ -418,12 +418,19 @@ const SqlExecutor = () => {
               </Button>
               
               {showPresets && (
-                <Card className="absolute top-full left-0 mt-1 w-80 z-50 shadow-lg">
+                <Card className="absolute top-full left-0 mt-1 w-96 z-50 shadow-lg">
                   <CardHeader className="py-2 px-3">
-                    <CardTitle className="text-sm">Comandos Pré-definidos</CardTitle>
+                    <CardTitle className="text-sm">
+                      Comandos Pré-definidos
+                      {connection.db_type_name && (
+                        <span className="text-muted-foreground font-normal ml-2">
+                          ({connection.db_type_name})
+                        </span>
+                      )}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <ScrollArea className="max-h-64">
+                    <ScrollArea className="max-h-72">
                       {presets.length === 0 ? (
                         <p className="text-sm text-muted-foreground p-3">Nenhum preset disponível</p>
                       ) : (
@@ -434,7 +441,12 @@ const SqlExecutor = () => {
                             onClick={() => selectPreset(preset)}
                             data-testid={`preset-item-${preset.id}`}
                           >
-                            <div className="font-medium text-sm">{preset.name}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{preset.name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {preset.db_type_name || 'Universal'}
+                              </Badge>
+                            </div>
                             {preset.description && (
                               <div className="text-xs text-muted-foreground mt-1">{preset.description}</div>
                             )}
