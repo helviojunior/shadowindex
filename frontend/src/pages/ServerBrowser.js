@@ -157,7 +157,9 @@ const ServerBrowser = () => {
           share_name: selectedItem.shareName
         }
       });
-      setFileContent(response.data.content);
+      const content = response.data.content;
+      setFileContent(content);
+      setRawFileContent(content); // Guardar conteúdo original
       setFilePreviewUrl(null);
       setBeautified(false);
     } catch (error) {
