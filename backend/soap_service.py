@@ -8,19 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import SoapCache, AppConfig, SoapApiUrl, ProxyServer
 import logging
+import certifi
 
 logger = logging.getLogger(__name__)
-
-# Criar contexto SSL que ignora TODOS os erros de certificado
-def create_insecure_ssl_context():
-    """Cria um contexto SSL que ignora completamente erros de certificado TLS"""
-    # Criar contexto sem verificação
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-    # Desabilitar verificações adicionais
-    ssl_context.set_ciphers('DEFAULT@SECLEVEL=1')
-    return ssl_context
 
 class SoapService:
     def __init__(self, soap_url: str, proxy_url: str = None):
