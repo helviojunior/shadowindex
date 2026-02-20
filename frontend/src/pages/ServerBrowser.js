@@ -268,6 +268,7 @@ const ServerBrowser = () => {
     const isLoading = loadingNodes[nodeId];
     const children = nodeChildren[nodeId] || [];
     const isDirectory = item.type === 'Directory' || isShare;
+    const isAccessDenied = item.access_denied || item.accessDenied || item.type === 'AccessDenied';
     const isSelected = selectedItem?.id === nodeId || 
                        (isShare && selectedItem?.share_name === item.share_name && selectedItem?.itemType === 'share');
     
@@ -277,14 +278,22 @@ const ServerBrowser = () => {
     
     const currentShareName = isShare ? item.share_name : shareName;
     
+    // Cor do ícone baseada no status de acesso
+    const iconColor = isAccessDenied ? 'text-red-500' : 'text-blue-500';
+    const fileIconColor = isAccessDenied ? 'text-red-500' : 'text-muted-foreground';
+    
     return (
       <div key={nodeId}>
         <div
           className={`flex items-center gap-1 py-1.5 px-2 cursor-pointer hover:bg-muted/50 rounded transition-colors ${
             isSelected ? 'bg-primary/10 text-primary' : ''
-          }`}
+          } ${isAccessDenied ? 'opacity-75' : ''}`}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
           onClick={() => {
+            if (item.type === 'AccessDenied') {
+              // Não faz nada ao clicar no item de erro
+              return;
+            }
             if (isShare) {
               handleSelectItem(item, 'share', path, item.share_name);
             } else {
@@ -294,11 +303,11 @@ const ServerBrowser = () => {
           data-testid={`tree-node-${safeTestId}`}
         >
           {/* Expand/Collapse Arrow */}
-          {isDirectory ? (
+          {isDirectory && item.type !== 'AccessDenied' ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                toggleNode(nodeId, isShare ? 'share' : item.type, path);
+                toggleNode(nodeId, isShare ? 'share' : item.type, path, currentShareName);
               }}
               className="p-0.5 hover:bg-muted rounded"
             >
@@ -314,17 +323,19 @@ const ServerBrowser = () => {
             <span className="w-5" />
           )}
           
-          {/* Icon */}
-          {isShare ? (
-            <HardDrive className="w-4 h-4 text-blue-500 flex-shrink-0" />
+          {/* Icon - vermelho se acesso negado */}
+          {item.type === 'AccessDenied' ? (
+            <File className="w-4 h-4 text-red-500 flex-shrink-0" />
+          ) : isShare ? (
+            <HardDrive className={`w-4 h-4 ${iconColor} flex-shrink-0`} />
           ) : isDirectory ? (
             isExpanded ? (
-              <FolderOpen className="w-4 h-4 text-blue-500 flex-shrink-0" />
+              <FolderOpen className={`w-4 h-4 ${iconColor} flex-shrink-0`} />
             ) : (
-              <Folder className="w-4 h-4 text-blue-500 flex-shrink-0" />
+              <Folder className={`w-4 h-4 ${iconColor} flex-shrink-0`} />
             )
           ) : (
-            <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <File className={`w-4 h-4 ${fileIconColor} flex-shrink-0`} />
           )}
           
           {/* Name */}
