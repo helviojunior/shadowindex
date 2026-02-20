@@ -62,9 +62,11 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between p-6 border-b border-border">
-            <h1 className="text-xl font-bold text-blue-400">
-              Ops Integration
-            </h1>
+            <img 
+              src="/assets/stratasec_light.png" 
+              alt="Stratasec" 
+              className="h-8 w-auto"
+            />
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-muted-foreground hover:text-foreground"
