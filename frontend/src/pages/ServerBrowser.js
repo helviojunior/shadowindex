@@ -210,42 +210,94 @@ const ServerBrowser = () => {
     return formatted.trim();
   };
 
-  // Aplica syntax highlighting ao conteúdo
-  const applySyntaxHighlight = (content, fileType) => {
+  // Aplica syntax highlighting ao conteúdo usando tokens
+  const applySyntaxHighlight = (rawContent, fileType) => {
+    // Cores para cada tipo de elemento
+    const colors = {
+      declaration: '#c084fc', // roxo
+      comment: '#6b7280',     // cinza
+      tagName: '#60a5fa',     // azul
+      attrName: '#facc15',    // amarelo
+      attrValue: '#4ade80',   // verde
+      bracket: '#60a5fa',     // azul
+      jsonKey: '#60a5fa',     // azul
+      jsonString: '#4ade80',  // verde
+      jsonNumber: '#fb923c',  // laranja
+      jsonBool: '#c084fc',    // roxo
+    };
+
+    // Escapar HTML primeiro
+    let result = rawContent
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    
     if (fileType === 'xml' || fileType === 'config') {
-      // Highlight para XML usando inline styles (mais confiável que classes)
-      return content
-        // Declaração XML - <?xml ... ?>
-        .replace(/(&lt;\?xml[^?]*\?&gt;)/gi, '<span style="color: #c084fc;">$1</span>')
-        // Comentários - <!-- ... -->
-        .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span style="color: #6b7280; font-style: italic;">$1</span>')
-        // Tags de fechamento - </tagname>
-        .replace(/(&lt;\/)([\w:-]+)(&gt;)/g, '<span style="color: #60a5fa;">$1$2$3</span>')
-        // Tags auto-fechadas - <tagname ... />
-        .replace(/(&lt;)([\w:-]+)([^&]*?)(\/&gt;)/g, '<span style="color: #60a5fa;">$1$2</span>$3<span style="color: #60a5fa;">$4</span>')
-        // Tags de abertura - <tagname>
-        .replace(/(&lt;)([\w:-]+)(&gt;)/g, '<span style="color: #60a5fa;">$1$2$3</span>')
-        // Tags de abertura com atributos - <tagname attr="value">
-        .replace(/(&lt;)([\w:-]+)(\s)/g, '<span style="color: #60a5fa;">$1$2</span>$3')
-        // Nomes de atributos
-        .replace(/\s([\w:-]+)(=)/g, ' <span style="color: #facc15;">$1</span>$2')
-        // Valores de atributos entre aspas
-        .replace(/(=)(&quot;)([^&]*)(&quot;)/g, '$1<span style="color: #4ade80;">$2$3$4</span>')
-        // Fechamento de tag >
-        .replace(/([^-])(&gt;)(?!<\/span>)/g, '$1<span style="color: #60a5fa;">$2</span>');
+      // Declaração XML
+      result = result.replace(
+        /(&lt;\?xml)(.*?)(\?&gt;)/gi,
+        `[SPAN_START:${colors.declaration}]$1$2$3[SPAN_END]`
+      );
+      
+      // Comentários
+      result = result.replace(
+        /(&lt;!--)([\s\S]*?)(--&gt;)/g,
+        `[SPAN_START:${colors.comment}]$1$2$3[SPAN_END]`
+      );
+      
+      // Tags de fechamento </tag>
+      result = result.replace(
+        /(&lt;\/)([\w:-]+)(&gt;)/g,
+        `[SPAN_START:${colors.bracket}]$1[SPAN_END][SPAN_START:${colors.tagName}]$2[SPAN_END][SPAN_START:${colors.bracket}]$3[SPAN_END]`
+      );
+      
+      // Tags com atributos
+      result = result.replace(
+        /(&lt;)([\w:-]+)([\s][^&]*?)(\/?&gt;)/g,
+        (match, open, tag, attrs, close) => {
+          const processedAttrs = attrs.replace(
+            /([\w:-]+)(=)(&quot;)([^&]*)(&quot;)/g,
+            `[SPAN_START:${colors.attrName}]$1[SPAN_END]$2[SPAN_START:${colors.attrValue}]$3$4$5[SPAN_END]`
+          );
+          return `[SPAN_START:${colors.bracket}]${open}[SPAN_END][SPAN_START:${colors.tagName}]${tag}[SPAN_END]${processedAttrs}[SPAN_START:${colors.bracket}]${close}[SPAN_END]`;
+        }
+      );
+      
+      // Tags simples <tag>
+      result = result.replace(
+        /(&lt;)([\w:-]+)(&gt;)/g,
+        `[SPAN_START:${colors.bracket}]$1[SPAN_END][SPAN_START:${colors.tagName}]$2[SPAN_END][SPAN_START:${colors.bracket}]$3[SPAN_END]`
+      );
     } else if (fileType === 'json') {
-      // Highlight para JSON
-      return content
-        // Chaves
-        .replace(/(&quot;)([\w-]+)(&quot;)(\s*:)/g, '<span style="color: #60a5fa;">$1$2$3</span>$4')
-        // Strings (valores)
-        .replace(/(:\s*)(&quot;)([^&]*)(&quot;)/g, '$1<span style="color: #4ade80;">$2$3$4</span>')
-        // Números
-        .replace(/(:\s*)(\d+\.?\d*)/g, '$1<span style="color: #fb923c;">$2</span>')
-        // Booleanos e null
-        .replace(/\b(true|false|null)\b/g, '<span style="color: #c084fc;">$1</span>');
+      // Chaves JSON
+      result = result.replace(
+        /(&quot;)([\w-]+)(&quot;)(\s*:)/g,
+        `[SPAN_START:${colors.jsonKey}]$1$2$3[SPAN_END]$4`
+      );
+      // Strings JSON
+      result = result.replace(
+        /(:\s*)(&quot;)([^&]*)(&quot;)/g,
+        `$1[SPAN_START:${colors.jsonString}]$2$3$4[SPAN_END]`
+      );
+      // Números
+      result = result.replace(
+        /(:\s*)(\d+\.?\d*)/g,
+        `$1[SPAN_START:${colors.jsonNumber}]$2[SPAN_END]`
+      );
+      // Booleanos e null
+      result = result.replace(
+        /\b(true|false|null)\b/g,
+        `[SPAN_START:${colors.jsonBool}]$1[SPAN_END]`
+      );
     }
-    return content;
+    
+    // Converter marcadores para HTML real
+    result = result
+      .replace(/\[SPAN_START:(#[\w]+)\]/g, '<span style="color: $1;">')
+      .replace(/\[SPAN_END\]/g, '</span>');
+    
+    return result;
   };
 
   // Beautify do conteúdo
