@@ -2,12 +2,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copiar apenas arquivos de dependências primeiro
+# Copiar package.json
 COPY package.json ./
-COPY yarn.lock* ./
+
+# Tentar copiar yarn.lock se existir, senão continuar
+COPY yarn.loc[k] ./
 
 # Instalar dependências
-RUN yarn install --frozen-lockfile || yarn install
+RUN yarn install
 
 # Copiar o resto do código
 COPY . .
