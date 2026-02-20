@@ -79,7 +79,7 @@ class SoapApiUrlResponse(BaseModel):
     created_at: datetime
 
 class SoapOperationRequest(BaseModel):
-    operation: str
+    operation: Optional[str] = None  # Opcional - cada endpoint já sabe a operação
     s1: Optional[str] = ""
     s2: Optional[str] = ""
     connStr: Optional[str] = None
