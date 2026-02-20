@@ -281,6 +281,20 @@ const DatabaseConnections = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => testConnection(conn.id)}
+                            disabled={testingConnectionId === conn.id}
+                            data-testid={`test-connection-${conn.id}`}
+                            title="Testar Conexão"
+                          >
+                            {testingConnectionId === conn.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Zap className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => openSqlExecutor(conn.id)}
                             data-testid={`execute-sql-${conn.id}`}
                             title="Executar SQL"
