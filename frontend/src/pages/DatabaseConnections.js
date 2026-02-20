@@ -14,8 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2, Plus, CheckCircle, XCircle, Play, Code, Database, Loader2, Zap } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Trash2, Plus, CheckCircle, XCircle, Play, Code, Database, Loader2, Zap, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { getDatabaseIcon } from '@/components/DatabaseIcons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -27,6 +36,12 @@ const DatabaseConnections = () => {
   const [formData, setFormData] = useState({ name: '', db_type_id: '', connection_string: '' });
   const [loading, setLoading] = useState(false);
   const [testingConnectionId, setTestingConnectionId] = useState(null);
+  
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingConnection, setEditingConnection] = useState(null);
+  const [editFormData, setEditFormData] = useState({ name: '', db_type_id: '', connection_string: '' });
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     loadConnections();
@@ -112,6 +127,41 @@ const DatabaseConnections = () => {
     }
   };
 
+  // Edit connection functions
+  const openEditModal = (conn) => {
+    setEditingConnection(conn);
+    setEditFormData({
+      name: conn.name,
+      db_type_id: conn.db_type_id?.toString() || '',
+      connection_string: conn.connection_string
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+
+    try {
+      const payload = {
+        name: editFormData.name,
+        connection_string: editFormData.connection_string,
+        db_type_id: editFormData.db_type_id ? parseInt(editFormData.db_type_id) : null
+      };
+      
+      await axios.put(`${API}/db-connections/${editingConnection.id}`, payload);
+      toast.success('Conexão atualizada com sucesso');
+      setEditModalOpen(false);
+      setEditingConnection(null);
+      loadConnections();
+    } catch (error) {
+      console.error('Error updating connection:', error);
+      toast.error('Erro ao atualizar conexão');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '---';
     try {
@@ -167,10 +217,7 @@ const DatabaseConnections = () => {
                     {dbTypes.map((type) => (
                       <SelectItem key={type.id} value={type.id.toString()}>
                         <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: type.color || '#666' }}
-                          />
+                          {getDatabaseIcon(type.name, "w-4 h-4")}
                           {type.name}
                         </div>
                       </SelectItem>
@@ -243,10 +290,7 @@ const DatabaseConnections = () => {
                       <td className="px-4 py-3">
                         {conn.db_type_name ? (
                           <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: conn.db_type_color || '#666' }}
-                            />
+                            {getDatabaseIcon(conn.db_type_name, "w-5 h-5")}
                             <span className="text-sm">{conn.db_type_name}</span>
                           </div>
                         ) : (
@@ -278,6 +322,15 @@ const DatabaseConnections = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditModal(conn)}
+                            data-testid={`edit-connection-${conn.id}`}
+                            title="Editar Conexão"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -320,6 +373,75 @@ const DatabaseConnections = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Connection Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Conexão</DialogTitle>
+            <DialogDescription>
+              Atualize as informações da conexão de banco de dados
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome</Label>
+                <Input
+                  id="edit-name"
+                  data-testid="edit-connection-name-input"
+                  placeholder="Nome da conexão"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-db-type">Tipo de Banco</Label>
+                <Select
+                  value={editFormData.db_type_id}
+                  onValueChange={(value) => setEditFormData({ ...editFormData, db_type_id: value })}
+                >
+                  <SelectTrigger data-testid="edit-db-type-select">
+                    <SelectValue placeholder="Selecione o tipo..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dbTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          {getDatabaseIcon(type.name, "w-4 h-4")}
+                          {type.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-connection-string">Connection String</Label>
+                <Textarea
+                  id="edit-connection-string"
+                  data-testid="edit-connection-string-input"
+                  placeholder="Server=localhost;Database=mydb;User=admin;Password=pass;"
+                  value={editFormData.connection_string}
+                  onChange={(e) => setEditFormData({ ...editFormData, connection_string: e.target.value })}
+                  rows={3}
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={editLoading} data-testid="save-edit-connection-btn">
+                {editLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Salvar Alterações
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
