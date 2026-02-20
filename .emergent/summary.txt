@@ -1,147 +1,196 @@
 <analysis>**original_problem_statement:**
-The user requested to build a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. The application needs to integrate with an external SOAP web service for various operations (, , , etc.), implement a 24-hour caching mechanism for SOAP responses, and support an offline mode. It also includes a server management feature with an interactive file browser that dynamically loads data from the SOAP API. The user agreed to a FastAPI + React tech stack.
+The user initially requested a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. This included integrating with an external SOAP service, implementing caching, offline mode, and a server management feature with an interactive file browser.
+
+The project has since evolved, with the current focus being on building a comprehensive SQL management and execution tool within the application. The latest requests involve adding advanced features to the SQL editor, such as keyboard shortcuts, autocomplete, connection testing, and expanding the library of pre-defined SQL queries (presets) for various database systems.
 
 **PRODUCT REQUIREMENTS:**
 - A web panel with a modern dark mode layout and a collapsible left sidebar.
-- Use SQLite3 for data storage with automatic schema migration.
-- Cadastro (Registration) sections for Credentials, Database Connections, Proxy Servers, and SOAP API URLs.
-- A global option to select an active proxy for all SOAP requests.
-- A global option to ignore the cache for all operations.
-- Integration with an external SOAP web service.
-- A 24-hour caching mechanism for SOAP responses.
-- A global Offline Mode that relies solely on the cache.
-- A Servers management feature to register servers (name, IP) and track statistics.
-- An interactive, JFrog-style file browser for each server, dynamically loading data from the SOAP API, with features for viewing and downloading files.
-- Handling for Access Denied errors during file browsing.
+- Cadastro (Registration) sections for Credentials, SQL Connections, Proxy Servers, and SOAP URLs.
+- A global option to select an active proxy and another to ignore the cache.
+- Integration with an external SOAP web service with 24-hour caching and an offline mode.
+- A Servers management feature with an interactive, JFrog-style file browser that loads data from the SOAP API and a local cache.
+- A SQL feature that includes:
+    - Management of database connections, with support for different DB types (MSSQL, MySQL, PostgreSQL, etc.).
+    - A CRUD interface for managing a library of preset SQL queries, linked to specific database types.
+    - A multi-tab SQL execution interface where users can run queries against their configured connections.
+    - The SQL editor must support syntax highlighting, autocomplete for tables/columns, and keyboard shortcuts ( to execute).
+    - A Test Connection button for each database connection.
+    - Query history tracking and the ability to re-run past queries.
+    - Export functionality for query results (CSV/Excel).
 
 **User's preferred language**: Portuguese. The next agent MUST respond in Portuguese.
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and a React frontend. The backend uses  for SOAP API communication and SQLAlchemy with a custom, basic auto-migration script for the SQLite database. The frontend is built with React, Tailwind CSS, and shadcn/ui.
+A full-stack application with a FastAPI backend and a React frontend. The backend uses SQLAlchemy to interact with a persistent SQLite database located at .
 
-The UI has been significantly enhanced with a JFrog-style file browser, featuring a tree view on the left and a tabbed information/viewer panel on the right. A global Offline Mode has been implemented with a toggle in the header, which persists its state in the database. The system now handles Access Denied errors from the SOAP API by storing the error state and visually indicating it in the UI with red icons and detailed messages. The file browser includes functionality to view text-based files and download any file.
+The primary feature, the SQL dashboard, is highly functional. It allows users to:
+- Define database connections, specifying a name, connection string, and database type (e.g., MS-SQL, PostgreSQL).
+- Manage a central library of preset SQL queries. These presets can be linked to specific database types.
+- The main SQL Executor page features:
+    - A multi-tab interface to work on several queries at once.
+    - A resizable, two-row layout with the SQL editor on top and the results panel at the bottom.
+    - SQL syntax highlighting via PrismJS.
+    - A dropdown to select and load presets, which are automatically filtered based on the current connection's database type.
+    - A modal to view and re-run past queries from the history.
+    - Buttons to export query results to CSV and Excel.
+
+The backend is fully equipped with the necessary SQLAlchemy models (, , , ) and FastAPI endpoints to support these features. The database is automatically seeded with a default list of database types and associated presets on startup.
 
 **Last working item**:
-- **Last item agent was working:** The agent was fulfilling a two-part user request on the Server File Browser page.
-    1.  Conditionally display the View tab only for files with specific text-based extensions (e.g., .txt, .xml, .md).
-    2.  Restyle the tabs to a flat design, with a green underline and text for the active tab, and grey text for inactive tabs, based on a user-provided image.
-- **Status:** USER VERIFICATION PENDING
-- **Agent Testing Done:** Y (via screenshot)
-- **Which testing method agent to use?** screenshot tool. The agent needs to navigate to the server browser, select a text file, and capture a screenshot to confirm the View tab appears and has the new flat styling. Then, select a non-text file (e.g., a binary) and confirm the View tab is hidden.
+- **Last item agent was working:** Implementing a batch of new enhancements for the SQL Executor, as requested by the user:
+    1.  Add a  keyboard shortcut to execute queries.
+    2.  Add a Testar Conexão (Test Connection) button on the database connections page.
+    3.  Implement autocomplete for SQL tables and columns within the editor.
+    4.  Add a large list of new, more complex presets for MSSQL, PostgreSQL, and MySQL.
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** both.
+    - **Backend:** After implementing the new presets and endpoints, restart the backend and use  to test the new  and  (for autocomplete) endpoints. Verify the new presets exist in the database.
+    - **Frontend:** Use the  tool to:
+        1.  Verify the Testar Conexão button works and provides feedback.
+        2.  Confirm that typing  in the editor executes the query.
+        3.  Check that autocomplete suggestions for tables/columns appear while typing in the SQL editor.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P1):** Implement Beautify functionality in the file viewer.
-- **Issue 2 (P2):** Verify the cache storage mechanism.
+- **Issue 1 (P0): Complete the SQL Executor enhancements.**
 
 **Issues Detail:**
-- **Issue 1: Implement Beautify functionality in the file viewer**
-    - **Description:** The agent added a Beautify button in the View tab for text files but did not implement the actual code-formatting logic behind it.
-    - **Attempted fixes:** None. The button was added as a placeholder.
+- **Issue 1: Complete the SQL Executor enhancements.**
+    - **Attempted fixes:** The agent started the implementation.
+        - **Backend:** Created the  endpoint in  to handle the connection test.
+        - **Frontend:** Modified  and . Added the  hook for the  keyboard shortcut and integrated the Test Connection button with its corresponding API call. The state management for autocomplete suggestions was initiated, but the core logic is missing.
     - **Next debug checklist:**
-        - In , locate the  function.
-        - Choose and install a suitable library for code formatting (e.g.,  or ).
-        - Implement the logic inside  to take the  state, format it using the chosen library, and update the state to re-render the formatted content.
-    - **Why fix this issue and what will be achieved with the fix?** To complete the file viewer feature as requested by the user, improving readability of configuration files and code.
-    - **Status:** NOT STARTED
+        1.  **Backend:**
+            - In , update the  function to include the large list of new MSSQL, MySQL, and PostgreSQL presets provided by the user.
+            - In , create the  endpoint. This endpoint will need to connect to the target database and fetch a list of its tables and columns to power the autocomplete feature.
+        2.  **Frontend:**
+            - In , implement the logic to call the new  endpoint and use the returned data to provide suggestions within the PrismJS editor as the user types. This will likely involve integrating with the editor's API or using a wrapper component.
+            - Ensure the Test Connection button provides clear visual feedback (e.g., toast notification, status icon change) upon success or failure.
+    - **Why fix this issue and what will be achieved with the fix?** This will elevate the SQL Executor from a basic tool to a professional-grade editor, significantly improving user productivity and experience.
+    - **Status:** IN PROGRESS
     - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** Frontend.
-    - **Blocked on other issue:** None.
-- **Issue 2: Verify the cache storage mechanism**
-    - **Description:** In a recent request, the user asked to Verificar armazenamento de cache (Verify cache storage). The agent proceeded with other tasks and did not address this. The task is to confirm that new SOAP responses are being correctly saved to the  table.
-    - **Attempted fixes:** None. The agent skipped this task.
-    - **Next debug checklist:**
-        - Temporarily turn Ignorar Cache OFF.
-        - Trigger a SOAP call that is not yet cached (e.g., browse a new directory in the file browser).
-        - Use the  CLI to query the  table: .
-        - Verify that a new row corresponding to the SOAP call has been created.
-    - **Why fix this issue and what will be achieved with the fix?** To ensure a core feature of the application (caching) is working correctly, which is critical for performance and for the Offline Mode to function.
-    - **Status:** NOT STARTED
-    - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** Backend.
+    - **Should Test frontend/backend/both after fix?** Both.
     - **Blocked on other issue:** None.
 
-**In progress Task List**: None.
+**In progress Task List**:
+- **Task 1: Complete SQL Executor Enhancements**
+    - **Where to resume:**
+        1.  : Add the new list of default SQL presets.
+        2.  : Implement the  endpoint for autocomplete data.
+        3.  : Build the client-side logic for the autocomplete feature.
+    - **What will be achieved with this?** A more powerful and user-friendly SQL editor with shortcuts, autocomplete, and a richer set of default queries.
+    - **Status:** IN PROGRESS
+    - **Should Test frontend/backend/both after fix?** Both.
+    - **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
+- **Upcoming Tasks:**
+    - None. The current focus is on finishing the SQL enhancements.
 - **Future Tasks:**
-    - **(P2) Mock SOAP Service for Testing:** Since the real SOAP endpoint is often inaccessible (returning 403), creating a mock service is crucial for robustly testing XML parsing and data display logic without relying on the live, unreliable API.
-    - **(P3) Refactor DB Schema Migration:** The current automatic migration is a custom script in  that checks for and adds columns. This is brittle. Refactoring to use a standard migration tool like  would make schema management more robust and maintainable.
-    - **(P4) Complete File Download Tracking:** The UI was updated to show a  icon for downloaded files, but the  status is not yet stored in the database. The backend needs to be updated to set a flag on the  model after a successful download via .
+    - **(P2) Mock SOAP Service for Testing:** Create a mock service to test the file browser logic without relying on the live, unreliable API.
+    - **(P3) Refactor DB Schema Migration:** The current custom migration script in  is brittle. Refactor to use a dedicated migration tool like .
+    - **(P4) Complete File Download Tracking:** Persist the downloaded status of a file in the  model after a successful sync/download.
 
 **Completed work in this session**
-- **Server Browser Redesign:** Completely overhauled the Server Browser page () to a two-panel, JFrog-style layout with a file tree and a tabbed info/viewer panel.
-- **Access Denied Handling:** Implemented end-to-end handling for SOAP API access errors, including DB schema changes, backend parsing of error messages, and frontend UI updates (red icons, error messages).
-- **Global Offline Mode:** Added a global Offline Mode toggle to the header, with backend state persistence and logic to bypass all SOAP calls when active.
-- **File Viewing/Downloading:** Implemented a new tab in the file browser to view text-based files and download any file from the server storage. The download button was renamed to Sync.
-- **Bug Fixes & Refinements:**
-    - Fixed a bug preventing shares with  (e.g., ) from being displayed.
-    - Resolved an issue causing duplicate share listings.
-    - Fixed broken tabs on the  page.
-    - Corrected a JSON parsing error for the Resolve IP button.
-    - Adjusted various CSS properties for layout consistency and to match user requests (sidebar button, info panel spacing, tab styles).
-    - Removed hardcoded XML namespace () from all backend parsing logic.
-- **Basic DB Auto-Migration:** Implemented a simple script in  to check for and add missing columns on startup, avoiding manual  commands.
+- **File Browser Bug Fixes:**
+    - Corrected the logic to prevent already-loaded tree nodes from expanding automatically on page load.
+    - Fixed the color-coding for subdirectories to correctly reflect their  status (blue for loaded, gray for not loaded).
+- **Major SQL Feature Implementation:**
+    - **Database Type System:** Created backend models and frontend UI to manage different database types (e.g., MS-SQL, MySQL), each with a unique color for identification.
+    - **Connection Management Overhaul:**
+        - The list of SQL connections is now displayed in a detailed table view.
+        - The Add Connection form now includes a dropdown to select the .
+    - **DB-Specific Presets:**
+        - SQL presets are now linked to a specific .
+        - The SQL Executor's preset dropdown is now filtered to only show presets relevant to the active connection's DB type.
+    - **SQL Executor UI/UX Enhancements:**
+        - **Layout:** Changed from a fixed two-column layout to a resizable two-row layout (editor on top, results below).
+        - **Multi-Tab Queries:** Implemented a full multi-tab interface for writing and managing concurrent queries.
+        - **Syntax Highlighting:** Integrated PrismJS to provide SQL syntax highlighting in the editor.
+        - **Data Export:** Added buttons to export query results to CSV and Excel files.
+        - **History Modal:** Moved the query history display into a separate modal window, which can be used to open past queries in new tabs.
+
+**Earlier issues found/mentioned but not fixed**
+- None. The recurring issue of Verify cache storage was investigated and addressed in this session. The agent confirmed the code logic is correct and the database table exists. A live test is not possible due to the unavailability of the external SOAP API, but the implementation itself has been verified.
+
+**Known issue recurrence from previous fork**
+- **Issue recurrence in previous fork:** Verify the cache storage mechanism
+- **Recurrence count:** 2
+- **Status:** RESOLVED (Verified implementation, though live E2E test is not possible).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend:** React, Tailwind CSS, Shadcn UI, , React Context API
-- **Backend:** FastAPI, Pydantic, SQLAlchemy (for ORM), 
-- **Database:** SQLite with a custom auto-migration script.
-- **Architecture:** Containerized full-stack application.
-- **API Style:** RESTful backend consuming an external SOAP service.
+- **Frontend:** React, Tailwind CSS, Shadcn UI, .
+    - **SQL Editor:**  combined with  for syntax highlighting.
+    - **Layout:**  for the resizable editor/results view.
+    - **Export:**  and  libraries for CSV/Excel generation.
+- **Backend:** FastAPI, Pydantic, SQLAlchemy.
+- **Database:** SQLite. The  file now contains a significant  function to seed the database with default data on startup.
 
 **key DB schema**
-- **SystemSettings:**  (Stores global state like )
+- **DatabaseType:** 
+- **DatabaseConnection:** 
+- **SqlPreset:** 
+- **SqlQueryHistory:** 
 - **ServerShare:** 
-- **ServerFile:**  (The  field needs to be implemented)
-- **SoapCache:** 
+- **ServerFile:** 
 
 **All files of reference**
-- : Heavily modified. Contains the entire logic for the file tree, info/view panel, tabs, and error display.
-- : Heavily modified. Contains new endpoints for file content/downloads, offline mode settings, and updated logic for browsing and error handling.
-- : Updated to include the Offline Mode toggle in the header.
-- : Updated to manage the global  state.
-- : New file containing SQLAlchemy models for all database tables.
-- : New file to manage file paths for downloaded content.
+- **Core SQL Feature Files:**
+    - : The main SQL editor page. (new/modified)
+    - : Manages SQL connections. (new/modified)
+    - : Manages the preset query library. (new/modified)
+    - : Contains all new API endpoints for the SQL functionality. (modified)
+    - : Contains the new SQLAlchemy models for the SQL feature. (modified)
+    - : Contains the logic to seed the database with types and presets. (modified)
+- **Supporting Files:**
+    - : Updated with routes for the new SQL pages.
+    - : Sidebar link updated.
+    - : Minor bug fixes applied.
+    - : New CSS file for syntax highlighting theme.
+    -  & : Updated with new dependencies (, , , , etc.).
 
 **Critical Info for New Agent**
-- **The user is very specific about UI/UX.** Pay close attention to reference images and CSS requests.
-- **The SOAP API is unreliable.** Development should not assume the API is available. The Offline Mode can be used to work with cached data.
-- **The database migration is custom.** The application does not use Alembic. Schema changes are handled by a script in  that runs on startup. If you add new models or columns, ensure they are reflected in the Pydantic models in  and the SQLAlchemy models in .
-- **The proxy SSL error was marked resolved by the user without explanation.** This was a major previous blocker. If any proxy-related issues arise, it may be necessary to re-investigate from scratch.
+- **Immediate Task:** The highest priority is to complete the in-progress SQL enhancements: add new presets, implement the Test Connection endpoint, and build the autocomplete feature.
+- **Autocomplete Implementation:** The autocomplete feature is the most complex part of the remaining task. It requires a backend endpoint () that can dynamically connect to the user-provided database, query its schema (tables and columns), and return the data. This must be handled carefully to manage potential errors (invalid credentials, network issues, unsupported drivers).
+- **Database Seeding:** All default data (DB types, presets) is now managed in the  function in . To add the user's requested presets, this is the file to modify.
 
 **documents and test reports created in this job**
 - None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  : (Completed) Request to make info panel rows have a uniform height.
-2.  : (Partially Completed) User confirmed proxy issue is resolved, requested cache verification (skipped), and requested Offline Mode and auto DB migrations (implemented).
-3.  : (Completed) Request to fix inconsistent margin/spacing in the info panel.
-4.  : (Completed) Request to use a new icon for downloaded files in the tree view.
-5.  : (Completed) Major feature request to add Open button, Sync button, and a View tab for files.
-6.  : (Completed) Request to make the View tab conditional based on file extension.
-7.  : (Completed) Request to change the visual style of the tabs.
-8.  : (Completed) Major feature request to handle Access Denied errors.
-9.  : (Completed) CSS tweak for the info panel's label column width.
-10. : (Completed) Request to fix backend XML parsing for file downloads.
+1.  **User:** Fix file browser bugs (auto-expand & subdirectory coloring). (Completed)
+2.  **Agent:** Confirmed fixes.
+3.  **User:** New task: Create a full SQL feature set (connections, presets, executor, history). (Completed)
+4.  **Agent:** Implemented the base SQL feature.
+5.  **User:** New task: Add export to CSV/Excel, syntax highlighting, and multi-tab queries. (Completed)
+6.  **Agent:** Implemented these enhancements.
+7.  **User:** New task: Change the executor layout to be vertical and resizable, and move history to a modal. (Completed)
+8.  **Agent:** Implemented the layout changes.
+9.  **User:** New task: Add DB Types, link presets to them, and update the UI to use a table for connections and filter presets. (Completed)
+10. **User:** New task: Implement  shortcut, autocomplete, a Test Connection button, and add a large new list of presets for multiple DB types. (IN PROGRESS)
 
 **Project Health Check:**
-- **Broken:** Nothing is critically broken, but some features are incomplete.
-- **Mocked:**
-  - No mock SOAP service exists. This remains a significant risk for testing and development, especially since the live API is known to be unreliable.
+- **Broken:** The autocomplete feature is not implemented. The  shortcut and Test Connection button are partially implemented on the frontend but require backend completion and full testing.
+- **Mocked:** No mocked services are in use. The application relies on a live SQLite database and assumes it can connect to user-defined external databases.
 
 **3rd Party Integrations**
-- **Custom SOAP Web Service:** Private SOAP API at .
-- **UI Libraries:**  for icons.
+- **Custom SOAP Web Service:** Private SOAP API for the file browser feature.
+- **UI Libraries:** , .
+- **SQL Editor:** , .
+- **Data Handling:** , .
+- **Database Drivers:**  (for MS-SQL), potentially others needed for different DB types.
 
 **Testing status**
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** []
+- **Test files created:** None in this session.
 - **Known regressions:** None.
 
 **What agent forgot to execute**
-- The user requested to **Verify cache storage**, but the agent skipped this task and moved on to implementing other features. This verification is still pending and is important for ensuring the application's caching and offline functionalities work as intended.</analysis>
+- The agent was in the middle of a large implementation and did not forget any steps, but the following parts of the last user request are not yet complete:
+    - Adding the new, extensive list of SQL presets to .
+    - Fully implementing the autocomplete feature, which includes the backend endpoint to fetch the database schema and the frontend logic to display suggestions.</analysis>
