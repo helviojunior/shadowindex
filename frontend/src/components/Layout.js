@@ -43,7 +43,12 @@ const menuItems = [
 const Layout = ({ children, darkMode, setDarkMode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { ignoreCache, setIgnoreCache } = useApp();
+  const { ignoreCache, setIgnoreCache, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
+
+  const handleProxyChange = async (value) => {
+    const proxyId = value === 'none' ? null : parseInt(value);
+    await updateActiveProxy(proxyId);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
