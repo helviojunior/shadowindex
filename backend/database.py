@@ -395,7 +395,7 @@ async def init_db():
                 SqlPreset(
                     db_type_id=mssql_id,
                     name="List Databases",
-                    query="SELECT name FROM sys.databases WHERE database_id > 4;",
+                    query="SELECT name, state_desc FROM sys.databases WHERE database_id > 4;",
                     description="Lista todos os bancos de dados do usuário"
                 ),
                 SqlPreset(
