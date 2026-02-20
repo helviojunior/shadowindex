@@ -1,0 +1,137 @@
+from zeep import Client
+from zeep.transports import Transport
+from datetime import datetime, timezone, timedelta
+import hashlib
+import json
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from database import SoapCache, AppConfig, SoapApiUrl
+import logging
+
+logger = logging.getLogger(__name__)
+
+class SoapService:
+    def __init__(self, wsdl_url: str):
+        self.wsdl_url = wsdl_url
+        self.client = None
+    
+    def _init_client(self):
+        if not self.client:
+            try:
+                transport = Transport(timeout=30)
+                self.client = Client(self.wsdl_url, transport=transport)
+            except Exception as e:
+                logger.error(f"Failed to initialize SOAP client: {e}")
+                raise
+    
+    @staticmethod
+    def _generate_cache_key(operation: str, params: dict) -> str:
+        """Generate a unique hash for the operation and parameters"""
+        key_str = f"{operation}:{json.dumps(params, sort_keys=True)}"
+        return hashlib.sha256(key_str.encode()).hexdigest()
+    
+    @staticmethod
+    async def _get_cached_response(db: AsyncSession, cache_key: str, max_age_hours: int = 24) -> str | None:
+        """Get cached response if it exists and is not expired"""
+        result = await db.execute(
+            select(SoapCache).where(SoapCache.query_hash == cache_key)
+        )
+        cache_entry = result.scalar_one_or_none()
+        
+        if cache_entry:
+            age = datetime.now(timezone.utc) - cache_entry.timestamp.replace(tzinfo=timezone.utc)
+            if age < timedelta(hours=max_age_hours):
+                logger.info(f"Cache hit for key: {cache_key}")
+                return cache_entry.response_data
+        
+        return None
+    
+    @staticmethod
+    async def _save_to_cache(db: AsyncSession, cache_key: str, operation: str, request_data: str, response_data: str):
+        """Save response to cache"""
+        # Check if cache entry exists
+        result = await db.execute(
+            select(SoapCache).where(SoapCache.query_hash == cache_key)
+        )
+        cache_entry = result.scalar_one_or_none()
+        
+        if cache_entry:
+            cache_entry.request_data = request_data
+            cache_entry.response_data = response_data
+            cache_entry.timestamp = datetime.now(timezone.utc)
+        else:
+            cache_entry = SoapCache(
+                query_hash=cache_key,
+                operation=operation,
+                request_data=request_data,
+                response_data=response_data
+            )
+            db.add(cache_entry)
+        
+        await db.commit()
+        logger.info(f"Cached response for key: {cache_key}")
+    
+    @staticmethod
+    async def is_offline_mode(db: AsyncSession) -> bool:
+        """Check if offline mode is enabled"""
+        result = await db.execute(
+            select(AppConfig).where(AppConfig.key == "offline_mode")
+        )
+        config = result.scalar_one_or_none()
+        return config and config.value.lower() == "true"
+    
+    async def call_soap_operation(
+        self,
+        db: AsyncSession,
+        operation: str,
+        params: dict,
+        ignore_cache: bool = False
+    ) -> str:
+        """
+        Call SOAP operation with caching support
+        """
+        cache_key = self._generate_cache_key(operation, params)
+        offline_mode = await self.is_offline_mode(db)
+        
+        # Check cache first (unless ignore_cache is True)
+        if not ignore_cache:
+            cached_response = await self._get_cached_response(db, cache_key)
+            if cached_response:
+                return cached_response
+        
+        # If offline mode and no cache, return error
+        if offline_mode:
+            raise Exception("Sistema em modo offline e não há cache disponível para esta consulta")
+        
+        # Make actual SOAP call
+        self._init_client()
+        
+        try:
+            # Call the appropriate SOAP method
+            method = getattr(self.client.service, operation)
+            response = method(**params)
+            
+            # Convert response to string
+            response_str = str(response)
+            
+            # Save to cache
+            request_str = json.dumps(params)
+            await self._save_to_cache(db, cache_key, operation, request_str, response_str)
+            
+            return response_str
+        
+        except Exception as e:
+            logger.error(f"SOAP call failed: {e}")
+            raise Exception(f"Erro ao chamar o WebService SOAP: {str(e)}")
+
+async def get_default_soap_service(db: AsyncSession) -> SoapService:
+    """Get the default SOAP service"""
+    result = await db.execute(
+        select(SoapApiUrl).where(SoapApiUrl.name == "Default SOAP API")
+    )
+    soap_api = result.scalar_one_or_none()
+    
+    if not soap_api:
+        raise Exception("Nenhuma API SOAP configurada")
+    
+    return SoapService(soap_api.uri)
