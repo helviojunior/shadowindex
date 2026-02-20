@@ -149,6 +149,40 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
             {/* Separador */}
             <div className="h-6 w-px bg-border" />
 
+            {/* Modo Offline Global */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={offlineMode ? "destructive" : "ghost"}
+                  size="sm"
+                  onClick={handleOfflineModeToggle}
+                  className={cn(
+                    "flex items-center gap-2",
+                    offlineMode && "bg-orange-600 hover:bg-orange-700"
+                  )}
+                  data-testid="offline-mode-btn"
+                >
+                  {offlineMode ? (
+                    <>
+                      <WifiOff className="w-4 h-4" />
+                      <span className="text-sm">Offline</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="w-4 h-4" />
+                      <span className="text-sm">Online</span>
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{offlineMode ? 'Modo offline ativo - usando apenas cache local' : 'Clique para ativar modo offline'}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Separador */}
+            <div className="h-6 w-px bg-border" />
+
             {/* Ignorar Cache Global */}
             <div className="flex items-center gap-2">
               <DatabaseZap className="w-4 h-4 text-muted-foreground" />
@@ -156,15 +190,16 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 id="global-ignore-cache" 
                 checked={ignoreCache} 
                 onCheckedChange={setIgnoreCache}
+                disabled={offlineMode}
                 data-testid="global-ignore-cache-switch"
               />
               <Label 
                 htmlFor="global-ignore-cache" 
-                className="text-sm cursor-pointer"
+                className={cn("text-sm cursor-pointer", offlineMode && "text-muted-foreground")}
               >
                 Ignorar Cache
               </Label>
-              {ignoreCache && (
+              {ignoreCache && !offlineMode && (
                 <Badge variant="destructive" className="text-xs">
                   Ativo
                 </Badge>
