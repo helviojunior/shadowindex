@@ -75,7 +75,7 @@ const Servers = () => {
         operation: 'Resolve',
         s1: formData.name,
         s2: '',
-        ignore_cache: false
+        ignore_cache: ignoreCache
       });
 
       // Parse o resultado para extrair o primeiro IP
