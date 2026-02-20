@@ -570,64 +570,79 @@ const ServerBrowser = () => {
           </div>
         )}
         
-        {/* Info Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+        {/* Tabs: Info e View */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          <TabsList className="mx-4 mt-4 w-fit">
+            <TabsTrigger value="info" className="gap-2">
+              <FileText className="w-4 h-4" />
               Info
-            </h3>
-            
-            <div className="flex flex-col gap-2">
-              {/* Name */}
-              <InfoRow 
-                label="Name" 
-                value={String(itemName)}
-                onCopy={() => copyToClipboard(String(itemName), 'name')}
-                copied={copiedField === 'name'}
-              />
-              
-              {/* Server Path */}
-              <InfoRow 
-                label="Server Path" 
-                value={selectedItem.serverPath}
-                onCopy={() => copyToClipboard(selectedItem.serverPath, 'path')}
-                copied={copiedField === 'path'}
-              />
-              
-              {/* Fetched Date */}
-              <InfoRow 
-                label="Fetched Date" 
-                value={formatDate(selectedItem.fetchedAt)}
-              />
-              
-              {/* Access Status */}
-              <InfoRow 
-                label="Access Status" 
-                value={isAccessDenied ? 'Negado' : 'Permitido'}
-                valueClassName={isAccessDenied ? 'text-red-500 font-medium' : 'text-green-500'}
-              />
-              
-              {/* Last Write Time - para diretórios e arquivos */}
-              {(isDirectory || isFile) && selectedItem.modified && (
-                <InfoRow 
-                  label="Last Modified" 
-                  value={formatDate(selectedItem.modified)}
-                />
-              )}
-              
-              {/* Size - apenas para arquivos */}
-              {isFile && !isAccessDenied && (
-                <InfoRow 
-                  label="Size" 
-                  value={formatSize(selectedItem.size)}
-                />
-              )}
-              
-              {/* Downloaded - apenas para arquivos */}
-              {isFile && !isAccessDenied && (
-                <InfoRow 
-                  label="Downloaded" 
-                  value={downloaded ? 'Yes' : 'No'}
+            </TabsTrigger>
+            {isFile && downloaded && (
+              <TabsTrigger value="view" className="gap-2" onClick={loadFileContent}>
+                <Eye className="w-4 h-4" />
+                View
+              </TabsTrigger>
+            )}
+          </TabsList>
+          
+          {/* Tab Info */}
+          <TabsContent value="info" className="flex-1 mt-0">
+            <ScrollArea className="h-full">
+              <div className="p-4">
+                <div className="flex flex-col gap-2">
+                  {/* Name */}
+                  <InfoRow 
+                    label="Name" 
+                    value={String(itemName)}
+                    onCopy={() => copyToClipboard(String(itemName), 'name')}
+                    copied={copiedField === 'name'}
+                  />
+                  
+                  {/* Server Path */}
+                  <InfoRow 
+                    label="Server Path" 
+                    value={selectedItem.serverPath}
+                    onCopy={() => copyToClipboard(selectedItem.serverPath, 'path')}
+                    copied={copiedField === 'path'}
+                  />
+                  
+                  {/* Fetched Date */}
+                  <InfoRow 
+                    label="Fetched Date" 
+                    value={formatDate(selectedItem.fetchedAt)}
+                  />
+                  
+                  {/* Access Status */}
+                  <InfoRow 
+                    label="Access Status" 
+                    value={isAccessDenied ? 'Negado' : 'Permitido'}
+                    valueClassName={isAccessDenied ? 'text-red-500 font-medium' : 'text-green-500'}
+                  />
+                  
+                  {/* Last Write Time - para diretórios e arquivos */}
+                  {(isDirectory || isFile) && selectedItem.modified && (
+                    <InfoRow 
+                      label="Last Modified" 
+                      value={formatDate(selectedItem.modified)}
+                    />
+                  )}
+                  
+                  {/* Size - apenas para arquivos */}
+                  {isFile && !isAccessDenied && (
+                    <InfoRow 
+                      label="Size" 
+                      value={formatSize(selectedItem.size)}
+                    />
+                  )}
+                  
+                  {/* Sync Status - apenas para arquivos */}
+                  {isFile && !isAccessDenied && (
+                    <InfoRow 
+                      label="Sync Status" 
+                      value={downloaded ? 'Sincronizado' : 'Não sincronizado'}
+                      valueClassName={downloaded ? 'text-green-500' : 'text-muted-foreground'}
+                    />
+                  )}
                   valueClassName={downloaded ? 'text-green-500' : 'text-muted-foreground'}
                 />
               )}
