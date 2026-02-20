@@ -1113,6 +1113,22 @@ const ServerBrowser = () => {
                   )}
                 </button>
               )}
+              
+              {(isShare || isDirectory) && (
+                <button
+                  onClick={() => setActiveTab('items')}
+                  className={`pb-3 text-sm font-medium transition-colors relative ${
+                    activeTab === 'items' 
+                      ? 'text-green-500' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Items
+                  {activeTab === 'items' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
           
