@@ -1035,6 +1035,14 @@ async def get_file_content(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Endpoint de teste para demonstrar o Beautify (apenas para desenvolvimento)
+@api_router.get("/test/xml-sample")
+async def get_xml_sample():
+    """Retorna um XML de exemplo para testar o Beautify"""
+    xml_content = '''<?xml version="1.0" encoding="UTF-8"?><configuration><appSettings><add key="DatabaseServer" value="192.168.1.100"/><add key="DatabaseName" value="MyApp"/><add key="Timeout" value="30"/></appSettings><connectionStrings><add name="DefaultConnection" connectionString="Server=localhost;Database=mydb;User=admin;Password=secret123;"/></connectionStrings><!-- This is a comment --><system.web><compilation debug="true" targetFramework="4.8"/><httpRuntime targetFramework="4.8"/></system.web></configuration>'''
+    return {"content": xml_content, "filename": "config.xml"}
+
+
 @api_router.get("/servers/{server_id}/file-download")
 async def download_file_to_client(
     server_id: int,
