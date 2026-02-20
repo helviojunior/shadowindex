@@ -991,10 +991,11 @@ async def get_server_shares(
             import xml.etree.ElementTree as ET
             root = ET.fromstring(f"<root>{result_str}</root>")
             
-            # Limpar shares antigos antes de adicionar novos (evita duplicação)
-            await db.execute(
-                delete(ServerShare).where(ServerShare.server_guid == server.guid)
+            # Obter shares existentes para preservar flags
+            existing_shares_result = await db.execute(
+                select(ServerShare).where(ServerShare.server_guid == server.guid)
             )
+            existing_shares = {s.share_name: s for s in existing_shares_result.scalars().all()}
             
             shares_found = []
             seen_names = set()  # Evitar duplicados na mesma resposta
@@ -1019,14 +1020,28 @@ async def get_server_shares(
                     }
                     shares_found.append(share_data)
                     
-                    # Adicionar novo share
-                    db_share = ServerShare(
-                        server_guid=server.guid,
-                        share_name=share_data["name"],
-                        share_type=share_data["type"],
-                        remark=share_data["remark"]
-                    )
-                    db.add(db_share)
+                    # Verificar se share já existe
+                    if name_text in existing_shares:
+                        # Atualizar share existente preservando flags
+                        existing_share = existing_shares[name_text]
+                        existing_share.share_type = share_data["type"]
+                        existing_share.remark = share_data["remark"]
+                        # NÃO resetar: children_fetched, has_children, access_denied
+                    else:
+                        # Adicionar novo share
+                        db_share = ServerShare(
+                            server_guid=server.guid,
+                            share_name=share_data["name"],
+                            share_type=share_data["type"],
+                            remark=share_data["remark"]
+                        )
+                        db.add(db_share)
+            
+            # Remover shares que não existem mais no servidor
+            current_share_names = set(s["name"] for s in shares_found)
+            for existing_name, existing_share in existing_shares.items():
+                if existing_name not in current_share_names:
+                    await db.delete(existing_share)
             
             # Atualizar contador e marcar como verificado
             server.shares_count = len(shares_found)
