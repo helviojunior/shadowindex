@@ -172,7 +172,12 @@ const ServerBrowser = () => {
 
   // Verifica se o arquivo pode ser visualizado (texto, imagem ou PDF)
   const canPreviewFile = (filename) => {
-    return isTextFile(filename) || isImageFile(filename) || isPdfFile(filename);
+    return isTextFile(filename) || isImageFile(filename) || isPdfFile(filename) || isCertificateFile(filename);
+  };
+  
+  const isCertificateFile = (filename) => {
+    const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+    return CERTIFICATE_EXTENSIONS.includes(ext);
   };
 
   // Carrega o conteúdo do arquivo para visualização
@@ -183,6 +188,29 @@ const ServerBrowser = () => {
     }
 
     const filename = selectedItem.name;
+    
+    // Para certificados, carregar informações parseadas
+    if (isCertificateFile(filename)) {
+      setLoadingContent(true);
+      try {
+        const response = await axios.get(`${API}/servers/${serverId}/certificate-info`, {
+          params: {
+            file_path: selectedItem.fullPath || selectedItem.serverPath,
+            share_name: selectedItem.shareName
+          }
+        });
+        setFileContent(response.data);
+        setRawFileContent(JSON.stringify(response.data, null, 2));
+        setFilePreviewUrl(null);
+      } catch (error) {
+        console.error('Error loading certificate:', error);
+        toast.error('Erro ao carregar informações do certificado');
+        setFileContent({ error: error.response?.data?.detail || error.message });
+      } finally {
+        setLoadingContent(false);
+      }
+      return;
+    }
     
     // Para imagens e PDFs, carregar como blob e criar URL
     if (isImageFile(filename) || isPdfFile(filename)) {
