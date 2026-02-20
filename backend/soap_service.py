@@ -132,15 +132,16 @@ class SoapService:
             if self.proxy_url:
                 logger.info(f"Using proxy: {self.proxy_url}")
             
-            # Criar connector com SSL desabilitado (ignora erros de TLS)
-            ssl_context = create_insecure_ssl_context()
-            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            # Usar ssl=False para ignorar completamente a verificação SSL
+            # Isso resolve erros como EOF occurred in violation of protocol
+            connector = aiohttp.TCPConnector(ssl=False)
             
             async with aiohttp.ClientSession(connector=connector) as session:
                 request_kwargs = {
                     'data': soap_envelope,
                     'headers': headers,
-                    'timeout': aiohttp.ClientTimeout(total=30)
+                    'timeout': aiohttp.ClientTimeout(total=60),
+                    'ssl': False  # Redundante mas garante que SSL está desabilitado
                 }
                 
                 # Adicionar proxy se configurado
