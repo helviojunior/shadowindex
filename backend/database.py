@@ -199,6 +199,27 @@ async def init_db():
     except Exception as e:
         logger.warning(f"Migration check failed: {e}")
     
+    # Migração para database_connections
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("PRAGMA table_info(database_connections)")
+        columns = {col[1] for col in cursor.fetchall()}
+        
+        if 'verified' not in columns:
+            cursor.execute('ALTER TABLE database_connections ADD COLUMN verified BOOLEAN DEFAULT 0')
+            logger.info("Added column 'verified' to database_connections")
+        
+        if 'last_verified_at' not in columns:
+            cursor.execute('ALTER TABLE database_connections ADD COLUMN last_verified_at DATETIME')
+            logger.info("Added column 'last_verified_at' to database_connections")
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Migration check for database_connections failed: {e}")
+    
     # Create default records
     async with AsyncSessionLocal() as session:
         from sqlalchemy import select
