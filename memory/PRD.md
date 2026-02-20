@@ -28,6 +28,8 @@ Portuguese (pt-BR)
 ## Completed Features
 
 ### 2026-02-20
+- [x] Removed `<h3>Info</h3>` tag from info panel
+- [x] Implemented tree hierarchy lines (vertical + horizontal connectors like JFrog)
 - [x] Dashboard: Added "Servidores" and "Arquivos Baixados" stat cards
 - [x] Dashboard: Grid updated to 6 columns on large screens
 - [x] Server Browser: Gray icons/text for shares/directories without fetched children
