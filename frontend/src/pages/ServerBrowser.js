@@ -158,10 +158,33 @@ const ServerBrowser = () => {
         }
       });
       const content = response.data.content;
-      setFileContent(content);
       setRawFileContent(content); // Guardar conteúdo original
       setFilePreviewUrl(null);
-      setBeautified(false);
+      
+      // Tentar fazer beautify automaticamente
+      const filename = selectedItem?.name?.toLowerCase() || '';
+      try {
+        let beautifiedContent = content;
+        let fileType = 'text';
+        
+        if (filename.endsWith('.json')) {
+          fileType = 'json';
+          beautifiedContent = JSON.stringify(JSON.parse(content), null, 2);
+        } else if (filename.endsWith('.xml') || filename.endsWith('.config')) {
+          fileType = 'xml';
+          beautifiedContent = formatXml(content);
+        }
+        
+        // Aplicar syntax highlighting
+        const highlighted = applySyntaxHighlight(beautifiedContent, fileType);
+        setFileContent(highlighted);
+        setBeautified(true);
+      } catch (beautifyError) {
+        // Se falhar o beautify, mostrar conteúdo raw
+        console.warn('Beautify failed, showing raw content:', beautifyError);
+        setFileContent(content);
+        setBeautified(false);
+      }
     } catch (error) {
       console.error('Error loading file content:', error);
       toast.error('Erro ao carregar conteúdo do arquivo');
