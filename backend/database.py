@@ -319,38 +319,118 @@ async def init_db():
         result = await session.execute(select(SqlPreset))
         existing_presets = result.scalars().all()
         
+        mssql_id = db_types_map.get('mssql')
+        mysql_id = db_types_map.get('mysql')
+        postgres_id = db_types_map.get('postgres')
+        
         if len(existing_presets) == 0:
             default_presets = [
+                # MS-SQL Presets
                 SqlPreset(
-                    name="MS-SQL: Is Admin",
+                    db_type_id=mssql_id,
+                    name="Is Admin",
                     query="SELECT IS_SRVROLEMEMBER('sysadmin')",
                     description="Verifica se o usuário atual é sysadmin"
                 ),
                 SqlPreset(
-                    name="MS-SQL: List Databases",
+                    db_type_id=mssql_id,
+                    name="List Databases",
                     query="SELECT name FROM sys.databases WHERE database_id > 4;",
                     description="Lista todos os bancos de dados do usuário"
                 ),
                 SqlPreset(
-                    name="MS-SQL: Current User",
+                    db_type_id=mssql_id,
+                    name="Current User",
                     query="SELECT SYSTEM_USER, USER_NAME()",
                     description="Retorna o usuário atual do sistema"
                 ),
                 SqlPreset(
-                    name="MS-SQL: Database Size",
+                    db_type_id=mssql_id,
+                    name="Database Size",
                     query="SELECT DB_NAME() AS [Database], SUM(size * 8 / 1024) AS [Size (MB)] FROM sys.database_files GROUP BY type_desc",
                     description="Mostra o tamanho do banco de dados atual"
                 ),
                 SqlPreset(
-                    name="MS-SQL: List Tables",
+                    db_type_id=mssql_id,
+                    name="List Tables",
                     query="SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_SCHEMA, TABLE_NAME",
                     description="Lista todas as tabelas do banco atual"
                 ),
                 SqlPreset(
-                    name="MS-SQL: Server Version",
+                    db_type_id=mssql_id,
+                    name="Server Version",
                     query="SELECT @@VERSION",
                     description="Retorna a versão do SQL Server"
-                )
+                ),
+                # MySQL Presets
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="List Databases",
+                    query="SHOW DATABASES;",
+                    description="Lista todos os bancos de dados"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="List Tables",
+                    query="SHOW TABLES;",
+                    description="Lista todas as tabelas do banco atual"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="Current User",
+                    query="SELECT USER(), CURRENT_USER();",
+                    description="Retorna o usuário atual"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="Server Version",
+                    query="SELECT VERSION();",
+                    description="Retorna a versão do MySQL"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="Database Size",
+                    query="SELECT table_schema AS 'Database', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'Size (MB)' FROM information_schema.tables GROUP BY table_schema;",
+                    description="Mostra o tamanho de cada banco de dados"
+                ),
+                # PostgreSQL Presets
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Databases",
+                    query="SELECT datname FROM pg_database WHERE datistemplate = false;",
+                    description="Lista todos os bancos de dados"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Tables",
+                    query="SELECT tablename FROM pg_tables WHERE schemaname = 'public';",
+                    description="Lista todas as tabelas do schema public"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="Current User",
+                    query="SELECT current_user, session_user;",
+                    description="Retorna o usuário atual"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="Server Version",
+                    query="SELECT version();",
+                    description="Retorna a versão do PostgreSQL"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="Database Size",
+                    query="SELECT pg_database.datname, pg_size_pretty(pg_database_size(pg_database.datname)) AS size FROM pg_database;",
+                    description="Mostra o tamanho de cada banco de dados"
+                ),
+                # Universal Presets (null db_type_id)
+                SqlPreset(
+                    db_type_id=None,
+                    name="Select All",
+                    query="SELECT * FROM table_name LIMIT 100;",
+                    description="Seleciona todos os registros de uma tabela (universal)"
+                ),
             ]
             for preset in default_presets:
                 session.add(preset)
