@@ -559,7 +559,7 @@ const ServerBrowser = () => {
     const isAccessDenied = selectedItem.access_denied || selectedItem.accessDenied;
     const itemName = isShare ? selectedItem.share_name : selectedItem.name;
     const downloaded = isFile && isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath);
-    const canViewContent = isFile && downloaded && isTextFile(selectedItem.name);
+    const canViewContent = isFile && downloaded && canPreviewFile(selectedItem.name);
 
     // Cor do ícone no header baseada no status de acesso
     const headerIconColor = isAccessDenied ? 'text-red-500' : (isShare || isDirectory ? 'text-blue-500' : (downloaded ? 'text-green-500' : 'text-muted-foreground'));
@@ -654,7 +654,7 @@ const ServerBrowser = () => {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                General
+                Info
                 {activeTab === 'info' && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
                 )}
