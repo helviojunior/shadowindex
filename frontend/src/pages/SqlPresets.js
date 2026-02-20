@@ -61,7 +61,7 @@ const SqlPresets = () => {
         name: formData.name,
         query: formData.query,
         description: formData.description || null,
-        db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null
+        db_type_id: formData.db_type_id && formData.db_type_id !== 'universal' ? parseInt(formData.db_type_id) : null
       };
       
       await axios.post(`${API}/sql-presets`, payload);
