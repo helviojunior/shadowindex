@@ -325,18 +325,14 @@ async def init_db():
         
         if len(existing_presets) == 0:
             default_presets = [
+                # ===========================================
                 # MS-SQL Presets
+                # ===========================================
                 SqlPreset(
                     db_type_id=mssql_id,
-                    name="Is Admin",
-                    query="SELECT IS_SRVROLEMEMBER('sysadmin')",
-                    description="Verifica se o usuário atual é sysadmin"
-                ),
-                SqlPreset(
-                    db_type_id=mssql_id,
-                    name="List Databases",
-                    query="SELECT name FROM sys.databases WHERE database_id > 4;",
-                    description="Lista todos os bancos de dados do usuário"
+                    name="Server Version",
+                    query="SELECT @@VERSION",
+                    description="Retorna a versão do SQL Server"
                 ),
                 SqlPreset(
                     db_type_id=mssql_id,
@@ -346,9 +342,33 @@ async def init_db():
                 ),
                 SqlPreset(
                     db_type_id=mssql_id,
-                    name="Database Size",
-                    query="SELECT DB_NAME() AS [Database], SUM(size * 8 / 1024) AS [Size (MB)] FROM sys.database_files GROUP BY type_desc",
-                    description="Mostra o tamanho do banco de dados atual"
+                    name="Current Database",
+                    query="SELECT DB_NAME()",
+                    description="Retorna o nome do banco de dados atual"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="Is Admin (sysadmin)",
+                    query="SELECT IS_SRVROLEMEMBER('sysadmin')",
+                    description="Verifica se o usuário atual é sysadmin (1=sim, 0=não)"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="Is Public Role",
+                    query="SELECT IS_SRVROLEMEMBER('public')",
+                    description="Verifica se o usuário pertence ao role public"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="List Databases",
+                    query="SELECT name FROM sys.databases WHERE database_id > 4;",
+                    description="Lista todos os bancos de dados do usuário"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="List Schemas",
+                    query="SELECT schema_name FROM information_schema.schemata",
+                    description="Lista todos os schemas"
                 ),
                 SqlPreset(
                     db_type_id=mssql_id,
@@ -358,22 +378,102 @@ async def init_db():
                 ),
                 SqlPreset(
                     db_type_id=mssql_id,
-                    name="Server Version",
-                    query="SELECT @@VERSION",
-                    description="Retorna a versão do SQL Server"
+                    name="List Columns (All Tables)",
+                    query="""SELECT
+    t.name AS Table_Name,
+    c.name AS Column_Name
+FROM
+    sys.columns AS c
+INNER JOIN
+    sys.tables AS t ON t.object_id = c.object_id
+ORDER BY
+    Table_Name,
+    Column_Name;""",
+                    description="Lista todas as colunas de todas as tabelas"
                 ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="Find Sensitive Columns",
+                    query="""SELECT
+    t.name AS Table_Name,
+    c.name AS Column_Name
+FROM
+    sys.columns AS c
+INNER JOIN
+    sys.tables AS t ON t.object_id = c.object_id
+WHERE c.name LIKE '%pass%' OR c.name LIKE '%senha%' OR c.name LIKE '%config%'
+ORDER BY
+    Table_Name,
+    Column_Name;""",
+                    description="Busca colunas com nomes sensíveis (pass, senha, config)"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="List Users",
+                    query="SELECT name FROM sys.database_principals",
+                    description="Lista todos os usuários do banco de dados"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="List Admin Users",
+                    query="SELECT name FROM sys.server_principals WHERE IS_SRVROLEMEMBER('sysadmin', name) = 1",
+                    description="Lista usuários com privilégios de sysadmin"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="List Impersonate Permissions",
+                    query="""SELECT DISTINCT b.name 
+FROM sys.server_permissions a 
+INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id 
+WHERE a.permission_name = 'IMPERSONATE';""",
+                    description="Lista logins com permissão de IMPERSONATE"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="List Server Roles",
+                    query="""SELECT CONCAT('Role: ', spr.name, ', Login: ', spm.name) AS txt
+FROM sys.server_role_members m
+INNER JOIN sys.server_principals spr ON m.role_principal_id = spr.principal_id
+INNER JOIN sys.server_principals spm ON m.member_principal_id = spm.principal_id""",
+                    description="Lista roles de servidor e seus membros"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="List SQL Services",
+                    query="SELECT servicename, service_account FROM sys.dm_server_services;",
+                    description="Lista serviços SQL Server e suas contas de serviço"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="SQL Services Detail",
+                    query="""SELECT DSS.servicename,
+    DSS.startup_type_desc,
+    DSS.status_desc,
+    DSS.last_startup_time,
+    DSS.service_account,
+    DSS.is_clustered,
+    DSS.cluster_nodename,
+    DSS.filename,
+    DSS.startup_type,
+    DSS.status,
+    DSS.process_id
+FROM sys.dm_server_services AS DSS;""",
+                    description="Detalhes completos dos serviços SQL Server"
+                ),
+                SqlPreset(
+                    db_type_id=mssql_id,
+                    name="Database Size",
+                    query="SELECT DB_NAME() AS [Database], SUM(size * 8 / 1024) AS [Size (MB)] FROM sys.database_files GROUP BY type_desc",
+                    description="Mostra o tamanho do banco de dados atual"
+                ),
+                # ===========================================
                 # MySQL Presets
+                # ===========================================
                 SqlPreset(
                     db_type_id=mysql_id,
-                    name="List Databases",
-                    query="SHOW DATABASES;",
-                    description="Lista todos os bancos de dados"
-                ),
-                SqlPreset(
-                    db_type_id=mysql_id,
-                    name="List Tables",
-                    query="SHOW TABLES;",
-                    description="Lista todas as tabelas do banco atual"
+                    name="Server Version",
+                    query="SELECT @@VERSION;",
+                    description="Retorna a versão do MySQL"
                 ),
                 SqlPreset(
                     db_type_id=mysql_id,
@@ -383,9 +483,53 @@ async def init_db():
                 ),
                 SqlPreset(
                     db_type_id=mysql_id,
-                    name="Server Version",
-                    query="SELECT VERSION();",
-                    description="Retorna a versão do MySQL"
+                    name="Current Database",
+                    query="SELECT DATABASE();",
+                    description="Retorna o nome do banco de dados atual"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="List Databases",
+                    query="SHOW DATABASES;",
+                    description="Lista todos os bancos de dados"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="List Schemas",
+                    query="SELECT schema_name FROM information_schema.schemata;",
+                    description="Lista todos os schemas"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="List Tables",
+                    query="SHOW TABLES;",
+                    description="Lista todas as tabelas do banco atual"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="List Columns (Table)",
+                    query="SELECT column_name, data_type FROM information_schema.columns WHERE table_name='users';",
+                    description="Lista colunas de uma tabela específica"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="Find Sensitive Columns",
+                    query="""SELECT table_name, column_name 
+FROM information_schema.columns 
+WHERE column_name LIKE '%pass%' OR column_name LIKE '%senha%' OR column_name LIKE '%config%';""",
+                    description="Busca colunas com nomes sensíveis"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="List Users",
+                    query="SELECT user, host FROM mysql.user;",
+                    description="Lista todos os usuários do MySQL"
+                ),
+                SqlPreset(
+                    db_type_id=mysql_id,
+                    name="List Admin Users",
+                    query="SELECT user, host FROM mysql.user WHERE Super_priv='Y';",
+                    description="Lista usuários com privilégios de admin"
                 ),
                 SqlPreset(
                     db_type_id=mysql_id,
@@ -393,18 +537,26 @@ async def init_db():
                     query="SELECT table_schema AS 'Database', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'Size (MB)' FROM information_schema.tables GROUP BY table_schema;",
                     description="Mostra o tamanho de cada banco de dados"
                 ),
-                # PostgreSQL Presets
                 SqlPreset(
-                    db_type_id=postgres_id,
-                    name="List Databases",
-                    query="SELECT datname FROM pg_database WHERE datistemplate = false;",
-                    description="Lista todos os bancos de dados"
+                    db_type_id=mysql_id,
+                    name="Show Grants",
+                    query="SHOW GRANTS FOR CURRENT_USER();",
+                    description="Mostra permissões do usuário atual"
                 ),
                 SqlPreset(
+                    db_type_id=mysql_id,
+                    name="Show Variables",
+                    query="SHOW VARIABLES LIKE '%version%';",
+                    description="Mostra variáveis relacionadas à versão"
+                ),
+                # ===========================================
+                # PostgreSQL Presets
+                # ===========================================
+                SqlPreset(
                     db_type_id=postgres_id,
-                    name="List Tables",
-                    query="SELECT tablename FROM pg_tables WHERE schemaname = 'public';",
-                    description="Lista todas as tabelas do schema public"
+                    name="Server Version",
+                    query="SELECT version();",
+                    description="Retorna a versão do PostgreSQL"
                 ),
                 SqlPreset(
                     db_type_id=postgres_id,
@@ -414,9 +566,59 @@ async def init_db():
                 ),
                 SqlPreset(
                     db_type_id=postgres_id,
-                    name="Server Version",
-                    query="SELECT version();",
-                    description="Retorna a versão do PostgreSQL"
+                    name="Current Database",
+                    query="SELECT current_database();",
+                    description="Retorna o nome do banco de dados atual"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Databases",
+                    query="SELECT datname FROM pg_database WHERE datistemplate = false;",
+                    description="Lista todos os bancos de dados"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Schemas",
+                    query="SELECT schema_name FROM information_schema.schemata;",
+                    description="Lista todos os schemas"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Tables",
+                    query="SELECT tablename FROM pg_tables WHERE schemaname = 'public';",
+                    description="Lista todas as tabelas do schema public"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Columns (Table)",
+                    query="SELECT column_name, data_type FROM information_schema.columns WHERE table_name='users';",
+                    description="Lista colunas de uma tabela específica"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="Find Sensitive Columns",
+                    query="""SELECT table_name, column_name 
+FROM information_schema.columns 
+WHERE column_name LIKE '%pass%' OR column_name LIKE '%senha%' OR column_name LIKE '%config%';""",
+                    description="Busca colunas com nomes sensíveis"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Users",
+                    query="SELECT usename FROM pg_user;",
+                    description="Lista todos os usuários"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Admin Users",
+                    query="SELECT usename FROM pg_user WHERE usesuper = true;",
+                    description="Lista usuários com privilégios de superuser"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="List Roles",
+                    query="SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb FROM pg_roles;",
+                    description="Lista roles e suas permissões"
                 ),
                 SqlPreset(
                     db_type_id=postgres_id,
@@ -424,12 +626,129 @@ async def init_db():
                     query="SELECT pg_database.datname, pg_size_pretty(pg_database_size(pg_database.datname)) AS size FROM pg_database;",
                     description="Mostra o tamanho de cada banco de dados"
                 ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="Table Sizes",
+                    query="""SELECT 
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables 
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;""",
+                    description="Mostra tamanho das tabelas"
+                ),
+                SqlPreset(
+                    db_type_id=postgres_id,
+                    name="Active Connections",
+                    query="""SELECT pid, usename, application_name, client_addr, state, query 
+FROM pg_stat_activity 
+WHERE state = 'active';""",
+                    description="Lista conexões ativas"
+                ),
+                # ===========================================
+                # Oracle Presets
+                # ===========================================
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="Server Version",
+                    query="SELECT * FROM V$VERSION WHERE BANNER LIKE 'Oracle%'",
+                    description="Retorna a versão do Oracle"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="Current User",
+                    query="SELECT USER FROM DUAL",
+                    description="Retorna o usuário atual"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="Current Database",
+                    query="SELECT ORA_DATABASE_NAME FROM DUAL",
+                    description="Retorna o nome do banco de dados"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="List Schemas",
+                    query="SELECT DISTINCT OWNER FROM ALL_TABLES ORDER BY OWNER",
+                    description="Lista todos os schemas/owners"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="List Tables",
+                    query="SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME",
+                    description="Lista todas as tabelas do usuário atual"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="List All Tables",
+                    query="SELECT OWNER, TABLE_NAME FROM ALL_TABLES ORDER BY OWNER, TABLE_NAME",
+                    description="Lista todas as tabelas de todos os schemas"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="List Columns (Table)",
+                    query="SELECT COLUMN_NAME, DATA_TYPE FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'USERS'",
+                    description="Lista colunas de uma tabela específica"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="Find Sensitive Columns",
+                    query="""SELECT TABLE_NAME, COLUMN_NAME 
+FROM USER_TAB_COLUMNS 
+WHERE COLUMN_NAME LIKE '%PASS%' OR COLUMN_NAME LIKE '%SENHA%' OR COLUMN_NAME LIKE '%CONFIG%'""",
+                    description="Busca colunas com nomes sensíveis"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="List Users",
+                    query="SELECT USERNAME FROM ALL_USERS ORDER BY USERNAME",
+                    description="Lista todos os usuários"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="List Admin Users",
+                    query="SELECT GRANTEE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE = 'DBA'",
+                    description="Lista usuários com role DBA"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="Current Privileges",
+                    query="SELECT * FROM USER_SYS_PRIVS",
+                    description="Lista privilégios do usuário atual"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="Database Size",
+                    query="""SELECT 
+    TABLESPACE_NAME,
+    ROUND(SUM(BYTES)/1024/1024, 2) AS SIZE_MB
+FROM DBA_DATA_FILES 
+GROUP BY TABLESPACE_NAME""",
+                    description="Mostra tamanho dos tablespaces"
+                ),
+                SqlPreset(
+                    db_type_id=db_types_map.get('oracle'),
+                    name="Active Sessions",
+                    query="""SELECT SID, SERIAL#, USERNAME, STATUS, OSUSER, MACHINE, PROGRAM 
+FROM V$SESSION 
+WHERE STATUS = 'ACTIVE' AND USERNAME IS NOT NULL""",
+                    description="Lista sessões ativas"
+                ),
+                # ===========================================
                 # Universal Presets (null db_type_id)
+                # ===========================================
                 SqlPreset(
                     db_type_id=None,
-                    name="Select All",
+                    name="Select All (Limit 100)",
                     query="SELECT * FROM table_name LIMIT 100;",
                     description="Seleciona todos os registros de uma tabela (universal)"
+                ),
+                SqlPreset(
+                    db_type_id=None,
+                    name="Count Records",
+                    query="SELECT COUNT(*) FROM table_name;",
+                    description="Conta registros de uma tabela"
                 ),
             ]
             for preset in default_presets:

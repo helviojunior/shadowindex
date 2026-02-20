@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2, Plus, CheckCircle, XCircle, Play, Code, Database } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, XCircle, Play, Code, Database, Loader2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -26,6 +26,7 @@ const DatabaseConnections = () => {
   const [dbTypes, setDbTypes] = useState([]);
   const [formData, setFormData] = useState({ name: '', db_type_id: '', connection_string: '' });
   const [loading, setLoading] = useState(false);
+  const [testingConnectionId, setTestingConnectionId] = useState(null);
 
   useEffect(() => {
     loadConnections();
