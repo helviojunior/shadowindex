@@ -1863,14 +1863,33 @@ async def get_file_content(
         if not os.path.exists(full_path):
             raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
         
-        with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-            content = f.read()
+        # Ler arquivo em modo binário primeiro para detectar BOM
+        with open(full_path, 'rb') as f:
+            raw_content = f.read()
+        
+        # Detectar e remover BOM UTF-8 se presente
+        has_bom = False
+        if raw_content.startswith(b'\xef\xbb\xbf'):
+            has_bom = True
+            raw_content = raw_content[3:]  # Remover BOM
+        
+        # Decodificar como UTF-8
+        try:
+            content = raw_content.decode('utf-8')
+        except UnicodeDecodeError:
+            # Tentar outras codificações comuns
+            try:
+                content = raw_content.decode('latin-1')
+            except UnicodeDecodeError:
+                content = raw_content.decode('utf-8', errors='replace')
         
         return {
             "success": True,
             "content": content,
             "file_path": file_path,
-            "size": len(content)
+            "size": len(content),
+            "has_bom": has_bom,
+            "encoding": "UTF-8 with BOM" if has_bom else "UTF-8"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
