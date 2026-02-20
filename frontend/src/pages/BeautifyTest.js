@@ -183,14 +183,25 @@ const BeautifyTest = () => {
             <Button onClick={loadSampleXml} disabled={loading}>
               {loading ? 'Carregando...' : 'Carregar XML de Exemplo'}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={beautifyContent}
-              disabled={!rawContent || beautified}
-            >
-              <Code className="w-4 h-4 mr-2" />
-              {beautified ? 'Formatado' : 'Beautify'}
-            </Button>
+            {beautified ? (
+              <Button 
+                variant="outline" 
+                onClick={showRawContent}
+                disabled={!rawContent}
+              >
+                <Code className="w-4 h-4 mr-2" />
+                Raw Content
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                onClick={showBeautifiedContent}
+                disabled={!rawContent}
+              >
+                <Code className="w-4 h-4 mr-2" />
+                Beautify
+              </Button>
+            )}
             <Button 
               variant="outline" 
               onClick={copyRaw}
@@ -201,7 +212,7 @@ const BeautifyTest = () => {
               ) : (
                 <Copy className="w-4 h-4 mr-2" />
               )}
-              Copiar RAW
+              Copiar
             </Button>
           </div>
 
