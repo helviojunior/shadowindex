@@ -1100,6 +1100,23 @@ const ServerBrowser = () => {
                     />
                   )}
                   
+                  {/* SHA1 Hash - apenas para arquivos sincronizados */}
+                  {isFile && downloaded && downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath]?.sha1_hash && (
+                    <InfoRow 
+                      label="SHA1 Hash" 
+                      value={downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath].sha1_hash}
+                      valueClassName="font-mono text-xs"
+                    />
+                  )}
+                  
+                  {/* Versão atual - apenas para arquivos sincronizados com múltiplas versões */}
+                  {isFile && downloaded && fileVersions.length > 0 && (
+                    <InfoRow 
+                      label="Versão" 
+                      value={`v${fileVersions.find(v => v.is_current)?.version_number || 1} de ${fileVersions.length}`}
+                    />
+                  )}
+                  
                   {/* Remark - apenas para shares */}
                   {isShare && selectedItem.remark && (
                     <InfoRow 
