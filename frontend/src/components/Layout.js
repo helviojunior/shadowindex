@@ -161,23 +161,24 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
 
             {/* Footer with collapse toggle */}
             <div className={cn(
-              "border-t border-border transition-all duration-300 relative",
-              sidebarCollapsed ? "p-2" : "p-4"
+              "border-t border-border transition-all duration-300 flex items-end",
+              sidebarCollapsed ? "p-2 justify-center" : "p-4 justify-between"
             )}>
               {/* Version info - only when expanded */}
               {!sidebarCollapsed && (
-                <div className="text-xs text-muted-foreground pr-12">
+                <div className="text-xs text-muted-foreground">
                   <div>Ops Integration Desk v1.0.0</div>
                   <div className="mt-1">© StrataSec 2026</div>
                 </div>
               )}
               
-              {/* Collapse/Expand Button - positioned at bottom right */}
+              {/* Collapse/Expand Button - flush to right edge */}
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 className={cn(
-                  "absolute bottom-3 right-3 flex items-center justify-center w-10 h-10 rounded-lg",
-                  "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  "flex items-center justify-center w-12 h-14 rounded-l-lg",
+                  "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
+                  sidebarCollapsed ? "" : "absolute right-0 bottom-0"
                 )}
                 data-testid="sidebar-collapse-btn"
               >
