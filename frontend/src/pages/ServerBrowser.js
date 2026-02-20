@@ -643,11 +643,8 @@ const ServerBrowser = () => {
                       valueClassName={downloaded ? 'text-green-500' : 'text-muted-foreground'}
                     />
                   )}
-                  valueClassName={downloaded ? 'text-green-500' : 'text-muted-foreground'}
-                />
-              )}
-              
-              {/* Remark - apenas para shares */}
+                  
+                  {/* Remark - apenas para shares */}
               {isShare && selectedItem.remark && (
                 <InfoRow 
                   label="Remark" 
