@@ -852,6 +852,32 @@ async def browse_server_directory(
                 }
                 items.append(item)
         
+        # Salvar os itens descobertos no banco de dados
+        if share_name and items:
+            # Remover itens antigos deste path
+            await db.execute(
+                delete(ServerItem).where(
+                    ServerItem.server_guid == server.guid,
+                    ServerItem.parent_path == path
+                )
+            )
+            
+            # Adicionar novos itens
+            for item in items:
+                db_item = ServerItem(
+                    server_guid=server.guid,
+                    share_name=share_name,
+                    parent_path=path,
+                    item_type=item["type"],
+                    name=item["name"],
+                    full_path=item["fullPath"],
+                    size=item["size"],
+                    modified=item["modified"],
+                    access_denied=item.get("accessDenied", False)
+                )
+                db.add(db_item)
+            await db.commit()
+        
         # Atualizar o share com informação de que os filhos foram buscados
         # Só atualizar se for no nível raiz do share
         if share_name:
@@ -871,6 +897,19 @@ async def browse_server_directory(
                     if not access_denied:
                         share.access_denied = False
                         share.error_message = None
+                    await db.commit()
+            else:
+                # Atualizar o item pai (diretório) para marcar que seus filhos foram carregados
+                parent_item_result = await db.execute(
+                    select(ServerItem).where(
+                        ServerItem.server_guid == server.guid,
+                        ServerItem.full_path == path
+                    )
+                )
+                parent_item = parent_item_result.scalar_one_or_none()
+                if parent_item:
+                    parent_item.children_fetched = True
+                    parent_item.has_children = len(items) > 0
                     await db.commit()
         
         # Marcar como verificado
