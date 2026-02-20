@@ -229,14 +229,12 @@ class SoapService:
 
 async def get_default_soap_service(db: AsyncSession) -> SoapService:
     """Get the default SOAP service with active proxy if configured"""
-    # Buscar SOAP API URL
-    result = await db.execute(
-        select(SoapApiUrl).where(SoapApiUrl.name == "Default SOAP API")
-    )
+    # Buscar SOAP API URL - primeira disponível
+    result = await db.execute(select(SoapApiUrl).limit(1))
     soap_api = result.scalar_one_or_none()
     
     if not soap_api:
-        raise Exception("Nenhuma API SOAP configurada")
+        raise Exception("Nenhuma API SOAP configurada. Configure uma URL em 'SOAP APIs'.")
     
     # Buscar proxy ativo
     proxy_url = None
