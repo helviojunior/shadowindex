@@ -893,13 +893,13 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                   )}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 h-full">
                   <div className="flex items-center gap-2 text-red-500">
-                    <XCircle className="w-5 h-5" />
+                    <XCircle className="w-5 h-5 flex-shrink-0" />
                     <span className="font-medium">Erro na execução</span>
                   </div>
-                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg overflow-auto max-h-[300px]">
-                    <p className="text-sm text-red-400 font-mono whitespace-pre-wrap">
+                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg overflow-auto max-h-[calc(100vh-500px)]">
+                    <p className="text-sm text-red-400 font-mono whitespace-pre-wrap break-words">
                       {currentTab.result.error_message}
                     </p>
                   </div>
