@@ -61,6 +61,46 @@ const Servers = () => {
     }
   };
 
+  const handleResolveIp = async () => {
+    if (!formData.name) {
+      toast.error('Digite o nome do servidor primeiro');
+      return;
+    }
+
+    setResolvingIp(true);
+    try {
+      const response = await axios.post(`${API}/soap/resolve`, {
+        operation: 'Resolve',
+        s1: formData.name,
+        s2: '',
+        ignore_cache: false
+      });
+
+      // Parse o resultado para extrair o primeiro IP
+      const result = response.data.result;
+      
+      // O resultado vem como XML string, vamos extrair o conteúdo
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(result, 'text/xml');
+      const textContent = xmlDoc.documentElement.textContent;
+      
+      // Pegar o primeiro IP da lista (separado por vírgula)
+      const ips = textContent.split(',').map(ip => ip.trim());
+      
+      if (ips.length > 0 && ips[0]) {
+        setFormData({ ...formData, ip: ips[0] });
+        toast.success(`IP resolvido: ${ips[0]}`);
+      } else {
+        toast.error('Nenhum IP encontrado para este hostname');
+      }
+    } catch (error) {
+      console.error('Error resolving IP:', error);
+      toast.error('Erro ao resolver IP. Verifique o nome do servidor.');
+    } finally {
+      setResolvingIp(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Nunca';
     return new Date(dateString).toLocaleString('pt-BR');
