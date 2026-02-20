@@ -771,6 +771,42 @@ const ServerBrowser = () => {
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin" />
                   </div>
+                ) : filePreviewUrl ? (
+                  // Preview de imagem ou PDF
+                  <div className="space-y-4">
+                    {/* Toolbar */}
+                    <div className="flex items-center justify-end">
+                      <Button 
+                        size="sm" 
+                        onClick={openFile}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
+                    
+                    {/* Image Preview */}
+                    {isImageFile(selectedItem?.name) && (
+                      <div className="flex justify-center bg-muted/30 rounded-lg p-4">
+                        <img 
+                          src={filePreviewUrl} 
+                          alt={selectedItem?.name}
+                          className="max-w-full max-h-[500px] object-contain rounded shadow-lg"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* PDF Preview */}
+                    {isPdfFile(selectedItem?.name) && (
+                      <div className="bg-muted/30 rounded-lg overflow-hidden">
+                        <iframe 
+                          src={filePreviewUrl}
+                          title={selectedItem?.name}
+                          className="w-full h-[500px] border-0"
+                        />
+                      </div>
+                    )}
+                  </div>
                 ) : fileContent ? (
                   <div className="space-y-4">
                     {/* Toolbar */}
