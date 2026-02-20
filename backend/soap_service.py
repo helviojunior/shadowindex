@@ -4,16 +4,17 @@ import hashlib
 import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from database import SoapCache, AppConfig, SoapApiUrl
+from database import SoapCache, AppConfig, SoapApiUrl, ProxyServer
 import logging
 
 logger = logging.getLogger(__name__)
 
 class SoapService:
-    def __init__(self, soap_url: str):
+    def __init__(self, soap_url: str, proxy_url: str = None):
         # Remover ?WSDL se houver
         self.soap_url = soap_url.replace('?WSDL', '').replace('?wsdl', '')
         self.base_url = self.soap_url.split('/dna')[0] if '/dna' in self.soap_url else self.soap_url.rsplit('/', 1)[0]
+        self.proxy_url = proxy_url  # Ex: "http://192.168.1.1:8080"
     
     @staticmethod
     def _generate_cache_key(operation: str, params: dict) -> str:
