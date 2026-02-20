@@ -81,10 +81,10 @@ const Dashboard = () => {
   };
 
   const statCards = [
-    { title: 'Credenciais', value: stats.credentials, icon: Key, color: 'from-blue-500 to-cyan-500' },
-    { title: 'Conexões DB', value: stats.dbConnections, icon: Database, color: 'from-green-500 to-emerald-500' },
-    { title: 'Proxy Servers', value: stats.proxyServers, icon: Server, color: 'from-purple-500 to-pink-500' },
-    { title: 'SOAP APIs', value: stats.soapApis, icon: Globe, color: 'from-orange-500 to-red-500' },
+    { title: 'Credenciais', value: stats.credentials, icon: Key, color: 'from-blue-600 to-blue-700' },
+    { title: 'Conexões DB', value: stats.dbConnections, icon: Database, color: 'from-emerald-600 to-emerald-700' },
+    { title: 'Proxy Servers', value: stats.proxyServers, icon: Server, color: 'from-violet-600 to-violet-700' },
+    { title: 'SOAP APIs', value: stats.soapApis, icon: Globe, color: 'from-amber-600 to-amber-700' },
   ];
 
   if (loading) {
