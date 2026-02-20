@@ -227,11 +227,13 @@ const ServerBrowser = () => {
 
   // Renderiza um nó da árvore
   const renderTreeNode = (item, depth = 0, shareName = '') => {
-    const nodeId = item.id || `share-${item.share_name}`;
+    const isShare = !!item.share_name;
+    const rawNodeId = item.id || `share-${item.share_name}`;
+    const nodeId = String(rawNodeId);
+    const safeTestId = nodeId.replace(/\$/g, '_dollar_');
     const isExpanded = expandedNodes[nodeId];
     const isLoading = loadingNodes[nodeId];
     const children = nodeChildren[nodeId] || [];
-    const isShare = !!item.share_name;
     const isDirectory = item.type === 'Directory' || isShare;
     const isSelected = selectedItem?.id === nodeId || 
                        (isShare && selectedItem?.share_name === item.share_name && selectedItem?.itemType === 'share');
