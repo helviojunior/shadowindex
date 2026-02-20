@@ -4,7 +4,9 @@ import base64
 from pathlib import Path
 from typing import Optional
 
-STORAGE_BASE_PATH = "/app/storage"
+# Usar diretório local (pwd) para armazenamento
+# O caminho base será ./data (relativo ao diretório do backend)
+STORAGE_BASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "storage")
 
 def sanitize_path_component(name: str) -> str:
     """Sanitiza um componente de caminho removendo caracteres inválidos"""
