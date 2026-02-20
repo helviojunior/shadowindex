@@ -39,7 +39,7 @@ import { useApp } from '@/contexts/AppContext';
 const menuItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/servers', icon: HardDrive, label: 'Servidores' },
-  { path: '/db-connections', icon: Database, label: 'SQL' },
+  { path: '/sql', icon: Database, label: 'SQL' },
   { path: '/soap-operations', icon: PlayCircle, label: 'Operações SOAP' },
   { path: '/credentials', icon: Key, label: 'Credenciais' },
   { path: '/soap-apis', icon: Globe, label: 'SOAP APIs' },
