@@ -32,8 +32,11 @@ Portuguese (pt-BR)
 - [x] **Default Presets** - 6 presets MS-SQL carregados automaticamente no startup (Is Admin, List Databases, Current User, Database Size, List Tables, Server Version)
 - [x] **SQL Query History** - Histórico de todas queries executadas com resultado, tempo e status
 - [x] **SQL Executor Page** - Interface tipo phpMyAdmin para executar comandos SQL
+- [x] **Vertical Layout** - Editor SQL em cima, resultados embaixo (layout de 2 linhas)
+- [x] **Resizable Editor** - Barra arrastável para redimensionar altura do editor SQL
+- [x] **History Modal** - Histórico abre em janela modal separada
+- [x] **History to New Tab** - Clicar em item do histórico cria nova aba com query preenchida
 - [x] **Presets Dropdown** - Botão para selecionar query pré-definida e preencher automaticamente
-- [x] **History Dropdown** - Botão para visualizar histórico e re-executar queries
 - [x] **Connection Verification** - Conexões são marcadas como "Verificado" após execução bem-sucedida
 - [x] **Result Table** - Exibe resultados em tabela com colunas dinâmicas
 - [x] **Error Handling** - Exibe mensagens de erro detalhadas em caso de falha
