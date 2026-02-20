@@ -27,7 +27,19 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2026-02-20
+### 2026-02-20 (Session 2)
+- [x] **P0: Pre-load children from database** - `loadDirectory` now checks `/api/servers/{id}/items?parent_path=...` before making SOAP calls
+- [x] **P1: Verified cache storage mechanism** - Confirmed `soap_cache` table structure is correct and insert/read operations work properly
+- [x] Created `ServerItem` model and table for storing browsed files/directories
+- [x] Backend saves browsed items to `server_items` table during SOAP calls
+- [x] New endpoint: `GET /api/servers/{id}/shares-tree` - Returns shares with pre-loaded children from DB
+- [x] New endpoint: `GET /api/servers/{id}/items?parent_path=...` - Returns cached items for a specific path
+- [x] Frontend `loadShares()` now uses `shares-tree` endpoint to pre-populate tree state
+- [x] Frontend `loadDirectory()` checks database cache first, falls back to SOAP only if needed
+- [x] Tree expansion now instant when data exists in database (no SOAP call required)
+- [x] Added `forceRefresh` parameter to `loadDirectory` for explicit refresh scenarios
+
+### 2026-02-20 (Session 1)
 - [x] Auto-beautify: XML/JSON files are automatically formatted when loaded
 - [x] Changed buttons: "Beautify" becomes "Raw Content" when formatted, vice-versa
 - [x] Copy button always copies original RAW content
