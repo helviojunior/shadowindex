@@ -53,13 +53,21 @@ def save_downloaded_file(
     server_guid: str,
     share_name: str,
     file_path: str,
-    content_base64: str
-) -> tuple[Path, str]:
+    content_base64: str,
+    version: int = None
+) -> Tuple[Path, str, str, int]:
     """
     Salva um arquivo baixado na estrutura de diretórios
     
+    Args:
+        server_guid: GUID do servidor
+        share_name: Nome do compartilhamento
+        file_path: Caminho do arquivo
+        content_base64: Conteúdo em base64
+        version: Número da versão (None para auto)
+    
     Returns:
-        tuple[Path, str]: (caminho completo do arquivo, caminho sanitizado)
+        tuple[Path, str, str, int]: (caminho completo, caminho sanitizado, sha1_hash, tamanho)
     """
     # Obter caminho do arquivo
     file_storage_path = get_file_storage_path(server_guid, share_name, file_path)
@@ -70,15 +78,55 @@ def save_downloaded_file(
     # Extrair nome do arquivo do caminho
     file_name = Path(file_path).name
     sanitized_file_name = sanitize_path_component(file_name)
-    full_file_path = file_storage_path / sanitized_file_name
     
-    # Decodificar base64 e salvar
+    # Decodificar base64
     try:
         file_content = base64.b64decode(content_base64)
+    except Exception as e:
+        raise Exception(f"Erro ao decodificar arquivo: {str(e)}")
+    
+    # Calcular SHA1 hash
+    sha1_hash = hashlib.sha1(file_content).hexdigest()
+    file_size = len(file_content)
+    
+    # Se versão especificada, adicionar ao nome do arquivo
+    if version and version > 1:
+        # Nome com versão: arquivo_v2.txt
+        name_parts = sanitized_file_name.rsplit('.', 1)
+        if len(name_parts) == 2:
+            versioned_name = f"{name_parts[0]}_v{version}.{name_parts[1]}"
+        else:
+            versioned_name = f"{sanitized_file_name}_v{version}"
+        full_file_path = file_storage_path / versioned_name
+    else:
+        full_file_path = file_storage_path / sanitized_file_name
+    
+    # Salvar arquivo
+    try:
         with open(full_file_path, 'wb') as f:
             f.write(file_content)
     except Exception as e:
         raise Exception(f"Erro ao salvar arquivo: {str(e)}")
+    
+    # Retornar caminho completo, caminho sanitizado relativo, hash e tamanho
+    relative_path = str(full_file_path.relative_to(STORAGE_BASE_PATH))
+    
+    return full_file_path, relative_path, sha1_hash, file_size
+
+
+def calculate_sha1_from_base64(content_base64: str) -> str:
+    """Calcula SHA1 hash de conteúdo em base64"""
+    file_content = base64.b64decode(content_base64)
+    return hashlib.sha1(file_content).hexdigest()
+
+
+def calculate_sha1_from_file(file_path: str) -> Optional[str]:
+    """Calcula SHA1 hash de um arquivo existente"""
+    try:
+        with open(file_path, 'rb') as f:
+            return hashlib.sha1(f.read()).hexdigest()
+    except Exception:
+        return None
     
     # Retornar caminho completo e caminho sanitizado relativo
     relative_path = str(full_file_path.relative_to(STORAGE_BASE_PATH))
