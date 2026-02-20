@@ -86,15 +86,7 @@ Portuguese (pt-BR)
 
 ## Pending Issues
 
-### P1 - High Priority
-1. **Implement "Beautify" functionality** in file viewer
-   - Button exists but lacks formatting logic
-   - Install library (e.g., js-beautify) and implement handleBeautify function
-
-### P2 - Medium Priority  
-2. **Verify cache storage mechanism**
-   - Confirm SOAP responses are saved to `soap_cache` table
-   - Test with SQLite CLI after triggering uncached SOAP call
+*No pending issues at this time.*
 
 ---
 
