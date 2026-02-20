@@ -427,6 +427,7 @@ const ServerBrowser = () => {
     const isExpanded = expandedNodes[nodeId];
     const isLoading = loadingNodes[nodeId];
     const children = nodeChildren[nodeId] || [];
+    const hasLoadedChildren = nodeChildren[nodeId] !== undefined;
     const isDirectory = item.type === 'Directory' || isShare;
     const isFile = item.type === 'File';
     const isAccessDenied = item.access_denied || item.accessDenied || item.type === 'AccessDenied';
@@ -440,9 +441,27 @@ const ServerBrowser = () => {
     
     const currentShareName = isShare ? item.share_name : shareName;
     
-    // Cor do ícone baseada no status de acesso e download
-    const iconColor = isAccessDenied ? 'text-red-500' : 'text-blue-500';
-    const fileIconColor = isAccessDenied ? 'text-red-500' : (isDownloaded ? 'text-green-500' : 'text-muted-foreground');
+    // Determina se o item ainda não foi carregado (fetch não realizado)
+    const isNotFetched = isDirectory && !hasLoadedChildren && !isExpanded;
+    
+    // Cor do ícone baseada no status de acesso, download e fetch
+    const getIconColor = () => {
+      if (isAccessDenied) return 'text-red-500';
+      if (isNotFetched) return 'text-muted-foreground';
+      return 'text-blue-500';
+    };
+    
+    const getFileIconColor = () => {
+      if (isAccessDenied) return 'text-red-500';
+      if (isDownloaded) return 'text-green-500';
+      return 'text-muted-foreground';
+    };
+    
+    const iconColor = getIconColor();
+    const fileIconColor = getFileIconColor();
+    
+    // Cor do texto baseada no status de fetch
+    const textColor = isAccessDenied ? 'text-red-500' : (isNotFetched ? 'text-muted-foreground' : '');
     
     return (
       <div key={nodeId}>
@@ -485,7 +504,7 @@ const ServerBrowser = () => {
             <span className="w-5" />
           )}
           
-          {/* Icon - vermelho se acesso negado, verde se baixado */}
+          {/* Icon - vermelho se acesso negado, verde se baixado, cinza se não carregado */}
           {item.type === 'AccessDenied' ? (
             <File className="w-4 h-4 text-red-500 flex-shrink-0" />
           ) : isShare ? (
@@ -502,9 +521,9 @@ const ServerBrowser = () => {
             <File className={`w-4 h-4 ${fileIconColor} flex-shrink-0`} />
           )}
           
-          {/* Name - vermelho se acesso negado */}
+          {/* Name - vermelho se acesso negado, cinza se não carregado */}
           <span 
-            className={`text-sm truncate flex-1 ${isAccessDenied ? 'text-red-500' : ''}`} 
+            className={`text-sm truncate flex-1 ${textColor}`} 
             title={isShare ? item.share_name : (item.errorMessage || item.name)}
           >
             {isShare ? String(item.share_name) : String(item.name)}
