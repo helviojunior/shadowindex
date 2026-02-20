@@ -1876,6 +1876,232 @@ async def get_file_content(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/servers/{server_id}/certificate-info")
+async def get_certificate_info(
+    server_id: int,
+    file_path: str,
+    share_name: str,
+    password: str = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Retorna informações detalhadas de um certificado digital"""
+    from cryptography import x509
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives.serialization import pkcs12
+    import os
+    
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Buscar arquivo baixado
+    result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.server_guid == server.guid,
+            DownloadedFile.file_path == file_path
+        ).order_by(DownloadedFile.downloaded_at.desc())
+    )
+    downloaded = result.scalar_one_or_none()
+    if not downloaded:
+        raise HTTPException(status_code=404, detail="Arquivo não sincronizado")
+    
+    from storage_utils import get_file_path
+    full_path = get_file_path(server.guid, share_name, downloaded.sanitized_path)
+    
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
+    
+    # Ler arquivo
+    with open(full_path, 'rb') as f:
+        cert_data = f.read()
+    
+    ext = file_path.lower().split('.')[-1]
+    certificates = []
+    private_key_info = None
+    
+    try:
+        # PFX/P12 - Certificado com chave privada
+        if ext in ['pfx', 'p12']:
+            try:
+                pwd = password.encode() if password else None
+                private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(
+                    cert_data, pwd, default_backend()
+                )
+                
+                if certificate:
+                    certificates.append(certificate)
+                if additional_certs:
+                    certificates.extend(additional_certs)
+                
+                if private_key:
+                    private_key_info = {
+                        "has_private_key": True,
+                        "key_type": type(private_key).__name__,
+                        "key_size": getattr(private_key, 'key_size', None)
+                    }
+            except Exception as e:
+                if "password" in str(e).lower() or "mac" in str(e).lower():
+                    return {
+                        "type": "pfx",
+                        "error": "Certificado protegido por senha",
+                        "requires_password": True,
+                        "message": "Forneça a senha para visualizar o certificado"
+                    }
+                raise
+        
+        # PEM - Pode conter múltiplos certificados
+        elif ext in ['pem', 'crt', 'cer']:
+            # Tentar como PEM primeiro
+            try:
+                # Verificar se é PEM (texto)
+                if b'-----BEGIN' in cert_data:
+                    # Extrair todos os certificados PEM
+                    pem_certs = []
+                    current_cert = []
+                    in_cert = False
+                    
+                    for line in cert_data.decode('utf-8', errors='replace').split('\n'):
+                        if '-----BEGIN CERTIFICATE-----' in line:
+                            in_cert = True
+                            current_cert = [line]
+                        elif '-----END CERTIFICATE-----' in line:
+                            current_cert.append(line)
+                            pem_certs.append('\n'.join(current_cert))
+                            in_cert = False
+                            current_cert = []
+                        elif in_cert:
+                            current_cert.append(line)
+                    
+                    for pem_cert in pem_certs:
+                        cert = x509.load_pem_x509_certificate(pem_cert.encode(), default_backend())
+                        certificates.append(cert)
+                else:
+                    # Tentar como DER
+                    cert = x509.load_der_x509_certificate(cert_data, default_backend())
+                    certificates.append(cert)
+            except Exception:
+                # Tentar como DER
+                cert = x509.load_der_x509_certificate(cert_data, default_backend())
+                certificates.append(cert)
+        
+        # DER - Certificado binário
+        elif ext == 'der':
+            cert = x509.load_der_x509_certificate(cert_data, default_backend())
+            certificates.append(cert)
+        
+        # P7B/P7C - PKCS#7 (cadeia de certificados)
+        elif ext in ['p7b', 'p7c']:
+            from cryptography.hazmat.primitives.serialization import pkcs7
+            try:
+                certs = pkcs7.load_pem_pkcs7_certificates(cert_data)
+            except Exception:
+                certs = pkcs7.load_der_pkcs7_certificates(cert_data)
+            certificates.extend(certs)
+        
+        # Extrair informações dos certificados
+        cert_infos = []
+        for i, cert in enumerate(certificates):
+            # Extrair Subject
+            subject_parts = {}
+            for attr in cert.subject:
+                name = attr.oid._name
+                subject_parts[name] = attr.value
+            
+            # Extrair Issuer
+            issuer_parts = {}
+            for attr in cert.issuer:
+                name = attr.oid._name
+                issuer_parts[name] = attr.value
+            
+            # Extrair extensões
+            extensions = []
+            for ext_obj in cert.extensions:
+                ext_info = {
+                    "name": ext_obj.oid._name,
+                    "critical": ext_obj.critical
+                }
+                
+                # Processar algumas extensões conhecidas
+                try:
+                    if ext_obj.oid._name == 'subjectAltName':
+                        san_values = []
+                        for name in ext_obj.value:
+                            san_values.append(f"{type(name).__name__}: {name.value}")
+                        ext_info["values"] = san_values
+                    elif ext_obj.oid._name == 'keyUsage':
+                        usages = []
+                        ku = ext_obj.value
+                        if ku.digital_signature: usages.append("Digital Signature")
+                        if ku.key_encipherment: usages.append("Key Encipherment")
+                        if ku.content_commitment: usages.append("Content Commitment")
+                        if ku.data_encipherment: usages.append("Data Encipherment")
+                        if ku.key_agreement: usages.append("Key Agreement")
+                        if ku.key_cert_sign: usages.append("Key Cert Sign")
+                        if ku.crl_sign: usages.append("CRL Sign")
+                        ext_info["values"] = usages
+                    elif ext_obj.oid._name == 'extendedKeyUsage':
+                        eku_values = [oid._name for oid in ext_obj.value]
+                        ext_info["values"] = eku_values
+                    elif ext_obj.oid._name == 'basicConstraints':
+                        bc = ext_obj.value
+                        ext_info["values"] = {
+                            "ca": bc.ca,
+                            "path_length": bc.path_length
+                        }
+                except Exception:
+                    ext_info["values"] = str(ext_obj.value)
+                
+                extensions.append(ext_info)
+            
+            # Informações da chave pública
+            public_key = cert.public_key()
+            public_key_info = {
+                "algorithm": type(public_key).__name__,
+                "key_size": getattr(public_key, 'key_size', None)
+            }
+            
+            cert_info = {
+                "index": i + 1,
+                "version": cert.version.name,
+                "serial_number": format(cert.serial_number, 'X'),
+                "serial_number_decimal": str(cert.serial_number),
+                "subject": subject_parts,
+                "subject_str": cert.subject.rfc4514_string(),
+                "issuer": issuer_parts,
+                "issuer_str": cert.issuer.rfc4514_string(),
+                "not_valid_before": cert.not_valid_before_utc.isoformat(),
+                "not_valid_after": cert.not_valid_after_utc.isoformat(),
+                "is_expired": datetime.now(timezone.utc) > cert.not_valid_after_utc,
+                "days_until_expiry": (cert.not_valid_after_utc - datetime.now(timezone.utc)).days,
+                "is_self_signed": cert.subject == cert.issuer,
+                "signature_algorithm": cert.signature_algorithm_oid._name,
+                "public_key": public_key_info,
+                "extensions": extensions,
+                "fingerprint_sha1": cert.fingerprint(x509.load_pem_x509_certificate.__globals__['hashes'].SHA1()).hex(':').upper(),
+                "fingerprint_sha256": cert.fingerprint(x509.load_pem_x509_certificate.__globals__['hashes'].SHA256()).hex(':').upper()
+            }
+            
+            cert_infos.append(cert_info)
+        
+        return {
+            "type": ext,
+            "file_path": file_path,
+            "total_certificates": len(cert_infos),
+            "private_key": private_key_info,
+            "certificates": cert_infos
+        }
+        
+    except Exception as e:
+        return {
+            "type": ext,
+            "error": str(e),
+            "file_path": file_path
+        }
+
+
 # Endpoint de teste para demonstrar o Beautify (apenas para desenvolvimento)
 @api_router.get("/test/xml-sample")
 async def get_xml_sample():
