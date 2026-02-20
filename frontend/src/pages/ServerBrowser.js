@@ -685,9 +685,6 @@ const ServerBrowser = () => {
           {activeTab === 'info' && (
             <ScrollArea className="flex-1">
               <div className="p-4">
-                {/* Info Section Header */}
-                <h3 className="text-base font-medium mb-4 pb-2 border-b border-border/50">Info</h3>
-                
                 <div className="flex flex-col gap-3">
                   {/* Name */}
                   <InfoRow 
