@@ -276,7 +276,7 @@ const ServerBrowser = () => {
       
       // Verificar se houve erro de acesso negado
       if (response.data.accessDenied) {
-        // Marcar o nó como tendo acesso negado
+        // Marcar o nó como tendo acesso negado (apenas o nó atual, não os pais)
         setNodeChildren(prev => ({ 
           ...prev, 
           [nodeId]: [{
@@ -288,16 +288,10 @@ const ServerBrowser = () => {
           }]
         }));
         
-        // Atualizar o share na lista local
-        if (shareName) {
-          setShares(prev => prev.map(s => 
-            s.share_name === shareName 
-              ? { ...s, access_denied: true, error_message: response.data.errorMessage }
-              : s
-          ));
-        }
+        // NÃO atualizar o share pai - apenas mostrar o erro no nó atual
+        // O backend só marca o share como acesso negado se for no nível raiz
         
-        toast.error(`Acesso negado: ${shareName || path}`);
+        toast.error(`Acesso negado: ${path.split('\\').pop() || shareName}`);
         return;
       }
       
@@ -309,6 +303,15 @@ const ServerBrowser = () => {
       }));
       
       setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
+      
+      // Atualizar o share na lista local apenas se for o nível raiz
+      if (shareName && nodeId.startsWith('share-')) {
+        setShares(prev => prev.map(s => 
+          s.share_name === shareName 
+            ? { ...s, children_fetched: true, has_children: items.length > 0 }
+            : s
+        ));
+      }
       
       if (items.length === 0) {
         toast.info('Diretório vazio');
