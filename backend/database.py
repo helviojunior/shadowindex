@@ -110,6 +110,26 @@ class DownloadedFile(Base):
     file_size = Column(Integer, nullable=True)
     downloaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+
+class ServerItem(Base):
+    """Armazena arquivos e diretórios descobertos durante a navegação"""
+    __tablename__ = "server_items"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    server_guid = Column(String, nullable=False, index=True)
+    share_name = Column(String, nullable=False, index=True)
+    parent_path = Column(String, nullable=False, index=True)  # Caminho do diretório pai
+    item_type = Column(String, nullable=False)  # "File" ou "Directory"
+    name = Column(String, nullable=False)
+    full_path = Column(String, nullable=False, index=True)
+    size = Column(String, nullable=True)
+    modified = Column(String, nullable=True)
+    access_denied = Column(Boolean, default=False)
+    error_message = Column(String, nullable=True)
+    has_children = Column(Boolean, default=False)
+    children_fetched = Column(Boolean, default=False)
+    discovered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 async def init_db():
     """Initialize database and apply schema migrations"""
     import sqlite3
