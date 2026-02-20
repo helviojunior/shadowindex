@@ -7,8 +7,6 @@ import {
   Server, 
   Globe, 
   PlayCircle,
-  Menu,
-  X,
   Moon,
   Sun,
   HardDrive,
