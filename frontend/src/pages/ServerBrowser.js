@@ -1381,6 +1381,28 @@ const ServerBrowser = () => {
                   )}
                 </button>
               )}
+              
+              {(isShare || isDirectory) && bulkDownloadItems.length > 0 && (
+                <button
+                  onClick={() => setActiveTab('download')}
+                  className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
+                    activeTab === 'download' 
+                      ? 'text-green-500' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Download
+                  {bulkDownloadActive && (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  )}
+                  <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                    {bulkDownloadStats.completed}/{bulkDownloadStats.total - bulkDownloadStats.skipped}
+                  </span>
+                  {activeTab === 'download' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
           
