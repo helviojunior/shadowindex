@@ -465,6 +465,13 @@ const ServerBrowser = () => {
                 value={formatDate(selectedItem.fetchedAt)}
               />
               
+              {/* Access Status */}
+              <InfoRow 
+                label="Access Status" 
+                value={isAccessDenied ? 'Negado' : 'Permitido'}
+                valueClassName={isAccessDenied ? 'text-red-500 font-medium' : 'text-green-500'}
+              />
+              
               {/* Last Write Time - para diretórios e arquivos */}
               {(isDirectory || isFile) && selectedItem.modified && (
                 <InfoRow 
@@ -474,7 +481,7 @@ const ServerBrowser = () => {
               )}
               
               {/* Size - apenas para arquivos */}
-              {isFile && (
+              {isFile && !isAccessDenied && (
                 <InfoRow 
                   label="Size" 
                   value={formatSize(selectedItem.size)}
@@ -482,7 +489,7 @@ const ServerBrowser = () => {
               )}
               
               {/* Downloaded - apenas para arquivos */}
-              {isFile && (
+              {isFile && !isAccessDenied && (
                 <InfoRow 
                   label="Downloaded" 
                   value={downloaded ? 'Yes' : 'No'}
