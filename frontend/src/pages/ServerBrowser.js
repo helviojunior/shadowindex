@@ -398,11 +398,71 @@ const ServerBrowser = () => {
   const loadShares = async () => {
     setLoadingShares(true);
     try {
-      const response = await axios.get(`${API}/servers/${serverId}/shares?refresh=${ignoreCache}`);
-      setShares(response.data);
+      // Usar o novo endpoint que retorna shares com filhos do banco
+      const response = await axios.get(`${API}/servers/${serverId}/shares-tree`);
+      const { shares, items_by_path } = response.data;
+      
+      // Definir os shares
+      setShares(shares);
+      
+      // Pré-carregar os filhos que já existem no banco
+      const preloadedChildren = {};
+      const preloadedExpanded = {};
+      
+      shares.forEach(share => {
+        const shareNodeId = `share-${share.share_name}`;
+        
+        // Se o share já tem filhos no banco, carregá-los
+        if (share.children && share.children.length > 0) {
+          preloadedChildren[shareNodeId] = share.children.map((child, idx) => ({
+            ...child,
+            id: `${shareNodeId}-${child.id || idx}`,
+            shareName: share.share_name,
+            hasChildren: child.hasChildren,
+            childrenFetched: child.childrenFetched
+          }));
+          preloadedExpanded[shareNodeId] = true;
+        }
+      });
+      
+      // Carregar também os filhos de subdiretórios
+      if (items_by_path) {
+        Object.entries(items_by_path).forEach(([parentPath, children]) => {
+          // Encontrar o nodeId correspondente a este path
+          // Para diretórios que não são shares, precisamos encontrar pelo fullPath
+          children.forEach((item, idx) => {
+            if (item.childrenFetched && item.hasChildren) {
+              const itemPath = item.fullPath;
+              const itemChildren = items_by_path[itemPath];
+              if (itemChildren && itemChildren.length > 0) {
+                const itemNodeId = `item-${item.id}`;
+                preloadedChildren[itemNodeId] = itemChildren.map((child, childIdx) => ({
+                  ...child,
+                  id: `${itemNodeId}-${child.id || childIdx}`,
+                  shareName: item.shareName || shares.find(s => parentPath.includes(s.share_name))?.share_name
+                }));
+                preloadedExpanded[itemNodeId] = true;
+              }
+            }
+          });
+        });
+      }
+      
+      // Atualizar estados
+      if (Object.keys(preloadedChildren).length > 0) {
+        setNodeChildren(prev => ({ ...prev, ...preloadedChildren }));
+        setExpandedNodes(prev => ({ ...prev, ...preloadedExpanded }));
+      }
+      
     } catch (error) {
       console.error('Error loading shares:', error);
-      toast.error('Erro ao carregar compartilhamentos');
+      // Fallback para o endpoint antigo
+      try {
+        const fallbackResponse = await axios.get(`${API}/servers/${serverId}/shares?refresh=${ignoreCache}`);
+        setShares(fallbackResponse.data);
+      } catch (fallbackError) {
+        toast.error('Erro ao carregar compartilhamentos');
+      }
     } finally {
       setLoadingShares(false);
     }
@@ -413,6 +473,9 @@ const ServerBrowser = () => {
     try {
       const response = await axios.get(`${API}/servers/${serverId}/shares?refresh=true`);
       setShares(response.data);
+      // Limpar filhos pré-carregados ao fazer refresh
+      setNodeChildren({});
+      setExpandedNodes({});
       toast.success(`${response.data.length} compartilhamentos encontrados`);
     } catch (error) {
       console.error('Error refreshing shares:', error);
