@@ -541,10 +541,10 @@ async def get_server_shares(
             root = ET.fromstring(f"<root>{result_str}</root>")
             
             shares_found = []
-            for result_elem in root.findall(".//{http://test/}Result"):
-                share_name = result_elem.find("{http://test/}name")
-                share_type = result_elem.find("{http://test/}type")
-                remark = result_elem.find("{http://test/}remark")
+            for result_elem in root.findall(".//Result"):
+                share_name = result_elem.find("name")
+                share_type = result_elem.find("type")
+                remark = result_elem.find("remark")
                 
                 if share_name is not None and share_name.text:
                     share_data = {
@@ -643,10 +643,10 @@ async def get_server_shares_soap(server_id: int, db: AsyncSession = Depends(get_
         root = ET.fromstring(result_str)
         
         shares = []
-        for result_elem in root.findall(".//{http://test/}Result"):
-            share_name = result_elem.find("{http://test/}name")
-            share_type = result_elem.find("{http://test/}type")
-            remark = result_elem.find("{http://test/}remark")
+        for result_elem in root.findall(".//Result"):
+            share_name = result_elem.find("name")
+            share_type = result_elem.find("type")
+            remark = result_elem.find("remark")
             
             if share_name is not None:
                 share_data = {
@@ -714,12 +714,12 @@ async def browse_server_directory(
         root = ET.fromstring(result_str)
         
         items = []
-        for result_elem in root.findall(".//{http://test/}Result"):
-            item_type = result_elem.find("{http://test/}type")
-            name = result_elem.find("{http://test/}name")
-            length = result_elem.find("{http://test/}length")
-            lastwritetime = result_elem.find("{http://test/}lastwritetime")
-            fullname = result_elem.find("{http://test/}fullname")
+        for result_elem in root.findall(".//Result"):
+            item_type = result_elem.find("type")
+            name = result_elem.find("name")
+            length = result_elem.find("length")
+            lastwritetime = result_elem.find("lastwritetime")
+            fullname = result_elem.find("fullname")
             
             if name is not None:
                 item = {
