@@ -452,11 +452,42 @@ async def get_servers(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 @api_router.get("/servers/{server_id}", response_model=ServerResponse)
-async def get_server(server_id: int, db: AsyncSession = Depends(get_db)):
+async def get_server(
+    server_id: int, 
+    refresh: bool = False,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Obtém informações do servidor.
+    Se refresh=True ou se nunca foi verificado, atualiza IP via SOAP Resolve.
+    """
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Verificar se precisa atualizar (refresh=True ou nunca verificado)
+    should_refresh = refresh or not server.verified
+    
+    if should_refresh:
+        try:
+            soap_service = await get_default_soap_service(db)
+            # Resolve para obter IP atualizado
+            params = {"s1": server.name, "s2": ""}
+            result_str = await soap_service.call_soap_operation(db, "Resolve", params, refresh)
+            
+            # Se retornou IP válido, atualiza
+            if result_str and result_str.strip():
+                server.ip = result_str.strip()
+                server.verified = True
+                server.last_verified_at = datetime.now(timezone.utc)
+                await db.commit()
+                await db.refresh(server)
+        except Exception as e:
+            # Log o erro mas continua retornando os dados do DB
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to refresh server via SOAP: {e}")
+    
     return server
 
 @api_router.put("/servers/{server_id}", response_model=ServerResponse)
