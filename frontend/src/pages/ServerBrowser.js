@@ -634,17 +634,17 @@ const ServerBrowser = () => {
                     copied={copiedField === 'path'}
                   />
                   
-                  {/* Fetched Date */}
-                  <InfoRow 
-                    label="Fetched Date" 
-                    value={formatDate(selectedItem.fetchedAt)}
-                  />
-                  
                   {/* Access Status */}
                   <InfoRow 
                     label="Access Status" 
                     value={isAccessDenied ? 'Negado' : 'Permitido'}
                     valueClassName={isAccessDenied ? 'text-red-500 font-medium' : 'text-green-500'}
+                  />
+                  
+                  {/* Fetched Date */}
+                  <InfoRow 
+                    label="Fetched Date" 
+                    value={formatDate(selectedItem.fetchedAt)}
                   />
                   
                   {/* Last Write Time - para diretórios e arquivos */}

@@ -38,12 +38,12 @@ import { useApp } from '@/contexts/AppContext';
 
 const menuItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/soap-operations', icon: PlayCircle, label: 'Operações SOAP' },
   { path: '/servers', icon: HardDrive, label: 'Servidores' },
+  { path: '/db-connections', icon: Database, label: 'SQL' },
+  { path: '/soap-operations', icon: PlayCircle, label: 'Operações SOAP' },
   { path: '/credentials', icon: Key, label: 'Credenciais' },
-  { path: '/db-connections', icon: Database, label: 'Conexões DB' },
-  { path: '/proxy-servers', icon: Server, label: 'Proxy Servers' },
   { path: '/soap-apis', icon: Globe, label: 'SOAP APIs' },
+  { path: '/proxy-servers', icon: Server, label: 'Proxy Servers' },
 ];
 
 const Layout = ({ children, darkMode, setDarkMode }) => {
