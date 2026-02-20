@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Moon,
-  Sun
+  Sun,
+  HardDrive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 const menuItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/soap-operations', icon: PlayCircle, label: 'Operações SOAP' },
+  { path: '/servers', icon: HardDrive, label: 'Servidores' },
   { path: '/credentials', icon: Key, label: 'Credenciais' },
   { path: '/db-connections', icon: Database, label: 'Conexões DB' },
   { path: '/proxy-servers', icon: Server, label: 'Proxy Servers' },
