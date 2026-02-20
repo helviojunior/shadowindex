@@ -88,13 +88,13 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 <img 
                   src="/assets/stratasec_light.png" 
                   alt="Stratasec" 
-                  className="h-6 w-auto object-contain"
+                  className="h-6 w-auto object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
                 />
               ) : (
                 <img 
                   src="/assets/stratasec_light.png" 
                   alt="Stratasec" 
-                  className="h-8 w-auto"
+                  className="h-8 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
                 />
               )}
               {/* Close button for mobile - only when expanded */}
