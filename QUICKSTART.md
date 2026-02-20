@@ -136,6 +136,8 @@ docker-compose build --no-cache frontend
 
 Na primeira vez, o Docker vai:
 1. ✅ Baixar imagens base (~500MB)
+   - Python 3.11 para backend
+   - Node 20 para frontend
 2. ✅ Instalar dependências Python (~1 minuto)
 3. ✅ Instalar dependências Node (~2 minutos)
 4. ✅ Criar banco de dados SQLite
