@@ -244,11 +244,11 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
               {/* Footer with collapse toggle - only visible on large screens */}
               <div className={cn(
                 "border-t border-border transition-all duration-300 flex items-end relative",
-                "hidden lg:flex",
-                sidebarCollapsed ? "p-2 justify-center min-h-[60px]" : "p-3 justify-between min-h-[70px]"
+                isSmallScreen ? "hidden" : "flex",
+                effectiveCollapsed ? "p-2 justify-center min-h-[60px]" : "p-3 justify-between min-h-[70px]"
               )}>
                 {/* Version info - only when expanded */}
-                {!sidebarCollapsed && (
+                {!effectiveCollapsed && (
                   <div className="text-xs text-muted-foreground">
                     <div className="text-[11px]">Ops Integration Desk v1.0.0</div>
                     <div className="mt-0.5 text-[10px]">© StrataSec 2026</div>
@@ -261,12 +261,12 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                   className={cn(
                     "flex items-center justify-center rounded-l-lg",
                     "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
-                    sidebarCollapsed ? "" : "absolute right-0 bottom-[10px]"
+                    effectiveCollapsed ? "" : "absolute right-0 bottom-[10px]"
                   )}
                   style={{ height: '45px', width: '35px' }}
                   data-testid="sidebar-collapse-btn"
                 >
-                  {sidebarCollapsed ? (
+                  {effectiveCollapsed ? (
                     <ChevronRight size={20} />
                   ) : (
                     <ChevronLeft size={20} />
