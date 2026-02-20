@@ -284,15 +284,46 @@ const DatabaseConnections = () => {
                 data-testid="db-connection-string-input"
                 placeholder="Server=localhost;Database=mydb;User=admin;Password=pass;"
                 value={formData.connection_string}
-                onChange={(e) => setFormData({ ...formData, connection_string: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, connection_string: e.target.value });
+                  setNewConnectionTestResult(null); // Reset test result when connection string changes
+                }}
                 rows={2}
                 required
               />
             </div>
-            <Button type="submit" disabled={loading} data-testid="add-db-connection-btn">
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Conexão
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={loading} data-testid="add-db-connection-btn">
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Conexão
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={testNewConnection}
+                disabled={testingNewConnection || !formData.connection_string}
+                data-testid="test-new-connection-btn"
+              >
+                {testingNewConnection ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Zap className="w-4 h-4 mr-2" />
+                )}
+                Testar Conexão
+              </Button>
+              {newConnectionTestResult === 'success' && (
+                <Badge variant="outline" className="text-green-500 border-green-500">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Conexão OK
+                </Badge>
+              )}
+              {newConnectionTestResult === 'error' && (
+                <Badge variant="outline" className="text-red-500 border-red-500">
+                  <XCircle className="w-3 h-3 mr-1" />
+                  Falha
+                </Badge>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>
