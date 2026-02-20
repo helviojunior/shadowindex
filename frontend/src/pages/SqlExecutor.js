@@ -1,9 +1,13 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
+import Editor from 'react-simple-code-editor';
+import { highlight, languages } from 'prismjs';
+import 'prismjs/components/prism-sql';
+import 'prismjs/themes/prism-tomorrow.css';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -16,9 +20,12 @@ import {
   XCircle,
   Clock,
   RefreshCw,
-  Trash2,
   ChevronDown,
-  Database
+  Database,
+  Download,
+  FileSpreadsheet,
+  Plus,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,14 +37,17 @@ const SqlExecutor = () => {
   const navigate = useNavigate();
   
   const [connection, setConnection] = useState(null);
-  const [query, setQuery] = useState('');
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [presets, setPresets] = useState([]);
   const [history, setHistory] = useState([]);
   const [showPresets, setShowPresets] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState('result');
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  
+  // Múltiplas tabs - cada tab tem sua própria query e resultado
+  const [tabs, setTabs] = useState([
+    { id: 1, name: 'Query 1', query: '', result: null, loading: false }
+  ]);
+  const tabIdCounter = useRef(2);
 
   useEffect(() => {
     loadConnection();
@@ -74,23 +84,57 @@ const SqlExecutor = () => {
     }
   };
 
+  const getCurrentTab = () => tabs[activeTabIndex];
+  
+  const updateCurrentTab = (updates) => {
+    setTabs(prev => prev.map((tab, idx) => 
+      idx === activeTabIndex ? { ...tab, ...updates } : tab
+    ));
+  };
+
+  const addNewTab = () => {
+    const newTab = {
+      id: tabIdCounter.current++,
+      name: `Query ${tabIdCounter.current - 1}`,
+      query: '',
+      result: null,
+      loading: false
+    };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabIndex(tabs.length);
+  };
+
+  const closeTab = (idx, e) => {
+    e.stopPropagation();
+    if (tabs.length === 1) {
+      toast.error('Não é possível fechar a última tab');
+      return;
+    }
+    
+    setTabs(prev => prev.filter((_, i) => i !== idx));
+    
+    if (activeTabIndex >= idx && activeTabIndex > 0) {
+      setActiveTabIndex(activeTabIndex - 1);
+    }
+  };
+
   const executeQuery = async () => {
-    if (!query.trim()) {
+    const currentTab = getCurrentTab();
+    if (!currentTab.query.trim()) {
       toast.error('Digite uma query SQL');
       return;
     }
 
-    setLoading(true);
-    setResult(null);
+    updateCurrentTab({ loading: true, result: null });
 
     try {
       const response = await axios.post(`${API}/sql/execute`, {
         connection_id: parseInt(connectionId),
-        query: query.trim()
+        query: currentTab.query.trim()
       });
 
-      setResult(response.data);
-      loadHistory(); // Recarregar histórico
+      updateCurrentTab({ result: response.data, loading: false });
+      loadHistory();
 
       if (response.data.success) {
         toast.success(`Query executada em ${response.data.execution_time_ms}ms - ${response.data.row_count} resultado(s)`);
@@ -100,41 +144,102 @@ const SqlExecutor = () => {
     } catch (error) {
       console.error('Error executing query:', error);
       toast.error('Erro ao executar query');
-      setResult({
-        success: false,
-        error_message: error.response?.data?.detail || error.message
+      updateCurrentTab({ 
+        result: {
+          success: false,
+          error_message: error.response?.data?.detail || error.message
+        },
+        loading: false 
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const selectPreset = (preset) => {
-    setQuery(preset.query);
+    updateCurrentTab({ query: preset.query });
     setShowPresets(false);
     toast.success(`Preset "${preset.name}" selecionado`);
   };
 
   const reExecuteFromHistory = (historyItem) => {
-    setQuery(historyItem.query);
+    updateCurrentTab({ query: historyItem.query });
     setShowHistory(false);
     
-    // Se há resultado no histórico, parsear e mostrar
     if (historyItem.result) {
       try {
         const parsed = JSON.parse(historyItem.result);
-        setResult({
-          success: historyItem.success,
-          columns: parsed.columns,
-          rows: parsed.rows,
-          row_count: parsed.rows?.length || 0,
-          execution_time_ms: historyItem.execution_time_ms,
-          error_message: historyItem.error_message
+        updateCurrentTab({
+          result: {
+            success: historyItem.success,
+            columns: parsed.columns,
+            rows: parsed.rows,
+            row_count: parsed.rows?.length || 0,
+            execution_time_ms: historyItem.execution_time_ms,
+            error_message: historyItem.error_message
+          }
         });
       } catch {
         // Se não conseguir parsear, só preenche a query
       }
     }
+  };
+
+  // Exportar para CSV
+  const exportToCSV = () => {
+    const currentTab = getCurrentTab();
+    if (!currentTab.result?.success || !currentTab.result?.columns) {
+      toast.error('Nenhum resultado para exportar');
+      return;
+    }
+
+    const { columns, rows } = currentTab.result;
+    
+    // Criar conteúdo CSV
+    const csvContent = [
+      columns.join(','),
+      ...rows.map(row => 
+        row.map(cell => {
+          const cellStr = String(cell || '');
+          // Escapar aspas e envolver em aspas se contiver vírgulas
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`;
+          }
+          return cellStr;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Download
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `query_result_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    
+    toast.success('Exportado para CSV');
+  };
+
+  // Exportar para Excel
+  const exportToExcel = () => {
+    const currentTab = getCurrentTab();
+    if (!currentTab.result?.success || !currentTab.result?.columns) {
+      toast.error('Nenhum resultado para exportar');
+      return;
+    }
+
+    const { columns, rows } = currentTab.result;
+    
+    // Criar worksheet
+    const wsData = [columns, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Criar workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
+    
+    // Download
+    XLSX.writeFile(wb, `query_result_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    
+    toast.success('Exportado para Excel');
   };
 
   const formatDate = (dateString) => {
@@ -146,6 +251,11 @@ const SqlExecutor = () => {
     }
   };
 
+  // Função de highlight para SQL
+  const highlightSQL = (code) => {
+    return highlight(code, languages.sql, 'sql');
+  };
+
   if (!connection) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -153,6 +263,8 @@ const SqlExecutor = () => {
       </div>
     );
   }
+
+  const currentTab = getCurrentTab();
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col" data-testid="sql-executor-page">
@@ -184,6 +296,43 @@ const SqlExecutor = () => {
         </div>
       </div>
 
+      {/* Tabs de Query */}
+      <div className="flex items-center gap-1 px-4 py-2 bg-muted/30 border-b border-border overflow-x-auto">
+        {tabs.map((tab, idx) => (
+          <div
+            key={tab.id}
+            onClick={() => setActiveTabIndex(idx)}
+            className={`
+              flex items-center gap-2 px-3 py-1.5 rounded-t cursor-pointer text-sm transition-colors
+              ${idx === activeTabIndex 
+                ? 'bg-background text-foreground border border-b-0 border-border' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }
+            `}
+            data-testid={`query-tab-${tab.id}`}
+          >
+            <span className="truncate max-w-[120px]">{tab.name}</span>
+            {tab.loading && <Loader2 className="w-3 h-3 animate-spin" />}
+            {tabs.length > 1 && (
+              <button
+                onClick={(e) => closeTab(idx, e)}
+                className="ml-1 p-0.5 rounded hover:bg-destructive/20 hover:text-destructive"
+                data-testid={`close-tab-${tab.id}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={addNewTab}
+          className="flex items-center justify-center w-7 h-7 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+          data-testid="add-query-tab"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Query Editor */}
@@ -192,10 +341,10 @@ const SqlExecutor = () => {
           <div className="flex items-center gap-2 p-3 border-b border-border bg-muted/30">
             <Button 
               onClick={executeQuery} 
-              disabled={loading || !query.trim()}
+              disabled={currentTab.loading || !currentTab.query.trim()}
               data-testid="execute-sql-btn"
             >
-              {loading ? (
+              {currentTab.loading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <Play className="w-4 h-4 mr-2" />
@@ -300,13 +449,25 @@ const SqlExecutor = () => {
             </div>
           </div>
           
-          {/* Query Editor */}
-          <div className="flex-1 p-3">
-            <Textarea
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Digite sua query SQL aqui...&#10;&#10;Exemplo:&#10;SELECT * FROM tabela WHERE coluna = 'valor'"
-              className="h-full font-mono text-sm resize-none bg-zinc-900"
+          {/* Query Editor with Syntax Highlighting */}
+          <div className="flex-1 overflow-auto bg-zinc-900">
+            <Editor
+              value={currentTab.query}
+              onValueChange={(code) => updateCurrentTab({ query: code })}
+              highlight={highlightSQL}
+              padding={16}
+              placeholder="Digite sua query SQL aqui...
+
+Exemplo:
+SELECT * FROM tabela WHERE coluna = 'valor'"
+              style={{
+                fontFamily: '"Fira Code", "Fira Mono", Menlo, Consolas, monospace',
+                fontSize: 14,
+                minHeight: '100%',
+                backgroundColor: 'transparent',
+              }}
+              className="min-h-full"
+              textareaClassName="outline-none"
               data-testid="sql-query-input"
             />
           </div>
@@ -314,172 +475,111 @@ const SqlExecutor = () => {
 
         {/* Right Panel - Results */}
         <div className="w-1/2 flex flex-col bg-background">
-          {/* Tabs */}
-          <div className="flex items-center gap-4 px-4 pt-3 border-b border-border">
-            <button
-              onClick={() => setActiveTab('result')}
-              className={`pb-3 text-sm font-medium transition-colors relative ${
-                activeTab === 'result' 
-                  ? 'text-green-500' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Resultado
-              {activeTab === 'result' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`pb-3 text-sm font-medium transition-colors relative ${
-                activeTab === 'history' 
-                  ? 'text-green-500' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Histórico Completo
-              {activeTab === 'history' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
-              )}
-            </button>
+          {/* Tabs & Export Buttons */}
+          <div className="flex items-center justify-between px-4 pt-3 border-b border-border">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-green-500 pb-3 border-b-2 border-green-500">
+                Resultado
+              </span>
+            </div>
+            
+            {/* Export Buttons */}
+            {currentTab.result?.success && currentTab.result?.columns && (
+              <div className="flex items-center gap-2 pb-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToCSV}
+                  data-testid="export-csv-btn"
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToExcel}
+                  data-testid="export-excel-btn"
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-1" />
+                  Excel
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Tab Content */}
           <ScrollArea className="flex-1">
-            {activeTab === 'result' && (
-              <div className="p-4">
-                {!result ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                    <Database className="w-12 h-12 mb-4 opacity-30" />
-                    <p>Execute uma query para ver os resultados</p>
+            <div className="p-4">
+              {!currentTab.result ? (
+                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                  <Database className="w-12 h-12 mb-4 opacity-30" />
+                  <p>Execute uma query para ver os resultados</p>
+                </div>
+              ) : currentTab.result.success ? (
+                <div className="space-y-4">
+                  {/* Result Info */}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Sucesso
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {currentTab.result.execution_time_ms}ms
+                    </span>
+                    <span>{currentTab.result.row_count} linha(s)</span>
                   </div>
-                ) : result.success ? (
-                  <div className="space-y-4">
-                    {/* Result Info */}
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        Sucesso
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {result.execution_time_ms}ms
-                      </span>
-                      <span>{result.row_count} linha(s)</span>
-                    </div>
-                    
-                    {/* Result Table */}
-                    {result.columns && result.columns.length > 0 && (
-                      <div className="border border-border rounded-lg overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead className="bg-muted">
-                              <tr>
-                                {result.columns.map((col, idx) => (
-                                  <th key={idx} className="px-4 py-2 text-left font-medium border-b border-border">
-                                    {col}
-                                  </th>
+                  
+                  {/* Result Table */}
+                  {currentTab.result.columns && currentTab.result.columns.length > 0 && (
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted">
+                            <tr>
+                              {currentTab.result.columns.map((col, idx) => (
+                                <th key={idx} className="px-4 py-2 text-left font-medium border-b border-border">
+                                  {col}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {currentTab.result.rows.map((row, rowIdx) => (
+                              <tr key={rowIdx} className="hover:bg-muted/50">
+                                {row.map((cell, cellIdx) => (
+                                  <td key={cellIdx} className="px-4 py-2 border-b border-border font-mono">
+                                    {cell || <span className="text-muted-foreground italic">NULL</span>}
+                                  </td>
                                 ))}
                               </tr>
-                            </thead>
-                            <tbody>
-                              {result.rows.map((row, rowIdx) => (
-                                <tr key={rowIdx} className="hover:bg-muted/50">
-                                  {row.map((cell, cellIdx) => (
-                                    <td key={cellIdx} className="px-4 py-2 border-b border-border font-mono">
-                                      {cell || <span className="text-muted-foreground italic">NULL</span>}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-red-500">
-                      <XCircle className="w-5 h-5" />
-                      <span className="font-medium">Erro na execução</span>
                     </div>
-                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                      <p className="text-sm text-red-400 font-mono whitespace-pre-wrap">
-                        {result.error_message}
-                      </p>
-                    </div>
-                    {result.execution_time_ms && (
-                      <p className="text-sm text-muted-foreground">
-                        Tempo de execução: {result.execution_time_ms}ms
-                      </p>
-                    )}
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-red-500">
+                    <XCircle className="w-5 h-5" />
+                    <span className="font-medium">Erro na execução</span>
                   </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'history' && (
-              <div className="p-4">
-                {history.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                    <History className="w-12 h-12 mb-4 opacity-30" />
-                    <p>Nenhuma query no histórico</p>
+                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <p className="text-sm text-red-400 font-mono whitespace-pre-wrap">
+                      {currentTab.result.error_message}
+                    </p>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {history.map((item) => (
-                      <Card key={item.id} className="overflow-hidden">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                {item.success ? (
-                                  <Badge variant="outline" className="text-green-500 border-green-500">
-                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                    Sucesso
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-red-500 border-red-500">
-                                    <XCircle className="w-3 h-3 mr-1" />
-                                    Erro
-                                  </Badge>
-                                )}
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDate(item.executed_at)}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {item.execution_time_ms}ms
-                                </span>
-                              </div>
-                              
-                              <pre className="text-sm font-mono bg-muted p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                                {item.query}
-                              </pre>
-                              
-                              {!item.success && item.error_message && (
-                                <div className="mt-2 text-sm text-red-400">
-                                  {item.error_message}
-                                </div>
-                              )}
-                            </div>
-                            
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => reExecuteFromHistory(item)}
-                              data-testid={`reexecute-${item.id}`}
-                            >
-                              <RefreshCw className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                  {currentTab.result.execution_time_ms && (
+                    <p className="text-sm text-muted-foreground">
+                      Tempo de execução: {currentTab.result.execution_time_ms}ms
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </ScrollArea>
         </div>
       </div>
