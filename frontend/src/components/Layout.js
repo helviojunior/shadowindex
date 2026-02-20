@@ -133,6 +133,55 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           
           {/* Controles à direita */}
           <div className="flex items-center gap-4">
+            {/* Seletor de Proxy */}
+            <div className="flex items-center gap-2">
+              {activeProxy ? (
+                <Wifi className="w-4 h-4 text-green-500" />
+              ) : (
+                <WifiOff className="w-4 h-4 text-muted-foreground" />
+              )}
+              <Select
+                value={activeProxy?.id?.toString() || 'none'}
+                onValueChange={handleProxyChange}
+                disabled={loadingProxy}
+              >
+                <SelectTrigger 
+                  className="w-[180px] h-8 text-sm"
+                  data-testid="proxy-selector"
+                >
+                  <SelectValue placeholder="Selecionar Proxy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" data-testid="proxy-option-none">
+                    <span className="flex items-center gap-2">
+                      <WifiOff className="w-3 h-3" />
+                      Sem Proxy
+                    </span>
+                  </SelectItem>
+                  {proxies.map((proxy) => (
+                    <SelectItem 
+                      key={proxy.id} 
+                      value={proxy.id.toString()}
+                      data-testid={`proxy-option-${proxy.id}`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Wifi className="w-3 h-3" />
+                        {proxy.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeProxy && (
+                <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                  {activeProxy.ip}:{activeProxy.port}
+                </Badge>
+              )}
+            </div>
+
+            {/* Separador */}
+            <div className="h-6 w-px bg-border" />
+
             {/* Ignorar Cache Global */}
             <div className="flex items-center gap-2">
               <DatabaseZap className="w-4 h-4 text-muted-foreground" />
