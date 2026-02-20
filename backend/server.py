@@ -1115,6 +1115,43 @@ async def get_server_storage_stats_endpoint(server_id: int, db: AsyncSession = D
     return stats
 
 
+# Update Share flags
+class ShareUpdateRequest(BaseModel):
+    children_fetched: Optional[bool] = None
+    has_children: Optional[bool] = None
+
+@api_router.patch("/servers/{server_id}/shares/{share_name}")
+async def update_share(
+    server_id: int, 
+    share_name: str, 
+    update_data: ShareUpdateRequest, 
+    db: AsyncSession = Depends(get_db)
+):
+    """Atualiza flags do share (children_fetched, has_children)"""
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    result = await db.execute(
+        select(ServerShare).where(
+            ServerShare.server_guid == server.guid,
+            ServerShare.share_name == share_name
+        )
+    )
+    share = result.scalar_one_or_none()
+    if not share:
+        raise HTTPException(status_code=404, detail="Share not found")
+    
+    if update_data.children_fetched is not None:
+        share.children_fetched = update_data.children_fetched
+    if update_data.has_children is not None:
+        share.has_children = update_data.has_children
+    
+    await db.commit()
+    return {"success": True, "share_name": share_name}
+
+
 # Server SOAP Operations
 @api_router.post("/servers/{server_id}/shares")
 async def get_server_shares_soap(server_id: int, db: AsyncSession = Depends(get_db)):
