@@ -488,48 +488,72 @@ const ServerBrowser = () => {
     const isAccessDenied = selectedItem.access_denied || selectedItem.accessDenied;
     const itemName = isShare ? selectedItem.share_name : selectedItem.name;
     const downloaded = isFile && isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath);
+    const canViewContent = isFile && downloaded && isTextFile(selectedItem.name);
 
     // Cor do ícone no header baseada no status de acesso
-    const headerIconColor = isAccessDenied ? 'text-red-500' : (isShare || isDirectory ? 'text-blue-500' : 'text-muted-foreground');
+    const headerIconColor = isAccessDenied ? 'text-red-500' : (isShare || isDirectory ? 'text-blue-500' : (downloaded ? 'text-green-500' : 'text-muted-foreground'));
 
     return (
       <div className="h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {isAccessDenied ? (
-              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
             ) : isShare ? (
-              <HardDrive className={`w-5 h-5 ${headerIconColor}`} />
+              <HardDrive className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} />
             ) : isDirectory ? (
-              <Folder className={`w-5 h-5 ${headerIconColor}`} />
+              <Folder className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} />
+            ) : downloaded ? (
+              <FileCheck className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} />
             ) : (
-              <File className={`w-5 h-5 ${headerIconColor}`} />
+              <File className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} />
             )}
             <h2 className={`text-lg font-semibold truncate ${isAccessDenied ? 'text-red-500' : ''}`} title={String(itemName)}>
               {String(itemName)}
             </h2>
             {isAccessDenied && (
-              <Badge variant="destructive" className="ml-2">
+              <Badge variant="destructive" className="ml-2 flex-shrink-0">
                 Acesso Negado
+              </Badge>
+            )}
+            {downloaded && (
+              <Badge variant="outline" className="ml-2 flex-shrink-0 text-green-500 border-green-500">
+                Sincronizado
               </Badge>
             )}
           </div>
           
+          {/* Botões de ação */}
           {isFile && !isAccessDenied && (
-            <Button 
-              size="sm" 
-              onClick={handleDownload}
-              disabled={loading || downloaded}
-              data-testid="download-button"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4 mr-2" />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {downloaded && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={openFile}
+                  data-testid="open-file-button"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Abrir
+                </Button>
               )}
-              {downloaded ? 'Baixado' : 'Download'}
-            </Button>
+              <Button 
+                size="sm" 
+                onClick={handleDownload}
+                disabled={loading || downloaded}
+                data-testid="sync-button"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : downloaded ? (
+                  <Check className="w-4 h-4 mr-2" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                {downloaded ? 'Synced' : 'Sync'}
+              </Button>
+            </div>
           )}
         </div>
         
