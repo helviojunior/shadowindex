@@ -435,6 +435,32 @@ async def clear_cache(db: AsyncSession = Depends(get_db)):
     return {"message": "Cache cleared"}
 
 
+# Offline Mode endpoints
+@api_router.get("/offline-mode")
+async def get_offline_mode(db: AsyncSession = Depends(get_db)):
+    """Retorna o status atual do modo offline"""
+    result = await db.execute(select(AppConfig).where(AppConfig.key == "offline_mode"))
+    config = result.scalar_one_or_none()
+    is_offline = config and config.value.lower() == "true"
+    return {"offline_mode": is_offline}
+
+@api_router.put("/offline-mode")
+async def set_offline_mode(enabled: bool, db: AsyncSession = Depends(get_db)):
+    """Define o status do modo offline"""
+    result = await db.execute(select(AppConfig).where(AppConfig.key == "offline_mode"))
+    config = result.scalar_one_or_none()
+    
+    if config:
+        config.value = "true" if enabled else "false"
+        config.updated_at = datetime.now(timezone.utc)
+    else:
+        config = AppConfig(key="offline_mode", value="true" if enabled else "false")
+        db.add(config)
+    
+    await db.commit()
+    return {"offline_mode": enabled, "message": f"Modo offline {'ativado' if enabled else 'desativado'}"}
+
+
 # Servers CRUD
 @api_router.post("/servers", response_model=ServerResponse)
 async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)):
