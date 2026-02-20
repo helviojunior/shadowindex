@@ -374,27 +374,38 @@ const ServerBrowser = () => {
     const isShare = selectedItem.itemType === 'share';
     const isDirectory = selectedItem.itemType === 'Directory';
     const isFile = selectedItem.itemType === 'File';
+    const isAccessDenied = selectedItem.access_denied || selectedItem.accessDenied;
     const itemName = isShare ? selectedItem.share_name : selectedItem.name;
     const downloaded = isFile && isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath);
+
+    // Cor do ícone no header baseada no status de acesso
+    const headerIconColor = isAccessDenied ? 'text-red-500' : (isShare || isDirectory ? 'text-blue-500' : 'text-muted-foreground');
 
     return (
       <div className="h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            {isShare ? (
-              <HardDrive className="w-5 h-5 text-blue-500" />
+            {isAccessDenied ? (
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+            ) : isShare ? (
+              <HardDrive className={`w-5 h-5 ${headerIconColor}`} />
             ) : isDirectory ? (
-              <Folder className="w-5 h-5 text-blue-500" />
+              <Folder className={`w-5 h-5 ${headerIconColor}`} />
             ) : (
-              <File className="w-5 h-5 text-muted-foreground" />
+              <File className={`w-5 h-5 ${headerIconColor}`} />
             )}
-            <h2 className="text-lg font-semibold truncate" title={String(itemName)}>
+            <h2 className={`text-lg font-semibold truncate ${isAccessDenied ? 'text-red-500' : ''}`} title={String(itemName)}>
               {String(itemName)}
             </h2>
+            {isAccessDenied && (
+              <Badge variant="destructive" className="ml-2">
+                Acesso Negado
+              </Badge>
+            )}
           </div>
           
-          {isFile && (
+          {isFile && !isAccessDenied && (
             <Button 
               size="sm" 
               onClick={handleDownload}
@@ -410,6 +421,19 @@ const ServerBrowser = () => {
             </Button>
           )}
         </div>
+        
+        {/* Access Denied Alert */}
+        {isAccessDenied && selectedItem.error_message && (
+          <div className="mx-4 mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-red-400">
+                <p className="font-medium">Erro de Acesso</p>
+                <p className="text-xs mt-1 text-red-300/80">{selectedItem.error_message}</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Info Content */}
         <ScrollArea className="flex-1">
