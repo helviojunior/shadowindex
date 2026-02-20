@@ -44,14 +44,12 @@ Dashboard web para gerenciar credenciais, conexões de banco de dados, servidore
 - [x] Parsing robusto do Exec5 para download de arquivos (SOAP envelope completo)
 
 ## Pending Issues
-- [ ] P1: Erro SSL com proxy (bloqueado - aguarda detalhes do usuário)
+- Nenhum issue pendente
 
 ## Upcoming Tasks
 - [ ] Verificar armazenamento de cache das respostas SOAP
-- [ ] Implementar serviço SOAP mockado para testes
 
 ## Future/Backlog
-- [ ] Implementar "Modo Offline" global
 - [ ] Consolidar lógica SOAP em módulo separado (refatoração)
 
 ## Key Files
