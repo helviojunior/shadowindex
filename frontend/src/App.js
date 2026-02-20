@@ -28,6 +28,7 @@ function App() {
         <Layout darkMode={darkMode} setDarkMode={setDarkMode}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/servers" element={<Servers />} />
             <Route path="/credentials" element={<Credentials />} />
             <Route path="/db-connections" element={<DatabaseConnections />} />
             <Route path="/proxy-servers" element={<ProxyServers />} />
