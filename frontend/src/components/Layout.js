@@ -72,11 +72,8 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
       <div className="flex flex-col h-screen overflow-hidden bg-background">
         {/* Top Header - Fixed, spans full width */}
         <header className="flex items-center justify-between bg-card border-b border-border z-50">
-          {/* Left side - Logo area (same width as sidebar) */}
-          <div className={cn(
-            "flex items-center justify-start px-4 py-3 border-r border-border transition-all duration-300",
-            sidebarCollapsed ? "w-16" : "w-52"
-          )}>
+          {/* Left side - Logo area (fixed width, never changes) */}
+          <div className="flex items-center justify-start w-52 px-4 py-3 border-r border-border">
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden text-muted-foreground hover:text-foreground mr-3"
@@ -85,20 +82,12 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
               <Menu size={20} />
             </button>
             
-            {/* Logo - Always visible in header */}
-            {sidebarCollapsed ? (
-              <img 
-                src="/assets/stratasec_light.png" 
-                alt="Stratasec" 
-                className="h-5 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] mx-auto"
-              />
-            ) : (
-              <img 
-                src="/assets/stratasec_light.png" 
-                alt="Stratasec" 
-                className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-              />
-            )}
+            {/* Logo - Always visible in header, never changes */}
+            <img 
+              src="/assets/stratasec_light.png" 
+              alt="Stratasec" 
+              className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
+            />
           </div>
           
           {/* Right side - Controls */}
