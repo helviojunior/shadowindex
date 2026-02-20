@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Trash2, Plus, CheckCircle, XCircle, Play, Code } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const DatabaseConnections = () => {
+  const navigate = useNavigate();
   const [connections, setConnections] = useState([]);
   const [formData, setFormData] = useState({ name: '', connection_string: '' });
   const [loading, setLoading] = useState(false);
@@ -58,11 +61,30 @@ const DatabaseConnections = () => {
     }
   };
 
+  const openSqlExecutor = (connId) => {
+    navigate(`/sql/execute/${connId}`);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return null;
+    try {
+      return new Date(dateString).toLocaleString('pt-BR');
+    } catch {
+      return dateString;
+    }
+  };
+
   return (
     <div className="space-y-6" data-testid="db-connections-page">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Conexões de Banco de Dados</h1>
-        <p className="text-muted-foreground mt-2">Gerencie as conexões com bancos de dados</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Conexões SQL</h1>
+          <p className="text-muted-foreground mt-2">Gerencie as conexões com bancos de dados</p>
+        </div>
+        <Button variant="outline" onClick={() => navigate('/sql/presets')} data-testid="manage-presets-btn">
+          <Code className="w-4 h-4 mr-2" />
+          Gerenciar Presets
+        </Button>
       </div>
 
       {/* Form Card */}
@@ -119,29 +141,60 @@ const DatabaseConnections = () => {
                 <div
                   key={conn.id}
                   data-testid={`db-connection-item-${conn.id}`}
-                  className="flex items-start justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex-1 space-y-2">
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Nome</div>
-                      <div className="font-medium text-lg">{conn.name}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Connection String</div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 space-y-2 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => openSqlExecutor(conn.id)}
+                          className="font-medium text-lg hover:text-primary transition-colors cursor-pointer"
+                          data-testid={`open-executor-${conn.id}`}
+                        >
+                          {conn.name}
+                        </button>
+                        {conn.verified ? (
+                          <Badge variant="outline" className="text-green-500 border-green-500">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Verificado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Não verificado
+                          </Badge>
+                        )}
+                      </div>
+                      {conn.last_verified_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Última verificação: {formatDate(conn.last_verified_at)}
+                        </p>
+                      )}
                       <div className="font-mono text-sm bg-muted p-2 rounded break-all">
                         {conn.connection_string}
                       </div>
                     </div>
+                    <div className="flex items-center gap-1 ml-4">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openSqlExecutor(conn.id)}
+                        data-testid={`execute-sql-${conn.id}`}
+                        title="Executar SQL"
+                      >
+                        <Play className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(conn.id)}
+                        data-testid={`delete-db-connection-${conn.id}`}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(conn.id)}
-                    data-testid={`delete-db-connection-${conn.id}`}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-4"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
                 </div>
               ))}
             </div>
