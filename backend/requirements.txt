@@ -4,4 +4,4 @@ python-dotenv>=1.0.1
 pydantic>=2.6.4
 sqlalchemy>=2.0.0
 aiosqlite>=0.22.0
-zeep>=4.3.0
+aiohttp>=3.9.0
