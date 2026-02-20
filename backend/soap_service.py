@@ -206,13 +206,28 @@ class SoapService:
                     
                     return result_str
         
+        except aiohttp.ClientConnectorError as e:
+            error_msg = str(e)
+            if "ssl" in error_msg.lower() or "SSL" in error_msg or "EOF" in error_msg:
+                logger.error(f"SSL/TLS connection failed (possibly proxy issue): {e}")
+                raise Exception(f"Erro de SSL/TLS na conexão (verifique o proxy): {str(e)}")
+            else:
+                logger.error(f"Connection failed: {e}")
+                raise Exception(f"Erro de conexão: {str(e)}")
         except aiohttp.ClientError as e:
             logger.error(f"HTTP request failed: {e}")
             raise Exception(f"Erro ao conectar ao WebService SOAP: {str(e)}")
         except ET.ParseError as e:
             logger.error(f"XML parsing failed: {e}")
             raise Exception(f"Erro ao processar resposta XML: {str(e)}")
+        except ssl.SSLError as e:
+            logger.error(f"SSL Error: {e}")
+            raise Exception(f"Erro de SSL: {str(e)}")
         except Exception as e:
+            error_str = str(e)
+            if "EOF" in error_str or "ssl" in error_str.lower():
+                logger.error(f"SSL/Connection error: {e}")
+                raise Exception(f"Erro de SSL/conexão (verifique se o proxy suporta HTTPS): {str(e)}")
             logger.error(f"SOAP call failed: {e}")
             raise Exception(f"Erro ao chamar o WebService SOAP: {str(e)}")
 
