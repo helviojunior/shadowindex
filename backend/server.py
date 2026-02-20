@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from database import (
     init_db, get_db, 
     Credential, DatabaseConnection, ProxyServer, SoapApiUrl, SoapCache, AppConfig,
-    Server, ServerShare, DownloadedFile
+    Server, ServerShare, DownloadedFile, ServerItem
 )
 from soap_service import SoapService, get_default_soap_service
 import uuid
