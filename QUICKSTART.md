@@ -1,74 +1,156 @@
 # 🚀 Início Rápido - Docker Compose
 
-## Passos Simples
+## Opção 1: Build Simples (Recomendado)
 
-### 1️⃣ Iniciar
+Use o `docker-compose.prod.yml` para um build limpo sem volumes de desenvolvimento:
+
 ```bash
+# 1. Build e iniciar
+docker-compose -f docker-compose.prod.yml up -d
+
+# 2. Aguardar (~2 minutos na primeira vez)
+
+# 3. Acessar
+# Frontend: http://localhost:3000
+# Backend: http://localhost:9090/api/
+```
+
+## Opção 2: Com Hot Reload (Desenvolvimento)
+
+Use o `docker-compose.yml` padrão para desenvolvimento com hot reload:
+
+```bash
+# 1. Build e iniciar
 docker-compose up -d
+
+# 2. Aguardar (~2 minutos na primeira vez)
+
+# 3. Acessar
+# Frontend: http://localhost:3000
+# Backend: http://localhost:9090/api/
 ```
 
-### 2️⃣ Aguardar (~30 segundos)
-Os containers precisam de tempo para inicializar o banco de dados e instalar dependências.
+## 🧪 Testar Instalação
 
-### 3️⃣ Verificar
 ```bash
-./test-docker.sh
+# Aguardar containers iniciarem
+sleep 30
+
+# Testar backend
+curl http://localhost:9090/api/
+
+# Deve retornar:
+# {"message":"Ops Integration Desk API","version":"1.0.0"}
 ```
 
-### 4️⃣ Acessar
-- 🌐 Frontend: http://localhost:3000
-- 🔧 Backend API: http://localhost:9090/api/
+## ❓ Problemas Comuns
 
-## ❓ Problemas?
-
-### Erro "port already in use"
+### 1. Erro "yarn.lock not found"
 ```bash
-# Mude a porta no docker-compose.yml
+# Use a versão de produção
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+### 2. Erro "port already in use"
+```bash
+# Mude a porta no arquivo docker-compose
 # Linha: "9090:8001" → "OUTRA_PORTA:8001"
 ```
 
-### Backend não inicia
+### 3. Build muito lento
 ```bash
-# Ver logs
-docker-compose logs backend
-
-# Rebuild
-docker-compose down
-docker-compose build --no-cache backend
-docker-compose up -d
+# Primeira vez demora ~2-5 minutos
+# Builds seguintes são mais rápidos (cache)
 ```
 
-### Frontend não conecta
+### 4. Frontend não carrega
 ```bash
-# Verificar variável de ambiente
-cat frontend/.env
-# Deve ter: REACT_APP_BACKEND_URL=http://localhost:9090
+# Ver logs
+docker-compose logs frontend
 
-# Se mudou a porta do backend, atualize aqui também
+# Ou para versão prod
+docker-compose -f docker-compose.prod.yml logs frontend
+
+# Aguardar mais tempo (pode demorar)
+```
+
+### 5. Backend não conecta ao banco
+```bash
+# Remover volumes e recriar
+docker-compose down -v
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+## 🔍 Ver Logs
+
+```bash
+# Todos os logs
+docker-compose logs -f
+
+# Apenas backend
+docker-compose logs -f backend
+
+# Apenas frontend
+docker-compose logs -f frontend
 ```
 
 ## 🛑 Parar
 
 ```bash
-# Parar mas manter dados
+# Parar (mantém dados)
 docker-compose down
 
-# Parar e apagar tudo (incluindo banco de dados)
+# Ou versão prod
+docker-compose -f docker-compose.prod.yml down
+
+# Parar e apagar tudo
 docker-compose down -v
 ```
 
-## 📝 Logs em Tempo Real
-
-```bash
-docker-compose logs -f
-```
-
-## ✅ Status
+## ✅ Verificar Status
 
 ```bash
 docker-compose ps
+
+# Deve mostrar:
+# - ops-integration-backend (Up)
+# - ops-integration-frontend (Up)
 ```
+
+## 🔄 Rebuild
+
+Se fez mudanças no código:
+
+```bash
+# Rebuild tudo
+docker-compose build --no-cache
+
+# Rebuild apenas backend
+docker-compose build --no-cache backend
+
+# Rebuild apenas frontend
+docker-compose build --no-cache frontend
+```
+
+## 📦 Primeira Execução
+
+Na primeira vez, o Docker vai:
+1. ✅ Baixar imagens base (~500MB)
+2. ✅ Instalar dependências Python (~1 minuto)
+3. ✅ Instalar dependências Node (~2 minutos)
+4. ✅ Criar banco de dados SQLite
+5. ✅ Inserir dados padrão (proxy + SOAP API)
+
+**Total: ~3-5 minutos**
+
+## 🎯 Acesso Rápido
+
+Após tudo iniciar:
+
+- 🌐 **Aplicação**: http://localhost:3000
+- 🔧 **API Docs**: http://localhost:9090/docs
+- 📊 **API**: http://localhost:9090/api/
 
 ---
 
-**Dúvidas?** Consulte [DOCKER_COMPOSE_README.md](DOCKER_COMPOSE_README.md)
+**Problemas?** Consulte [DOCKER_COMPOSE_README.md](DOCKER_COMPOSE_README.md) para documentação completa.
