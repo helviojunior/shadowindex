@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlayCircle, Loader2 } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { PlayCircle, Loader2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
 
@@ -15,8 +16,10 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const SoapOperations = () => {
+  const [activeTab, setActiveTab] = useState('resolve');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState(false);
   const { ignoreCache } = useApp();
 
   // Form states for each operation
@@ -70,6 +73,34 @@ const SoapOperations = () => {
       toast.error(errorMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const copyResult = async () => {
+    if (result?.data) {
+      try {
+        await navigator.clipboard.writeText(result.data);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast.success('Resultado copiado');
+      } catch (error) {
+        toast.error('Erro ao copiar');
+      }
+    }
+  };
+
+  const formatXml = (xml) => {
+    if (!xml) return '';
+    try {
+      // Tenta formatar como XML
+      const formatted = xml
+        .replace(/></g, '>\n<')
+        .replace(/(<[^>]+>)/g, (match) => {
+          return match;
+        });
+      return formatted;
+    } catch {
+      return xml;
     }
   };
 
