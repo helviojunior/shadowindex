@@ -405,54 +405,8 @@ const ServerBrowser = () => {
       // Definir os shares
       setShares(shares);
       
-      // Pré-carregar os filhos que já existem no banco
-      const preloadedChildren = {};
-      const preloadedExpanded = {};
-      
-      shares.forEach(share => {
-        const shareNodeId = `share-${share.share_name}`;
-        
-        // Se o share já tem filhos no banco, carregá-los
-        if (share.children && share.children.length > 0) {
-          preloadedChildren[shareNodeId] = share.children.map((child, idx) => ({
-            ...child,
-            id: `${shareNodeId}-${child.id || idx}`,
-            shareName: share.share_name,
-            hasChildren: child.hasChildren,
-            childrenFetched: child.childrenFetched
-          }));
-          preloadedExpanded[shareNodeId] = true;
-        }
-      });
-      
-      // Carregar também os filhos de subdiretórios
-      if (items_by_path) {
-        Object.entries(items_by_path).forEach(([parentPath, children]) => {
-          // Encontrar o nodeId correspondente a este path
-          // Para diretórios que não são shares, precisamos encontrar pelo fullPath
-          children.forEach((item, idx) => {
-            if (item.childrenFetched && item.hasChildren) {
-              const itemPath = item.fullPath;
-              const itemChildren = items_by_path[itemPath];
-              if (itemChildren && itemChildren.length > 0) {
-                const itemNodeId = `item-${item.id}`;
-                preloadedChildren[itemNodeId] = itemChildren.map((child, childIdx) => ({
-                  ...child,
-                  id: `${itemNodeId}-${child.id || childIdx}`,
-                  shareName: item.shareName || shares.find(s => parentPath.includes(s.share_name))?.share_name
-                }));
-                preloadedExpanded[itemNodeId] = true;
-              }
-            }
-          });
-        });
-      }
-      
-      // Atualizar estados
-      if (Object.keys(preloadedChildren).length > 0) {
-        setNodeChildren(prev => ({ ...prev, ...preloadedChildren }));
-        setExpandedNodes(prev => ({ ...prev, ...preloadedExpanded }));
-      }
+      // NÃO expandir automaticamente - apenas definir os shares
+      // Os filhos serão carregados do banco quando o usuário expandir manualmente
       
     } catch (error) {
       console.error('Error loading shares:', error);
