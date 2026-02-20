@@ -27,6 +27,15 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-20 (Session 6 - Server Browser Fixes)
+- [x] **Bug Fix: Share fica azul ao expandir** - Share agora fica azul imediatamente após primeiro clique/expansão
+- [x] **Bug Fix: Refresh preserva estado** - Botão "Atualizar Compartilhamentos" agora preserva estado de expansão da árvore
+- [x] **Auto-expand on click** - Clicar em diretório não expandido agora mostra Info E expande automaticamente
+- [x] **Docker files reorganized** - `docker-compose.yml` agora é produção (sem volumes), `docker-compose.dev.yml` é desenvolvimento (com volumes e reload)
+- [x] Frontend: `handleSelectItem()` agora expande diretórios automaticamente se não expandidos
+- [x] Frontend: `refreshShares()` preserva `expandedNodes` e `nodeChildren` durante refresh
+- [x] Frontend: Atualização de estado local do share ocorre imediatamente (não aguarda PATCH)
+
 ### 2026-02-20 (Session 5 - SQL Enhancements)
 - [x] **Ctrl+Enter keyboard shortcut** - Executar query com atalho Ctrl+Enter (já implementado)
 - [x] **Test Connection button** - Botão "Testar Conexão" (ícone raio ⚡) na página de conexões SQL
