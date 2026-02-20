@@ -853,21 +853,25 @@ async def browse_server_directory(
                 items.append(item)
         
         # Atualizar o share com informação de que os filhos foram buscados
+        # Só atualizar se for no nível raiz do share
         if share_name:
-            share_result = await db.execute(
-                select(ServerShare).where(
-                    ServerShare.server_guid == server.guid,
-                    ServerShare.share_name == share_name
+            is_share_root = path.rstrip('\\').endswith(share_name)
+            
+            if is_share_root:
+                share_result = await db.execute(
+                    select(ServerShare).where(
+                        ServerShare.server_guid == server.guid,
+                        ServerShare.share_name == share_name
+                    )
                 )
-            )
-            share = share_result.scalar_one_or_none()
-            if share:
-                share.children_fetched = True
-                share.has_children = len(items) > 0
-                if not access_denied:
-                    share.access_denied = False
-                    share.error_message = None
-                await db.commit()
+                share = share_result.scalar_one_or_none()
+                if share:
+                    share.children_fetched = True
+                    share.has_children = len(items) > 0
+                    if not access_denied:
+                        share.access_denied = False
+                        share.error_message = None
+                    await db.commit()
         
         # Marcar como verificado
         if not server.verified:
