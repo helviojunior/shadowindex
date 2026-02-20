@@ -311,18 +311,31 @@ const SoapOperations = () => {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Resultado</span>
-              {result.success && result.fromCache && (
-                <span className="text-sm font-normal text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                  💾 Do Cache
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {result.success && result.fromCache && (
+                  <span className="text-sm font-normal text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                    Do Cache
+                  </span>
+                )}
+                {result.success && (
+                  <Button variant="ghost" size="sm" onClick={copyResult}>
+                    {copied ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {result.success ? (
-              <div className="xml-output" data-testid="soap-result-output">
-                {result.data}
-              </div>
+              <ScrollArea className="h-[400px] w-full rounded-md border">
+                <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-all" data-testid="soap-result-output">
+                  {formatXml(result.data)}
+                </pre>
+              </ScrollArea>
             ) : (
               <div className="p-4 bg-destructive/10 text-destructive rounded-lg" data-testid="soap-error-output">
                 <strong>Erro:</strong> {result.error}
