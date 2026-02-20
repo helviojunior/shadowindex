@@ -638,6 +638,29 @@ async def get_server_downloads(server_id: int, db: AsyncSession = Depends(get_db
     )
     return result.scalars().all()
 
+# Update Server (PATCH)
+class ServerUpdateRequest(BaseModel):
+    ip: Optional[str] = None
+    name: Optional[str] = None
+
+@api_router.patch("/servers/{server_id}")
+async def update_server(server_id: int, update_data: ServerUpdateRequest, db: AsyncSession = Depends(get_db)):
+    """Atualiza dados do servidor (IP, nome)"""
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    if update_data.ip is not None:
+        server.ip = update_data.ip
+    if update_data.name is not None:
+        server.name = update_data.name
+    
+    await db.commit()
+    await db.refresh(server)
+    
+    return {"success": True, "message": "Server updated successfully"}
+
 # Server Storage Stats
 @api_router.get("/servers/{server_id}/storage-stats")
 async def get_server_storage_stats_endpoint(server_id: int, db: AsyncSession = Depends(get_db)):
