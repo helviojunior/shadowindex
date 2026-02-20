@@ -951,21 +951,29 @@ const ServerBrowser = () => {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        onClick={() => copyToClipboard(fileContent, 'content')}
+                        onClick={() => copyToClipboard(rawFileContent || fileContent, 'content')}
+                        title="Copiar conteúdo original (RAW)"
                       >
                         {copiedField === 'content' ? (
                           <Check className="w-4 h-4 mr-2 text-green-500" />
                         ) : (
                           <Copy className="w-4 h-4 mr-2" />
                         )}
-                        Copiar
+                        Copiar RAW
                       </Button>
                     </div>
                 
                     {/* Content */}
-                    <pre className="p-4 bg-muted/50 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto">
-                      {fileContent}
-                    </pre>
+                    {beautified ? (
+                      <pre 
+                        className="p-4 bg-zinc-900 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto"
+                        dangerouslySetInnerHTML={{ __html: fileContent }}
+                      />
+                    ) : (
+                      <pre className="p-4 bg-muted/50 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto">
+                        {fileContent}
+                      </pre>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
