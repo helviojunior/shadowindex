@@ -226,7 +226,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                     >
                       <Icon size={18} />
                       {!sidebarCollapsed && (
-                        <span className="font-medium">{item.label}</span>
+                        <span className="font-medium text-sm">{item.label}</span>
                       )}
                     </Link>
                   );
