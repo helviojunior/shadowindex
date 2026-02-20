@@ -36,6 +36,8 @@ const DatabaseConnections = () => {
   const [formData, setFormData] = useState({ name: '', db_type_id: '', connection_string: '' });
   const [loading, setLoading] = useState(false);
   const [testingConnectionId, setTestingConnectionId] = useState(null);
+  const [testingNewConnection, setTestingNewConnection] = useState(false);
+  const [newConnectionTestResult, setNewConnectionTestResult] = useState(null); // 'success', 'error', null
   
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
