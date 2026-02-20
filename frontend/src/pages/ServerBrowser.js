@@ -97,11 +97,21 @@ const ServerBrowser = () => {
     // Definir aba padrão baseado no tipo de item
     const isShare = selectedItem?.itemType === 'share';
     const isDirectory = selectedItem?.itemType === 'Directory';
+    const isAccessDenied = selectedItem?.type === 'AccessDenied' || selectedItem?.accessDenied;
     
-    if (isShare || isDirectory) {
+    // Se acesso negado, mostrar apenas Info
+    if (isAccessDenied) {
+      setActiveTab('info');
+    } else if (isShare || isDirectory) {
       setActiveTab('objetos');
     } else {
       setActiveTab('info');
+    }
+    
+    // Limpar dados de download ao mudar de diretório/share
+    if (isShare || isDirectory) {
+      setBulkDownloadItems([]);
+      setBulkDownloadStats({ total: 0, completed: 0, failed: 0, skipped: 0 });
     }
     
     setFileContent(null);
