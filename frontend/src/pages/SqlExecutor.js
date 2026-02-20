@@ -853,7 +853,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
           </div>
 
           {/* Result Content */}
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-auto">
             <div className="p-4">
               {!currentTab.result ? (
                 <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
@@ -865,12 +865,12 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                   {/* Result Table */}
                   {currentTab.result.columns && currentTab.result.columns.length > 0 && (
                     <div className="border border-border rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
+                      <div className="overflow-auto max-h-[calc(100vh-400px)]">
                         <table className="w-full text-sm">
-                          <thead className="bg-muted">
+                          <thead className="bg-muted sticky top-0">
                             <tr>
                               {currentTab.result.columns.map((col, idx) => (
-                                <th key={idx} className="px-4 py-2 text-left font-medium border-b border-border whitespace-nowrap">
+                                <th key={idx} className="px-4 py-2 text-left font-medium border-b border-border whitespace-nowrap bg-muted">
                                   {col}
                                 </th>
                               ))}
@@ -898,7 +898,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                     <XCircle className="w-5 h-5" />
                     <span className="font-medium">Erro na execução</span>
                   </div>
-                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg overflow-auto max-h-[300px]">
                     <p className="text-sm text-red-400 font-mono whitespace-pre-wrap">
                       {currentTab.result.error_message}
                     </p>
@@ -906,7 +906,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </div>
 
