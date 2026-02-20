@@ -813,7 +813,8 @@ const ServerBrowser = () => {
             {
               params: {
                 file_path: file.fullPath,
-                share_name: shareName
+                share_name: shareName,
+                expected_size: fileSize
               }
             }
           );
