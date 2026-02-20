@@ -490,14 +490,36 @@ async def get_server(
     """
     Obtém informações do servidor.
     Se refresh=True ou se nunca foi verificado, atualiza IP via SOAP Resolve.
+    Se o IP já for válido, não faz o resolve.
     """
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
+    # Função para verificar se é um IP válido
+    def is_valid_ip(ip: str) -> bool:
+        if not ip:
+            return False
+        import re
+        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+        if not re.match(ip_pattern, ip):
+            return False
+        parts = ip.split('.')
+        return all(0 <= int(part) <= 255 for part in parts)
+    
     # Verificar se precisa atualizar (refresh=True ou nunca verificado)
     should_refresh = refresh or not server.verified
+    
+    # Se o IP já for válido, não precisa resolver
+    if is_valid_ip(server.ip):
+        should_refresh = False
+        # Marcar como verificado se ainda não estiver
+        if not server.verified:
+            server.verified = True
+            server.last_verified_at = datetime.now(timezone.utc)
+            await db.commit()
+            await db.refresh(server)
     
     if should_refresh:
         try:
