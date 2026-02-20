@@ -28,12 +28,16 @@ Portuguese (pt-BR)
 ## Completed Features
 
 ### 2026-02-20
+- [x] Added inline IP editing for servers (pencil icon, input, save/cancel buttons)
+- [x] Added PATCH endpoint for partial server updates
+- [x] Backend skips SOAP Resolve if IP is already valid
 - [x] Added `has_children` and `children_fetched` flags to ServerShare model
 - [x] Backend updates flags when browsing directories
 - [x] Frontend uses DB flags for initial color rendering (gray = not fetched, red = access denied)
 - [x] Moved DB to local path: `/app/backend/data/ops_integration.db`
 - [x] Moved storage to local path: `/app/backend/data/storage/`
 - [x] Removed `<h3>Info</h3>` tag from info panel
+- [x] Removed download buttons from View tab
 - [x] Implemented tree hierarchy lines (vertical + horizontal connectors like JFrog)
 - [x] Dashboard: Added "Servidores" and "Arquivos Baixados" stat cards
 - [x] Dashboard: Grid updated to 6 columns on large screens
