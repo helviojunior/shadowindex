@@ -48,13 +48,28 @@ class CredentialResponse(BaseModel):
     password: str
     created_at: datetime
 
+
+# Database Type Models
+class DatabaseTypeResponse(BaseModel):
+    id: int
+    name: str
+    code: str
+    color: Optional[str] = None
+    created_at: datetime
+
+
 class DatabaseConnectionCreate(BaseModel):
     name: str
+    db_type_id: Optional[int] = None
     connection_string: str
 
 class DatabaseConnectionResponse(BaseModel):
     id: int
     name: str
+    db_type_id: Optional[int] = None
+    db_type_name: Optional[str] = None
+    db_type_code: Optional[str] = None
+    db_type_color: Optional[str] = None
     connection_string: str
     verified: bool = False
     last_verified_at: Optional[datetime] = None
@@ -63,17 +78,22 @@ class DatabaseConnectionResponse(BaseModel):
 
 # SQL Presets Models
 class SqlPresetCreate(BaseModel):
+    db_type_id: Optional[int] = None
     name: str
     query: str
     description: Optional[str] = None
 
 class SqlPresetUpdate(BaseModel):
+    db_type_id: Optional[int] = None
     name: Optional[str] = None
     query: Optional[str] = None
     description: Optional[str] = None
 
 class SqlPresetResponse(BaseModel):
     id: int
+    db_type_id: Optional[int] = None
+    db_type_name: Optional[str] = None
+    db_type_code: Optional[str] = None
     name: str
     query: str
     description: Optional[str]
