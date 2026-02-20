@@ -8,12 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network } from 'lucide-react';
 import { toast } from 'sonner';
+import { useApp } from '@/contexts/AppContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Servers = () => {
   const navigate = useNavigate();
+  const { ignoreCache } = useApp();
   const [servers, setServers] = useState([]);
   const [formData, setFormData] = useState({ name: '', ip: '' });
   const [loading, setLoading] = useState(false);
