@@ -77,6 +77,39 @@ const Servers = () => {
     }
   };
 
+  const handleEditIp = (server) => {
+    setEditingServer(server.id);
+    setEditIp(server.ip);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingServer(null);
+    setEditIp('');
+  };
+
+  const handleSaveIp = async (serverId) => {
+    if (!editIp.trim()) {
+      toast.error('IP não pode estar vazio');
+      return;
+    }
+
+    if (!isValidIp(editIp.trim())) {
+      toast.error('IP inválido. Use o formato: 192.168.1.100');
+      return;
+    }
+
+    try {
+      await axios.patch(`${API}/servers/${serverId}`, { ip: editIp.trim() });
+      toast.success('IP atualizado com sucesso');
+      setEditingServer(null);
+      setEditIp('');
+      loadServers();
+    } catch (error) {
+      console.error('Error updating server IP:', error);
+      toast.error('Erro ao atualizar IP');
+    }
+  };
+
   const handleResolveIp = async () => {
     if (!formData.name) {
       toast.error('Digite o nome do servidor primeiro');
