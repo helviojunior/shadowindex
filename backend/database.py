@@ -119,7 +119,7 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
     
     # Aplicar migrações manuais para colunas que podem não existir
-    db_path = DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+    db_path = DATABASE_PATH
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
