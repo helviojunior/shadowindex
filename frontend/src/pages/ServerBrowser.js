@@ -657,8 +657,11 @@ const ServerBrowser = () => {
     const currentShareName = isShare ? item.share_name : shareName;
     
     // Para shares: usar flag do banco (children_fetched)
-    // Para diretórios: usar estado local (nodeChildren existe para este nodeId)
-    const childrenFetched = isShare ? item.children_fetched : hasLoadedChildren;
+    // Para diretórios: usar flag do item que vem do banco (item.childrenFetched)
+    // Fallback para hasLoadedChildren se não houver flag do banco
+    const childrenFetched = isShare 
+      ? item.children_fetched 
+      : (item.childrenFetched === true || hasLoadedChildren);
     
     // Determina se o item ainda não teve seus filhos carregados
     // Um diretório é considerado "não carregado" se nunca fizemos fetch dos filhos
