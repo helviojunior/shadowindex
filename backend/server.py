@@ -101,6 +101,38 @@ class AppConfigResponse(BaseModel):
     value: str
     updated_at: datetime
 
+class ServerCreate(BaseModel):
+    name: str
+    ip: str
+
+class ServerResponse(BaseModel):
+    id: int
+    guid: str
+    name: str
+    ip: str
+    verified: bool
+    shares_count: int
+    downloaded_files_count: int
+    last_verified_at: Optional[datetime]
+    created_at: datetime
+
+class ServerShareResponse(BaseModel):
+    id: int
+    server_guid: str
+    share_name: str
+    share_type: Optional[str]
+    remark: Optional[str]
+    discovered_at: datetime
+
+class DownloadedFileResponse(BaseModel):
+    id: int
+    server_guid: str
+    share_name: str
+    file_path: str
+    sanitized_path: str
+    file_size: Optional[int]
+    downloaded_at: datetime
+
 # Routes
 @api_router.get("/")
 async def root():
