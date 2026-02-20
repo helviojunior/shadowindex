@@ -27,6 +27,18 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-20 (Session 4 - DB Types & Presets)
+- [x] **DatabaseType table** - Nova tabela para tipos de banco (MS-SQL, MySQL, PostgreSQL, Oracle, SQLite, MariaDB, MongoDB)
+- [x] **DB Type selection on connection** - Seletor de tipo de banco ao criar conexão SQL
+- [x] **Connections as table** - Listagem de conexões em formato de tabela com colunas: Nome, Tipo, Connection String, Status, Última Verificação, Ações
+- [x] **SQL Presets linked to DB Type** - Presets vinculados ao tipo de banco (ou universal se null)
+- [x] **Filtered presets in SQL Editor** - Presets filtrados automaticamente pelo tipo de banco da conexão
+- [x] **DB Type colors** - Cada tipo de banco tem sua cor característica (MS-SQL=#CC2927, MySQL=#4479A1, PostgreSQL=#336791, etc.)
+- [x] **Default presets per DB type** - 6 presets MS-SQL, 5 presets MySQL, 5 presets PostgreSQL, 1 preset Universal
+- [x] **Presets filter by type** - Filtro de tipo de banco na página de presets
+- [x] Backend endpoints: GET `/api/db-types`
+- [x] Updated models: `DatabaseType`, `DatabaseConnection.db_type_id`, `SqlPreset.db_type_id`
+
 ### 2026-02-20 (Session 3 - SQL Module)
 - [x] **SQL Presets CRUD** - Comandos SQL pré-definidos com nome, query e descrição
 - [x] **Default Presets** - 6 presets MS-SQL carregados automaticamente no startup (Is Admin, List Databases, Current User, Database Size, List Tables, Server Version)
