@@ -1618,13 +1618,22 @@ async def download_server_file(
                 current_version.is_current = False
                 
                 # Salvar nova versão no storage
-                full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
-                    server.guid,
-                    share_name,
-                    file_path,
-                    content_base64,
-                    new_version_number
-                )
+                if content_base64:
+                    full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
+                        server.guid,
+                        share_name,
+                        file_path,
+                        content_base64,
+                        new_version_number
+                    )
+                else:
+                    # Arquivo vazio
+                    full_path, sanitized_path, sha1_hash, file_size = save_empty_file(
+                        server.guid,
+                        share_name,
+                        file_path,
+                        new_version_number
+                    )
                 
                 # Criar nova versão no banco
                 new_file_version = FileVersion(
