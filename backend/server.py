@@ -132,6 +132,8 @@ class ServerShareResponse(BaseModel):
     remark: Optional[str]
     access_denied: bool = False
     error_message: Optional[str] = None
+    has_children: bool = False
+    children_fetched: bool = False
     discovered_at: datetime
 
 class DownloadedFileResponse(BaseModel):
