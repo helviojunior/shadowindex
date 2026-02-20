@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useApp } from '@/contexts/AppContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Dashboard = () => {
+  const { offlineMode, setOfflineMode } = useApp();
   const [stats, setStats] = useState({
     credentials: 0,
     dbConnections: 0,
@@ -18,7 +20,6 @@ const Dashboard = () => {
     soapApis: 0,
     cacheEntries: 0
   });
-  const [offlineMode, setOfflineMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,13 +28,12 @@ const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [creds, dbs, proxies, soaps, cache, config] = await Promise.all([
+      const [creds, dbs, proxies, soaps, cache] = await Promise.all([
         axios.get(`${API}/credentials`),
         axios.get(`${API}/db-connections`),
         axios.get(`${API}/proxy-servers`),
         axios.get(`${API}/soap-apis`),
-        axios.get(`${API}/cache/stats`),
-        axios.get(`${API}/config`)
+        axios.get(`${API}/cache/stats`)
       ]);
 
       setStats({
@@ -44,8 +44,6 @@ const Dashboard = () => {
         cacheEntries: cache.data.total_entries || 0
       });
 
-      const offlineConfig = config.data.find(c => c.key === 'offline_mode');
-      setOfflineMode(offlineConfig?.value === 'true');
       setLoading(false);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -55,16 +53,10 @@ const Dashboard = () => {
   };
 
   const toggleOfflineMode = async () => {
-    try {
-      const newValue = !offlineMode;
-      await axios.put(`${API}/config`, {
-        key: 'offline_mode',
-        value: newValue.toString()
-      });
-      setOfflineMode(newValue);
-      toast.success(`Modo ${newValue ? 'offline' : 'online'} ativado`);
-    } catch (error) {
-      console.error('Error toggling offline mode:', error);
+    const success = await setOfflineMode(!offlineMode);
+    if (success) {
+      toast.success(`Modo ${!offlineMode ? 'offline' : 'online'} ativado`);
+    } else {
       toast.error('Erro ao alterar modo offline');
     }
   };
