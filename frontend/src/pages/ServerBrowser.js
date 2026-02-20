@@ -73,13 +73,22 @@ const ServerBrowser = () => {
     }
   }, [server, ignoreCache]);
 
-  // Reset tab quando selecionar novo item
+  // Reset tab quando selecionar novo item e carregar versões
   useEffect(() => {
     setActiveTab('info');
     setFileContent(null);
     setRawFileContent(null);
     setFilePreviewUrl(null);
     setBeautified(false);
+    setFileVersions([]);
+    
+    // Carregar versões se for arquivo e estiver sincronizado
+    if (selectedItem?.itemType === 'File') {
+      const filePath = selectedItem.fullPath || selectedItem.serverPath;
+      if (downloadedFiles.includes(filePath)) {
+        loadFileVersions(filePath);
+      }
+    }
   }, [selectedItem?.id]);
 
   const loadServer = async () => {
