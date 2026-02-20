@@ -115,39 +115,43 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
             <Menu size={24} />
           </button>
           
-          <div className="flex-1 lg:flex-none" />
+          <div className="flex-1" />
           
-          {/* Ignorar Cache Global */}
-          <div className="flex items-center gap-2 mr-4">
-            <DatabaseZap className="w-4 h-4 text-muted-foreground" />
-            <Switch 
-              id="global-ignore-cache" 
-              checked={ignoreCache} 
-              onCheckedChange={setIgnoreCache}
-              data-testid="global-ignore-cache-switch"
-            />
-            <Label 
-              htmlFor="global-ignore-cache" 
-              className="text-sm cursor-pointer"
+          {/* Controles à direita */}
+          <div className="flex items-center gap-4">
+            {/* Ignorar Cache Global */}
+            <div className="flex items-center gap-2">
+              <DatabaseZap className="w-4 h-4 text-muted-foreground" />
+              <Switch 
+                id="global-ignore-cache" 
+                checked={ignoreCache} 
+                onCheckedChange={setIgnoreCache}
+                data-testid="global-ignore-cache-switch"
+              />
+              <Label 
+                htmlFor="global-ignore-cache" 
+                className="text-sm cursor-pointer"
+              >
+                Ignorar Cache
+              </Label>
+              {ignoreCache && (
+                <Badge variant="destructive" className="text-xs">
+                  Ativo
+                </Badge>
+              )}
+            </div>
+            
+            {/* Toggle Dark Mode */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDarkMode(!darkMode)}
+              data-testid="theme-toggle-btn"
+              className="rounded-full"
             >
-              Ignorar Cache
-            </Label>
-            {ignoreCache && (
-              <Badge variant="destructive" className="text-xs">
-                Ativo
-              </Badge>
-            )}
+              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </Button>
           </div>
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setDarkMode(!darkMode)}
-            data-testid="theme-toggle-btn"
-            className="rounded-full"
-          >
-            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </Button>
         </header>
 
         {/* Page Content */}
