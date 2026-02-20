@@ -736,29 +736,29 @@ const ServerBrowser = () => {
                       </Button>
                     </div>
                 
-                {/* Content */}
-                <pre className="p-4 bg-muted/50 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto">
-                  {fileContent}
-                </pre>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <Eye className="w-8 h-8 mb-2" />
-                <p>Clique em "View" para carregar o conteúdo</p>
-                {!canViewContent && downloaded && (
-                  <div className="mt-4">
-                    <Button size="sm" onClick={openFile}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Download Arquivo
-                    </Button>
+                    {/* Content */}
+                    <pre className="p-4 bg-muted/50 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto">
+                      {fileContent}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                    <Eye className="w-8 h-8 mb-2" />
+                    <p>Clique em "View" para carregar o conteúdo</p>
+                    {!canViewContent && downloaded && (
+                      <div className="mt-4">
+                        <Button size="sm" onClick={openFile}>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Arquivo
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </ScrollArea>
-      </TabsContent>
-    </Tabs>
+            </ScrollArea>
+          )}
+        </div>
       </div>
     );
   };
