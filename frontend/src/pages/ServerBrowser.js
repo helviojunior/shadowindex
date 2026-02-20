@@ -1320,6 +1320,178 @@ const ServerBrowser = () => {
               </div>
             </ScrollArea>
           )}
+          
+          {/* Items Tab Content */}
+          {activeTab === 'items' && (isShare || isDirectory) && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {(() => {
+                const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
+                const children = nodeChildren[nodeId] || [];
+                const isLoading = loadingNodes[nodeId];
+                
+                // Função de ordenação
+                const sortItems = (items) => {
+                  if (!items || items.length === 0) return [];
+                  
+                  return [...items].sort((a, b) => {
+                    let aVal, bVal;
+                    
+                    switch (itemsSortConfig.key) {
+                      case 'name':
+                        aVal = (a.name || '').toLowerCase();
+                        bVal = (b.name || '').toLowerCase();
+                        break;
+                      case 'type':
+                        aVal = a.type || '';
+                        bVal = b.type || '';
+                        break;
+                      case 'size':
+                        aVal = parseInt(a.size) || 0;
+                        bVal = parseInt(b.size) || 0;
+                        break;
+                      case 'modified':
+                        aVal = a.modified || '';
+                        bVal = b.modified || '';
+                        break;
+                      default:
+                        return 0;
+                    }
+                    
+                    if (aVal < bVal) return itemsSortConfig.direction === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return itemsSortConfig.direction === 'asc' ? 1 : -1;
+                    return 0;
+                  });
+                };
+                
+                const handleSort = (key) => {
+                  setItemsSortConfig(prev => ({
+                    key,
+                    direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+                  }));
+                };
+                
+                const SortIcon = ({ columnKey }) => {
+                  if (itemsSortConfig.key !== columnKey) {
+                    return <ChevronRight className="w-3 h-3 opacity-30" />;
+                  }
+                  return itemsSortConfig.direction === 'asc' 
+                    ? <ChevronDown className="w-3 h-3" />
+                    : <ChevronRight className="w-3 h-3 rotate-[-90deg]" />;
+                };
+                
+                const sortedChildren = sortItems(children);
+                
+                const handleItemClick = (item) => {
+                  const path = item.fullPath;
+                  const shareName = selectedItem.share_name || selectedItem.shareName;
+                  handleSelectItem(item, item.type, path, shareName);
+                };
+                
+                if (isLoading) {
+                  return (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  );
+                }
+                
+                if (children.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      <Folder className="w-8 h-8 mb-2 opacity-30" />
+                      <p>Diretório vazio ou não carregado</p>
+                      <p className="text-xs mt-1">Expanda o item na árvore para carregar</p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="flex-1 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th 
+                            className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80"
+                            onClick={() => handleSort('name')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Nome
+                              <SortIcon columnKey="name" />
+                            </div>
+                          </th>
+                          <th 
+                            className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-24"
+                            onClick={() => handleSort('type')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Tipo
+                              <SortIcon columnKey="type" />
+                            </div>
+                          </th>
+                          <th 
+                            className="px-4 py-2 text-right font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-28"
+                            onClick={() => handleSort('size')}
+                          >
+                            <div className="flex items-center justify-end gap-1">
+                              Tamanho
+                              <SortIcon columnKey="size" />
+                            </div>
+                          </th>
+                          <th 
+                            className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-44"
+                            onClick={() => handleSort('modified')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Modificado
+                              <SortIcon columnKey="modified" />
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedChildren.map((item, idx) => {
+                          const isDir = item.type === 'Directory';
+                          const isItemDownloaded = !isDir && isFileDownloaded(item.fullPath);
+                          
+                          return (
+                            <tr 
+                              key={item.id || idx} 
+                              className="hover:bg-muted/50 cursor-pointer"
+                              onClick={() => handleItemClick(item)}
+                            >
+                              <td className="px-4 py-2 border-b border-border">
+                                <div className="flex items-center gap-2">
+                                  {isDir ? (
+                                    <Folder className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                                  ) : isItemDownloaded ? (
+                                    <FileCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                  ) : (
+                                    <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                  )}
+                                  <span className="truncate text-blue-400 hover:underline">
+                                    {item.name}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 border-b border-border text-muted-foreground">
+                                {item.type === 'Directory' ? 'Pasta' : 'Arquivo'}
+                              </td>
+                              <td className="px-4 py-2 border-b border-border text-right text-muted-foreground font-mono text-xs">
+                                {item.type === 'Directory' ? '—' : formatSize(item.size)}
+                              </td>
+                              <td className="px-4 py-2 border-b border-border text-muted-foreground text-xs">
+                                {item.modified ? formatDate(item.modified) : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </div>
     );
