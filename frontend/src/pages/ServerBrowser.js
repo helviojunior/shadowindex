@@ -338,9 +338,15 @@ const ServerBrowser = () => {
             <File className={`w-4 h-4 ${fileIconColor} flex-shrink-0`} />
           )}
           
-          {/* Name */}
-          <span className="text-sm truncate flex-1" title={isShare ? item.share_name : item.name}>
+          {/* Name - vermelho se acesso negado */}
+          <span 
+            className={`text-sm truncate flex-1 ${isAccessDenied ? 'text-red-500' : ''}`} 
+            title={isShare ? item.share_name : (item.errorMessage || item.name)}
+          >
             {isShare ? String(item.share_name) : String(item.name)}
+            {isAccessDenied && item.type !== 'AccessDenied' && (
+              <span className="ml-2 text-xs text-red-400">(Acesso Negado)</span>
+            )}
           </span>
         </div>
         
