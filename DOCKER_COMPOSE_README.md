@@ -73,16 +73,28 @@ REACT_APP_BACKEND_URL=http://localhost:9090
 
 ⚠️ **Importante**: Se alterar a porta do backend, atualize `REACT_APP_BACKEND_URL` no frontend.
 
-## 📦 Volumes
+## 📦 Armazenamento de Dados
 
-O docker-compose cria um volume persistente para o banco de dados SQLite:
+Os dados da aplicação (banco de dados SQLite, arquivos baixados e caches) são persistidos no diretório local `./ops_integration_data`:
 
 ```yaml
 volumes:
-  backend-db:
+  - ./ops_integration_data:/app/data
 ```
 
-Isso garante que seus dados não sejam perdidos ao parar os containers.
+**Estrutura do diretório:**
+```
+./ops_integration_data/
+├── ops_integration.db    # Banco de dados SQLite
+└── storage/              # Arquivos sincronizados
+    └── {server_guid}/    # Arquivos por servidor
+        └── {share_name}/ # Por compartilhamento
+```
+
+Isso garante:
+- ✅ Dados persistem mesmo após `docker-compose down`
+- ✅ Fácil backup (basta copiar o diretório)
+- ✅ Dados visíveis no host sem entrar no container
 
 ## 🔍 Troubleshooting
 
