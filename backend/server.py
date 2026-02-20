@@ -704,6 +704,7 @@ async def browse_server_directory(
     server_id: int,
     path: str,
     ignore_cache: bool = False,
+    share_name: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """Lista arquivos e diretórios de um caminho no servidor"""
@@ -725,7 +726,36 @@ async def browse_server_directory(
         root = ET.fromstring(result_str)
         
         items = []
+        access_denied = False
+        error_message = None
+        
         for result_elem in root.findall(".//Result"):
+            # Verificar se é um erro de acesso negado
+            message_elem = result_elem.find("message")
+            stacktrace_elem = result_elem.find("stacktrace")
+            
+            if message_elem is not None and message_elem.text:
+                msg_text = message_elem.text.lower()
+                if "access" in msg_text and "denied" in msg_text:
+                    access_denied = True
+                    error_message = message_elem.text
+                    
+                    # Atualizar o share no banco se share_name foi fornecido
+                    if share_name:
+                        share_result = await db.execute(
+                            select(ServerShare).where(
+                                ServerShare.server_guid == server.guid,
+                                ServerShare.share_name == share_name
+                            )
+                        )
+                        share = share_result.scalar_one_or_none()
+                        if share:
+                            share.access_denied = True
+                            share.error_message = message_elem.text
+                            await db.commit()
+                    
+                    continue
+            
             item_type = result_elem.find("type")
             name = result_elem.find("name")
             length = result_elem.find("length")
@@ -738,7 +768,8 @@ async def browse_server_directory(
                     "name": name.text if name.text else "",
                     "size": length.text if length is not None and length.text else "---",
                     "modified": lastwritetime.text if lastwritetime is not None and lastwritetime.text else "",
-                    "fullPath": fullname.text if fullname is not None and fullname.text else ""
+                    "fullPath": fullname.text if fullname is not None and fullname.text else "",
+                    "accessDenied": False
                 }
                 items.append(item)
         
@@ -752,7 +783,9 @@ async def browse_server_directory(
             "success": True,
             "path": path,
             "items": items,
-            "count": len(items)
+            "count": len(items),
+            "accessDenied": access_denied,
+            "errorMessage": error_message
         }
     
     except Exception as e:
