@@ -14,7 +14,7 @@ services:
       - "proxy.local:host-gateway"
     restart: unless-stopped
     volumes:
-      - backend-db:/app
+      - ./ops_integration_data:/app/data
 
   frontend:
     build:
@@ -28,6 +28,3 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
-volumes:
-  backend-db:
