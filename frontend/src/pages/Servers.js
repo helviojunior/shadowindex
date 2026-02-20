@@ -127,7 +127,7 @@ const Servers = () => {
                 <Input
                   id="name"
                   data-testid="server-name-input"
-                  placeholder="Servidor Principal"
+                  placeholder="servidor.exemplo.com"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -135,14 +135,27 @@ const Servers = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ip">Endereço IP</Label>
-                <Input
-                  id="ip"
-                  data-testid="server-ip-input"
-                  placeholder="192.168.1.100"
-                  value={formData.ip}
-                  onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-                  required
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="ip"
+                    data-testid="server-ip-input"
+                    placeholder="192.168.1.100"
+                    value={formData.ip}
+                    onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
+                    required
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResolveIp}
+                    disabled={resolvingIp || !formData.name}
+                    data-testid="resolve-ip-btn"
+                  >
+                    <Network className="w-4 h-4 mr-2" />
+                    {resolvingIp ? 'Resolvendo...' : 'Resolve IP'}
+                  </Button>
+                </div>
               </div>
             </div>
             <Button type="submit" disabled={loading} data-testid="add-server-btn">
