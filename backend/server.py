@@ -777,12 +777,39 @@ async def download_server_file(
     try:
         result_str = await soap_service.call_soap_operation(db, "Exec5", params, False)
         
-        # Extrair conteúdo base64
+        # Extrair conteúdo base64 do XML
         import xml.etree.ElementTree as ET
-        root = ET.fromstring(result_str)
         
-        # O conteúdo base64 está no texto do elemento raiz
-        content_base64 = root.text if root.text else ""
+        content_base64 = ""
+        
+        # Tentar parsear como XML
+        try:
+            root = ET.fromstring(result_str)
+            
+            # Buscar Exec5Result em qualquer namespace
+            # Primeiro tenta sem namespace
+            exec5_result = root.find(".//Exec5Result")
+            
+            if exec5_result is None:
+                # Tenta com namespace http://test/
+                exec5_result = root.find(".//{http://test/}Exec5Result")
+            
+            if exec5_result is None:
+                # Tenta buscar qualquer elemento que contenha "Result" no nome
+                for elem in root.iter():
+                    if 'Exec5Result' in elem.tag:
+                        exec5_result = elem
+                        break
+            
+            if exec5_result is not None and exec5_result.text:
+                content_base64 = exec5_result.text.strip()
+            else:
+                # Se não encontrou elemento específico, tenta o texto do root
+                content_base64 = root.text.strip() if root.text else ""
+                
+        except ET.ParseError:
+            # Se não é XML válido, assume que é o conteúdo base64 direto
+            content_base64 = result_str.strip()
         
         if not content_base64:
             raise Exception("Arquivo vazio ou não encontrado")
