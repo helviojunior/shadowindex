@@ -407,7 +407,7 @@ async def init_db():
                 SqlPreset(
                     db_type_id=mssql_id,
                     name="List Tables",
-                    query="SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_SCHEMA, TABLE_NAME",
+                    query="SELECT TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_SCHEMA, TABLE_NAME",
                     description="Lista todas as tabelas do banco atual"
                 ),
                 SqlPreset(
