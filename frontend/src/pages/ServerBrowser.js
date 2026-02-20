@@ -979,7 +979,7 @@ const ServerBrowser = () => {
                   Nenhum compartilhamento encontrado
                 </p>
               ) : (
-                shares.map((share) => renderTreeNode(share, 0))
+                shares.map((share, index) => renderTreeNode(share, 0, '', index === shares.length - 1, []))
               )}
             </div>
           </ScrollArea>
