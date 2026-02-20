@@ -89,6 +89,8 @@ class ServerShare(Base):
     remark = Column(String, nullable=True)
     access_denied = Column(Boolean, default=False)
     error_message = Column(String, nullable=True)
+    has_children = Column(Boolean, default=False)  # True se já fez fetch dos filhos e tem conteúdo
+    children_fetched = Column(Boolean, default=False)  # True se já tentou buscar os filhos
     discovered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class DownloadedFile(Base):
