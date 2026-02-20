@@ -1399,7 +1399,7 @@ const ServerBrowser = () => {
                 </button>
               )}
               
-              {(isShare || isDirectory) && (
+              {(isShare || isDirectory) && !isAccessDenied && (
                 <button
                   onClick={() => setActiveTab('objetos')}
                   className={`pb-3 text-sm font-medium transition-colors relative ${
@@ -1415,7 +1415,7 @@ const ServerBrowser = () => {
                 </button>
               )}
               
-              {(isShare || isDirectory) && bulkDownloadItems.length > 0 && (
+              {(isShare || isDirectory) && !isAccessDenied && bulkDownloadItems.length > 0 && (
                 <button
                   onClick={() => setActiveTab('download')}
                   className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
