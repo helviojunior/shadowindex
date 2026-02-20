@@ -229,14 +229,66 @@ async def init_db():
             cursor.execute('ALTER TABLE database_connections ADD COLUMN last_verified_at DATETIME')
             logger.info("Added column 'last_verified_at' to database_connections")
         
+        if 'db_type_id' not in columns:
+            cursor.execute('ALTER TABLE database_connections ADD COLUMN db_type_id INTEGER')
+            logger.info("Added column 'db_type_id' to database_connections")
+        
         conn.commit()
         conn.close()
     except Exception as e:
         logger.warning(f"Migration check for database_connections failed: {e}")
     
+    # Migration for sql_presets table
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("PRAGMA table_info(sql_presets)")
+        columns = {col[1] for col in cursor.fetchall()}
+        
+        if 'db_type_id' not in columns:
+            cursor.execute('ALTER TABLE sql_presets ADD COLUMN db_type_id INTEGER')
+            logger.info("Added column 'db_type_id' to sql_presets")
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Migration check for sql_presets failed: {e}")
+    
     # Create default records
     async with AsyncSessionLocal() as session:
         from sqlalchemy import select
+        
+        # Create default database types
+        result = await session.execute(select(DatabaseType))
+        existing_types = result.scalars().all()
+        
+        db_types_map = {}
+        if len(existing_types) == 0:
+            default_types = [
+                DatabaseType(name="Microsoft SQL Server", code="mssql", color="#CC2927"),
+                DatabaseType(name="MySQL", code="mysql", color="#4479A1"),
+                DatabaseType(name="PostgreSQL", code="postgres", color="#336791"),
+                DatabaseType(name="Oracle", code="oracle", color="#F80000"),
+                DatabaseType(name="SQLite", code="sqlite", color="#003B57"),
+                DatabaseType(name="MariaDB", code="mariadb", color="#003545"),
+                DatabaseType(name="MongoDB", code="mongodb", color="#47A248"),
+            ]
+            for db_type in default_types:
+                session.add(db_type)
+            await session.flush()
+            
+            # Refresh to get IDs
+            result = await session.execute(select(DatabaseType))
+            for t in result.scalars().all():
+                db_types_map[t.code] = t.id
+            
+            logger.info("Created default database types")
+        else:
+            for t in existing_types:
+                db_types_map[t.code] = t.id
+        
+        # Check if default proxy exists
         
         # Check if default proxy exists
         result = await session.execute(select(ProxyServer).where(ProxyServer.name == "Default Host Proxy"))
