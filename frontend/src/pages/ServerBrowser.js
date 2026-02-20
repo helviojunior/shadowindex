@@ -55,6 +55,7 @@ const ServerBrowser = () => {
   const [downloadedFiles, setDownloadedFiles] = useState([]);
   const [activeTab, setActiveTab] = useState('info');
   const [fileContent, setFileContent] = useState(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
   const [beautified, setBeautified] = useState(false);
 
@@ -73,6 +74,7 @@ const ServerBrowser = () => {
   useEffect(() => {
     setActiveTab('info');
     setFileContent(null);
+    setFilePreviewUrl(null);
     setBeautified(false);
   }, [selectedItem?.id]);
 
@@ -118,6 +120,33 @@ const ServerBrowser = () => {
       return;
     }
 
+    const filename = selectedItem.name;
+    
+    // Para imagens e PDFs, carregar como blob e criar URL
+    if (isImageFile(filename) || isPdfFile(filename)) {
+      setLoadingContent(true);
+      try {
+        const response = await axios.get(`${API}/servers/${serverId}/file-download`, {
+          params: { 
+            file_path: selectedItem.fullPath || selectedItem.serverPath,
+            share_name: selectedItem.shareName
+          },
+          responseType: 'blob'
+        });
+        
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        setFilePreviewUrl(url);
+        setFileContent(null);
+      } catch (error) {
+        console.error('Error loading file preview:', error);
+        toast.error('Erro ao carregar preview do arquivo');
+      } finally {
+        setLoadingContent(false);
+      }
+      return;
+    }
+
+    // Para arquivos de texto
     setLoadingContent(true);
     try {
       const response = await axios.get(`${API}/servers/${serverId}/file-content`, {
@@ -127,6 +156,7 @@ const ServerBrowser = () => {
         }
       });
       setFileContent(response.data.content);
+      setFilePreviewUrl(null);
       setBeautified(false);
     } catch (error) {
       console.error('Error loading file content:', error);
