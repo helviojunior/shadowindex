@@ -130,6 +130,14 @@ async def init_db():
             cursor.execute('ALTER TABLE server_shares ADD COLUMN error_message VARCHAR')
             logger.info("Added column 'error_message' to server_shares")
         
+        if 'has_children' not in columns:
+            cursor.execute('ALTER TABLE server_shares ADD COLUMN has_children BOOLEAN DEFAULT 0')
+            logger.info("Added column 'has_children' to server_shares")
+        
+        if 'children_fetched' not in columns:
+            cursor.execute('ALTER TABLE server_shares ADD COLUMN children_fetched BOOLEAN DEFAULT 0')
+            logger.info("Added column 'children_fetched' to server_shares")
+        
         conn.commit()
         conn.close()
         logger.info("Database migrations completed")
