@@ -29,11 +29,24 @@ class Credential(Base):
     password = Column(String, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+class DatabaseType(Base):
+    """Tipos de banco de dados suportados"""
+    __tablename__ = "database_types"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)  # MS-SQL, MySQL, PostgreSQL, etc.
+    code = Column(String, nullable=False, unique=True)  # mssql, mysql, postgres, etc.
+    icon = Column(String, nullable=True)  # Nome do ícone
+    color = Column(String, nullable=True)  # Cor para UI
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class DatabaseConnection(Base):
     __tablename__ = "database_connections"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, unique=True)
+    db_type_id = Column(Integer, nullable=True)  # FK para DatabaseType
     connection_string = Column(Text, nullable=False)
     verified = Column(Boolean, default=False)
     last_verified_at = Column(DateTime, nullable=True)
@@ -45,6 +58,7 @@ class SqlPreset(Base):
     __tablename__ = "sql_presets"
     
     id = Column(Integer, primary_key=True, index=True)
+    db_type_id = Column(Integer, nullable=True)  # FK para DatabaseType (null = universal)
     name = Column(String, nullable=False)
     query = Column(Text, nullable=False)
     description = Column(String, nullable=True)
