@@ -610,13 +610,12 @@ const ServerBrowser = () => {
     const currentShareName = isShare ? item.share_name : shareName;
     
     // Para shares: usar flag do banco (children_fetched)
-    // Para outros diretórios: usar estado local (hasLoadedChildren)
+    // Para diretórios: usar estado local (nodeChildren existe para este nodeId)
     const childrenFetched = isShare ? item.children_fetched : hasLoadedChildren;
-    const hasChildren = isShare ? item.has_children : (children.length > 0);
     
-    // Determina se o item ainda não foi carregado (fetch não realizado)
-    // Usar a flag do banco para shares, e estado local para subdiretórios
-    const isNotFetched = isDirectory && !childrenFetched && !isExpanded;
+    // Determina se o item ainda não teve seus filhos carregados
+    // Um diretório é considerado "não carregado" se nunca fizemos fetch dos filhos
+    const isNotFetched = isDirectory && !childrenFetched;
     
     // Cor do ícone baseada no status de acesso, download e fetch
     const getIconColor = () => {
