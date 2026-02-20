@@ -937,17 +937,16 @@ const ServerBrowser = () => {
               <Button 
                 size="sm" 
                 onClick={handleDownload}
-                disabled={loading || downloaded}
+                disabled={loading}
+                variant={downloaded ? "outline" : "default"}
                 data-testid="sync-button"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : downloaded ? (
-                  <Check className="w-4 h-4 mr-2" />
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
-                {downloaded ? 'Synced' : 'Sync'}
+                Sync
               </Button>
             </div>
           )}
