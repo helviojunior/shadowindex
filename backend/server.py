@@ -130,6 +130,8 @@ class ServerShareResponse(BaseModel):
     share_name: str
     share_type: Optional[str]
     remark: Optional[str]
+    access_denied: bool = False
+    error_message: Optional[str] = None
     discovered_at: datetime
 
 class DownloadedFileResponse(BaseModel):
