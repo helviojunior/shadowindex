@@ -116,8 +116,66 @@ def save_downloaded_file(
 
 def calculate_sha1_from_base64(content_base64: str) -> str:
     """Calcula SHA1 hash de conteúdo em base64"""
+    if not content_base64:
+        # Hash de arquivo vazio
+        return hashlib.sha1(b'').hexdigest()
     file_content = base64.b64decode(content_base64)
     return hashlib.sha1(file_content).hexdigest()
+
+
+def save_empty_file(
+    server_guid: str,
+    share_name: str,
+    file_path: str,
+    version: int = None
+) -> Tuple[Path, str, str, int]:
+    """
+    Salva um arquivo vazio na estrutura de diretórios
+    
+    Args:
+        server_guid: GUID do servidor
+        share_name: Nome do compartilhamento
+        file_path: Caminho do arquivo
+        version: Número da versão (None para auto)
+    
+    Returns:
+        tuple[Path, str, str, int]: (caminho completo, caminho sanitizado, sha1_hash, tamanho=0)
+    """
+    # Obter caminho do arquivo
+    file_storage_path = get_file_storage_path(server_guid, share_name, file_path)
+    
+    # Garantir que o diretório existe
+    ensure_storage_path(file_storage_path)
+    
+    # Extrair nome do arquivo do caminho
+    file_name = Path(file_path).name
+    sanitized_file_name = sanitize_path_component(file_name)
+    
+    # SHA1 de arquivo vazio
+    sha1_hash = hashlib.sha1(b'').hexdigest()
+    
+    # Se versão especificada, adicionar ao nome do arquivo
+    if version and version > 1:
+        name_parts = sanitized_file_name.rsplit('.', 1)
+        if len(name_parts) == 2:
+            versioned_name = f"{name_parts[0]}_v{version}.{name_parts[1]}"
+        else:
+            versioned_name = f"{sanitized_file_name}_v{version}"
+        full_file_path = file_storage_path / versioned_name
+    else:
+        full_file_path = file_storage_path / sanitized_file_name
+    
+    # Criar arquivo vazio
+    try:
+        with open(full_file_path, 'wb') as f:
+            pass  # Arquivo vazio
+    except Exception as e:
+        raise Exception(f"Erro ao criar arquivo vazio: {str(e)}")
+    
+    # Retornar caminho completo, caminho sanitizado relativo, hash e tamanho
+    relative_path = str(full_file_path.relative_to(STORAGE_BASE_PATH))
+    
+    return full_file_path, relative_path, sha1_hash, 0
 
 
 def calculate_sha1_from_file(file_path: str) -> Optional[str]:
