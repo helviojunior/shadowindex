@@ -1513,6 +1513,7 @@ async def download_server_file(
     server_id: int,
     file_path: str,
     share_name: str,
+    expected_size: int = 0,  # Tamanho esperado do arquivo (opcional)
     db: AsyncSession = Depends(get_db)
 ):
     """Baixa um arquivo do servidor via SOAP com versionamento"""
@@ -1558,11 +1559,16 @@ async def download_server_file(
         except ET.ParseError:
             content_base64 = result_str.strip()
         
+        # Verificar se arquivo está vazio
         if not content_base64:
-            raise Exception("Arquivo vazio ou não encontrado")
+            # Se o tamanho esperado é 0, criar arquivo vazio
+            if expected_size == 0:
+                content_base64 = ""  # Arquivo vazio
+            else:
+                raise Exception("Arquivo vazio ou não encontrado")
         
-        # Calcular SHA1 do novo conteúdo
-        from storage_utils import save_downloaded_file, calculate_sha1_from_base64
+        # Calcular SHA1 do novo conteúdo (para vazio será hash de string vazia)
+        from storage_utils import save_downloaded_file, calculate_sha1_from_base64, save_empty_file
         new_sha1 = calculate_sha1_from_base64(content_base64)
         
         # Verificar se já existe uma versão deste arquivo
