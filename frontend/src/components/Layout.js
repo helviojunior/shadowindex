@@ -186,18 +186,14 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           <aside 
             className={cn(
               "relative bg-card border-r border-border transition-all duration-300 ease-in-out flex-shrink-0",
-              // Em telas pequenas (< lg), sempre colapsa. Em telas grandes, segue o estado
-              "w-16 lg:w-16",
-              !sidebarCollapsed && "lg:w-52"
+              effectiveCollapsed ? "w-16" : "w-52"
             )}
           >
             <div className="flex flex-col h-full">
               {/* Menu Items */}
               <nav className={cn(
                 "flex-1 space-y-1 overflow-y-auto scrollbar-thin",
-                // Em telas pequenas sempre usa padding de colapsado
-                "p-2 pt-3",
-                !sidebarCollapsed && "lg:p-3"
+                effectiveCollapsed ? "p-2 pt-3" : "p-3"
               )}>
                 {menuItems.map((item) => {
                   const Icon = item.icon;
@@ -210,40 +206,38 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                       data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                       className={cn(
                         "flex items-center rounded-md transition-all text-sm",
-                        // Em telas pequenas sempre centraliza
-                        "justify-center p-2.5",
-                        !sidebarCollapsed && "lg:justify-start lg:gap-2.5 lg:px-3 lg:py-2.5",
+                        effectiveCollapsed 
+                          ? "justify-center p-2.5" 
+                          : "justify-start gap-2.5 px-3 py-2.5",
                         isActive
                           ? "bg-primary text-primary-foreground shadow-md"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
                       <Icon size={18} />
-                      {/* Label só aparece em telas grandes quando não colapsado */}
-                      <span className={cn(
-                        "font-medium text-sm hidden",
-                        !sidebarCollapsed && "lg:inline"
-                      )}>
-                        {item.label}
-                      </span>
+                      {!effectiveCollapsed && (
+                        <span className="font-medium text-sm">
+                          {item.label}
+                        </span>
+                      )}
                     </Link>
                   );
 
-                  // Tooltip em telas pequenas ou quando colapsado
-                  return (
-                    <Tooltip key={item.path}>
-                      <TooltipTrigger asChild>
-                        {linkContent}
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className={cn(
-                        "font-medium",
-                        // Esconde tooltip em telas grandes quando expandido
-                        !sidebarCollapsed && "lg:hidden"
-                      )}>
-                        {item.label}
-                      </TooltipContent>
-                    </Tooltip>
-                  );
+                  // Tooltip when collapsed
+                  if (effectiveCollapsed) {
+                    return (
+                      <Tooltip key={item.path}>
+                        <TooltipTrigger asChild>
+                          {linkContent}
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="font-medium">
+                          {item.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+
+                  return linkContent;
                 })}
               </nav>
 
