@@ -1,196 +1,179 @@
 <analysis>**original_problem_statement:**
-The user initially requested a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. This included integrating with an external SOAP service, implementing caching, offline mode, and a server management feature with an interactive file browser.
-
-The project has since evolved, with the current focus being on building a comprehensive SQL management and execution tool within the application. The latest requests involve adding advanced features to the SQL editor, such as keyboard shortcuts, autocomplete, connection testing, and expanding the library of pre-defined SQL queries (presets) for various database systems.
+The user initially requested a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. The project has since evolved into a comprehensive SQL management and execution tool. Recent requests have focused on improving the SQL editor and implementing a complex file versioning system for a server file browser feature. The latest requests involve fixing state management bugs in the server file browser.
 
 **PRODUCT REQUIREMENTS:**
 - A web panel with a modern dark mode layout and a collapsible left sidebar.
 - Cadastro (Registration) sections for Credentials, SQL Connections, Proxy Servers, and SOAP URLs.
-- A global option to select an active proxy and another to ignore the cache.
-- Integration with an external SOAP web service with 24-hour caching and an offline mode.
-- A Servers management feature with an interactive, JFrog-style file browser that loads data from the SOAP API and a local cache.
+- A Servers management feature with an interactive file browser that syncs files from an external API. This browser must support file versioning based on SHA1 hashes, allowing users to view and sync different versions of a file.
 - A SQL feature that includes:
-    - Management of database connections, with support for different DB types (MSSQL, MySQL, PostgreSQL, etc.).
-    - A CRUD interface for managing a library of preset SQL queries, linked to specific database types.
-    - A multi-tab SQL execution interface where users can run queries against their configured connections.
-    - The SQL editor must support syntax highlighting, autocomplete for tables/columns, and keyboard shortcuts ( to execute).
-    - A Test Connection button for each database connection.
-    - Query history tracking and the ability to re-run past queries.
-    - Export functionality for query results (CSV/Excel).
+    - Management of database connections (MSSQL, MySQL, PostgreSQL, etc.).
+    - A CRUD interface for a library of preset SQL queries.
+    - A multi-tab SQL execution interface with syntax highlighting, keyboard shortcuts (), and query history.
+    - Functionality to test connections, edit connections, and export query results.
+    - Persistence of open SQL tabs across browser sessions.
 
 **User's preferred language**: Portuguese. The next agent MUST respond in Portuguese.
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and a React frontend. The backend uses SQLAlchemy to interact with a persistent SQLite database located at .
+A full-stack application with a FastAPI backend and a React frontend, using a persistent SQLite database. The application's data is now stored in a host-mounted directory ().
 
-The primary feature, the SQL dashboard, is highly functional. It allows users to:
-- Define database connections, specifying a name, connection string, and database type (e.g., MS-SQL, PostgreSQL).
-- Manage a central library of preset SQL queries. These presets can be linked to specific database types.
-- The main SQL Executor page features:
-    - A multi-tab interface to work on several queries at once.
-    - A resizable, two-row layout with the SQL editor on top and the results panel at the bottom.
-    - SQL syntax highlighting via PrismJS.
-    - A dropdown to select and load presets, which are automatically filtered based on the current connection's database type.
-    - A modal to view and re-run past queries from the history.
-    - Buttons to export query results to CSV and Excel.
+- **SQL Dashboard:** A feature-rich tool for managing and executing SQL queries. It supports multiple database types, connection management (add, edit, test), a library of presets, a multi-tab editor with syntax highlighting, query history, data export, and localStorage persistence for open tabs. DB types are now represented by official logos.
 
-The backend is fully equipped with the necessary SQLAlchemy models (, , , ) and FastAPI endpoints to support these features. The database is automatically seeded with a default list of database types and associated presets on startup.
+- **Server Browser:** An interface for browsing files from a SOAP service. It features a file versioning system where syncing a file calculates its SHA1 hash and stores it as a new version if the hash is different. The backend models (, , ) and API endpoints () have been updated to support this. However, this feature is currently affected by critical UI bugs.
 
 **Last working item**:
-- **Last item agent was working:** Implementing a batch of new enhancements for the SQL Executor, as requested by the user:
-    1.  Add a  keyboard shortcut to execute queries.
-    2.  Add a Testar Conexão (Test Connection) button on the database connections page.
-    3.  Implement autocomplete for SQL tables and columns within the editor.
-    4.  Add a large list of new, more complex presets for MSSQL, PostgreSQL, and MySQL.
+- **Last item agent was working:** Debugging two critical bugs in the  component related to UI state management after expanding a share (directory) node in the file tree.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
 - **Which testing method agent to use?** both.
-    - **Backend:** After implementing the new presets and endpoints, restart the backend and use  to test the new  and  (for autocomplete) endpoints. Verify the new presets exist in the database.
-    - **Frontend:** Use the  tool to:
-        1.  Verify the Testar Conexão button works and provides feedback.
-        2.  Confirm that typing  in the editor executes the query.
-        3.  Check that autocomplete suggestions for tables/columns appear while typing in the SQL editor.
+    - **Backend:** The agent needs to verify the  endpoint works correctly and that the  endpoint no longer destructively deletes share state. This can be tested with .
+    - **Frontend:** Use the  tool to verify the UI behavior on the Server Browser page after applying fixes. Specifically, check that a share turns blue immediately on expansion and that the expanded state persists after clicking the refresh button.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0): Complete the SQL Executor enhancements.**
+- **Issue 1 (P0): Server share does not turn blue on first expansion.**
+- **Issue 2 (P1): Refreshing shares resets the entire tree's expanded state.**
 
 **Issues Detail:**
-- **Issue 1: Complete the SQL Executor enhancements.**
-    - **Attempted fixes:** The agent started the implementation.
-        - **Backend:** Created the  endpoint in  to handle the connection test.
-        - **Frontend:** Modified  and . Added the  hook for the  keyboard shortcut and integrated the Test Connection button with its corresponding API call. The state management for autocomplete suggestions was initiated, but the core logic is missing.
+- **Issue 1: Server share does not turn blue on first expansion.**
+    - **Attempted fixes:** The agent identified that the UI was not updating immediately because the  flag was only being set in the local React state, not persisted. A  endpoint was created in  and the frontend  was modified to call this endpoint when a node is expanded. However, the user reports the issue persists.
     - **Next debug checklist:**
-        1.  **Backend:**
-            - In , update the  function to include the large list of new MSSQL, MySQL, and PostgreSQL presets provided by the user.
-            - In , create the  endpoint. This endpoint will need to connect to the target database and fetch a list of its tables and columns to power the autocomplete feature.
-        2.  **Frontend:**
-            - In , implement the logic to call the new  endpoint and use the returned data to provide suggestions within the PrismJS editor as the user types. This will likely involve integrating with the editor's API or using a wrapper component.
-            - Ensure the Test Connection button provides clear visual feedback (e.g., toast notification, status icon change) upon success or failure.
-    - **Why fix this issue and what will be achieved with the fix?** This will elevate the SQL Executor from a basic tool to a professional-grade editor, significantly improving user productivity and experience.
+        1.  In , within the  function (or equivalent), place  statements to trace the API call to . Verify it is being called with the correct ID.
+        2.  Check the browser's network tab (via agent's internal tools) to confirm the  request is successful (returns 200 OK) and that the response contains the updated share object with .
+        3.  Verify that the React state update ( or similar) is correctly using the response from the PATCH call to re-render the component. The component rendering the node color might be using stale data.
+    - **Why fix this issue and what will be achieved with the fix?** Provides essential visual feedback to the user, confirming that a directory's contents have been loaded.
     - **Status:** IN PROGRESS
-    - **Is recurring issue?** N
+    - **Is recurring issue?** Y
+    - **Should Test frontend/backend/both after fix?** Both.
+    - **Blocked on other issue:** Potentially linked to Issue 2.
+
+- **Issue 2: Refreshing shares resets the entire tree's expanded state.**
+    - **Attempted fixes:** The agent found that the backend endpoint  was destructively deleting all existing shares for a server before fetching new ones, thus losing all state like . The agent modified this logic in  to perform an upsert-like operation, preserving existing shares.
+    - **Next debug checklist:**
+        1.  Review the implementation of the  endpoint in . Ensure the logic correctly identifies existing shares (by a unique key like  or ) and updates them instead of deleting and re-creating them.
+        2.  In , review the  function. It was previously clearing , which caused the UI to collapse. The agent attempted a fix to preserve this state. Verify that the current implementation correctly maintains the  set for nodes that still exist after the refresh.
+    - **Why fix this issue and what will be achieved with the fix?** Prevents a frustrating user experience where the entire navigation context is lost on a simple refresh.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** Y
     - **Should Test frontend/backend/both after fix?** Both.
     - **Blocked on other issue:** None.
 
 **In progress Task List**:
-- **Task 1: Complete SQL Executor Enhancements**
-    - **Where to resume:**
-        1.  : Add the new list of default SQL presets.
-        2.  : Implement the  endpoint for autocomplete data.
-        3.  : Build the client-side logic for the autocomplete feature.
-    - **What will be achieved with this?** A more powerful and user-friendly SQL editor with shortcuts, autocomplete, and a richer set of default queries.
+- **Task 1: Resolve Server Browser Bugs**
+    - **Where to resume:** Resume debugging in  and  following the checklists for the two pending issues above. The core of the problem lies in the synchronization of state between the frontend (React state), the backend (API logic), and the database.
+    - **What will be achieved with this?** A stable and usable Server Browser feature.
     - **Status:** IN PROGRESS
     - **Should Test frontend/backend/both after fix?** Both.
     - **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
-- **Upcoming Tasks:**
-    - None. The current focus is on finishing the SQL enhancements.
 - **Future Tasks:**
     - **(P2) Mock SOAP Service for Testing:** Create a mock service to test the file browser logic without relying on the live, unreliable API.
-    - **(P3) Refactor DB Schema Migration:** The current custom migration script in  is brittle. Refactor to use a dedicated migration tool like .
+    - **(P3) Refactor DB Schema Migration:** Refactor the current custom migration logic to use a dedicated migration tool like .
     - **(P4) Complete File Download Tracking:** Persist the downloaded status of a file in the  model after a successful sync/download.
 
 **Completed work in this session**
-- **File Browser Bug Fixes:**
-    - Corrected the logic to prevent already-loaded tree nodes from expanding automatically on page load.
-    - Fixed the color-coding for subdirectories to correctly reflect their  status (blue for loaded, gray for not loaded).
-- **Major SQL Feature Implementation:**
-    - **Database Type System:** Created backend models and frontend UI to manage different database types (e.g., MS-SQL, MySQL), each with a unique color for identification.
-    - **Connection Management Overhaul:**
-        - The list of SQL connections is now displayed in a detailed table view.
-        - The Add Connection form now includes a dropdown to select the .
-    - **DB-Specific Presets:**
-        - SQL presets are now linked to a specific .
-        - The SQL Executor's preset dropdown is now filtered to only show presets relevant to the active connection's DB type.
-    - **SQL Executor UI/UX Enhancements:**
-        - **Layout:** Changed from a fixed two-column layout to a resizable two-row layout (editor on top, results below).
-        - **Multi-Tab Queries:** Implemented a full multi-tab interface for writing and managing concurrent queries.
-        - **Syntax Highlighting:** Integrated PrismJS to provide SQL syntax highlighting in the editor.
-        - **Data Export:** Added buttons to export query results to CSV and Excel files.
-        - **History Modal:** Moved the query history display into a separate modal window, which can be used to open past queries in new tabs.
+- **File Versioning System:**
+  - Implemented a file versioning system using SHA1 hashes. Syncing a file now calculates its hash and saves it as a new version if the hash differs from the previous one.
+  - Modified backend models (), storage utilities (), and the sync endpoint ().
+  - Updated the frontend  to always enable the Sync button, show status messages (Arquivo atualizado, Arquivo sem alteração), and include a (partially implemented) dropdown for versions.
+- **SQL Editor & Connection Management:**
+  - **Edit Connections:** Added functionality to edit existing SQL connections via a modal.
+  - **DB Logos:** Replaced colored dots with database logos ( component) in the connection list and SQL editor. Corrected the MS SQL Server logo based on user feedback.
+  - **Test in Add Modal:** Added a Testar Conexão button to the Add Connection modal.
+  - **Clickable Links:** Made connection names in the list table clickable links that open the SQL editor.
+  - **Presets Scrollbar:** Fixed a CSS issue where the presets dropdown in the SQL editor was not scrollable.
+  - **Result Header Layout:** Re-arranged the query result header to place status, execution time, and row count on a single line.
+  - **History with Results:** When opening a query from history, the new tab is now pre-filled with both the query and its previously fetched result and execution timestamp.
+  - **Tab Persistence:** Implemented  caching to persist and restore open SQL editor tabs and their content on browser refresh.
+  - **Export Filename:** Changed the exported CSV/Excel filename format to .
+- **General UI/UX:**
+  - **Server Browser Layout:** Moved the Refresh Shares button to be inline with the Compartilhamentos title.
+- **Infrastructure & DX:**
+  - **Persistent Storage:** Modified  and  to mount a local  directory for the database, removing the Docker-managed volume.
+  - **:** Cleaned up the  file and added  and  to it.
 
 **Earlier issues found/mentioned but not fixed**
-- None. The recurring issue of Verify cache storage was investigated and addressed in this session. The agent confirmed the code logic is correct and the database table exists. A live test is not possible due to the unavailability of the external SOAP API, but the implementation itself has been verified.
+- None.
 
 **Known issue recurrence from previous fork**
-- **Issue recurrence in previous fork:** Verify the cache storage mechanism
-- **Recurrence count:** 2
-- **Status:** RESOLVED (Verified implementation, though live E2E test is not possible).
+- None in this session.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend:** React, Tailwind CSS, Shadcn UI, .
-    - **SQL Editor:**  combined with  for syntax highlighting.
-    - **Layout:**  for the resizable editor/results view.
-    - **Export:**  and  libraries for CSV/Excel generation.
+- **Frontend:** React, Tailwind CSS, Shadcn UI.
+  - **State Management:** Heavy use of  and  for managing complex UI states in  and .
+  - **Local Persistence:**  is used to cache open SQL tabs.
 - **Backend:** FastAPI, Pydantic, SQLAlchemy.
-- **Database:** SQLite. The  file now contains a significant  function to seed the database with default data on startup.
+- **Database:** SQLite.
+- **File Hashing:** Python's  library is used to calculate SHA1 hashes for file versioning.
+- **Containerization:** Docker Compose is used for local development, now configured with a bind mount for persistent data.
 
 **key DB schema**
-- **DatabaseType:** 
 - **DatabaseConnection:** 
-- **SqlPreset:** 
-- **SqlQueryHistory:** 
 - **ServerShare:** 
-- **ServerFile:** 
+- **DownloadedFile:** 
+- **FileVersion:** 
+- **ServerFile:** (Implicitly used from SOAP, represents remote file)
 
 **All files of reference**
-- **Core SQL Feature Files:**
-    - : The main SQL editor page. (new/modified)
-    - : Manages SQL connections. (new/modified)
-    - : Manages the preset query library. (new/modified)
-    - : Contains all new API endpoints for the SQL functionality. (modified)
-    - : Contains the new SQLAlchemy models for the SQL feature. (modified)
-    - : Contains the logic to seed the database with types and presets. (modified)
-- **Supporting Files:**
-    - : Updated with routes for the new SQL pages.
-    - : Sidebar link updated.
-    - : Minor bug fixes applied.
-    - : New CSS file for syntax highlighting theme.
-    -  & : Updated with new dependencies (, , , , etc.).
+- **Buggy Files (Primary Focus):**
+    - : Contains the frontend logic for the file tree, state management, and API calls that are currently buggy.
+    - : Contains the API endpoints (, ) whose logic is central to the bugs.
+- **Recently Modified Files:**
+    - 
+    - 
+    - 
+    - 
+    - 
+    - 
+    - 
+    - 
 
 **Critical Info for New Agent**
-- **Immediate Task:** The highest priority is to complete the in-progress SQL enhancements: add new presets, implement the Test Connection endpoint, and build the autocomplete feature.
-- **Autocomplete Implementation:** The autocomplete feature is the most complex part of the remaining task. It requires a backend endpoint () that can dynamically connect to the user-provided database, query its schema (tables and columns), and return the data. This must be handled carefully to manage potential errors (invalid credentials, network issues, unsupported drivers).
-- **Database Seeding:** All default data (DB types, presets) is now managed in the  function in . To add the user's requested presets, this is the file to modify.
+- **Top Priority:** You must fix the two interconnected bugs in the **Server Browser**. Do not move on to other tasks until this feature is stable.
+- **Debugging Strategy:** The root cause is a desynchronization between the frontend's local state, the backend's API logic, and the database's persistent state.
+    1.  Focus on : Ensure the  endpoint correctly *updates* existing shares instead of deleting them.
+    2.  Focus on : Ensure the  call is made successfully on node expansion and that the component's state is updated with the fresh data from the API response, forcing a re-render that turns the node blue.
 
 **documents and test reports created in this job**
 - None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Fix file browser bugs (auto-expand & subdirectory coloring). (Completed)
-2.  **Agent:** Confirmed fixes.
-3.  **User:** New task: Create a full SQL feature set (connections, presets, executor, history). (Completed)
-4.  **Agent:** Implemented the base SQL feature.
-5.  **User:** New task: Add export to CSV/Excel, syntax highlighting, and multi-tab queries. (Completed)
-6.  **Agent:** Implemented these enhancements.
-7.  **User:** New task: Change the executor layout to be vertical and resizable, and move history to a modal. (Completed)
-8.  **Agent:** Implemented the layout changes.
-9.  **User:** New task: Add DB Types, link presets to them, and update the UI to use a table for connections and filter presets. (Completed)
-10. **User:** New task: Implement  shortcut, autocomplete, a Test Connection button, and add a large new list of presets for multiple DB types. (IN PROGRESS)
+1.  **User:** When downloading (Sync) a file, calculate its SHA1 hash, save it to the DB, and implement a versioning system.
+2.  **Agent:** Implemented the file versioning system on the backend and frontend.
+3.  **User:** The Update Shares button has a bug; it removes the expanded/viewed flag.
+4.  **Agent:** Investigated and found the  function was resetting the state.
+5.  **User:** When clicking a Share, it's not being marked in blue, only after a page refresh. The flag seems to be a DB status issue.
+6.  **Agent:** Investigated and found the backend's refresh logic was destructively deleting and re-creating shares.
+7.  **Agent:** Also found the frontend wasn't persisting the  state to the DB and created a  endpoint to fix it.
+8.  **User:** The share is still not being marked blue on the first expansion.
+9.  **Agent:** Began a deeper investigation into the frontend state management in .
+10. **Agent:** Suspected an issue with how the component re-renders after the state is updated and was examining the code flow.
 
 **Project Health Check:**
-- **Broken:** The autocomplete feature is not implemented. The  shortcut and Test Connection button are partially implemented on the frontend but require backend completion and full testing.
-- **Mocked:** No mocked services are in use. The application relies on a live SQLite database and assumes it can connect to user-defined external databases.
+- **Broken:**
+    - The  feature is functionally broken due to the UI state bugs (nodes not turning blue, tree collapsing on refresh). This is the highest priority to fix.
+- **Mocked:**
+    - The  relies on a SOAP API that is unavailable in the test environment. All testing for this feature is based on code logic and cannot be end-to-end verified without a mock or the live service.
 
 **3rd Party Integrations**
 - **Custom SOAP Web Service:** Private SOAP API for the file browser feature.
 - **UI Libraries:** , .
 - **SQL Editor:** , .
 - **Data Handling:** , .
-- **Database Drivers:**  (for MS-SQL), potentially others needed for different DB types.
+- **Database Drivers:** .
 
 **Testing status**
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None in this session.
-- **Known regressions:** None.
+- **Test files created:** None.
+- **Known regressions:** The 's core functionality regressed due to the state management bugs.
+
+**Credentials to test flow:**
+- No new credentials were introduced. The app uses a local SQLite database and assumes the user provides valid connection strings for external databases.
 
 **What agent forgot to execute**
-- The agent was in the middle of a large implementation and did not forget any steps, but the following parts of the last user request are not yet complete:
-    - Adding the new, extensive list of SQL presets to .
-    - Fully implementing the autocomplete feature, which includes the backend endpoint to fetch the database schema and the frontend logic to display suggestions.</analysis>
+- The agent was in the middle of a complex debugging session for the  bugs. The fixes were incomplete, and the agent had not yet fully resolved the root causes of the state synchronization issues.</analysis>
