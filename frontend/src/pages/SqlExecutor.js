@@ -590,10 +590,7 @@ const SqlExecutor = () => {
                       )}
                     </CardTitle>
                   </CardHeader>
-                  <div 
-                    className="max-h-[350px] overflow-y-auto"
-                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#666 #333' }}
-                  >
+                  <div className="max-h-[350px] overflow-y-auto presets-dropdown-scroll">
                     {presets.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-3">Nenhum preset disponível</p>
                     ) : (
