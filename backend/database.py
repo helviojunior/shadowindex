@@ -1,9 +1,12 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, inspect
 from datetime import datetime, timezone
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = "sqlite+aiosqlite:///./ops_integration.db"
 
