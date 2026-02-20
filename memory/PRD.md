@@ -24,7 +24,7 @@ Dashboard web para gerenciar credenciais, conexões de banco de dados, servidore
 - [x] CRUD completo para Credenciais, DB Connections, Proxies, SOAP APIs, Servers
 - [x] Integração com web service SOAP externo
 - [x] Sistema de cache de 24 horas para respostas SOAP
-- [x] Toggle global "Ignorar Cache"
+- [x] Toggle global "Ignorar Cache" - funcional em todas as páginas
 - [x] Seletor de proxy ativo no header
 - [x] Rotas de servidores com refresh automático via SOAP
 - [x] **File browser estilo JFrog** com:
@@ -33,10 +33,13 @@ Dashboard web para gerenciar credenciais, conexões de banco de dados, servidore
   - Suporte a shares com caracteres especiais ($)
   - Diferentes informações baseadas no tipo de item (Share/Directory/File)
   - Navegação hierárquica com expand/collapse
+  - Carregamento dinâmico de subdiretórios via SOAP Exec4
   - Download de arquivos
 - [x] Parsing XML sem namespace hardcoded
 - [x] URI SOAP dinâmica do banco de dados
 - [x] Correção de duplicação de shares no refresh
+- [x] **Botão Resolve IP** - parsing robusto de resposta JSON/XML
+- [x] **Página SOAP Operations** - tabs funcionando com estado controlado
 
 ## Pending Issues
 - [ ] P1: Erro SSL com proxy (bloqueado - aguarda detalhes do usuário)
