@@ -56,7 +56,56 @@ class DatabaseConnectionResponse(BaseModel):
     id: int
     name: str
     connection_string: str
+    verified: bool = False
+    last_verified_at: Optional[datetime] = None
     created_at: datetime
+
+
+# SQL Presets Models
+class SqlPresetCreate(BaseModel):
+    name: str
+    query: str
+    description: Optional[str] = None
+
+class SqlPresetUpdate(BaseModel):
+    name: Optional[str] = None
+    query: Optional[str] = None
+    description: Optional[str] = None
+
+class SqlPresetResponse(BaseModel):
+    id: int
+    name: str
+    query: str
+    description: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+# SQL Query History Models
+class SqlQueryHistoryResponse(BaseModel):
+    id: int
+    connection_id: int
+    connection_name: str
+    query: str
+    result: Optional[str]
+    success: bool
+    error_message: Optional[str]
+    execution_time_ms: Optional[int]
+    executed_at: datetime
+
+
+# SQL Execution Models
+class SqlExecuteRequest(BaseModel):
+    connection_id: int
+    query: str
+
+class SqlExecuteResponse(BaseModel):
+    success: bool
+    columns: Optional[List[str]] = None
+    rows: Optional[List[List[Any]]] = None
+    row_count: int = 0
+    execution_time_ms: int = 0
+    error_message: Optional[str] = None
 
 class ProxyServerCreate(BaseModel):
     name: str
