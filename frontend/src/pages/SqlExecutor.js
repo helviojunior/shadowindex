@@ -579,8 +579,8 @@ const SqlExecutor = () => {
               </Button>
               
               {showPresets && (
-                <Card className="absolute top-full left-0 mt-1 w-96 z-50 shadow-lg max-h-[400px] flex flex-col">
-                  <CardHeader className="py-2 px-3 flex-shrink-0">
+                <Card className="absolute top-full left-0 mt-1 w-96 z-50 shadow-lg">
+                  <CardHeader className="py-2 px-3 border-b border-border">
                     <CardTitle className="text-sm">
                       Comandos Pré-definidos
                       {connection.db_type_name && (
@@ -590,33 +590,34 @@ const SqlExecutor = () => {
                       )}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0 flex-1 overflow-hidden">
-                    <div className="h-[320px] overflow-y-auto">
-                      {presets.length === 0 ? (
-                        <p className="text-sm text-muted-foreground p-3">Nenhum preset disponível</p>
-                      ) : (
-                        presets.map((preset) => (
-                          <div
-                            key={preset.id}
-                            className="p-3 hover:bg-muted cursor-pointer border-b border-border last:border-0"
-                            onClick={() => selectPreset(preset)}
-                            data-testid={`preset-item-${preset.id}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{preset.name}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {preset.db_type_name || 'Universal'}
-                              </Badge>
-                            </div>
-                            {preset.description && (
-                              <div className="text-xs text-muted-foreground mt-1">{preset.description}</div>
-                            )}
-                            <div className="text-xs font-mono text-primary/70 mt-1 truncate">{preset.query}</div>
+                  <div 
+                    className="max-h-[350px] overflow-y-auto"
+                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#666 #333' }}
+                  >
+                    {presets.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-3">Nenhum preset disponível</p>
+                    ) : (
+                      presets.map((preset) => (
+                        <div
+                          key={preset.id}
+                          className="p-3 hover:bg-muted cursor-pointer border-b border-border last:border-0"
+                          onClick={() => selectPreset(preset)}
+                          data-testid={`preset-item-${preset.id}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{preset.name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {preset.db_type_name || 'Universal'}
+                            </Badge>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </CardContent>
+                          {preset.description && (
+                            <div className="text-xs text-muted-foreground mt-1">{preset.description}</div>
+                          )}
+                          <div className="text-xs font-mono text-primary/70 mt-1 truncate">{preset.query}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </Card>
               )}
             </div>
