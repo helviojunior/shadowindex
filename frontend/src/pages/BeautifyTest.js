@@ -49,27 +49,69 @@ const BeautifyTest = () => {
     return formatted.trim();
   };
 
-  // Aplica syntax highlighting ao conteúdo
-  const applySyntaxHighlight = (content) => {
-    return content
-      // Declaração XML - <?xml ... ?>
-      .replace(/(&lt;\?xml[^?]*\?&gt;)/gi, '<span style="color: #c084fc;">$1</span>')
-      // Comentários - <!-- ... -->
-      .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span style="color: #6b7280; font-style: italic;">$1</span>')
-      // Tags de fechamento - </tagname>
-      .replace(/(&lt;\/)([\w:-]+)(&gt;)/g, '<span style="color: #60a5fa;">$1$2$3</span>')
-      // Tags auto-fechadas - <tagname ... />
-      .replace(/(&lt;)([\w:-]+)([^&]*?)(\/&gt;)/g, '<span style="color: #60a5fa;">$1$2</span>$3<span style="color: #60a5fa;">$4</span>')
-      // Tags de abertura - <tagname>
-      .replace(/(&lt;)([\w:-]+)(&gt;)/g, '<span style="color: #60a5fa;">$1$2$3</span>')
-      // Tags de abertura com atributos - <tagname attr="value">
-      .replace(/(&lt;)([\w:-]+)(\s)/g, '<span style="color: #60a5fa;">$1$2</span>$3')
-      // Nomes de atributos
-      .replace(/\s([\w:-]+)(=)/g, ' <span style="color: #facc15;">$1</span>$2')
-      // Valores de atributos entre aspas
-      .replace(/(=)(&quot;)([^&]*)(&quot;)/g, '$1<span style="color: #4ade80;">$2$3$4</span>')
-      // Fechamento de tag >
-      .replace(/([^-])(&gt;)(?!<\/span>)/g, '$1<span style="color: #60a5fa;">$2</span>');
+  // Aplica syntax highlighting ao conteúdo usando tokens
+  const applySyntaxHighlight = (rawXml) => {
+    // Cores para cada tipo de elemento
+    const colors = {
+      declaration: '#c084fc', // roxo - <?xml ?>
+      comment: '#6b7280',     // cinza - <!-- -->
+      tagName: '#60a5fa',     // azul - nomes de tags
+      attrName: '#facc15',    // amarelo - nomes de atributos
+      attrValue: '#4ade80',   // verde - valores
+      bracket: '#60a5fa',     // azul - < > />
+    };
+
+    // Escapar HTML primeiro
+    let result = rawXml
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    
+    // Aplicar cores usando marcadores temporários que não conflitam com HTML
+    // Declaração XML
+    result = result.replace(
+      /(&lt;\?xml)(.*?)(\?&gt;)/gi,
+      `[SPAN_START:${colors.declaration}]$1$2$3[SPAN_END]`
+    );
+    
+    // Comentários
+    result = result.replace(
+      /(&lt;!--)([\s\S]*?)(--&gt;)/g,
+      `[SPAN_START:${colors.comment}]$1$2$3[SPAN_END]`
+    );
+    
+    // Tags de fechamento </tag>
+    result = result.replace(
+      /(&lt;\/)([\w:-]+)(&gt;)/g,
+      `[SPAN_START:${colors.bracket}]$1[SPAN_END][SPAN_START:${colors.tagName}]$2[SPAN_END][SPAN_START:${colors.bracket}]$3[SPAN_END]`
+    );
+    
+    // Tags com atributos <tag attr="value" /> ou <tag attr="value">
+    result = result.replace(
+      /(&lt;)([\w:-]+)([\s][^&]*?)(\/?&gt;)/g,
+      (match, open, tag, attrs, close) => {
+        // Processar atributos
+        const processedAttrs = attrs.replace(
+          /([\w:-]+)(=)(&quot;)([^&]*)(&quot;)/g,
+          `[SPAN_START:${colors.attrName}]$1[SPAN_END]$2[SPAN_START:${colors.attrValue}]$3$4$5[SPAN_END]`
+        );
+        return `[SPAN_START:${colors.bracket}]${open}[SPAN_END][SPAN_START:${colors.tagName}]${tag}[SPAN_END]${processedAttrs}[SPAN_START:${colors.bracket}]${close}[SPAN_END]`;
+      }
+    );
+    
+    // Tags simples <tag>
+    result = result.replace(
+      /(&lt;)([\w:-]+)(&gt;)/g,
+      `[SPAN_START:${colors.bracket}]$1[SPAN_END][SPAN_START:${colors.tagName}]$2[SPAN_END][SPAN_START:${colors.bracket}]$3[SPAN_END]`
+    );
+    
+    // Converter marcadores para HTML real
+    result = result
+      .replace(/\[SPAN_START:(#[\w]+)\]/g, '<span style="color: $1;">')
+      .replace(/\[SPAN_END\]/g, '</span>');
+    
+    return result;
   };
 
   const loadSampleXml = async () => {
