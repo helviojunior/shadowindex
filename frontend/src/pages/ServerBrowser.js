@@ -1015,15 +1015,25 @@ const ServerBrowser = () => {
                   <div className="space-y-4">
                     {/* Toolbar */}
                     <div className="flex items-center gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={beautifyContent}
-                        disabled={beautified}
-                      >
-                        <Code className="w-4 h-4 mr-2" />
-                        {beautified ? 'Formatado' : 'Beautify'}
-                      </Button>
+                      {beautified ? (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={showRawContent}
+                        >
+                          <Code className="w-4 h-4 mr-2" />
+                          Raw Content
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={showBeautifiedContent}
+                        >
+                          <Code className="w-4 h-4 mr-2" />
+                          Beautify
+                        </Button>
+                      )}
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -1035,7 +1045,7 @@ const ServerBrowser = () => {
                         ) : (
                           <Copy className="w-4 h-4 mr-2" />
                         )}
-                        Copiar RAW
+                        Copiar
                       </Button>
                     </div>
                 
