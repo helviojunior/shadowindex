@@ -1,5 +1,4 @@
-from zeep import Client
-from zeep.transports import Transport
+import aiohttp
 from datetime import datetime, timezone, timedelta
 import hashlib
 import json
@@ -11,18 +10,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SoapService:
-    def __init__(self, wsdl_url: str):
-        self.wsdl_url = wsdl_url
-        self.client = None
-    
-    def _init_client(self):
-        if not self.client:
-            try:
-                transport = Transport(timeout=30)
-                self.client = Client(self.wsdl_url, transport=transport)
-            except Exception as e:
-                logger.error(f"Failed to initialize SOAP client: {e}")
-                raise
+    def __init__(self, soap_url: str):
+        # Remover ?WSDL se houver
+        self.soap_url = soap_url.replace('?WSDL', '').replace('?wsdl', '')
+        self.base_url = self.soap_url.split('/dna')[0] if '/dna' in self.soap_url else self.soap_url.rsplit('/', 1)[0]
     
     @staticmethod
     def _generate_cache_key(operation: str, params: dict) -> str:
@@ -80,6 +71,26 @@ class SoapService:
         config = result.scalar_one_or_none()
         return config and config.value.lower() == "true"
     
+    def _build_soap_envelope(self, operation: str, params: dict) -> str:
+        """Build SOAP envelope XML"""
+        # Construir parâmetros
+        param_xml = ""
+        for key, value in params.items():
+            param_xml += f"      <{key}>{value or ''}</{key}>\n"
+        
+        envelope = f'''<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <{operation} xmlns="http://test/">
+{param_xml.rstrip()}
+    </{operation}>
+  </soap:Body>
+</soap:Envelope>'''
+        
+        return envelope
+    
     async def call_soap_operation(
         self,
         db: AsyncSession,
@@ -103,23 +114,71 @@ class SoapService:
         if offline_mode:
             raise Exception("Sistema em modo offline e não há cache disponível para esta consulta")
         
-        # Make actual SOAP call
-        self._init_client()
+        # Build SOAP envelope
+        soap_envelope = self._build_soap_envelope(operation, params)
+        
+        # Make HTTP POST request
+        headers = {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'SOAPAction': f'"http://test/{operation}"'
+        }
         
         try:
-            # Call the appropriate SOAP method
-            method = getattr(self.client.service, operation)
-            response = method(**params)
-            
-            # Convert response to string
-            response_str = str(response)
-            
-            # Save to cache
-            request_str = json.dumps(params)
-            await self._save_to_cache(db, cache_key, operation, request_str, response_str)
-            
-            return response_str
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self.soap_url,
+                    data=soap_envelope,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+                    
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"SOAP error: {response.status} - {error_text}")
+                        raise Exception(f"SOAP request failed with status {response.status}")
+                    
+                    response_text = await response.text()
+                    
+                    # Extract result from SOAP response
+                    import xml.etree.ElementTree as ET
+                    root = ET.fromstring(response_text)
+                    
+                    # Namespace handling
+                    namespaces = {
+                        'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
+                        'test': 'http://test/'
+                    }
+                    
+                    # Find the result element
+                    result_elem = root.find(f'.//test:{operation}Response/test:{operation}Result', namespaces)
+                    
+                    if result_elem is None:
+                        # Try without namespace
+                        result_elem = root.find(f'.//{operation}Response/{operation}Result')
+                    
+                    if result_elem is None:
+                        logger.error(f"Could not find result in SOAP response: {response_text[:500]}")
+                        raise Exception("Invalid SOAP response format")
+                    
+                    # Get the inner XML or text
+                    if len(result_elem) > 0:
+                        # Has child elements, return full XML
+                        result_str = ET.tostring(result_elem, encoding='unicode')
+                    else:
+                        # Just text content
+                        result_str = result_elem.text or ""
+                    
+                    # Save to cache
+                    await self._save_to_cache(db, cache_key, operation, soap_envelope, result_str)
+                    
+                    return result_str
         
+        except aiohttp.ClientError as e:
+            logger.error(f"HTTP request failed: {e}")
+            raise Exception(f"Erro ao conectar ao WebService SOAP: {str(e)}")
+        except ET.ParseError as e:
+            logger.error(f"XML parsing failed: {e}")
+            raise Exception(f"Erro ao processar resposta XML: {str(e)}")
         except Exception as e:
             logger.error(f"SOAP call failed: {e}")
             raise Exception(f"Erro ao chamar o WebService SOAP: {str(e)}")
