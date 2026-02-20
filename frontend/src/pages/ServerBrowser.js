@@ -914,9 +914,38 @@ const ServerBrowser = () => {
               </Badge>
             )}
             {downloaded && (
-              <Badge variant="outline" className="ml-2 flex-shrink-0 text-green-500 border-green-500">
-                Sincronizado
-              </Badge>
+              <>
+                <Badge variant="outline" className="ml-2 flex-shrink-0 text-green-500 border-green-500">
+                  Sincronizado
+                </Badge>
+                {fileVersions.length > 1 && (
+                  <Select
+                    value={fileVersions.find(v => v.is_current)?.id?.toString() || ''}
+                    onValueChange={async (versionId) => {
+                      try {
+                        await axios.post(`${API}/servers/${serverId}/file-versions/${versionId}/set-current`);
+                        const filePath = selectedItem.fullPath || selectedItem.serverPath;
+                        loadFileVersions(filePath);
+                        loadDownloadedFiles();
+                        toast.success('Versão alterada');
+                      } catch (error) {
+                        toast.error('Erro ao alterar versão');
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-24 h-7 ml-2">
+                      <SelectValue placeholder="Versão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fileVersions.map((v) => (
+                        <SelectItem key={v.id} value={v.id.toString()}>
+                          v{v.version_number} {v.is_current && '✓'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </>
             )}
           </div>
           
