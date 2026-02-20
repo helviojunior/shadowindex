@@ -2034,13 +2034,20 @@ async def get_certificate_info(
                     elif ext_obj.oid._name == 'keyUsage':
                         usages = []
                         ku = ext_obj.value
-                        if ku.digital_signature: usages.append("Digital Signature")
-                        if ku.key_encipherment: usages.append("Key Encipherment")
-                        if ku.content_commitment: usages.append("Content Commitment")
-                        if ku.data_encipherment: usages.append("Data Encipherment")
-                        if ku.key_agreement: usages.append("Key Agreement")
-                        if ku.key_cert_sign: usages.append("Key Cert Sign")
-                        if ku.crl_sign: usages.append("CRL Sign")
+                        if ku.digital_signature:
+                            usages.append("Digital Signature")
+                        if ku.key_encipherment:
+                            usages.append("Key Encipherment")
+                        if ku.content_commitment:
+                            usages.append("Content Commitment")
+                        if ku.data_encipherment:
+                            usages.append("Data Encipherment")
+                        if ku.key_agreement:
+                            usages.append("Key Agreement")
+                        if ku.key_cert_sign:
+                            usages.append("Key Cert Sign")
+                        if ku.crl_sign:
+                            usages.append("CRL Sign")
                         ext_info["values"] = usages
                     elif ext_obj.oid._name == 'extendedKeyUsage':
                         eku_values = [oid._name for oid in ext_obj.value]
