@@ -185,11 +185,7 @@ def calculate_sha1_from_file(file_path: str) -> Optional[str]:
             return hashlib.sha1(f.read()).hexdigest()
     except Exception:
         return None
-    
-    # Retornar caminho completo e caminho sanitizado relativo
-    relative_path = str(full_file_path.relative_to(STORAGE_BASE_PATH))
-    
-    return full_file_path, relative_path
+
 
 def get_server_storage_stats(server_guid: str) -> dict:
     """Retorna estatísticas de armazenamento do servidor"""
