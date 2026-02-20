@@ -6,17 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import { PlayCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useApp } from '@/contexts/AppContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const SoapOperations = () => {
   const [loading, setLoading] = useState(false);
-  const [ignoreCache, setIgnoreCache] = useState(false);
   const [result, setResult] = useState(null);
+  const { ignoreCache } = useApp();
 
   // Form states for each operation
   const [resolveForm, setResolveForm] = useState({ s1: '' });
