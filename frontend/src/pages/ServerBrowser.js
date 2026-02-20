@@ -1607,6 +1607,165 @@ const ServerBrowser = () => {
                       </div>
                     )}
                   </div>
+                ) : fileContent && isCertificateFile(selectedItem?.name) ? (
+                  <div className="space-y-4">
+                    {/* Certificate Info */}
+                    {fileContent.error ? (
+                      <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                        <p className="text-red-400">{fileContent.error}</p>
+                        {fileContent.requires_password && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {fileContent.message}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-green-500 border-green-500">
+                              {fileContent.type?.toUpperCase()}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {fileContent.total_certificates} certificado(s)
+                            </span>
+                          </div>
+                          {fileContent.private_key?.has_private_key && (
+                            <Badge variant="destructive">
+                              Contém Chave Privada
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Certificates */}
+                        {fileContent.certificates?.map((cert, idx) => (
+                          <div key={idx} className="border border-border rounded-lg overflow-hidden">
+                            {/* Cert Header */}
+                            <div className={`p-3 ${cert.is_expired ? 'bg-red-500/10' : 'bg-green-500/10'} border-b border-border`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    Certificado {cert.index}
+                                    {cert.is_self_signed && <span className="text-xs text-muted-foreground ml-2">(Auto-assinado)</span>}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {cert.is_expired ? (
+                                    <Badge variant="destructive">Expirado</Badge>
+                                  ) : cert.days_until_expiry <= 30 ? (
+                                    <Badge variant="warning" className="bg-yellow-500/20 text-yellow-500 border-yellow-500">
+                                      Expira em {cert.days_until_expiry} dias
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-green-500 border-green-500">
+                                      Válido ({cert.days_until_expiry} dias)
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Cert Details */}
+                            <div className="p-4 space-y-4 text-sm">
+                              {/* Subject */}
+                              <div>
+                                <h4 className="font-medium text-muted-foreground mb-2">Titular (Subject)</h4>
+                                <div className="bg-muted/30 p-3 rounded space-y-1 font-mono text-xs">
+                                  {cert.subject.commonName && <div><span className="text-muted-foreground">CN:</span> {cert.subject.commonName}</div>}
+                                  {cert.subject.organizationName && <div><span className="text-muted-foreground">O:</span> {cert.subject.organizationName}</div>}
+                                  {cert.subject.organizationalUnitName && <div><span className="text-muted-foreground">OU:</span> {cert.subject.organizationalUnitName}</div>}
+                                  {cert.subject.localityName && <div><span className="text-muted-foreground">L:</span> {cert.subject.localityName}</div>}
+                                  {cert.subject.stateOrProvinceName && <div><span className="text-muted-foreground">ST:</span> {cert.subject.stateOrProvinceName}</div>}
+                                  {cert.subject.countryName && <div><span className="text-muted-foreground">C:</span> {cert.subject.countryName}</div>}
+                                </div>
+                              </div>
+                              
+                              {/* Issuer */}
+                              <div>
+                                <h4 className="font-medium text-muted-foreground mb-2">Emissor (Issuer)</h4>
+                                <div className="bg-muted/30 p-3 rounded space-y-1 font-mono text-xs">
+                                  {cert.issuer.commonName && <div><span className="text-muted-foreground">CN:</span> {cert.issuer.commonName}</div>}
+                                  {cert.issuer.organizationName && <div><span className="text-muted-foreground">O:</span> {cert.issuer.organizationName}</div>}
+                                  {cert.issuer.organizationalUnitName && <div><span className="text-muted-foreground">OU:</span> {cert.issuer.organizationalUnitName}</div>}
+                                  {cert.issuer.countryName && <div><span className="text-muted-foreground">C:</span> {cert.issuer.countryName}</div>}
+                                </div>
+                              </div>
+                              
+                              {/* Validity */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <h4 className="font-medium text-muted-foreground mb-2">Válido de</h4>
+                                  <div className="bg-muted/30 p-3 rounded font-mono text-xs">
+                                    {new Date(cert.not_valid_before).toLocaleString('pt-BR')}
+                                  </div>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-muted-foreground mb-2">Válido até</h4>
+                                  <div className={`p-3 rounded font-mono text-xs ${cert.is_expired ? 'bg-red-500/10 text-red-400' : 'bg-muted/30'}`}>
+                                    {new Date(cert.not_valid_after).toLocaleString('pt-BR')}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Technical Details */}
+                              <div>
+                                <h4 className="font-medium text-muted-foreground mb-2">Detalhes Técnicos</h4>
+                                <div className="bg-muted/30 p-3 rounded space-y-1 font-mono text-xs">
+                                  <div><span className="text-muted-foreground">Versão:</span> {cert.version}</div>
+                                  <div><span className="text-muted-foreground">Algoritmo:</span> {cert.signature_algorithm}</div>
+                                  <div><span className="text-muted-foreground">Chave Pública:</span> {cert.public_key?.algorithm} {cert.public_key?.key_size && `(${cert.public_key.key_size} bits)`}</div>
+                                  <div><span className="text-muted-foreground">Nº Serial:</span> {cert.serial_number}</div>
+                                </div>
+                              </div>
+                              
+                              {/* Fingerprints */}
+                              <div>
+                                <h4 className="font-medium text-muted-foreground mb-2">Impressões Digitais</h4>
+                                <div className="bg-muted/30 p-3 rounded space-y-2 font-mono text-xs">
+                                  <div>
+                                    <span className="text-muted-foreground">SHA-1:</span>
+                                    <div className="break-all mt-1">{cert.fingerprint_sha1}</div>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">SHA-256:</span>
+                                    <div className="break-all mt-1">{cert.fingerprint_sha256}</div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Extensions */}
+                              {cert.extensions?.length > 0 && (
+                                <div>
+                                  <h4 className="font-medium text-muted-foreground mb-2">Extensões</h4>
+                                  <div className="bg-muted/30 p-3 rounded space-y-2 text-xs">
+                                    {cert.extensions.map((ext, extIdx) => (
+                                      <div key={extIdx} className="border-b border-border last:border-0 pb-2 last:pb-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium">{ext.name}</span>
+                                          {ext.critical && <Badge variant="destructive" className="text-[10px] px-1 py-0">Crítico</Badge>}
+                                        </div>
+                                        {ext.values && (
+                                          <div className="text-muted-foreground mt-1 font-mono">
+                                            {Array.isArray(ext.values) 
+                                              ? ext.values.join(', ')
+                                              : typeof ext.values === 'object'
+                                                ? JSON.stringify(ext.values)
+                                                : ext.values
+                                            }
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 ) : fileContent ? (
                   <div className="space-y-4">
                     {/* Toolbar */}
