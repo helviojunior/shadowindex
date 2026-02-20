@@ -16,6 +16,7 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useApp } from '@/contexts/AppContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -23,6 +24,7 @@ const API = `${BACKEND_URL}/api`;
 const ServerBrowser = () => {
   const { serverId } = useParams();
   const navigate = useNavigate();
+  const { ignoreCache } = useApp();
   
   const [server, setServer] = useState(null);
   const [shares, setShares] = useState([]);
