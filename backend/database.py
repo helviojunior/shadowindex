@@ -84,6 +84,8 @@ class ServerShare(Base):
     share_name = Column(String, nullable=False)
     share_type = Column(String, nullable=True)
     remark = Column(String, nullable=True)
+    access_denied = Column(Boolean, default=False)
+    error_message = Column(String, nullable=True)
     discovered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class DownloadedFile(Base):
