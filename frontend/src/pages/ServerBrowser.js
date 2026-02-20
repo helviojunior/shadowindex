@@ -418,8 +418,8 @@ const ServerBrowser = () => {
     return downloadedFiles.includes(filePath);
   };
 
-  // Renderiza um nó da árvore
-  const renderTreeNode = (item, depth = 0, shareName = '') => {
+  // Renderiza um nó da árvore com linhas de hierarquia
+  const renderTreeNode = (item, depth = 0, shareName = '', isLastChild = true, parentLines = []) => {
     const isShare = !!item.share_name;
     const rawNodeId = item.id || `share-${item.share_name}`;
     const nodeId = String(rawNodeId);
@@ -463,16 +463,47 @@ const ServerBrowser = () => {
     // Cor do texto baseada no status de fetch
     const textColor = isAccessDenied ? 'text-red-500' : (isNotFetched ? 'text-muted-foreground' : '');
     
+    // Renderiza as linhas de hierarquia
+    const renderTreeLines = () => {
+      if (depth === 0) return null;
+      
+      return (
+        <div className="flex" style={{ width: `${(depth) * 16}px` }}>
+          {parentLines.map((showLine, idx) => (
+            <div 
+              key={idx} 
+              className="w-4 h-full flex justify-center"
+            >
+              {showLine && (
+                <div className="w-px h-full bg-border" />
+              )}
+            </div>
+          ))}
+          {/* Linha horizontal conectora */}
+          <div className="w-4 h-full flex items-center">
+            <div className="flex items-center h-full">
+              {/* Linha vertical (metade superior ou completa) */}
+              <div className="w-px h-full flex flex-col">
+                <div className={`w-px flex-1 bg-border`} />
+                {isLastChild ? null : <div className="w-px flex-1 bg-border" />}
+              </div>
+              {/* Linha horizontal */}
+              <div className="w-2 h-px bg-border" />
+            </div>
+          </div>
+        </div>
+      );
+    };
+    
     return (
       <div key={nodeId}>
         <div
-          className={`flex items-center gap-1 py-1.5 px-2 cursor-pointer hover:bg-muted/50 rounded transition-colors ${
+          className={`flex items-center cursor-pointer hover:bg-muted/50 rounded transition-colors ${
             isSelected ? 'bg-primary/10 text-primary' : ''
           } ${isAccessDenied ? 'opacity-75' : ''}`}
-          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          style={{ paddingLeft: '8px', paddingRight: '8px', minHeight: '32px' }}
           onClick={() => {
             if (item.type === 'AccessDenied') {
-              // Não faz nada ao clicar no item de erro
               return;
             }
             if (isShare) {
@@ -483,6 +514,9 @@ const ServerBrowser = () => {
           }}
           data-testid={`tree-node-${safeTestId}`}
         >
+          {/* Tree Lines */}
+          {renderTreeLines()}
+          
           {/* Expand/Collapse Arrow */}
           {isDirectory && item.type !== 'AccessDenied' ? (
             <button
@@ -490,7 +524,7 @@ const ServerBrowser = () => {
                 e.stopPropagation();
                 toggleNode(nodeId, isShare ? 'share' : item.type, path, currentShareName);
               }}
-              className="p-0.5 hover:bg-muted rounded"
+              className="p-0.5 hover:bg-muted rounded flex-shrink-0"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -501,27 +535,29 @@ const ServerBrowser = () => {
               )}
             </button>
           ) : (
-            <span className="w-5" />
+            <span className="w-5 flex-shrink-0" />
           )}
           
-          {/* Icon - vermelho se acesso negado, verde se baixado, cinza se não carregado */}
-          {item.type === 'AccessDenied' ? (
-            <File className="w-4 h-4 text-red-500 flex-shrink-0" />
-          ) : isShare ? (
-            <HardDrive className={`w-4 h-4 ${iconColor} flex-shrink-0`} />
-          ) : isDirectory ? (
-            isExpanded ? (
-              <FolderOpen className={`w-4 h-4 ${iconColor} flex-shrink-0`} />
+          {/* Icon */}
+          <div className="mx-1 flex-shrink-0">
+            {item.type === 'AccessDenied' ? (
+              <File className="w-4 h-4 text-red-500" />
+            ) : isShare ? (
+              <HardDrive className={`w-4 h-4 ${iconColor}`} />
+            ) : isDirectory ? (
+              isExpanded ? (
+                <FolderOpen className={`w-4 h-4 ${iconColor}`} />
+              ) : (
+                <Folder className={`w-4 h-4 ${iconColor}`} />
+              )
+            ) : isDownloaded ? (
+              <FileCheck className={`w-4 h-4 ${fileIconColor}`} />
             ) : (
-              <Folder className={`w-4 h-4 ${iconColor} flex-shrink-0`} />
-            )
-          ) : isDownloaded ? (
-            <FileCheck className={`w-4 h-4 ${fileIconColor} flex-shrink-0`} />
-          ) : (
-            <File className={`w-4 h-4 ${fileIconColor} flex-shrink-0`} />
-          )}
+              <File className={`w-4 h-4 ${fileIconColor}`} />
+            )}
+          </div>
           
-          {/* Name - vermelho se acesso negado, cinza se não carregado */}
+          {/* Name */}
           <span 
             className={`text-sm truncate flex-1 ${textColor}`} 
             title={isShare ? item.share_name : (item.errorMessage || item.name)}
@@ -535,8 +571,13 @@ const ServerBrowser = () => {
         
         {/* Children */}
         {isExpanded && children.length > 0 && (
-          <div>
-            {children.map((child) => renderTreeNode(child, depth + 1, currentShareName))}
+          <div className="relative">
+            {children.map((child, index) => {
+              const isLast = index === children.length - 1;
+              // Propagar as linhas para os filhos
+              const newParentLines = [...parentLines, !isLastChild];
+              return renderTreeNode(child, depth + 1, currentShareName, isLast, newParentLines);
+            })}
           </div>
         )}
       </div>
