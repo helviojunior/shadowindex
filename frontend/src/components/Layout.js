@@ -34,6 +34,7 @@ const menuItems = [
 const Layout = ({ children, darkMode, setDarkMode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { ignoreCache, setIgnoreCache } = useApp();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
