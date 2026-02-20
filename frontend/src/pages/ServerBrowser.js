@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Folder, 
   File, 
@@ -18,7 +19,11 @@ import {
   Check,
   RefreshCw,
   AlertTriangle,
-  FileCheck
+  FileCheck,
+  ExternalLink,
+  Eye,
+  Code,
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
