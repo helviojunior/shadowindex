@@ -1678,13 +1678,22 @@ async def download_server_file(
                 }
         else:
             # Primeiro download - criar versão 1
-            full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
-                server.guid,
-                share_name,
-                file_path,
-                content_base64,
-                1
-            )
+            if content_base64:
+                full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
+                    server.guid,
+                    share_name,
+                    file_path,
+                    content_base64,
+                    1
+                )
+            else:
+                # Arquivo vazio
+                full_path, sanitized_path, sha1_hash, file_size = save_empty_file(
+                    server.guid,
+                    share_name,
+                    file_path,
+                    1
+                )
             
             # Criar primeira versão
             new_file_version = FileVersion(
