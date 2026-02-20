@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, desc
+from sqlalchemy import select, delete, desc, update
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any
 from datetime import datetime, timezone
@@ -15,7 +15,8 @@ from dotenv import load_dotenv
 from database import (
     init_db, get_db, 
     Credential, DatabaseConnection, ProxyServer, SoapApiUrl, SoapCache, AppConfig,
-    Server, ServerShare, DownloadedFile, ServerItem, SqlPreset, SqlQueryHistory, DatabaseType
+    Server, ServerShare, DownloadedFile, ServerItem, SqlPreset, SqlQueryHistory, DatabaseType,
+    FileVersion
 )
 from soap_service import SoapService, get_default_soap_service
 import uuid
@@ -23,7 +24,8 @@ from storage_utils import (
     save_downloaded_file, 
     get_server_storage_stats, 
     format_size,
-    sanitize_path_component
+    sanitize_path_component,
+    calculate_sha1_from_base64
 )
 
 ROOT_DIR = Path(__file__).parent
