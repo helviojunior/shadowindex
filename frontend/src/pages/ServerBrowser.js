@@ -272,12 +272,12 @@ const ServerBrowser = () => {
         
         // Aplicar syntax highlighting
         const highlighted = applySyntaxHighlight(beautifiedContent, fileType);
-        setFileContent(highlighted);
+        setFileContent({ ...fileMetadata, content: highlighted });
         setBeautified(true);
       } catch (beautifyError) {
         // Se falhar o beautify, mostrar conteúdo raw
         console.warn('Beautify failed, showing raw content:', beautifyError);
-        setFileContent(content);
+        setFileContent(fileMetadata);
         setBeautified(false);
       }
     } catch (error) {
