@@ -607,7 +607,7 @@ const ServerBrowser = () => {
 
 // Componente auxiliar para linhas de informação
 const InfoRow = ({ label, value, onCopy, copied, valueClassName = '' }) => (
-  <div className="flex items-start gap-4">
+  <div className="flex items-center gap-4 min-h-[32px] py-1">
     <span className="text-sm text-muted-foreground flex-shrink-0" style={{ minWidth: '25%', width: '25%' }}>{label}:</span>
     <div className="flex items-center gap-2 flex-1 min-w-0">
       <span className={`text-sm break-all ${valueClassName}`}>{value}</span>
