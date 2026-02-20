@@ -118,8 +118,8 @@ const SoapOperations = () => {
           <CardDescription>Escolha e execute uma operação SOAP</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="resolve" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-4">
               <TabsTrigger value="resolve" data-testid="tab-resolve">Resolve</TabsTrigger>
               <TabsTrigger value="shares" data-testid="tab-shares">Shares</TabsTrigger>
               <TabsTrigger value="exec" data-testid="tab-exec">Exec</TabsTrigger>
