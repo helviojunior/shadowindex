@@ -13,6 +13,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Servers = () => {
+  const navigate = useNavigate();
   const [servers, setServers] = useState([]);
   const [formData, setFormData] = useState({ name: '', ip: '' });
   const [loading, setLoading] = useState(false);
