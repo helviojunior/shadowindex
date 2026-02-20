@@ -65,9 +65,18 @@ const SqlExecutor = () => {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [editorHeight, setEditorHeight] = useState(250);
   const [isResizing, setIsResizing] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  
+  // Autocomplete state
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteItems, setAutocompleteItems] = useState([]);
+  const [autocompletePosition, setAutocompletePosition] = useState({ top: 0, left: 0 });
+  const [selectedAutocompleteIndex, setSelectedAutocompleteIndex] = useState(0);
+  const [currentWord, setCurrentWord] = useState('');
   
   const containerRef = useRef(null);
   const resizeRef = useRef(null);
+  const editorRef = useRef(null);
   
   // Múltiplas tabs
   const [tabs, setTabs] = useState([
