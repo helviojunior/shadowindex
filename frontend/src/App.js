@@ -8,6 +8,7 @@ import DatabaseConnections from "@/pages/DatabaseConnections";
 import ProxyServers from "@/pages/ProxyServers";
 import SoapApis from "@/pages/SoapApis";
 import SoapOperations from "@/pages/SoapOperations";
+import Servers from "@/pages/Servers";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
