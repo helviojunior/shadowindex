@@ -701,6 +701,7 @@ async def get_server_shares_soap(server_id: int, db: AsyncSession = Depends(get_
 async def browse_server_directory(
     server_id: int,
     path: str,
+    ignore_cache: bool = False,
     db: AsyncSession = Depends(get_db)
 ):
     """Lista arquivos e diretórios de um caminho no servidor"""
@@ -715,7 +716,7 @@ async def browse_server_directory(
     params = {"s1": path, "s2": ""}
     
     try:
-        result_str = await soap_service.call_soap_operation(db, "Exec4", params, False)
+        result_str = await soap_service.call_soap_operation(db, "Exec4", params, ignore_cache)
         
         # Parsear XML
         import xml.etree.ElementTree as ET
