@@ -724,13 +724,27 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                     <Clock className="w-4 h-4" />
                     {currentTab.result.execution_time_ms}ms
                   </span>
+                  {currentTab.historyInfo?.executed_at && (
+                    <span className="flex items-center gap-1 text-sm text-muted-foreground border-l border-border pl-3">
+                      <Calendar className="w-4 h-4" />
+                      Executado em: {formatDate(currentTab.historyInfo.executed_at)}
+                    </span>
+                  )}
                 </>
               )}
               {currentTab.result && !currentTab.result.success && (
-                <span className="flex items-center gap-1 text-sm text-red-500">
-                  <XCircle className="w-4 h-4" />
-                  Erro
-                </span>
+                <>
+                  <span className="flex items-center gap-1 text-sm text-red-500">
+                    <XCircle className="w-4 h-4" />
+                    Erro
+                  </span>
+                  {currentTab.historyInfo?.executed_at && (
+                    <span className="flex items-center gap-1 text-sm text-muted-foreground border-l border-border pl-3">
+                      <Calendar className="w-4 h-4" />
+                      Executado em: {formatDate(currentTab.historyInfo.executed_at)}
+                    </span>
+                  )}
+                </>
               )}
             </div>
             
