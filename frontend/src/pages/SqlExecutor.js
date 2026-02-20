@@ -854,18 +854,18 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
 
           {/* Result Content */}
           <div className="flex-1 overflow-hidden">
-            <div className="p-4 h-full overflow-auto">
+            <div className="p-4 h-full flex flex-col">
               {!currentTab.result ? (
                 <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
                   <Database className="w-10 h-10 mb-3 opacity-30" />
                   <p>Execute uma query para ver os resultados</p>
                 </div>
               ) : currentTab.result.success ? (
-                <div className="space-y-4">
+                <div className="flex-1 min-h-0 flex flex-col">
                   {/* Result Table */}
                   {currentTab.result.columns && currentTab.result.columns.length > 0 && (
-                    <div className="border border-border rounded-lg overflow-hidden">
-                      <div className="overflow-auto max-h-[calc(100vh-400px)]">
+                    <div className="border border-border rounded-lg overflow-hidden flex-1 min-h-0 flex flex-col">
+                      <div className="overflow-auto flex-1 min-h-0">
                         <table className="w-full text-sm">
                           <thead className="bg-muted sticky top-0">
                             <tr>
@@ -893,7 +893,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 flex-1 min-h-0">
                   <div className="flex items-center gap-2 text-red-500 flex-shrink-0">
                     <XCircle className="w-5 h-5 flex-shrink-0" />
                     <span className="font-medium">Erro na execução</span>
