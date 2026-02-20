@@ -161,34 +161,32 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
 
             {/* Footer with collapse toggle */}
             <div className={cn(
-              "border-t border-border transition-all duration-300",
+              "border-t border-border transition-all duration-300 relative",
               sidebarCollapsed ? "p-2" : "p-4"
             )}>
-              {/* Collapse/Expand Button */}
+              {/* Version info - only when expanded */}
+              {!sidebarCollapsed && (
+                <div className="text-xs text-muted-foreground pr-12">
+                  <div>Stratasec Platform</div>
+                  <div>v1.0.0</div>
+                </div>
+              )}
+              
+              {/* Collapse/Expand Button - positioned at bottom right */}
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 className={cn(
-                  "w-full flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
-                  "mb-2"
+                  "absolute bottom-3 right-3 flex items-center justify-center w-10 h-10 rounded-lg",
+                  "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 )}
                 data-testid="sidebar-collapse-btn"
               >
                 {sidebarCollapsed ? (
                   <ChevronRight size={20} />
                 ) : (
-                  <>
-                    <ChevronLeft size={20} />
-                    <span className="ml-2 text-sm">Recolher</span>
-                  </>
+                  <ChevronLeft size={20} />
                 )}
               </button>
-              
-              {/* Version info - only when expanded */}
-              {!sidebarCollapsed && (
-                <div className="text-xs text-muted-foreground text-center">
-                  v1.0.0 | Stratasec
-                </div>
-              )}
             </div>
           </div>
         </aside>
