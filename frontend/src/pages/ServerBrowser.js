@@ -1820,11 +1820,11 @@ const ServerBrowser = () => {
                     {beautified ? (
                       <pre 
                         className="p-4 bg-zinc-900 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto"
-                        dangerouslySetInnerHTML={{ __html: fileContent }}
+                        dangerouslySetInnerHTML={{ __html: typeof fileContent === 'object' ? fileContent.content : fileContent }}
                       />
                     ) : (
                       <pre className="p-4 bg-muted/50 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto">
-                        {fileContent}
+                        {typeof fileContent === 'object' ? fileContent.content : fileContent}
                       </pre>
                     )}
                   </div>
