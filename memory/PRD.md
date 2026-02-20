@@ -28,6 +28,9 @@ Portuguese (pt-BR)
 ## Completed Features
 
 ### 2026-02-20
+- [x] Directory color logic now matches shares (gray=not fetched, blue=fetched, red=access denied)
+- [x] Access denied no longer propagates to parent items - only affects the specific node
+- [x] Backend only marks share as access_denied if error occurs at share root level
 - [x] Added inline IP editing for servers (pencil icon, input, save/cancel buttons)
 - [x] Added PATCH endpoint for partial server updates
 - [x] Backend skips SOAP Resolve if IP is already valid
