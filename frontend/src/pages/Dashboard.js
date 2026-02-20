@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Key, Database, Server, Globe, FileText, Wifi, WifiOff } from 'lucide-react';
+import { Key, Database, Server, Globe, FileText, Wifi, WifiOff, HardDrive, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,9 @@ const Dashboard = () => {
     dbConnections: 0,
     proxyServers: 0,
     soapApis: 0,
-    cacheEntries: 0
+    cacheEntries: 0,
+    servers: 0,
+    downloadedFiles: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -28,20 +30,26 @@ const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [creds, dbs, proxies, soaps, cache] = await Promise.all([
+      const [creds, dbs, proxies, soaps, cache, servers] = await Promise.all([
         axios.get(`${API}/credentials`),
         axios.get(`${API}/db-connections`),
         axios.get(`${API}/proxy-servers`),
         axios.get(`${API}/soap-apis`),
-        axios.get(`${API}/cache/stats`)
+        axios.get(`${API}/cache/stats`),
+        axios.get(`${API}/servers`)
       ]);
+
+      // Calcular total de arquivos baixados de todos os servidores
+      const totalDownloads = servers.data.reduce((acc, server) => acc + (server.downloaded_files_count || 0), 0);
 
       setStats({
         credentials: creds.data.length,
         dbConnections: dbs.data.length,
         proxyServers: proxies.data.length,
         soapApis: soaps.data.length,
-        cacheEntries: cache.data.total_entries || 0
+        cacheEntries: cache.data.total_entries || 0,
+        servers: servers.data.length,
+        downloadedFiles: totalDownloads
       });
 
       setLoading(false);
@@ -73,8 +81,10 @@ const Dashboard = () => {
   };
 
   const statCards = [
+    { title: 'Servidores', value: stats.servers, icon: HardDrive, color: 'from-cyan-600 to-cyan-700' },
+    { title: 'Arquivos Baixados', value: stats.downloadedFiles, icon: Download, color: 'from-green-600 to-green-700' },
     { title: 'Credenciais', value: stats.credentials, icon: Key, color: 'from-blue-600 to-blue-700' },
-    { title: 'Conexões DB', value: stats.dbConnections, icon: Database, color: 'from-emerald-600 to-emerald-700' },
+    { title: 'SQL', value: stats.dbConnections, icon: Database, color: 'from-emerald-600 to-emerald-700' },
     { title: 'Proxy Servers', value: stats.proxyServers, icon: Server, color: 'from-violet-600 to-violet-700' },
     { title: 'SOAP APIs', value: stats.soapApis, icon: Globe, color: 'from-amber-600 to-amber-700' },
   ];

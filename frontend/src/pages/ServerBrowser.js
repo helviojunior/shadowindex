@@ -32,6 +32,12 @@ const API = `${BACKEND_URL}/api`;
 // Extensões de arquivos de texto que podem ser visualizados
 const TEXT_EXTENSIONS = ['.txt', '.md', '.xml', '.json', '.config', '.cfg', '.ini', '.log', '.csv', '.yaml', '.yml', '.html', '.htm', '.css', '.js', '.ts', '.py', '.sh', '.bat', '.ps1', '.sql', '.env'];
 
+// Extensões de arquivos de imagem que podem ser visualizados
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.svg'];
+
+// Extensão PDF
+const PDF_EXTENSION = '.pdf';
+
 const ServerBrowser = () => {
   const { serverId } = useParams();
   const navigate = useNavigate();
@@ -85,6 +91,24 @@ const ServerBrowser = () => {
     if (!filename) return false;
     const lowerName = filename.toLowerCase();
     return TEXT_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+  };
+
+  // Verifica se é um arquivo de imagem
+  const isImageFile = (filename) => {
+    if (!filename) return false;
+    const lowerName = filename.toLowerCase();
+    return IMAGE_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+  };
+
+  // Verifica se é um arquivo PDF
+  const isPdfFile = (filename) => {
+    if (!filename) return false;
+    return filename.toLowerCase().endsWith(PDF_EXTENSION);
+  };
+
+  // Verifica se o arquivo pode ser visualizado (texto, imagem ou PDF)
+  const canPreviewFile = (filename) => {
+    return isTextFile(filename) || isImageFile(filename) || isPdfFile(filename);
   };
 
   // Carrega o conteúdo do arquivo para visualização
