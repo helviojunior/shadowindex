@@ -1766,6 +1766,151 @@ const ServerBrowser = () => {
               })()}
             </div>
           )}
+          
+          {/* Download Tab Content */}
+          {activeTab === 'download' && (isShare || isDirectory) && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {/* Stats Header */}
+              <div className="p-4 border-b border-border bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span className="text-sm">{bulkDownloadStats.completed} concluídos</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <XCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-sm">{bulkDownloadStats.failed} falhas</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Ban className="w-4 h-4 text-yellow-500" />
+                      <span className="text-sm">{bulkDownloadStats.skipped} ignorados</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">{bulkDownloadStats.total} total</span>
+                    </div>
+                  </div>
+                  
+                  {bulkDownloadActive && (
+                    <Button 
+                      size="sm" 
+                      variant="destructive"
+                      className="h-7"
+                      onClick={cancelBulkDownload}
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Cancelar Tudo
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Progress bar */}
+                <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-green-500 transition-all duration-300"
+                    style={{ 
+                      width: `${bulkDownloadStats.total > 0 
+                        ? ((bulkDownloadStats.completed + bulkDownloadStats.failed + bulkDownloadStats.skipped) / bulkDownloadStats.total) * 100 
+                        : 0}%` 
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Items List */}
+              <div className="flex-1 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium border-b border-border">Arquivo</th>
+                      <th className="px-4 py-2 text-left font-medium border-b border-border w-28">Tamanho</th>
+                      <th className="px-4 py-2 text-left font-medium border-b border-border w-32">Status</th>
+                      <th className="px-4 py-2 text-center font-medium border-b border-border w-20">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkDownloadItems.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-muted/50">
+                        <td className="px-4 py-2 border-b border-border">
+                          <div className="flex items-center gap-2">
+                            <File className={`w-4 h-4 flex-shrink-0 ${
+                              item.status === 'completed' ? 'text-green-500' :
+                              item.status === 'failed' ? 'text-red-500' :
+                              item.status === 'skipped' || item.status === 'cancelled' ? 'text-yellow-500' :
+                              item.status === 'downloading' ? 'text-blue-500' :
+                              'text-muted-foreground'
+                            }`} />
+                            <span className="truncate text-xs font-mono" title={item.fullPath}>
+                              {item.name}
+                            </span>
+                          </div>
+                          {item.error && (
+                            <p className="text-xs text-red-400 mt-1 truncate" title={item.error}>
+                              {item.error}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 border-b border-border text-muted-foreground text-xs font-mono">
+                          {formatSize(item.size)}
+                        </td>
+                        <td className="px-4 py-2 border-b border-border">
+                          <div className="flex items-center gap-2">
+                            {item.status === 'pending' && (
+                              <span className="text-xs text-muted-foreground">Aguardando</span>
+                            )}
+                            {item.status === 'downloading' && (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+                                <span className="text-xs text-blue-500">Baixando...</span>
+                              </>
+                            )}
+                            {item.status === 'completed' && (
+                              <>
+                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                <span className="text-xs text-green-500">Concluído</span>
+                              </>
+                            )}
+                            {item.status === 'failed' && (
+                              <>
+                                <XCircle className="w-3 h-3 text-red-500" />
+                                <span className="text-xs text-red-500">Falha</span>
+                              </>
+                            )}
+                            {item.status === 'skipped' && (
+                              <>
+                                <Ban className="w-3 h-3 text-yellow-500" />
+                                <span className="text-xs text-yellow-500">Ignorado</span>
+                              </>
+                            )}
+                            {item.status === 'cancelled' && (
+                              <>
+                                <Ban className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Cancelado</span>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 border-b border-border text-center">
+                          {item.status === 'pending' && bulkDownloadActive && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => cancelBulkDownloadItem(idx)}
+                              title="Cancelar este item"
+                            >
+                              <XCircle className="w-4 h-4 text-muted-foreground hover:text-red-500" />
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
