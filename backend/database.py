@@ -35,7 +35,36 @@ class DatabaseConnection(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, unique=True)
     connection_string = Column(Text, nullable=False)
+    verified = Column(Boolean, default=False)
+    last_verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class SqlPreset(Base):
+    """Comandos SQL pré-definidos"""
+    __tablename__ = "sql_presets"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    query = Column(Text, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class SqlQueryHistory(Base):
+    """Histórico de queries SQL executadas"""
+    __tablename__ = "sql_query_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    connection_id = Column(Integer, nullable=False, index=True)
+    connection_name = Column(String, nullable=False)
+    query = Column(Text, nullable=False)
+    result = Column(Text, nullable=True)  # JSON string
+    success = Column(Boolean, default=True)
+    error_message = Column(Text, nullable=True)
+    execution_time_ms = Column(Integer, nullable=True)
+    executed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class ProxyServer(Base):
     __tablename__ = "proxy_servers"
