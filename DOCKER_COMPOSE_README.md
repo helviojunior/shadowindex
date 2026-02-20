@@ -116,8 +116,9 @@ docker-compose up -d
 - Verifique se o backend está rodando: `docker-compose logs backend`
 
 ### Problema: Dados não persistem
-- Certifique-se de não usar `docker-compose down -v` (isso apaga os volumes)
-- Use apenas `docker-compose down` para manter os dados
+- Verifique se o diretório `./ops_integration_data` foi criado corretamente
+- Verifique as permissões do diretório
+- Use `docker-compose down` (não `docker-compose down -v`) para manter os dados
 
 ## 🚀 Desenvolvimento
 
