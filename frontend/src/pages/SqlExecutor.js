@@ -376,9 +376,39 @@ const SqlExecutor = () => {
 
   // Criar nova aba com query do histórico
   const openHistoryInNewTab = (historyItem) => {
-    addNewTab(historyItem.query);
+    // Parsear o resultado armazenado no histórico
+    let parsedResult = null;
+    if (historyItem.result) {
+      try {
+        const resultData = JSON.parse(historyItem.result);
+        parsedResult = {
+          success: historyItem.success,
+          columns: resultData.columns || [],
+          rows: resultData.rows || [],
+          row_count: resultData.rows?.length || 0,
+          execution_time_ms: historyItem.execution_time_ms,
+          error_message: historyItem.error_message
+        };
+      } catch (e) {
+        console.error('Error parsing history result:', e);
+      }
+    } else if (!historyItem.success) {
+      parsedResult = {
+        success: false,
+        error_message: historyItem.error_message,
+        execution_time_ms: historyItem.execution_time_ms
+      };
+    }
+    
+    // Info do histórico (data/hora da execução)
+    const historyInfo = {
+      executed_at: historyItem.executed_at,
+      execution_time_ms: historyItem.execution_time_ms
+    };
+    
+    addNewTab(historyItem.query, parsedResult, historyInfo);
     setShowHistoryModal(false);
-    toast.success('Nova aba criada com a query do histórico');
+    toast.success('Nova aba criada com query e resultado do histórico');
   };
 
   const deleteHistoryItem = async (id, e) => {
