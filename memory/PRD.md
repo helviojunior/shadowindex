@@ -37,6 +37,10 @@ Portuguese (pt-BR)
 - [x] **Connection Verification** - Conexões são marcadas como "Verificado" após execução bem-sucedida
 - [x] **Result Table** - Exibe resultados em tabela com colunas dinâmicas
 - [x] **Error Handling** - Exibe mensagens de erro detalhadas em caso de falha
+- [x] **Export to CSV** - Botão para exportar resultados em formato CSV
+- [x] **Export to Excel** - Botão para exportar resultados em formato XLSX usando biblioteca xlsx
+- [x] **SQL Syntax Highlighting** - Editor com syntax highlighting usando PrismJS (keywords azul, strings laranja, números verde)
+- [x] **Multiple Query Tabs** - Sistema de abas permitindo múltiplas queries simultâneas com estados independentes
 - [x] Backend endpoints: GET/POST/PUT/DELETE `/api/sql-presets`
 - [x] Backend endpoints: GET/POST `/api/sql/execute`, GET/DELETE `/api/sql/history`
 - [x] Frontend pages: `SqlExecutor.js`, `SqlPresets.js`
