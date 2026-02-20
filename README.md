@@ -49,6 +49,15 @@ Acesse: https://ops-integration-desk.preview.emergentagent.com/
 
 ### Opção 2: Docker Compose (Porta 9090)
 
+**Dependências necessárias:**
+- fastapi==0.110.1
+- uvicorn==0.25.0
+- python-dotenv>=1.0.1
+- pydantic>=2.6.4
+- sqlalchemy>=2.0.0
+- aiosqlite>=0.22.0
+- zeep>=4.3.0
+
 Para executar com docker-compose na porta 9090:
 
 ```bash
@@ -65,6 +74,8 @@ O docker-compose.yml está configurado com:
 - Frontend na porta 3000
 - Proxy host-gateway configurado automaticamente
 - Volume persistente para o banco de dados SQLite
+
+**Para instruções detalhadas, veja:** [DOCKER_COMPOSE_README.md](DOCKER_COMPOSE_README.md)
 
 ## 🗂️ Estrutura do Projeto
 
