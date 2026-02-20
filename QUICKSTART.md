@@ -132,6 +132,28 @@ docker-compose build --no-cache backend
 docker-compose build --no-cache frontend
 ```
 
+## 🔄 Recriar Imagem e Container
+
+Para forçar a recriação completa da imagem e container (útil quando há mudanças em dependências ou Dockerfile):
+
+```bash
+# Recriar um serviço específico (build + force recreate)
+docker compose up --build --force-recreate backend
+
+# Recriar frontend
+docker compose up --build --force-recreate frontend
+
+# Recriar ambos os serviços
+docker compose up --build --force-recreate
+
+# Em modo detached (background)
+docker compose up --build --force-recreate -d backend
+docker compose up --build --force-recreate -d frontend
+docker compose up --build --force-recreate -d
+```
+
+> **Nota:** Use `--force-recreate` quando precisar garantir que o container seja recriado do zero, mesmo que a imagem não tenha mudado.
+
 ## 📦 Primeira Execução
 
 Na primeira vez, o Docker vai:
