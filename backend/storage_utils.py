@@ -1,8 +1,9 @@
 import os
 import re
 import base64
+import hashlib
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 # Usar diretório local (pwd) para armazenamento
 # O caminho base será ./data (relativo ao diretório do backend)
