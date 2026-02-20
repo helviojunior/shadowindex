@@ -325,7 +325,7 @@ async def get_sql_presets(db_type_id: Optional[int] = None, db: AsyncSession = D
     
     # Filter by db_type_id if provided (include universal presets with null db_type_id)
     if db_type_id is not None:
-        query = query.where((SqlPreset.db_type_id == db_type_id) | (SqlPreset.db_type_id == None))
+        query = query.where((SqlPreset.db_type_id == db_type_id) | (SqlPreset.db_type_id.is_(None)))
     
     result = await db.execute(query)
     presets = result.scalars().all()
