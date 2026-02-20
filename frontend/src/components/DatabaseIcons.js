@@ -1,9 +1,14 @@
 // Database brand icons as SVG components
 export const MsSqlIcon = ({ className = "w-5 h-5" }) => (
   <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 8.5C4 6.01472 6.01472 4 8.5 4H23.5C25.9853 4 28 6.01472 28 8.5V23.5C28 25.9853 25.9853 28 23.5 28H8.5C6.01472 28 4 25.9853 4 23.5V8.5Z" fill="#CC2927"/>
-    <path d="M8 12.5H10.5L12 16L13.5 12.5H16L13 18V22H11V18L8 12.5Z" fill="white"/>
-    <path d="M17 12.5H19.5V20H23V22H17V12.5Z" fill="white"/>
+    {/* SQL Server logo - database cylinder style */}
+    <rect x="4" y="4" width="24" height="24" rx="4" fill="#CC2927"/>
+    {/* Top ellipse */}
+    <ellipse cx="16" cy="10" rx="8" ry="3" fill="#FFF" fillOpacity="0.95"/>
+    {/* Body */}
+    <path d="M8 10v12c0 1.66 3.58 3 8 3s8-1.34 8-3V10" stroke="#FFF" strokeWidth="2" fill="none" strokeOpacity="0.95"/>
+    {/* Middle line */}
+    <ellipse cx="16" cy="16" rx="8" ry="3" fill="none" stroke="#FFF" strokeWidth="1.5" strokeOpacity="0.7"/>
   </svg>
 );
 
