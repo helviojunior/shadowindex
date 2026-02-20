@@ -118,10 +118,22 @@ const BeautifyTest = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API}/test/xml-sample`);
-      setRawContent(response.data.content);
-      setDisplayContent(response.data.content);
-      setBeautified(false);
-      toast.success('XML de exemplo carregado');
+      const content = response.data.content;
+      setRawContent(content);
+      
+      // Fazer beautify automaticamente
+      try {
+        const formatted = formatXml(content);
+        const highlighted = applySyntaxHighlight(formatted);
+        setDisplayContent(highlighted);
+        setBeautified(true);
+        toast.success('XML carregado e formatado');
+      } catch (beautifyError) {
+        console.warn('Beautify failed:', beautifyError);
+        setDisplayContent(content);
+        setBeautified(false);
+        toast.success('XML carregado (raw)');
+      }
     } catch (error) {
       toast.error('Erro ao carregar XML de exemplo');
     } finally {
@@ -129,21 +141,21 @@ const BeautifyTest = () => {
     }
   };
 
-  const beautifyContent = () => {
+  const showRawContent = () => {
+    if (!rawContent) return;
+    setDisplayContent(rawContent);
+    setBeautified(false);
+  };
+
+  const showBeautifiedContent = () => {
     if (!rawContent) return;
     
     try {
-      // Formatar XML
       const formatted = formatXml(rawContent);
-      
-      // Aplicar syntax highlighting
       const highlighted = applySyntaxHighlight(formatted);
-      
       setDisplayContent(highlighted);
       setBeautified(true);
-      toast.success('XML formatado com syntax highlighting');
     } catch (error) {
-      console.error('Beautify error:', error);
       toast.error('Erro ao formatar');
     }
   };
