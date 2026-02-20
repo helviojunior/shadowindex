@@ -102,6 +102,12 @@ const SqlExecutor = () => {
     try {
       const response = await axios.get(`${API}/db-connections/${connectionId}`);
       setConnection(response.data);
+      // Load presets filtered by db_type after connection is loaded
+      if (response.data.db_type_id) {
+        loadPresets(response.data.db_type_id);
+      } else {
+        loadPresets();
+      }
     } catch (error) {
       console.error('Error loading connection:', error);
       toast.error('Erro ao carregar conexão');
@@ -109,9 +115,12 @@ const SqlExecutor = () => {
     }
   };
 
-  const loadPresets = async () => {
+  const loadPresets = async (dbTypeId = null) => {
     try {
-      const response = await axios.get(`${API}/sql-presets`);
+      const url = dbTypeId 
+        ? `${API}/sql-presets?db_type_id=${dbTypeId}`
+        : `${API}/sql-presets`;
+      const response = await axios.get(url);
       setPresets(response.data);
     } catch (error) {
       console.error('Error loading presets:', error);
