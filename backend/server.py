@@ -1450,7 +1450,7 @@ async def download_server_file(
     share_name: str,
     db: AsyncSession = Depends(get_db)
 ):
-    """Baixa um arquivo do servidor via SOAP"""
+    """Baixa um arquivo do servidor via SOAP com versionamento"""
     # Obter servidor
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
@@ -1474,15 +1474,12 @@ async def download_server_file(
             root = ET.fromstring(result_str)
             
             # Buscar Exec5Result em qualquer namespace
-            # Primeiro tenta sem namespace
             exec5_result = root.find(".//Exec5Result")
             
             if exec5_result is None:
-                # Tenta com namespace http://test/
                 exec5_result = root.find(".//{http://test/}Exec5Result")
             
             if exec5_result is None:
-                # Tenta buscar qualquer elemento que contenha "Result" no nome
                 for elem in root.iter():
                     if 'Exec5Result' in elem.tag:
                         exec5_result = elem
@@ -1491,53 +1488,256 @@ async def download_server_file(
             if exec5_result is not None and exec5_result.text:
                 content_base64 = exec5_result.text.strip()
             else:
-                # Se não encontrou elemento específico, tenta o texto do root
                 content_base64 = root.text.strip() if root.text else ""
                 
         except ET.ParseError:
-            # Se não é XML válido, assume que é o conteúdo base64 direto
             content_base64 = result_str.strip()
         
         if not content_base64:
             raise Exception("Arquivo vazio ou não encontrado")
         
-        # Salvar arquivo no storage
-        from storage_utils import save_downloaded_file
-        full_path, sanitized_path = save_downloaded_file(
-            server.guid,
-            share_name,
-            file_path,
-            content_base64
+        # Calcular SHA1 do novo conteúdo
+        from storage_utils import save_downloaded_file, calculate_sha1_from_base64
+        new_sha1 = calculate_sha1_from_base64(content_base64)
+        
+        # Verificar se já existe uma versão deste arquivo
+        result = await db.execute(
+            select(FileVersion).where(
+                FileVersion.server_guid == server.guid,
+                FileVersion.file_path == file_path,
+                FileVersion.is_current == True
+            )
         )
+        current_version = result.scalar_one_or_none()
         
-        # Calcular tamanho
-        import base64
-        file_size = len(base64.b64decode(content_base64))
-        
-        # Salvar registro no banco
-        downloaded_file = DownloadedFile(
-            server_guid=server.guid,
-            share_name=share_name,
-            file_path=file_path,
-            sanitized_path=sanitized_path,
-            file_size=file_size
-        )
-        db.add(downloaded_file)
-        
-        # Atualizar contador
-        server.downloaded_files_count += 1
-        await db.commit()
-        
-        return {
-            "success": True,
-            "file_path": file_path,
-            "sanitized_path": sanitized_path,
-            "size": file_size,
-            "size_formatted": format_size(file_size)
-        }
+        if current_version:
+            # Arquivo já existe - verificar se mudou
+            if current_version.sha1_hash == new_sha1:
+                # Mesmo arquivo - apenas atualizar data
+                current_version.created_at = datetime.now(timezone.utc)
+                
+                # Atualizar downloaded_file também
+                result = await db.execute(
+                    select(DownloadedFile).where(
+                        DownloadedFile.server_guid == server.guid,
+                        DownloadedFile.file_path == file_path
+                    ).order_by(DownloadedFile.downloaded_at.desc())
+                )
+                downloaded_file = result.scalar_one_or_none()
+                if downloaded_file:
+                    downloaded_file.downloaded_at = datetime.now(timezone.utc)
+                
+                await db.commit()
+                
+                return {
+                    "success": True,
+                    "file_path": file_path,
+                    "sha1_hash": new_sha1,
+                    "status": "unchanged",
+                    "message": "Arquivo sem alteração",
+                    "version": current_version.version_number,
+                    "size": current_version.file_size,
+                    "size_formatted": format_size(current_version.file_size) if current_version.file_size else "N/A"
+                }
+            else:
+                # Arquivo mudou - criar nova versão
+                new_version_number = current_version.version_number + 1
+                
+                # Marcar versão atual como não-atual
+                current_version.is_current = False
+                
+                # Salvar nova versão no storage
+                full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
+                    server.guid,
+                    share_name,
+                    file_path,
+                    content_base64,
+                    new_version_number
+                )
+                
+                # Criar nova versão no banco
+                new_file_version = FileVersion(
+                    server_guid=server.guid,
+                    share_name=share_name,
+                    file_path=file_path,
+                    version_number=new_version_number,
+                    sha1_hash=sha1_hash,
+                    file_size=file_size,
+                    local_path=sanitized_path,
+                    is_current=True
+                )
+                db.add(new_file_version)
+                
+                # Atualizar downloaded_file principal
+                result = await db.execute(
+                    select(DownloadedFile).where(
+                        DownloadedFile.server_guid == server.guid,
+                        DownloadedFile.file_path == file_path
+                    ).order_by(DownloadedFile.downloaded_at.desc())
+                )
+                downloaded_file = result.scalar_one_or_none()
+                if downloaded_file:
+                    downloaded_file.sha1_hash = sha1_hash
+                    downloaded_file.file_size = file_size
+                    downloaded_file.sanitized_path = sanitized_path
+                    downloaded_file.downloaded_at = datetime.now(timezone.utc)
+                
+                await db.commit()
+                
+                return {
+                    "success": True,
+                    "file_path": file_path,
+                    "sanitized_path": sanitized_path,
+                    "sha1_hash": sha1_hash,
+                    "status": "updated",
+                    "message": "Arquivo atualizado",
+                    "version": new_version_number,
+                    "previous_version": current_version.version_number,
+                    "size": file_size,
+                    "size_formatted": format_size(file_size)
+                }
+        else:
+            # Primeiro download - criar versão 1
+            full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
+                server.guid,
+                share_name,
+                file_path,
+                content_base64,
+                1
+            )
+            
+            # Criar primeira versão
+            new_file_version = FileVersion(
+                server_guid=server.guid,
+                share_name=share_name,
+                file_path=file_path,
+                version_number=1,
+                sha1_hash=sha1_hash,
+                file_size=file_size,
+                local_path=sanitized_path,
+                is_current=True
+            )
+            db.add(new_file_version)
+            
+            # Salvar registro principal
+            downloaded_file = DownloadedFile(
+                server_guid=server.guid,
+                share_name=share_name,
+                file_path=file_path,
+                sanitized_path=sanitized_path,
+                file_size=file_size,
+                sha1_hash=sha1_hash
+            )
+            db.add(downloaded_file)
+            
+            # Atualizar contador
+            server.downloaded_files_count += 1
+            await db.commit()
+            
+            return {
+                "success": True,
+                "file_path": file_path,
+                "sanitized_path": sanitized_path,
+                "sha1_hash": sha1_hash,
+                "status": "new",
+                "message": "Arquivo sincronizado",
+                "version": 1,
+                "size": file_size,
+                "size_formatted": format_size(file_size)
+            }
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/servers/{server_id}/file-versions")
+async def get_file_versions(
+    server_id: int,
+    file_path: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Retorna todas as versões de um arquivo"""
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    result = await db.execute(
+        select(FileVersion).where(
+            FileVersion.server_guid == server.guid,
+            FileVersion.file_path == file_path
+        ).order_by(FileVersion.version_number.desc())
+    )
+    versions = result.scalars().all()
+    
+    return [
+        {
+            "id": v.id,
+            "version_number": v.version_number,
+            "sha1_hash": v.sha1_hash,
+            "file_size": v.file_size,
+            "local_path": v.local_path,
+            "is_current": v.is_current,
+            "created_at": v.created_at
+        }
+        for v in versions
+    ]
+
+
+@api_router.post("/servers/{server_id}/file-versions/{version_id}/set-current")
+async def set_version_as_current(
+    server_id: int,
+    version_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Define uma versão específica como a versão atual"""
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Obter a versão solicitada
+    result = await db.execute(
+        select(FileVersion).where(
+            FileVersion.id == version_id,
+            FileVersion.server_guid == server.guid
+        )
+    )
+    target_version = result.scalar_one_or_none()
+    if not target_version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    
+    # Desmarcar todas as versões do mesmo arquivo como não-atuais
+    await db.execute(
+        update(FileVersion).where(
+            FileVersion.server_guid == server.guid,
+            FileVersion.file_path == target_version.file_path
+        ).values(is_current=False)
+    )
+    
+    # Marcar a versão alvo como atual
+    target_version.is_current = True
+    
+    # Atualizar downloaded_file
+    result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.server_guid == server.guid,
+            DownloadedFile.file_path == target_version.file_path
+        )
+    )
+    downloaded_file = result.scalar_one_or_none()
+    if downloaded_file:
+        downloaded_file.sha1_hash = target_version.sha1_hash
+        downloaded_file.file_size = target_version.file_size
+        downloaded_file.sanitized_path = target_version.local_path
+    
+    await db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Versão {target_version.version_number} definida como atual",
+        "version": target_version.version_number
+    }
 
 
 @api_router.get("/servers/{server_id}/file-content")
