@@ -821,17 +821,6 @@ const ServerBrowser = () => {
                 ) : filePreviewUrl ? (
                   // Preview de imagem ou PDF
                   <div className="space-y-4">
-                    {/* Toolbar */}
-                    <div className="flex items-center justify-end">
-                      <Button 
-                        size="sm" 
-                        onClick={openFile}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
-                    </div>
-                    
                     {/* Image Preview */}
                     {isImageFile(selectedItem?.name) && (
                       <div className="flex justify-center bg-muted/30 rounded-lg p-4">
