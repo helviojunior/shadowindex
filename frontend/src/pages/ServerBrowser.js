@@ -1992,52 +1992,58 @@ const ServerBrowser = () => {
       </div>
 
       {/* Main Content - Split View */}
-      <div className="flex-1 flex overflow-hidden">
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Left Panel - Tree View */}
-        <div className="w-80 border-r border-border bg-card flex flex-col">
-          <div className="p-3 border-b border-border flex items-center justify-between">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Compartilhamentos
-            </h3>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-7 w-7"
-              onClick={refreshShares}
-              disabled={loadingShares}
-              data-testid="refresh-shares-btn"
-              title="Recarregar compartilhamentos"
-            >
-              {loadingShares ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-          
-          <ScrollArea className="flex-1">
-            <div className="py-2">
-              {loadingShares && shares.length === 0 ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                </div>
-              ) : shares.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-8">
-                  Nenhum compartilhamento encontrado
-                </p>
-              ) : (
-                shares.map((share, index) => renderTreeNode(share, 0, '', index === shares.length - 1, []))
-              )}
+        <ResizablePanel defaultSize={25} minSize={15} maxSize={50}>
+          <div className="h-full border-r border-border bg-card flex flex-col">
+            <div className="p-3 border-b border-border flex items-center justify-between">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Compartilhamentos
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-7 w-7"
+                onClick={refreshShares}
+                disabled={loadingShares}
+                data-testid="refresh-shares-btn"
+                title="Recarregar compartilhamentos"
+              >
+                {loadingShares ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+              </Button>
             </div>
-          </ScrollArea>
-        </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="py-2">
+                {loadingShares && shares.length === 0 ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : shares.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground py-8">
+                    Nenhum compartilhamento encontrado
+                  </p>
+                ) : (
+                  shares.map((share, index) => renderTreeNode(share, 0, '', index === shares.length - 1, []))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </ResizablePanel>
+        
+        <ResizableHandle withHandle />
         
         {/* Right Panel - Info */}
-        <div className="flex-1 bg-background">
-          {renderInfoPanel()}
-        </div>
-      </div>
+        <ResizablePanel defaultSize={75}>
+          <div className="h-full bg-background">
+            {renderInfoPanel()}
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 };
