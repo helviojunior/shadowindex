@@ -53,6 +53,9 @@ const TEXT_EXTENSIONS = ['.txt', '.md', '.xml', '.json', '.config', '.cfg', '.in
 // Extensões de arquivos de imagem que podem ser visualizados
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.svg'];
 
+// Extensões de certificados digitais
+const CERTIFICATE_EXTENSIONS = ['.cer', '.crt', '.pem', '.der', '.p7b', '.p7c', '.pfx', '.p12'];
+
 // Extensão PDF
 const PDF_EXTENSION = '.pdf';
 
