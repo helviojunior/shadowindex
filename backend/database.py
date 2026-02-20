@@ -272,6 +272,23 @@ async def init_db():
     except Exception as e:
         logger.warning(f"Migration check for sql_presets failed: {e}")
     
+    # Migration for downloaded_files table
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("PRAGMA table_info(downloaded_files)")
+        columns = {col[1] for col in cursor.fetchall()}
+        
+        if 'sha1_hash' not in columns:
+            cursor.execute('ALTER TABLE downloaded_files ADD COLUMN sha1_hash VARCHAR(40)')
+            logger.info("Added column 'sha1_hash' to downloaded_files")
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Migration check for downloaded_files failed: {e}")
+    
     # Create default records
     async with AsyncSessionLocal() as session:
         from sqlalchemy import select
