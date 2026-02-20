@@ -323,8 +323,15 @@ const ServerBrowser = () => {
     return result;
   };
 
-  // Beautify do conteúdo
-  const beautifyContent = () => {
+  // Mostra o conteúdo RAW (sem formatação)
+  const showRawContent = () => {
+    if (!rawFileContent) return;
+    setFileContent(rawFileContent);
+    setBeautified(false);
+  };
+
+  // Mostra o conteúdo Beautified (com formatação)
+  const showBeautifiedContent = () => {
     if (!rawFileContent) return;
     
     try {
@@ -334,20 +341,15 @@ const ServerBrowser = () => {
       
       if (filename.endsWith('.json')) {
         fileType = 'json';
-        // Formatar JSON
         beautifiedContent = JSON.stringify(JSON.parse(rawFileContent), null, 2);
       } else if (filename.endsWith('.xml') || filename.endsWith('.config')) {
         fileType = 'xml';
-        // Formatar XML
         beautifiedContent = formatXml(rawFileContent);
       }
       
-      // Aplicar syntax highlighting
       const highlighted = applySyntaxHighlight(beautifiedContent, fileType);
-      
       setFileContent(highlighted);
       setBeautified(true);
-      toast.success('Conteúdo formatado com syntax highlighting');
     } catch (error) {
       console.error('Beautify error:', error);
       toast.error('Erro ao formatar conteúdo');
