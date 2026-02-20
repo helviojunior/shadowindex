@@ -55,6 +55,7 @@ const ServerBrowser = () => {
   const [downloadedFiles, setDownloadedFiles] = useState([]);
   const [activeTab, setActiveTab] = useState('info');
   const [fileContent, setFileContent] = useState(null);
+  const [rawFileContent, setRawFileContent] = useState(null); // Conteúdo original sem formatação
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
   const [beautified, setBeautified] = useState(false);
