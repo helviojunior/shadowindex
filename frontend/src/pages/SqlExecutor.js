@@ -579,8 +579,8 @@ const SqlExecutor = () => {
               </Button>
               
               {showPresets && (
-                <Card className="absolute top-full left-0 mt-1 w-96 z-50 shadow-lg">
-                  <CardHeader className="py-2 px-3 border-b border-border">
+                <Card className="absolute top-full left-0 mt-1 w-[420px] z-50 shadow-lg">
+                  <CardHeader className="py-2 px-3 border-b border-border flex flex-row items-center justify-between">
                     <CardTitle className="text-sm">
                       Comandos Pré-definidos
                       {connection.db_type_name && (
@@ -589,8 +589,12 @@ const SqlExecutor = () => {
                         </span>
                       )}
                     </CardTitle>
+                    <span className="text-xs text-muted-foreground">{presets.length} presets</span>
                   </CardHeader>
-                  <div className="max-h-[350px] overflow-y-auto presets-dropdown-scroll">
+                  <div 
+                    className="max-h-[400px] overflow-y-scroll presets-dropdown-scroll"
+                    style={{ overflowY: 'scroll' }}
+                  >
                     {presets.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-3">Nenhum preset disponível</p>
                     ) : (
