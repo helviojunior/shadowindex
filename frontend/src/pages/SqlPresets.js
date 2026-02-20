@@ -108,7 +108,7 @@ const SqlPresets = () => {
         name: editData.name,
         query: editData.query,
         description: editData.description || null,
-        db_type_id: editData.db_type_id ? parseInt(editData.db_type_id) : null
+        db_type_id: editData.db_type_id && editData.db_type_id !== 'universal' ? parseInt(editData.db_type_id) : null
       };
       
       await axios.put(`${API}/sql-presets/${editingId}`, payload);
