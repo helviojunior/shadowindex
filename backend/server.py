@@ -511,14 +511,78 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
 
 # Server Shares
 @api_router.get("/servers/{server_id}/shares", response_model=List[ServerShareResponse])
-async def get_server_shares(server_id: int, db: AsyncSession = Depends(get_db)):
+async def get_server_shares(
+    server_id: int, 
+    refresh: bool = False,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Obtém compartilhamentos do servidor.
+    Se refresh=True ou se shares_count=0, busca via SOAP Shares primeiro.
+    Caso contrário, usa dados do cache/banco.
+    """
     # Obter server
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
-    # Obter shares
+    # Verificar se precisa buscar via SOAP
+    should_fetch_soap = refresh or server.shares_count == 0 or not server.verified
+    
+    if should_fetch_soap:
+        try:
+            soap_service = await get_default_soap_service(db)
+            params = {"s1": server.ip or server.name, "s2": ""}
+            result_str = await soap_service.call_soap_operation(db, "Shares", params, refresh)
+            
+            # Parsear XML e salvar shares
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(f"<root>{result_str}</root>")
+            
+            shares_found = []
+            for result_elem in root.findall(".//{http://test/}Result"):
+                share_name = result_elem.find("{http://test/}name")
+                share_type = result_elem.find("{http://test/}type")
+                remark = result_elem.find("{http://test/}remark")
+                
+                if share_name is not None and share_name.text:
+                    share_data = {
+                        "name": share_name.text,
+                        "type": share_type.text if share_type is not None and share_type.text else "Unknown",
+                        "remark": remark.text if remark is not None and remark.text else ""
+                    }
+                    shares_found.append(share_data)
+                    
+                    # Verificar se já existe
+                    check = await db.execute(
+                        select(ServerShare).where(
+                            ServerShare.server_guid == server.guid,
+                            ServerShare.share_name == share_data["name"]
+                        )
+                    )
+                    existing = check.scalar_one_or_none()
+                    
+                    if not existing:
+                        db_share = ServerShare(
+                            server_guid=server.guid,
+                            share_name=share_data["name"],
+                            share_type=share_data["type"],
+                            remark=share_data["remark"]
+                        )
+                        db.add(db_share)
+            
+            # Atualizar contador e marcar como verificado
+            server.shares_count = len(shares_found)
+            server.verified = True
+            server.last_verified_at = datetime.now(timezone.utc)
+            await db.commit()
+        except Exception as e:
+            # Log o erro mas continua retornando os dados do DB
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to fetch shares via SOAP: {e}")
+    
+    # Obter shares do banco
     result = await db.execute(
         select(ServerShare).where(ServerShare.server_guid == server.guid)
     )
