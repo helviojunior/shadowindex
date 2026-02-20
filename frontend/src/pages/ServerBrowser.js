@@ -1,19 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Folder, 
   File, 
   Download, 
   ArrowLeft, 
-  Home, 
   HardDrive,
   Loader2,
   ChevronRight,
-  FolderOpen
+  ChevronDown,
+  FolderOpen,
+  Copy,
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
@@ -28,25 +31,42 @@ const ServerBrowser = () => {
   
   const [server, setServer] = useState(null);
   const [shares, setShares] = useState([]);
-  const [currentPath, setCurrentPath] = useState('');
-  const [currentShare, setCurrentShare] = useState('');
-  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingShares, setLoadingShares] = useState(false);
-  const [pathHistory, setPathHistory] = useState([]);
-  const [view, setView] = useState('shares'); // 'shares' or 'files'
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [expandedNodes, setExpandedNodes] = useState({});
+  const [nodeChildren, setNodeChildren] = useState({});
+  const [loadingNodes, setLoadingNodes] = useState({});
+  const [copiedField, setCopiedField] = useState(null);
+  const [downloadedFiles, setDownloadedFiles] = useState([]);
 
   useEffect(() => {
     loadServer();
-  }, [serverId, ignoreCache]);
+    loadDownloadedFiles();
+  }, [serverId]);
+
+  useEffect(() => {
+    if (server) {
+      loadShares();
+    }
+  }, [server, ignoreCache]);
 
   const loadServer = async () => {
     try {
-      const response = await axios.get(`${API}/servers/${serverId}?refresh=${ignoreCache}`);
+      const response = await axios.get(`${API}/servers/${serverId}`);
       setServer(response.data);
     } catch (error) {
       console.error('Error loading server:', error);
       toast.error('Erro ao carregar servidor');
+    }
+  };
+
+  const loadDownloadedFiles = async () => {
+    try {
+      const response = await axios.get(`${API}/servers/${serverId}/downloads`);
+      setDownloadedFiles(response.data.map(f => f.file_path));
+    } catch (error) {
+      console.error('Error loading downloads:', error);
     }
   };
 
@@ -55,8 +75,6 @@ const ServerBrowser = () => {
     try {
       const response = await axios.get(`${API}/servers/${serverId}/shares?refresh=${ignoreCache}`);
       setShares(response.data);
-      setView('shares');
-      toast.success(`${response.data.length} compartilhamentos encontrados`);
     } catch (error) {
       console.error('Error loading shares:', error);
       toast.error('Erro ao carregar compartilhamentos');
@@ -65,14 +83,30 @@ const ServerBrowser = () => {
     }
   };
 
-  const browseShare = async (shareName) => {
-    const path = `\\\\\\\\${server.ip}\\\\${shareName}`;
-    setCurrentShare(shareName);
-    await browsePath(path);
+  const refreshShares = async () => {
+    setLoadingShares(true);
+    try {
+      const response = await axios.get(`${API}/servers/${serverId}/shares?refresh=true`);
+      setShares(response.data);
+      toast.success(`${response.data.length} compartilhamentos encontrados`);
+    } catch (error) {
+      console.error('Error refreshing shares:', error);
+      toast.error('Erro ao atualizar compartilhamentos');
+    } finally {
+      setLoadingShares(false);
+    }
   };
 
-  const browsePath = async (path) => {
-    setLoading(true);
+  const buildPath = (serverIp, shareName, subPath = '') => {
+    let path = `\\\\${serverIp}\\${shareName}`;
+    if (subPath) {
+      path += `\\${subPath}`;
+    }
+    return path;
+  };
+
+  const loadDirectory = async (nodeId, path) => {
+    setLoadingNodes(prev => ({ ...prev, [nodeId]: true }));
     try {
       const response = await axios.post(
         `${API}/servers/${serverId}/browse`,
@@ -80,29 +114,53 @@ const ServerBrowser = () => {
         { params: { path } }
       );
       
-      setItems(response.data.items);
-      setCurrentPath(path);
-      setView('files');
+      const items = response.data.items.map((item, idx) => ({
+        ...item,
+        id: `${nodeId}-${idx}`,
+        parentPath: path
+      }));
       
-      // Adicionar ao histórico
-      if (!pathHistory.includes(path)) {
-        setPathHistory([...pathHistory, path]);
-      }
+      setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
     } catch (error) {
-      console.error('Error browsing path:', error);
+      console.error('Error loading directory:', error);
       toast.error('Erro ao listar diretório');
     } finally {
-      setLoading(false);
+      setLoadingNodes(prev => ({ ...prev, [nodeId]: false }));
     }
   };
 
-  const handleItemClick = async (item) => {
-    if (item.type === 'Directory') {
-      await browsePath(item.fullPath);
+  const toggleNode = async (nodeId, nodeType, path) => {
+    if (nodeType !== 'Directory' && nodeType !== 'share') {
+      return;
+    }
+
+    const isExpanded = expandedNodes[nodeId];
+    
+    if (isExpanded) {
+      setExpandedNodes(prev => ({ ...prev, [nodeId]: false }));
+    } else {
+      setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
+      
+      // Carregar filhos se ainda não carregados
+      if (!nodeChildren[nodeId]) {
+        await loadDirectory(nodeId, path);
+      }
     }
   };
 
-  const handleDownload = async (item) => {
+  const handleSelectItem = (item, type, path, shareName = '') => {
+    setSelectedItem({
+      ...item,
+      itemType: type,
+      serverPath: path,
+      shareName: shareName,
+      fetchedAt: new Date().toISOString()
+    });
+  };
+
+  const handleDownload = async () => {
+    if (!selectedItem || selectedItem.itemType !== 'File') return;
+    
     setLoading(true);
     try {
       const response = await axios.post(
@@ -110,14 +168,15 @@ const ServerBrowser = () => {
         null,
         {
           params: {
-            file_path: item.fullPath,
-            share_name: currentShare
+            file_path: selectedItem.fullPath || selectedItem.serverPath,
+            share_name: selectedItem.shareName
           }
         }
       );
       
       toast.success(`Arquivo baixado: ${response.data.size_formatted}`);
-      loadServer(); // Atualizar contadores
+      setDownloadedFiles(prev => [...prev, selectedItem.fullPath || selectedItem.serverPath]);
+      loadServer();
     } catch (error) {
       console.error('Error downloading file:', error);
       toast.error('Erro ao baixar arquivo');
@@ -126,29 +185,18 @@ const ServerBrowser = () => {
     }
   };
 
-  const goBack = () => {
-    if (pathHistory.length > 1) {
-      const newHistory = [...pathHistory];
-      newHistory.pop(); // Remove atual
-      const previousPath = newHistory[newHistory.length - 1];
-      setPathHistory(newHistory);
-      browsePath(previousPath);
-    } else {
-      setView('shares');
-      setCurrentPath('');
-      setPathHistory([]);
+  const copyToClipboard = async (text, field) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (error) {
+      toast.error('Erro ao copiar');
     }
   };
 
-  const goHome = () => {
-    setView('shares');
-    setCurrentPath('');
-    setPathHistory([]);
-    setItems([]);
-  };
-
   const formatSize = (size) => {
-    if (size === '---' || !size) return size;
+    if (size === '---' || !size) return '---';
     const bytes = parseInt(size);
     if (isNaN(bytes)) return size;
     
@@ -165,7 +213,7 @@ const ServerBrowser = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return '';
+    if (!dateString) return '---';
     try {
       return new Date(dateString).toLocaleString('pt-BR');
     } catch {
@@ -173,22 +221,216 @@ const ServerBrowser = () => {
     }
   };
 
-  const renderBreadcrumb = () => {
-    if (!currentPath) return null;
+  const isFileDownloaded = (filePath) => {
+    return downloadedFiles.includes(filePath);
+  };
+
+  // Renderiza um nó da árvore
+  const renderTreeNode = (item, depth = 0, shareName = '') => {
+    const nodeId = item.id || `share-${item.share_name}`;
+    const isExpanded = expandedNodes[nodeId];
+    const isLoading = loadingNodes[nodeId];
+    const children = nodeChildren[nodeId] || [];
+    const isShare = !!item.share_name;
+    const isDirectory = item.type === 'Directory' || isShare;
+    const isSelected = selectedItem?.id === nodeId || 
+                       (isShare && selectedItem?.share_name === item.share_name && selectedItem?.itemType === 'share');
     
-    const parts = currentPath.split('\\\\').filter(p => p);
+    const path = isShare 
+      ? buildPath(server.ip, item.share_name)
+      : item.fullPath;
+    
+    const currentShareName = isShare ? item.share_name : shareName;
     
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Button variant="ghost" size="sm" onClick={goHome}>
-          <Home className="w-4 h-4" />
-        </Button>
-        {parts.map((part, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <ChevronRight className="w-4 h-4" />
-            <span className="font-medium">{part}</span>
+      <div key={nodeId}>
+        <div
+          className={`flex items-center gap-1 py-1.5 px-2 cursor-pointer hover:bg-muted/50 rounded transition-colors ${
+            isSelected ? 'bg-primary/10 text-primary' : ''
+          }`}
+          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          onClick={() => {
+            if (isShare) {
+              handleSelectItem(item, 'share', path, item.share_name);
+            } else {
+              handleSelectItem(item, item.type, path, currentShareName);
+            }
+          }}
+          data-testid={`tree-node-${nodeId}`}
+        >
+          {/* Expand/Collapse Arrow */}
+          {isDirectory ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNode(nodeId, isShare ? 'share' : item.type, path);
+              }}
+              className="p-0.5 hover:bg-muted rounded"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : isExpanded ? (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
+          ) : (
+            <span className="w-5" />
+          )}
+          
+          {/* Icon */}
+          {isShare ? (
+            <HardDrive className="w-4 h-4 text-blue-500 flex-shrink-0" />
+          ) : isDirectory ? (
+            isExpanded ? (
+              <FolderOpen className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            ) : (
+              <Folder className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            )
+          ) : (
+            <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          )}
+          
+          {/* Name */}
+          <span className="text-sm truncate flex-1" title={isShare ? item.share_name : item.name}>
+            {isShare ? String(item.share_name) : String(item.name)}
+          </span>
+        </div>
+        
+        {/* Children */}
+        {isExpanded && children.length > 0 && (
+          <div>
+            {children.map((child) => renderTreeNode(child, depth + 1, currentShareName))}
           </div>
-        ))}
+        )}
+      </div>
+    );
+  };
+
+  // Renderiza o painel de informações
+  const renderInfoPanel = () => {
+    if (!selectedItem) {
+      return (
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          <p>Selecione um item para ver detalhes</p>
+        </div>
+      );
+    }
+
+    const isShare = selectedItem.itemType === 'share';
+    const isDirectory = selectedItem.itemType === 'Directory';
+    const isFile = selectedItem.itemType === 'File';
+    const itemName = isShare ? selectedItem.share_name : selectedItem.name;
+    const downloaded = isFile && isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath);
+
+    return (
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            {isShare ? (
+              <HardDrive className="w-5 h-5 text-blue-500" />
+            ) : isDirectory ? (
+              <Folder className="w-5 h-5 text-blue-500" />
+            ) : (
+              <File className="w-5 h-5 text-muted-foreground" />
+            )}
+            <h2 className="text-lg font-semibold truncate" title={String(itemName)}>
+              {String(itemName)}
+            </h2>
+          </div>
+          
+          {isFile && (
+            <Button 
+              size="sm" 
+              onClick={handleDownload}
+              disabled={loading || downloaded}
+              data-testid="download-button"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              {downloaded ? 'Baixado' : 'Download'}
+            </Button>
+          )}
+        </div>
+        
+        {/* Info Content */}
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Info
+            </h3>
+            
+            <div className="space-y-3">
+              {/* Name */}
+              <InfoRow 
+                label="Name" 
+                value={String(itemName)}
+                onCopy={() => copyToClipboard(String(itemName), 'name')}
+                copied={copiedField === 'name'}
+              />
+              
+              {/* Server Path */}
+              <InfoRow 
+                label="Server Path" 
+                value={selectedItem.serverPath}
+                onCopy={() => copyToClipboard(selectedItem.serverPath, 'path')}
+                copied={copiedField === 'path'}
+              />
+              
+              {/* Fetched Date */}
+              <InfoRow 
+                label="Fetched Date" 
+                value={formatDate(selectedItem.fetchedAt)}
+              />
+              
+              {/* Last Write Time - para diretórios e arquivos */}
+              {(isDirectory || isFile) && selectedItem.modified && (
+                <InfoRow 
+                  label="Last Modified" 
+                  value={formatDate(selectedItem.modified)}
+                />
+              )}
+              
+              {/* Size - apenas para arquivos */}
+              {isFile && (
+                <InfoRow 
+                  label="Size" 
+                  value={formatSize(selectedItem.size)}
+                />
+              )}
+              
+              {/* Downloaded - apenas para arquivos */}
+              {isFile && (
+                <InfoRow 
+                  label="Downloaded" 
+                  value={downloaded ? 'Yes' : 'No'}
+                  valueClassName={downloaded ? 'text-green-500' : 'text-muted-foreground'}
+                />
+              )}
+              
+              {/* Remark - apenas para shares */}
+              {isShare && selectedItem.remark && (
+                <InfoRow 
+                  label="Remark" 
+                  value={selectedItem.remark}
+                />
+              )}
+              
+              {/* Type - apenas para shares */}
+              {isShare && selectedItem.share_type && (
+                <InfoRow 
+                  label="Share Type" 
+                  value={selectedItem.share_type}
+                />
+              )}
+            </div>
+          </div>
+        </ScrollArea>
       </div>
     );
   };
@@ -202,147 +444,104 @@ const ServerBrowser = () => {
   }
 
   return (
-    <div className="space-y-6" data-testid="server-browser-page">
+    <div className="h-[calc(100vh-120px)] flex flex-col" data-testid="server-browser-page">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate('/servers')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/servers')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{server.name}</h1>
-            <p className="text-muted-foreground mt-1">
-              <code className="text-sm bg-muted px-2 py-1 rounded">{server.ip}</code>
+            <h1 className="text-xl font-semibold">{server.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{server.ip}</code>
             </p>
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Badge variant="outline">
             <HardDrive className="w-3 h-3 mr-1" />
-            {server.shares_count} Shares
+            {shares.length} Shares
           </Badge>
           <Badge variant="outline">
             <Download className="w-3 h-3 mr-1" />
             {server.downloaded_files_count} Downloads
           </Badge>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={refreshShares}
+            disabled={loadingShares}
+            data-testid="refresh-shares-btn"
+          >
+            {loadingShares ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+          </Button>
         </div>
       </div>
 
-      {/* Main Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>
-                {view === 'shares' ? 'Compartilhamentos' : 'Navegador de Arquivos'}
-              </CardTitle>
-              <CardDescription>
-                {view === 'shares' 
-                  ? 'Selecione um compartilhamento para explorar'
-                  : currentPath
-                }
-              </CardDescription>
-            </div>
-            
-            {view === 'shares' ? (
-              <Button onClick={loadShares} disabled={loadingShares}>
-                {loadingShares && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Carregar Shares
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={goBack}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar
-              </Button>
-            )}
+      {/* Main Content - Split View */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Panel - Tree View */}
+        <div className="w-80 border-r border-border bg-card flex flex-col">
+          <div className="p-3 border-b border-border">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Compartilhamentos
+            </h3>
           </div>
-        </CardHeader>
-        
-        <CardContent>
-          {renderBreadcrumb()}
           
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-          ) : view === 'shares' ? (
-            // Shares View
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {shares.length === 0 ? (
-                <p className="col-span-full text-center text-muted-foreground py-8">
-                  Clique em "Carregar Shares" para listar os compartilhamentos
-                </p>
-              ) : (
-                shares.map((share, index) => (
-                  <div
-                    key={index}
-                    onClick={() => browseShare(share.name)}
-                    className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                  >
-                    <FolderOpen className="w-8 h-8 text-blue-500" />
-                    <div className="flex-1">
-                      <div className="font-medium">{share.name}</div>
-                      <div className="text-xs text-muted-foreground">{share.type}</div>
-                      {share.remark && (
-                        <div className="text-xs text-muted-foreground mt-1">{share.remark}</div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : (
-            // Files View
-            <div className="space-y-2">
-              {items.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Diretório vazio
-                </p>
-              ) : (
-                <div className="border border-border rounded-lg overflow-hidden">
-                  {items.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
-                    >
-                      <div 
-                        className="flex items-center gap-3 flex-1 cursor-pointer"
-                        onClick={() => handleItemClick(item)}
-                      >
-                        {item.type === 'Directory' ? (
-                          <Folder className="w-5 h-5 text-blue-500" />
-                        ) : (
-                          <File className="w-5 h-5 text-muted-foreground" />
-                        )}
-                        <div className="flex-1">
-                          <div className="font-medium">{item.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {item.size !== '---' && formatSize(item.size)} • {formatDate(item.modified)}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {item.type !== 'Directory' && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDownload(item)}
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+          <ScrollArea className="flex-1">
+            <div className="py-2">
+              {loadingShares && shares.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin" />
                 </div>
+              ) : shares.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">
+                  Nenhum compartilhamento encontrado
+                </p>
+              ) : (
+                shares.map((share) => renderTreeNode(share, 0))
               )}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </ScrollArea>
+        </div>
+        
+        {/* Right Panel - Info */}
+        <div className="flex-1 bg-background">
+          {renderInfoPanel()}
+        </div>
+      </div>
     </div>
   );
 };
+
+// Componente auxiliar para linhas de informação
+const InfoRow = ({ label, value, onCopy, copied, valueClassName = '' }) => (
+  <div className="flex items-start gap-4">
+    <span className="text-sm text-muted-foreground w-32 flex-shrink-0">{label}:</span>
+    <div className="flex items-center gap-2 flex-1 min-w-0">
+      <span className={`text-sm break-all ${valueClassName}`}>{value}</span>
+      {onCopy && (
+        <button 
+          onClick={onCopy}
+          className="text-muted-foreground hover:text-foreground flex-shrink-0"
+          title="Copiar"
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5 text-green-500" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+        </button>
+      )}
+    </div>
+  </div>
+);
 
 export default ServerBrowser;
