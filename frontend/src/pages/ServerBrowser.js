@@ -17,7 +17,8 @@ import {
   Copy,
   Check,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  FileCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
