@@ -228,6 +228,145 @@ const SqlExecutor = () => {
     }
   };
 
+  // Testar conexão com SELECT 1
+  const testConnection = async () => {
+    setTestingConnection(true);
+    try {
+      const response = await axios.post(`${API}/sql/execute`, {
+        connection_id: parseInt(connectionId),
+        query: 'SELECT 1 AS test'
+      });
+
+      if (response.data.success) {
+        toast.success(`Conexão OK! (${response.data.execution_time_ms}ms)`);
+      } else {
+        toast.error(`Falha na conexão: ${response.data.error_message}`);
+      }
+    } catch (error) {
+      toast.error(`Erro ao testar: ${error.response?.data?.detail || error.message}`);
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  // Keyboard shortcuts handler
+  const handleKeyDown = useCallback((e) => {
+    // Ctrl+Enter or Cmd+Enter to execute
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      const currentTab = tabs[activeTabIndex];
+      if (currentTab?.query?.trim() && !currentTab.loading) {
+        executeQuery();
+      }
+      return;
+    }
+
+    // Handle autocomplete navigation
+    if (showAutocomplete) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedAutocompleteIndex(prev => 
+          prev < autocompleteItems.length - 1 ? prev + 1 : 0
+        );
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedAutocompleteIndex(prev => 
+          prev > 0 ? prev - 1 : autocompleteItems.length - 1
+        );
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (autocompleteItems[selectedAutocompleteIndex]) {
+          insertAutocomplete(autocompleteItems[selectedAutocompleteIndex]);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShowAutocomplete(false);
+        return;
+      }
+    }
+
+    // Ctrl+Space to trigger autocomplete
+    if (e.ctrlKey && e.key === ' ') {
+      e.preventDefault();
+      triggerAutocomplete();
+    }
+  }, [tabs, activeTabIndex, showAutocomplete, autocompleteItems, selectedAutocompleteIndex]);
+
+  // Autocomplete functions
+  const triggerAutocomplete = () => {
+    const currentTab = tabs[activeTabIndex];
+    const query = currentTab?.query || '';
+    
+    // Get the current word being typed
+    const words = query.split(/\s+/);
+    const lastWord = words[words.length - 1] || '';
+    setCurrentWord(lastWord);
+    
+    // Filter keywords
+    const filtered = SQL_KEYWORDS.filter(kw => 
+      kw.toLowerCase().startsWith(lastWord.toLowerCase()) && 
+      kw.toLowerCase() !== lastWord.toLowerCase()
+    ).slice(0, 10);
+    
+    if (filtered.length > 0) {
+      setAutocompleteItems(filtered);
+      setSelectedAutocompleteIndex(0);
+      setShowAutocomplete(true);
+    } else {
+      setShowAutocomplete(false);
+    }
+  };
+
+  const insertAutocomplete = (item) => {
+    const currentTab = tabs[activeTabIndex];
+    const query = currentTab?.query || '';
+    
+    // Replace the last word with the selected item
+    const words = query.split(/(\s+)/);
+    words[words.length - 1] = item + ' ';
+    
+    updateCurrentTab({ query: words.join('') });
+    setShowAutocomplete(false);
+  };
+
+  // Handle query change for autocomplete
+  const handleQueryChange = (code) => {
+    updateCurrentTab({ query: code });
+    
+    // Auto-trigger autocomplete when typing
+    const words = code.split(/\s+/);
+    const lastWord = words[words.length - 1] || '';
+    
+    if (lastWord.length >= 2) {
+      const filtered = SQL_KEYWORDS.filter(kw => 
+        kw.toLowerCase().startsWith(lastWord.toLowerCase()) && 
+        kw.toLowerCase() !== lastWord.toLowerCase()
+      ).slice(0, 8);
+      
+      if (filtered.length > 0) {
+        setAutocompleteItems(filtered);
+        setSelectedAutocompleteIndex(0);
+        setCurrentWord(lastWord);
+        setShowAutocomplete(true);
+      } else {
+        setShowAutocomplete(false);
+      }
+    } else {
+      setShowAutocomplete(false);
+    }
+  };
+
+  // Add keyboard event listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   const selectPreset = (preset) => {
     updateCurrentTab({ query: preset.query });
     setShowPresets(false);
