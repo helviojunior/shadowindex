@@ -498,6 +498,16 @@ const SqlExecutor = () => {
   };
 
   // Exportar para CSV
+  // Gerar nome do arquivo de exportação: ano_mes_dia_epoch
+  const getExportFileName = (extension) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const epoch = now.getTime();
+    return `${year}_${month}_${day}_${epoch}.${extension}`;
+  };
+
   const exportToCSV = () => {
     const currentTab = getCurrentTab();
     if (!currentTab.result?.success || !currentTab.result?.columns) {
@@ -523,7 +533,7 @@ const SqlExecutor = () => {
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `query_result_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = getExportFileName('csv');
     link.click();
     
     toast.success('Exportado para CSV');
@@ -543,7 +553,7 @@ const SqlExecutor = () => {
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
-    XLSX.writeFile(wb, `query_result_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, getExportFileName('xlsx'));
     
     toast.success('Exportado para Excel');
   };
