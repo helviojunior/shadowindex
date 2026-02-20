@@ -154,6 +154,9 @@ Portuguese (pt-BR)
 - **ServerItem:** `{id, server_guid, share_name, parent_path, item_type, name, full_path, size, modified, access_denied, error_message, has_children, children_fetched}`
 - **SoapCache:** `{id, query_hash, operation, request_data, response_data, timestamp}`
 - **AppConfig:** `{id, key, value, updated_at}` - Global state like `offline_mode`, `active_proxy_id`
+- **DatabaseConnection:** `{id, name, connection_string, verified, last_verified_at, created_at}`
+- **SqlPreset:** `{id, name, query, description, created_at, updated_at}`
+- **SqlQueryHistory:** `{id, connection_id, connection_name, query, result, success, error_message, execution_time_ms, executed_at}`
 
 ## 3rd Party Integrations
 - **Custom SOAP Web Service:** Private SOAP API at sdweb.suzanonet.com.br
