@@ -135,11 +135,14 @@ class SoapService:
         
         try:
             # Configurar proxy se disponível
-            connector = None
             if self.proxy_url:
                 logger.info(f"Using proxy: {self.proxy_url}")
             
-            async with aiohttp.ClientSession() as session:
+            # Criar connector com SSL desabilitado (ignora erros de TLS)
+            ssl_context = create_insecure_ssl_context()
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            
+            async with aiohttp.ClientSession(connector=connector) as session:
                 request_kwargs = {
                     'data': soap_envelope,
                     'headers': headers,
