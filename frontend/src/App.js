@@ -10,6 +10,7 @@ import SoapApis from "@/pages/SoapApis";
 import SoapOperations from "@/pages/SoapOperations";
 import Servers from "@/pages/Servers";
 import ServerBrowser from "@/pages/ServerBrowser";
+import BeautifyTest from "@/pages/BeautifyTest";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 
@@ -39,6 +40,7 @@ function App() {
               <Route path="/proxy-servers" element={<ProxyServers />} />
               <Route path="/soap-apis" element={<SoapApis />} />
               <Route path="/soap-operations" element={<SoapOperations />} />
+              <Route path="/beautify-test" element={<BeautifyTest />} />
             </Routes>
           </Layout>
         </BrowserRouter>
