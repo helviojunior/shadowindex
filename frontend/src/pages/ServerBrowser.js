@@ -1801,7 +1801,7 @@ const ServerBrowser = () => {
           )}
           
           {/* Download Tab Content */}
-          {activeTab === 'download' && (isShare || isDirectory) && (
+          {activeTab === 'download' && (isShare || isDirectory) && !isAccessDenied && (
             <div className="flex-1 overflow-hidden flex flex-col">
               {/* Stats Header */}
               <div className="p-4 border-b border-border bg-muted/30">
