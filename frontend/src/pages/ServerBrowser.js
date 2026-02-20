@@ -16,7 +16,8 @@ import {
   FolderOpen,
   Copy,
   Check,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
