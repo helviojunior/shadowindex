@@ -167,8 +167,8 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
               {/* Version info - only when expanded */}
               {!sidebarCollapsed && (
                 <div className="text-xs text-muted-foreground pr-12">
-                  <div>Stratasec Platform</div>
-                  <div>v1.0.0</div>
+                  <div>Ops Integration Desk v1.0.0</div>
+                  <div className="mt-1">© StrataSec 2026</div>
                 </div>
               )}
               
