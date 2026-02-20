@@ -1210,7 +1210,7 @@ const ServerBrowser = () => {
             )}
           </div>
           
-          {/* Botões de ação */}
+          {/* Botões de ação para arquivos */}
           {isFile && !isAccessDenied && (
             <div className="flex items-center gap-2 flex-shrink-0">
               {downloaded && (
@@ -1240,6 +1240,73 @@ const ServerBrowser = () => {
                 )}
                 Sync
               </Button>
+            </div>
+          )}
+          
+          {/* Botões de ação para diretórios/shares */}
+          {(isShare || isDirectory) && !isAccessDenied && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Seletor de profundidade */}
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">Níveis:</span>
+                <Select
+                  value={bulkDownloadConfig.depth.toString()}
+                  onValueChange={(val) => setBulkDownloadConfig(prev => ({ ...prev, depth: parseInt(val) }))}
+                  disabled={bulkDownloadActive}
+                >
+                  <SelectTrigger className="w-16 h-7">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 10].map((n) => (
+                      <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Seletor de tamanho máximo */}
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">Max:</span>
+                <Select
+                  value={bulkDownloadConfig.maxSize.toString()}
+                  onValueChange={(val) => setBulkDownloadConfig(prev => ({ ...prev, maxSize: parseInt(val) }))}
+                  disabled={bulkDownloadActive}
+                >
+                  <SelectTrigger className="w-20 h-7">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 5, 10, 25, 50, 100, 500].map((n) => (
+                      <SelectItem key={n} value={n.toString()}>{n} MB</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Botão de download */}
+              {!bulkDownloadActive ? (
+                <Button 
+                  size="sm" 
+                  className="h-7"
+                  onClick={startBulkDownload}
+                  data-testid="bulk-download-button"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </Button>
+              ) : (
+                <Button 
+                  size="sm" 
+                  variant="destructive"
+                  className="h-7"
+                  onClick={cancelBulkDownload}
+                  data-testid="cancel-bulk-download-button"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Cancelar
+                </Button>
+              )}
             </div>
           )}
         </div>
