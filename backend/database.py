@@ -151,7 +151,24 @@ class DownloadedFile(Base):
     file_path = Column(String, nullable=False)
     sanitized_path = Column(String, nullable=False)
     file_size = Column(Integer, nullable=True)
+    sha1_hash = Column(String(40), nullable=True)  # SHA1 hash do arquivo
     downloaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class FileVersion(Base):
+    """Armazena versões de arquivos baixados"""
+    __tablename__ = "file_versions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    server_guid = Column(String, nullable=False, index=True)
+    share_name = Column(String, nullable=False, index=True)
+    file_path = Column(String, nullable=False, index=True)  # Caminho original do arquivo
+    version_number = Column(Integer, nullable=False, default=1)  # Número da versão
+    sha1_hash = Column(String(40), nullable=False)  # SHA1 hash desta versão
+    file_size = Column(Integer, nullable=True)
+    local_path = Column(String, nullable=False)  # Caminho local onde está armazenado
+    is_current = Column(Boolean, default=True)  # Se é a versão atual
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ServerItem(Base):
