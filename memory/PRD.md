@@ -108,12 +108,14 @@ Portuguese (pt-BR)
 ```
 /app/
 ├── backend/
+│   ├── data/
+│   │   ├── ops_integration.db   # SQLite database
+│   │   └── storage/             # Downloaded files
 │   ├── requirements.txt
-│   ├── models.py        # SQLAlchemy ORM models
-│   ├── server.py        # Main FastAPI app, all endpoints, SOAP logic
-│   ├── soap_service.py  # SOAP client logic
-│   ├── storage_utils.py # Utilities for file storage paths
-│   └── ops_integration.db
+│   ├── database.py              # SQLAlchemy models & init
+│   ├── server.py                # Main FastAPI app, all endpoints
+│   ├── soap_service.py          # SOAP client with caching
+│   └── storage_utils.py         # File storage utilities
 ├── frontend/
 │   ├── package.json
 │   ├── src/
@@ -123,7 +125,8 @@ Portuguese (pt-BR)
 │   │   ├── contexts/
 │   │   │   └── AppContext.js      # Global state (offline mode, cache)
 │   │   └── pages/
-│   │       ├── ServerBrowser.js   # File tree + info panel
+│   │       ├── ServerBrowser.js   # File tree + info panel (with pre-loading)
+│   │       ├── BeautifyTest.js    # Test page for beautify feature
 │   │       └── ...
 │   └── ...
 └── ...
