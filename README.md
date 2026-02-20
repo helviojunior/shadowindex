@@ -45,7 +45,7 @@ O sistema já está rodando no ambiente Kubernetes:
 # Frontend na porta 3000
 ```
 
-Acesse: https://server-manager-ui.preview.emergentagent.com/
+Acesse: https://proxy-bridge-13.preview.emergentagent.com/
 
 ### Opção 2: Docker Compose (Porta 9090)
 
