@@ -713,9 +713,6 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
               <span className="text-sm font-medium">Resultado</span>
               {currentTab.result?.success && (
                 <>
-                  <Badge variant="outline" className="text-green-500 border-green-500">
-                    {currentTab.result.row_count} linha(s)
-                  </Badge>
                   <span className="flex items-center gap-1 text-sm text-green-500">
                     <CheckCircle className="w-4 h-4" />
                     Sucesso
@@ -724,6 +721,9 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                     <Clock className="w-4 h-4" />
                     {currentTab.result.execution_time_ms}ms
                   </span>
+                  <Badge variant="outline" className="text-green-500 border-green-500">
+                    {currentTab.result.row_count} linha(s)
+                  </Badge>
                   {currentTab.historyInfo?.executed_at && (
                     <span className="flex items-center gap-1 text-sm text-muted-foreground border-l border-border pl-3">
                       <Calendar className="w-4 h-4" />
