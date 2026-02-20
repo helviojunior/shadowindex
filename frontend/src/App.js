@@ -9,6 +9,7 @@ import ProxyServers from "@/pages/ProxyServers";
 import SoapApis from "@/pages/SoapApis";
 import SoapOperations from "@/pages/SoapOperations";
 import Servers from "@/pages/Servers";
+import ServerBrowser from "@/pages/ServerBrowser";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
