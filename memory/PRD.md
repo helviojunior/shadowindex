@@ -28,6 +28,12 @@ Portuguese (pt-BR)
 ## Completed Features
 
 ### 2026-02-20
+- [x] Dashboard: Added "Servidores" and "Arquivos Baixados" stat cards
+- [x] Dashboard: Grid updated to 6 columns on large screens
+- [x] Server Browser: Gray icons/text for shares/directories without fetched children
+- [x] Server Browser: Renamed tab from "General" to "Info"
+- [x] Server Browser: Implemented image preview (PNG, JPG, GIF, WebP, BMP, ICO, SVG)
+- [x] Server Browser: Implemented PDF preview via iframe
 - [x] Sidebar menu reorder: Servidores → SQL → Operações SOAP → Credenciais → SOAP APIs → Proxy Servers
 - [x] Renamed "Conexões DB" to "SQL"
 - [x] Changed order of info panel rows: "Access Status" before "Fetched Date"
