@@ -277,7 +277,49 @@ const Servers = () => {
                         <div className="text-xs text-muted-foreground">{server.guid.substring(0, 8)}...</div>
                       </td>
                       <td className="p-3">
-                        <code className="text-sm bg-muted px-2 py-1 rounded">{server.ip}</code>
+                        {editingServer === server.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editIp}
+                              onChange={(e) => setEditIp(e.target.value)}
+                              className="w-36 h-8 text-sm"
+                              placeholder="192.168.1.100"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveIp(server.id);
+                                if (e.key === 'Escape') handleCancelEdit();
+                              }}
+                              autoFocus
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                              onClick={() => handleSaveIp(server.id)}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={handleCancelEdit}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <code className="text-sm bg-muted px-2 py-1 rounded">{server.ip}</code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleEditIp(server)}
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-center">
                         {server.verified ? (
