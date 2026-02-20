@@ -42,6 +42,12 @@ Dashboard web para gerenciar credenciais, conexões de banco de dados, servidore
 - [x] Botão Resolve IP - parsing robusto de resposta JSON/XML
 - [x] Página SOAP Operations - tabs funcionando com estado controlado
 - [x] Parsing robusto do Exec5 para download de arquivos (SOAP envelope completo)
+- [x] **Modo Offline Global** com:
+  - Botão na barra superior (Online/Offline)
+  - Persistência no banco de dados via AppConfig
+  - Desabilita "Ignorar Cache" quando offline (usa obrigatoriamente o cache)
+  - Respeitado em todas as operações SOAP
+- [x] **Migração automática do banco de dados** - SQLAlchemy aplica alterações de schema automaticamente ao iniciar
 
 ## Pending Issues
 - Nenhum issue pendente
