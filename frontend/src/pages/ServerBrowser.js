@@ -603,21 +603,20 @@ const ServerBrowser = () => {
       
       // Atualizar o share na lista local apenas se for o nível raiz
       if (shareName && nodeId.startsWith('share-')) {
+        // Atualizar estado local imediatamente
         setShares(prev => prev.map(s => 
           s.share_name === shareName 
             ? { ...s, children_fetched: true, has_children: items.length > 0 }
             : s
         ));
         
-        // Persistir no banco de dados
-        try {
-          await axios.patch(`${API}/servers/${serverId}/shares/${encodeURIComponent(shareName)}`, {
-            children_fetched: true,
-            has_children: items.length > 0
-          });
-        } catch (err) {
+        // Persistir no banco de dados (não esperar resposta para UI)
+        axios.patch(`${API}/servers/${serverId}/shares/${encodeURIComponent(shareName)}`, {
+          children_fetched: true,
+          has_children: items.length > 0
+        }).catch(err => {
           console.error('Error updating share flags:', err);
-        }
+        });
       }
       
       if (items.length === 0) {
