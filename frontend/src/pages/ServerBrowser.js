@@ -2018,7 +2018,51 @@ const ServerBrowser = () => {
                   <RefreshCw className="w-4 h-4" />
                 )}
               </Button>
+              
+              {/* Botão de foco - mostra apenas share selecionado */}
+              {selectedItem && (selectedItem.itemType === 'share' || selectedItem.shareName) && (
+                <Button 
+                  variant={focusedShare ? "default" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => {
+                    if (focusedShare) {
+                      setFocusedShare(null);
+                    } else {
+                      const shareName = selectedItem.itemType === 'share' 
+                        ? selectedItem.share_name 
+                        : selectedItem.shareName;
+                      setFocusedShare(shareName);
+                    }
+                  }}
+                  data-testid="focus-share-btn"
+                  title={focusedShare ? "Mostrar todos os compartilhamentos" : "Focar no compartilhamento selecionado"}
+                >
+                  {focusedShare ? (
+                    <X className="w-4 h-4" />
+                  ) : (
+                    <Focus className="w-4 h-4" />
+                  )}
+                </Button>
+              )}
             </div>
+            
+            {/* Indicador de foco */}
+            {focusedShare && (
+              <div className="px-3 py-1.5 bg-primary/10 border-b border-border flex items-center justify-between">
+                <span className="text-xs text-primary">
+                  Focado em: <strong>{focusedShare}</strong>
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-5 text-xs px-2"
+                  onClick={() => setFocusedShare(null)}
+                >
+                  Mostrar todos
+                </Button>
+              </div>
+            )}
             
             <ScrollArea className="flex-1">
               <div className="py-2">
@@ -2031,7 +2075,10 @@ const ServerBrowser = () => {
                     Nenhum compartilhamento encontrado
                   </p>
                 ) : (
-                  shares.map((share, index) => renderTreeNode(share, 0, '', index === shares.length - 1, []))
+                  (focusedShare 
+                    ? shares.filter(s => s.share_name === focusedShare)
+                    : shares
+                  ).map((share, index, arr) => renderTreeNode(share, 0, '', index === arr.length - 1, []))
                 )}
               </div>
             </ScrollArea>
