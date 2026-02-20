@@ -75,6 +75,7 @@ const ServerBrowser = () => {
   useEffect(() => {
     setActiveTab('info');
     setFileContent(null);
+    setRawFileContent(null);
     setFilePreviewUrl(null);
     setBeautified(false);
   }, [selectedItem?.id]);
