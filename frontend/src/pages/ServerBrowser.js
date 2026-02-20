@@ -38,7 +38,7 @@ const ServerBrowser = () => {
 
   useEffect(() => {
     loadServer();
-  }, [serverId]);
+  }, [serverId, ignoreCache]);
 
   const loadServer = async () => {
     try {
