@@ -241,6 +241,198 @@ async def delete_db_connection(conn_id: int, db: AsyncSession = Depends(get_db))
     await db.commit()
     return {"message": "Database connection deleted"}
 
+@api_router.get("/db-connections/{conn_id}", response_model=DatabaseConnectionResponse)
+async def get_db_connection(conn_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(DatabaseConnection).where(DatabaseConnection.id == conn_id))
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return conn
+
+
+# SQL Presets CRUD
+@api_router.get("/sql-presets", response_model=List[SqlPresetResponse])
+async def get_sql_presets(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(SqlPreset).order_by(SqlPreset.name))
+    return result.scalars().all()
+
+@api_router.post("/sql-presets", response_model=SqlPresetResponse)
+async def create_sql_preset(preset: SqlPresetCreate, db: AsyncSession = Depends(get_db)):
+    db_preset = SqlPreset(**preset.model_dump())
+    db.add(db_preset)
+    await db.commit()
+    await db.refresh(db_preset)
+    return db_preset
+
+@api_router.put("/sql-presets/{preset_id}", response_model=SqlPresetResponse)
+async def update_sql_preset(preset_id: int, preset: SqlPresetUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(SqlPreset).where(SqlPreset.id == preset_id))
+    db_preset = result.scalar_one_or_none()
+    if not db_preset:
+        raise HTTPException(status_code=404, detail="Preset not found")
+    
+    if preset.name is not None:
+        db_preset.name = preset.name
+    if preset.query is not None:
+        db_preset.query = preset.query
+    if preset.description is not None:
+        db_preset.description = preset.description
+    
+    db_preset.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(db_preset)
+    return db_preset
+
+@api_router.delete("/sql-presets/{preset_id}")
+async def delete_sql_preset(preset_id: int, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(SqlPreset).where(SqlPreset.id == preset_id))
+    await db.commit()
+    return {"message": "SQL preset deleted"}
+
+
+# SQL Execution
+@api_router.post("/sql/execute", response_model=SqlExecuteResponse)
+async def execute_sql(request: SqlExecuteRequest, db: AsyncSession = Depends(get_db)):
+    """Executa uma query SQL usando SOAP Exec"""
+    # Buscar a conexão
+    result = await db.execute(select(DatabaseConnection).where(DatabaseConnection.id == request.connection_id))
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    start_time = time.time()
+    
+    try:
+        # Chamar SOAP Exec
+        soap_service = await get_default_soap_service(db)
+        params = {"connStr": conn.connection_string, "query": request.query}
+        
+        result_str = await soap_service.call_soap_operation(db, "Exec", params, True)  # Ignorar cache para SQL
+        
+        execution_time = int((time.time() - start_time) * 1000)
+        
+        # Parsear resultado XML
+        import xml.etree.ElementTree as ET
+        
+        columns = []
+        rows = []
+        
+        try:
+            root = ET.fromstring(f"<root>{result_str}</root>")
+            
+            # Verificar erro de acesso
+            for result_elem in root.findall(".//Result"):
+                message_elem = result_elem.find("message")
+                if message_elem is not None and message_elem.text:
+                    if "error" in message_elem.text.lower() or "denied" in message_elem.text.lower():
+                        raise Exception(message_elem.text)
+            
+            # Extrair colunas e dados
+            first_result = root.find(".//Result")
+            if first_result is not None:
+                # Pegar nomes das colunas do primeiro resultado
+                for child in first_result:
+                    columns.append(child.tag)
+                
+                # Extrair todas as linhas
+                for result_elem in root.findall(".//Result"):
+                    row = []
+                    for col in columns:
+                        elem = result_elem.find(col)
+                        row.append(elem.text if elem is not None and elem.text else "")
+                    rows.append(row)
+        except ET.ParseError:
+            # Se não é XML, retorna como string
+            columns = ["Result"]
+            rows = [[result_str]]
+        
+        # Marcar conexão como verificada
+        conn.verified = True
+        conn.last_verified_at = datetime.now(timezone.utc)
+        
+        # Salvar no histórico
+        history = SqlQueryHistory(
+            connection_id=conn.id,
+            connection_name=conn.name,
+            query=request.query,
+            result=json.dumps({"columns": columns, "rows": rows}),
+            success=True,
+            execution_time_ms=execution_time
+        )
+        db.add(history)
+        await db.commit()
+        
+        return {
+            "success": True,
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+            "execution_time_ms": execution_time
+        }
+    
+    except Exception as e:
+        execution_time = int((time.time() - start_time) * 1000)
+        
+        # Salvar erro no histórico
+        history = SqlQueryHistory(
+            connection_id=conn.id,
+            connection_name=conn.name,
+            query=request.query,
+            success=False,
+            error_message=str(e),
+            execution_time_ms=execution_time
+        )
+        db.add(history)
+        await db.commit()
+        
+        return {
+            "success": False,
+            "error_message": str(e),
+            "execution_time_ms": execution_time
+        }
+
+
+# SQL Query History
+@api_router.get("/sql/history", response_model=List[SqlQueryHistoryResponse])
+async def get_sql_history(
+    connection_id: Optional[int] = None,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db)
+):
+    """Retorna histórico de queries SQL executadas"""
+    query = select(SqlQueryHistory).order_by(desc(SqlQueryHistory.executed_at)).limit(limit)
+    
+    if connection_id:
+        query = query.where(SqlQueryHistory.connection_id == connection_id)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
+@api_router.get("/sql/history/{history_id}", response_model=SqlQueryHistoryResponse)
+async def get_sql_history_item(history_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(SqlQueryHistory).where(SqlQueryHistory.id == history_id))
+    history = result.scalar_one_or_none()
+    if not history:
+        raise HTTPException(status_code=404, detail="History item not found")
+    return history
+
+@api_router.delete("/sql/history/{history_id}")
+async def delete_sql_history_item(history_id: int, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(SqlQueryHistory).where(SqlQueryHistory.id == history_id))
+    await db.commit()
+    return {"message": "History item deleted"}
+
+@api_router.delete("/sql/history")
+async def clear_sql_history(connection_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    """Limpa o histórico de queries (opcionalmente filtrado por conexão)"""
+    if connection_id:
+        await db.execute(delete(SqlQueryHistory).where(SqlQueryHistory.connection_id == connection_id))
+    else:
+        await db.execute(delete(SqlQueryHistory))
+    await db.commit()
+    return {"message": "History cleared"}
+
+
 # Proxy Servers CRUD
 @api_router.post("/proxy-servers", response_model=ProxyServerResponse)
 async def create_proxy_server(proxy: ProxyServerCreate, db: AsyncSession = Depends(get_db)):
