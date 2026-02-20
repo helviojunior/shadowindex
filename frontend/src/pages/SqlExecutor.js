@@ -63,8 +63,7 @@ const SqlExecutor = () => {
   const tabIdCounter = useRef(2);
 
   useEffect(() => {
-    loadConnection();
-    loadPresets();
+    loadConnection(); // This will also load presets after getting db_type_id
     loadHistory();
   }, [connectionId]);
 
