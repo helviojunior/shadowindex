@@ -772,6 +772,122 @@ async def get_server_shares_soap(server_id: int, db: AsyncSession = Depends(get_
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@api_router.get("/servers/{server_id}/shares-tree")
+async def get_server_shares_with_children(server_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Retorna os shares do servidor com seus filhos já carregados do banco.
+    Útil para reconstruir a árvore ao abrir a página.
+    """
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Obter shares
+    shares_result = await db.execute(
+        select(ServerShare).where(ServerShare.server_guid == server.guid)
+    )
+    shares = shares_result.scalars().all()
+    
+    # Obter todos os itens do servidor
+    items_result = await db.execute(
+        select(ServerItem).where(ServerItem.server_guid == server.guid)
+    )
+    all_items = items_result.scalars().all()
+    
+    # Construir dicionário de itens por parent_path
+    items_by_parent = {}
+    for item in all_items:
+        if item.parent_path not in items_by_parent:
+            items_by_parent[item.parent_path] = []
+        items_by_parent[item.parent_path].append({
+            "id": item.id,
+            "type": item.item_type,
+            "name": item.name,
+            "fullPath": item.full_path,
+            "size": item.size or "---",
+            "modified": item.modified or "",
+            "accessDenied": item.access_denied,
+            "errorMessage": item.error_message,
+            "hasChildren": item.has_children,
+            "childrenFetched": item.children_fetched
+        })
+    
+    # Construir resposta com shares e seus filhos
+    shares_with_children = []
+    for share in shares:
+        share_path = f"\\\\{server.ip}\\{share.share_name}"
+        share_data = {
+            "id": share.id,
+            "share_name": share.share_name,
+            "share_type": share.share_type,
+            "remark": share.remark,
+            "access_denied": share.access_denied,
+            "error_message": share.error_message,
+            "has_children": share.has_children,
+            "children_fetched": share.children_fetched,
+            "discovered_at": share.discovered_at.isoformat() if share.discovered_at else None,
+            "children": items_by_parent.get(share_path, [])
+        }
+        shares_with_children.append(share_data)
+    
+    return {
+        "success": True,
+        "shares": shares_with_children,
+        "items_by_path": items_by_parent,
+        "server_ip": server.ip
+    }
+
+
+@api_router.get("/servers/{server_id}/items")
+async def get_server_items_by_path(
+    server_id: int, 
+    parent_path: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retorna os itens filhos de um path específico do banco.
+    Não faz chamada SOAP, apenas retorna dados em cache.
+    """
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Obter itens
+    items_result = await db.execute(
+        select(ServerItem).where(
+            ServerItem.server_guid == server.guid,
+            ServerItem.parent_path == parent_path
+        )
+    )
+    items = items_result.scalars().all()
+    
+    return {
+        "success": True,
+        "path": parent_path,
+        "items": [
+            {
+                "id": item.id,
+                "type": item.item_type,
+                "name": item.name,
+                "fullPath": item.full_path,
+                "size": item.size or "---",
+                "modified": item.modified or "",
+                "accessDenied": item.access_denied,
+                "errorMessage": item.error_message,
+                "hasChildren": item.has_children,
+                "childrenFetched": item.children_fetched
+            }
+            for item in items
+        ],
+        "count": len(items)
+    }
+
+
 @api_router.post("/servers/{server_id}/browse")
 async def browse_server_directory(
     server_id: int,
