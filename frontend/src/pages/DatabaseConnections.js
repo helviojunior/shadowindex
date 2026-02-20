@@ -83,12 +83,61 @@ const DatabaseConnections = () => {
       await axios.post(`${API}/db-connections`, payload);
       toast.success('Conexão cadastrada com sucesso');
       setFormData({ name: '', db_type_id: '', connection_string: '' });
+      setNewConnectionTestResult(null);
       loadConnections();
     } catch (error) {
       console.error('Error creating connection:', error);
       toast.error('Erro ao cadastrar conexão');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Test new connection before adding
+  const testNewConnection = async () => {
+    if (!formData.connection_string) {
+      toast.error('Preencha a Connection String para testar');
+      return;
+    }
+    
+    setTestingNewConnection(true);
+    setNewConnectionTestResult(null);
+    
+    try {
+      // Create a temporary connection to test
+      const tempPayload = {
+        name: `_temp_test_${Date.now()}`,
+        connection_string: formData.connection_string,
+        db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null
+      };
+      
+      // Create temp connection
+      const createResponse = await axios.post(`${API}/db-connections`, tempPayload);
+      const tempConnId = createResponse.data.id;
+      
+      try {
+        // Test the connection
+        const testResponse = await axios.post(`${API}/sql/execute`, {
+          connection_id: tempConnId,
+          query: 'SELECT 1 AS test'
+        });
+
+        if (testResponse.data.success) {
+          setNewConnectionTestResult('success');
+          toast.success(`Conexão OK! (${testResponse.data.execution_time_ms}ms)`);
+        } else {
+          setNewConnectionTestResult('error');
+          toast.error(`Falha na conexão: ${testResponse.data.error_message}`);
+        }
+      } finally {
+        // Always delete the temp connection
+        await axios.delete(`${API}/db-connections/${tempConnId}`);
+      }
+    } catch (error) {
+      setNewConnectionTestResult('error');
+      toast.error(`Erro ao testar: ${error.response?.data?.detail || error.message}`);
+    } finally {
+      setTestingNewConnection(false);
     }
   };
 
