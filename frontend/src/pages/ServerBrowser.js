@@ -68,6 +68,7 @@ const ServerBrowser = () => {
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
   const [beautified, setBeautified] = useState(false);
+  const [itemsSortConfig, setItemsSortConfig] = useState({ key: 'name', direction: 'asc' });
 
   useEffect(() => {
     loadServer();
