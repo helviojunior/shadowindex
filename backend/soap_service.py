@@ -11,12 +11,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Criar contexto SSL que ignora erros de certificado
+# Criar contexto SSL que ignora TODOS os erros de certificado
 def create_insecure_ssl_context():
-    """Cria um contexto SSL que ignora erros de certificado TLS"""
-    ssl_context = ssl.create_default_context()
+    """Cria um contexto SSL que ignora completamente erros de certificado TLS"""
+    # Criar contexto sem verificação
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
+    # Desabilitar verificações adicionais
+    ssl_context.set_ciphers('DEFAULT@SECLEVEL=1')
     return ssl_context
 
 class SoapService:
