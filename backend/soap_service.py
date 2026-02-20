@@ -164,7 +164,6 @@ class SoapService:
                     response_text = await response.text()
                     
                     # Extract result from SOAP response
-                    import xml.etree.ElementTree as ET
                     root = ET.fromstring(response_text)
                     
                     # Namespace handling
