@@ -111,7 +111,7 @@ const ServerBrowser = () => {
       const response = await axios.post(
         `${API}/servers/${serverId}/browse`,
         null,
-        { params: { path } }
+        { params: { path, ignore_cache: ignoreCache } }
       );
       
       const items = response.data.items.map((item, idx) => ({
@@ -121,9 +121,14 @@ const ServerBrowser = () => {
       }));
       
       setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
+      
+      if (items.length === 0) {
+        toast.info('Diretório vazio');
+      }
     } catch (error) {
       console.error('Error loading directory:', error);
-      toast.error('Erro ao listar diretório');
+      const errorMsg = error.response?.data?.detail || 'Erro ao listar diretório';
+      toast.error(errorMsg);
     } finally {
       setLoadingNodes(prev => ({ ...prev, [nodeId]: false }));
     }
@@ -141,8 +146,8 @@ const ServerBrowser = () => {
     } else {
       setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
       
-      // Carregar filhos se ainda não carregados
-      if (!nodeChildren[nodeId]) {
+      // Carregar filhos se ainda não carregados ou se ignoreCache está ativo
+      if (!nodeChildren[nodeId] || ignoreCache) {
         await loadDirectory(nodeId, path);
       }
     }
