@@ -249,6 +249,13 @@ const ServerBrowser = () => {
       setRawFileContent(content); // Guardar conteúdo original
       setFilePreviewUrl(null);
       
+      // Guardar metadados (encoding, BOM) junto com o conteúdo
+      const fileMetadata = {
+        content: content,
+        encoding: response.data.encoding,
+        has_bom: response.data.has_bom
+      };
+      
       // Tentar fazer beautify automaticamente
       const filename = selectedItem?.name?.toLowerCase() || '';
       try {
