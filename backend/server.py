@@ -368,6 +368,100 @@ async def clear_cache(db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"message": "Cache cleared"}
 
+
+# Servers CRUD
+@api_router.post("/servers", response_model=ServerResponse)
+async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)):
+    db_server = Server(
+        guid=str(uuid.uuid4()),
+        name=server.name,
+        ip=server.ip
+    )
+    db.add(db_server)
+    await db.commit()
+    await db.refresh(db_server)
+    return db_server
+
+@api_router.get("/servers", response_model=List[ServerResponse])
+async def get_servers(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Server))
+    return result.scalars().all()
+
+@api_router.get("/servers/{server_id}", response_model=ServerResponse)
+async def get_server(server_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    return server
+
+@api_router.put("/servers/{server_id}", response_model=ServerResponse)
+async def update_server(server_id: int, server: ServerCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    db_server = result.scalar_one_or_none()
+    if not db_server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    db_server.name = server.name
+    db_server.ip = server.ip
+    await db.commit()
+    await db.refresh(db_server)
+    return db_server
+
+@api_router.delete("/servers/{server_id}")
+async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(Server).where(Server.id == server_id))
+    await db.commit()
+    return {"message": "Server deleted"}
+
+# Server Shares
+@api_router.get("/servers/{server_id}/shares", response_model=List[ServerShareResponse])
+async def get_server_shares(server_id: int, db: AsyncSession = Depends(get_db)):
+    # Obter server
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Obter shares
+    result = await db.execute(
+        select(ServerShare).where(ServerShare.server_guid == server.guid)
+    )
+    return result.scalars().all()
+
+# Downloaded Files
+@api_router.get("/servers/{server_id}/downloads", response_model=List[DownloadedFileResponse])
+async def get_server_downloads(server_id: int, db: AsyncSession = Depends(get_db)):
+    # Obter server
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Obter downloads
+    result = await db.execute(
+        select(DownloadedFile).where(DownloadedFile.server_guid == server.guid)
+    )
+    return result.scalars().all()
+
+# Server Storage Stats
+@api_router.get("/servers/{server_id}/storage-stats")
+async def get_server_storage_stats_endpoint(server_id: int, db: AsyncSession = Depends(get_db)):
+    # Obter server
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    stats = get_server_storage_stats(server.guid)
+    stats["total_size_formatted"] = format_size(stats["total_size"])
+    
+    for share in stats["shares"]:
+        share["size_formatted"] = format_size(share["size"])
+    
+    return stats
+
+
 # Include router
 app.include_router(api_router)
 
