@@ -833,6 +833,28 @@ const ServerBrowser = () => {
     // Cor do texto baseada no status de fetch
     const textColor = isAccessDenied ? 'text-red-500' : (isNotFetched ? 'text-muted-foreground' : '');
     
+    // Handler para clique no item - seleciona e expande se for diretório
+    const handleNodeClick = async () => {
+      if (item.type === 'AccessDenied') {
+        return;
+      }
+      
+      // Selecionar o item
+      if (isShare) {
+        handleSelectItem(item, 'share', path, item.share_name);
+      } else {
+        handleSelectItem(item, item.type, path, currentShareName);
+      }
+      
+      // Se for diretório/share e não estiver expandido, expandir
+      if (isDirectory && !isExpanded) {
+        setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
+        if (!nodeChildren[nodeId] || ignoreCache) {
+          await loadDirectory(nodeId, path, currentShareName);
+        }
+      }
+    };
+    
     return (
       <div key={nodeId}>
         <div
@@ -840,16 +862,7 @@ const ServerBrowser = () => {
             isSelected ? 'bg-primary/10 text-primary' : ''
           } ${isAccessDenied ? 'opacity-75' : ''}`}
           style={{ paddingLeft: '8px', paddingRight: '8px', minHeight: '32px' }}
-          onClick={() => {
-            if (item.type === 'AccessDenied') {
-              return;
-            }
-            if (isShare) {
-              handleSelectItem(item, 'share', path, item.share_name);
-            } else {
-              handleSelectItem(item, item.type, path, currentShareName);
-            }
-          }}
+          onClick={handleNodeClick}
           data-testid={`tree-node-${safeTestId}`}
         >
           {/* Tree Lines - Renderiza linhas verticais para cada nível de profundidade */}
