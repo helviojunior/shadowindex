@@ -371,6 +371,8 @@ async def update_sql_preset(preset_id: int, preset: SqlPresetUpdate, db: AsyncSe
     if not db_preset:
         raise HTTPException(status_code=404, detail="Preset not found")
     
+    if preset.db_type_id is not None:
+        db_preset.db_type_id = preset.db_type_id
     if preset.name is not None:
         db_preset.name = preset.name
     if preset.query is not None:
@@ -381,7 +383,18 @@ async def update_sql_preset(preset_id: int, preset: SqlPresetUpdate, db: AsyncSe
     db_preset.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(db_preset)
-    return db_preset
+    
+    # Get type info
+    db_type = None
+    if db_preset.db_type_id:
+        result = await db.execute(select(DatabaseType).where(DatabaseType.id == db_preset.db_type_id))
+        db_type = result.scalar_one_or_none()
+    
+    return {
+        **{c.name: getattr(db_preset, c.name) for c in db_preset.__table__.columns},
+        "db_type_name": db_type.name if db_type else "Universal",
+        "db_type_code": db_type.code if db_type else None,
+    }
 
 @api_router.delete("/sql-presets/{preset_id}")
 async def delete_sql_preset(preset_id: int, db: AsyncSession = Depends(get_db)):
