@@ -40,12 +40,8 @@ Dashboard web para gerenciar credenciais, conexões de banco de dados, servidore
 
 ## Pending Issues
 - [ ] P1: Erro SSL com proxy (bloqueado - aguarda detalhes do usuário)
-- [ ] P2: Testar toggle "Ignorar Cache" end-to-end
-- [ ] P3: UI da página SOAP Operations (tabs quebradas)
-- [ ] P4: Testar botão "Resolve IP"
 
 ## Upcoming Tasks
-- [ ] Implementar lógica completa do File Browser (carregar subdiretórios via SOAP Exec4)
 - [ ] Verificar armazenamento de cache das respostas SOAP
 - [ ] Implementar serviço SOAP mockado para testes
 
