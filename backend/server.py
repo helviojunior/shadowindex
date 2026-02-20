@@ -241,6 +241,14 @@ async def delete_credential(credential_id: int, db: AsyncSession = Depends(get_d
     await db.commit()
     return {"message": "Credential deleted"}
 
+
+# Database Types CRUD
+@api_router.get("/db-types", response_model=List[DatabaseTypeResponse])
+async def get_db_types(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(DatabaseType).order_by(DatabaseType.name))
+    return result.scalars().all()
+
+
 # Database Connections CRUD
 @api_router.post("/db-connections", response_model=DatabaseConnectionResponse)
 async def create_db_connection(conn: DatabaseConnectionCreate, db: AsyncSession = Depends(get_db)):
@@ -248,12 +256,40 @@ async def create_db_connection(conn: DatabaseConnectionCreate, db: AsyncSession 
     db.add(db_conn)
     await db.commit()
     await db.refresh(db_conn)
-    return db_conn
+    
+    # Get type info
+    db_type = None
+    if db_conn.db_type_id:
+        result = await db.execute(select(DatabaseType).where(DatabaseType.id == db_conn.db_type_id))
+        db_type = result.scalar_one_or_none()
+    
+    return {
+        **{c.name: getattr(db_conn, c.name) for c in db_conn.__table__.columns},
+        "db_type_name": db_type.name if db_type else None,
+        "db_type_code": db_type.code if db_type else None,
+        "db_type_color": db_type.color if db_type else None,
+    }
 
 @api_router.get("/db-connections", response_model=List[DatabaseConnectionResponse])
 async def get_db_connections(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(DatabaseConnection))
-    return result.scalars().all()
+    result = await db.execute(select(DatabaseConnection).order_by(DatabaseConnection.name))
+    connections = result.scalars().all()
+    
+    # Get all types
+    types_result = await db.execute(select(DatabaseType))
+    types_map = {t.id: t for t in types_result.scalars().all()}
+    
+    response = []
+    for conn in connections:
+        db_type = types_map.get(conn.db_type_id) if conn.db_type_id else None
+        response.append({
+            **{c.name: getattr(conn, c.name) for c in conn.__table__.columns},
+            "db_type_name": db_type.name if db_type else None,
+            "db_type_code": db_type.code if db_type else None,
+            "db_type_color": db_type.color if db_type else None,
+        })
+    
+    return response
 
 @api_router.delete("/db-connections/{conn_id}")
 async def delete_db_connection(conn_id: int, db: AsyncSession = Depends(get_db)):
@@ -267,14 +303,47 @@ async def get_db_connection(conn_id: int, db: AsyncSession = Depends(get_db)):
     conn = result.scalar_one_or_none()
     if not conn:
         raise HTTPException(status_code=404, detail="Connection not found")
-    return conn
+    
+    # Get type info
+    db_type = None
+    if conn.db_type_id:
+        result = await db.execute(select(DatabaseType).where(DatabaseType.id == conn.db_type_id))
+        db_type = result.scalar_one_or_none()
+    
+    return {
+        **{c.name: getattr(conn, c.name) for c in conn.__table__.columns},
+        "db_type_name": db_type.name if db_type else None,
+        "db_type_code": db_type.code if db_type else None,
+        "db_type_color": db_type.color if db_type else None,
+    }
 
 
 # SQL Presets CRUD
 @api_router.get("/sql-presets", response_model=List[SqlPresetResponse])
-async def get_sql_presets(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(SqlPreset).order_by(SqlPreset.name))
-    return result.scalars().all()
+async def get_sql_presets(db_type_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    query = select(SqlPreset).order_by(SqlPreset.name)
+    
+    # Filter by db_type_id if provided (include universal presets with null db_type_id)
+    if db_type_id is not None:
+        query = query.where((SqlPreset.db_type_id == db_type_id) | (SqlPreset.db_type_id == None))
+    
+    result = await db.execute(query)
+    presets = result.scalars().all()
+    
+    # Get all types
+    types_result = await db.execute(select(DatabaseType))
+    types_map = {t.id: t for t in types_result.scalars().all()}
+    
+    response = []
+    for preset in presets:
+        db_type = types_map.get(preset.db_type_id) if preset.db_type_id else None
+        response.append({
+            **{c.name: getattr(preset, c.name) for c in preset.__table__.columns},
+            "db_type_name": db_type.name if db_type else "Universal",
+            "db_type_code": db_type.code if db_type else None,
+        })
+    
+    return response
 
 @api_router.post("/sql-presets", response_model=SqlPresetResponse)
 async def create_sql_preset(preset: SqlPresetCreate, db: AsyncSession = Depends(get_db)):
@@ -282,7 +351,18 @@ async def create_sql_preset(preset: SqlPresetCreate, db: AsyncSession = Depends(
     db.add(db_preset)
     await db.commit()
     await db.refresh(db_preset)
-    return db_preset
+    
+    # Get type info
+    db_type = None
+    if db_preset.db_type_id:
+        result = await db.execute(select(DatabaseType).where(DatabaseType.id == db_preset.db_type_id))
+        db_type = result.scalar_one_or_none()
+    
+    return {
+        **{c.name: getattr(db_preset, c.name) for c in db_preset.__table__.columns},
+        "db_type_name": db_type.name if db_type else "Universal",
+        "db_type_code": db_type.code if db_type else None,
+    }
 
 @api_router.put("/sql-presets/{preset_id}", response_model=SqlPresetResponse)
 async def update_sql_preset(preset_id: int, preset: SqlPresetUpdate, db: AsyncSession = Depends(get_db)):
