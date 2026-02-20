@@ -1035,6 +1035,7 @@ const ServerBrowser = () => {
                 <Button 
                   size="sm" 
                   variant="outline"
+                  className="h-7"
                   onClick={openFile}
                   data-testid="open-file-button"
                 >
@@ -1044,6 +1045,7 @@ const ServerBrowser = () => {
               )}
               <Button 
                 size="sm" 
+                className="h-7"
                 onClick={handleDownload}
                 disabled={loading}
                 variant={downloaded ? "outline" : "default"}
