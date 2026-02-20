@@ -71,30 +71,38 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col h-screen overflow-hidden bg-background">
         {/* Top Header - Fixed, spans full width */}
-        <header className="flex items-center justify-between px-6 py-3 bg-card border-b border-border z-50">
-          {/* Left side - Logo and mobile menu */}
-          <div className="flex items-center gap-4">
+        <header className="flex items-center justify-between bg-card border-b border-border z-50">
+          {/* Left side - Logo area (same width as sidebar) */}
+          <div className={cn(
+            "flex items-center justify-start px-4 py-3 border-r border-border transition-all duration-300",
+            sidebarCollapsed ? "w-16" : "w-52"
+          )}>
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-muted-foreground hover:text-foreground"
+              className="lg:hidden text-muted-foreground hover:text-foreground mr-3"
               data-testid="open-sidebar-btn"
             >
-              <Menu size={24} />
+              <Menu size={20} />
             </button>
             
             {/* Logo - Always visible in header */}
-            <img 
-              src="/assets/stratasec_light.png" 
-              alt="Stratasec" 
-              className="h-8 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-            />
-            
-            {/* Separator */}
-            <div className="h-8 w-px bg-border hidden lg:block" />
+            {sidebarCollapsed ? (
+              <img 
+                src="/assets/stratasec_light.png" 
+                alt="Stratasec" 
+                className="h-5 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] mx-auto"
+              />
+            ) : (
+              <img 
+                src="/assets/stratasec_light.png" 
+                alt="Stratasec" 
+                className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
+              />
+            )}
           </div>
           
           {/* Right side - Controls */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-1 justify-end px-6 py-3">
             {/* Seletor de Proxy */}
             <div className="flex items-center gap-2">
               {activeProxy ? (
