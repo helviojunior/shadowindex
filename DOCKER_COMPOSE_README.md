@@ -181,3 +181,25 @@ docker stats
 docker-compose logs backend --tail=100
 docker-compose logs frontend --tail=100
 ```
+
+## ⚙️ Requisitos de Sistema
+
+- **Docker**: 20.10 ou superior
+- **Docker Compose**: 2.0 ou superior
+- **Node.js** (imagem Docker): 20.x (Alpine)
+- **Python** (imagem Docker): 3.11 (Slim)
+
+## 🔄 Atualizações
+
+Quando houver mudanças no código:
+
+```bash
+# Parar containers
+docker-compose down
+
+# Rebuild com mudanças
+docker-compose build
+
+# Iniciar novamente
+docker-compose up -d
+```
