@@ -136,20 +136,14 @@ const BeautifyTest = () => {
       // Formatar XML
       const formatted = formatXml(rawContent);
       
-      // Escapar HTML e aplicar syntax highlighting
-      const escaped = formatted
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-      
-      const highlighted = applySyntaxHighlight(escaped);
+      // Aplicar syntax highlighting
+      const highlighted = applySyntaxHighlight(formatted);
       
       setDisplayContent(highlighted);
       setBeautified(true);
       toast.success('XML formatado com syntax highlighting');
     } catch (error) {
+      console.error('Beautify error:', error);
       toast.error('Erro ao formatar');
     }
   };
