@@ -145,8 +145,6 @@ class SoapService:
             ssl_context = ssl_module.create_default_context()
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl_module.CERT_NONE
-            # Configurar para aceitar protocolos mais antigos/fracos
-            ssl_context.set_ciphers('DEFAULT:@SECLEVEL=0')
             ssl_context.options |= ssl_module.OP_NO_SSLv2
             ssl_context.options |= ssl_module.OP_NO_SSLv3
             
