@@ -252,13 +252,13 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
               {/* Footer with collapse toggle */}
               <div className={cn(
                 "border-t border-border transition-all duration-300 flex items-end relative",
-                sidebarCollapsed ? "p-2 justify-center min-h-[70px]" : "p-4 justify-between min-h-[80px]"
+                sidebarCollapsed ? "p-2 justify-center min-h-[60px]" : "p-3 justify-between min-h-[70px]"
               )}>
                 {/* Version info - only when expanded */}
                 {!sidebarCollapsed && (
                   <div className="text-xs text-muted-foreground">
-                    <div>Ops Integration Desk v1.0.0</div>
-                    <div className="mt-1">© StrataSec 2026</div>
+                    <div className="text-[11px]">Ops Integration Desk v1.0.0</div>
+                    <div className="mt-0.5 text-[10px]">© StrataSec 2026</div>
                   </div>
                 )}
                 
