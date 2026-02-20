@@ -737,18 +737,6 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                 </div>
               ) : currentTab.result.success ? (
                 <div className="space-y-4">
-                  {/* Result Info */}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      Sucesso
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {currentTab.result.execution_time_ms}ms
-                    </span>
-                  </div>
-                  
                   {/* Result Table */}
                   {currentTab.result.columns && currentTab.result.columns.length > 0 && (
                     <div className="border border-border rounded-lg overflow-hidden">
