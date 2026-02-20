@@ -167,7 +167,7 @@ def save_empty_file(
     
     # Criar arquivo vazio
     try:
-        with open(full_file_path, 'wb') as f:
+        with open(full_file_path, 'wb'):
             pass  # Arquivo vazio
     except Exception as e:
         raise Exception(f"Erro ao criar arquivo vazio: {str(e)}")
