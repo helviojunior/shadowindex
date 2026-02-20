@@ -105,19 +105,47 @@ const ServerBrowser = () => {
     return path;
   };
 
-  const loadDirectory = async (nodeId, path) => {
+  const loadDirectory = async (nodeId, path, shareName = '') => {
     setLoadingNodes(prev => ({ ...prev, [nodeId]: true }));
     try {
       const response = await axios.post(
         `${API}/servers/${serverId}/browse`,
         null,
-        { params: { path, ignore_cache: ignoreCache } }
+        { params: { path, ignore_cache: ignoreCache, share_name: shareName } }
       );
+      
+      // Verificar se houve erro de acesso negado
+      if (response.data.accessDenied) {
+        // Marcar o nó como tendo acesso negado
+        setNodeChildren(prev => ({ 
+          ...prev, 
+          [nodeId]: [{
+            id: `${nodeId}-error`,
+            type: 'AccessDenied',
+            name: 'Acesso Negado',
+            errorMessage: response.data.errorMessage,
+            accessDenied: true
+          }]
+        }));
+        
+        // Atualizar o share na lista local
+        if (shareName) {
+          setShares(prev => prev.map(s => 
+            s.share_name === shareName 
+              ? { ...s, access_denied: true, error_message: response.data.errorMessage }
+              : s
+          ));
+        }
+        
+        toast.error(`Acesso negado: ${shareName || path}`);
+        return;
+      }
       
       const items = response.data.items.map((item, idx) => ({
         ...item,
         id: `${nodeId}-${idx}`,
-        parentPath: path
+        parentPath: path,
+        shareName: shareName
       }));
       
       setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
@@ -134,7 +162,7 @@ const ServerBrowser = () => {
     }
   };
 
-  const toggleNode = async (nodeId, nodeType, path) => {
+  const toggleNode = async (nodeId, nodeType, path, shareName = '') => {
     if (nodeType !== 'Directory' && nodeType !== 'share') {
       return;
     }
@@ -148,7 +176,7 @@ const ServerBrowser = () => {
       
       // Carregar filhos se ainda não carregados ou se ignoreCache está ativo
       if (!nodeChildren[nodeId] || ignoreCache) {
-        await loadDirectory(nodeId, path);
+        await loadDirectory(nodeId, path, shareName);
       }
     }
   };
