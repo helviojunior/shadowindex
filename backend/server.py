@@ -102,6 +102,13 @@ class AppConfigResponse(BaseModel):
     value: str
     updated_at: datetime
 
+class ActiveProxyResponse(BaseModel):
+    active_proxy_id: Optional[int]
+    proxy: Optional[ProxyServerResponse]
+
+class SetActiveProxyRequest(BaseModel):
+    proxy_id: Optional[int] = None  # None = sem proxy
+
 class ServerCreate(BaseModel):
     name: str
     ip: str
@@ -240,6 +247,62 @@ async def update_config(config: AppConfigUpdate, db: AsyncSession = Depends(get_
     await db.commit()
     await db.refresh(db_config)
     return db_config
+
+# Active Proxy Management
+@api_router.get("/active-proxy", response_model=ActiveProxyResponse)
+async def get_active_proxy(db: AsyncSession = Depends(get_db)):
+    """Retorna o proxy ativo atual"""
+    result = await db.execute(select(AppConfig).where(AppConfig.key == "active_proxy_id"))
+    config = result.scalar_one_or_none()
+    
+    if not config or config.value == "" or config.value == "null":
+        return {"active_proxy_id": None, "proxy": None}
+    
+    try:
+        proxy_id = int(config.value)
+        result = await db.execute(select(ProxyServer).where(ProxyServer.id == proxy_id))
+        proxy = result.scalar_one_or_none()
+        
+        if proxy:
+            return {
+                "active_proxy_id": proxy_id,
+                "proxy": proxy
+            }
+        else:
+            return {"active_proxy_id": None, "proxy": None}
+    except (ValueError, TypeError):
+        return {"active_proxy_id": None, "proxy": None}
+
+@api_router.put("/active-proxy", response_model=ActiveProxyResponse)
+async def set_active_proxy(request: SetActiveProxyRequest, db: AsyncSession = Depends(get_db)):
+    """Define o proxy ativo para todas as requisições SOAP"""
+    # Validar se o proxy existe (se não for None)
+    proxy = None
+    if request.proxy_id is not None:
+        result = await db.execute(select(ProxyServer).where(ProxyServer.id == request.proxy_id))
+        proxy = result.scalar_one_or_none()
+        if not proxy:
+            raise HTTPException(status_code=404, detail="Proxy não encontrado")
+    
+    # Atualizar ou criar configuração
+    result = await db.execute(select(AppConfig).where(AppConfig.key == "active_proxy_id"))
+    config = result.scalar_one_or_none()
+    
+    value = str(request.proxy_id) if request.proxy_id is not None else ""
+    
+    if config:
+        config.value = value
+        config.updated_at = datetime.now(timezone.utc)
+    else:
+        config = AppConfig(key="active_proxy_id", value=value)
+        db.add(config)
+    
+    await db.commit()
+    
+    return {
+        "active_proxy_id": request.proxy_id,
+        "proxy": proxy
+    }
 
 # SOAP Operations
 @api_router.post("/soap/resolve", response_model=SoapOperationResponse)
