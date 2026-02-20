@@ -31,6 +31,9 @@ import { useApp } from '@/contexts/AppContext';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Extensões de arquivos de texto que podem ser visualizados
+const TEXT_EXTENSIONS = ['.txt', '.md', '.xml', '.json', '.config', '.cfg', '.ini', '.log', '.csv', '.yaml', '.yml', '.html', '.htm', '.css', '.js', '.ts', '.py', '.sh', '.bat', '.ps1', '.sql', '.env'];
+
 const ServerBrowser = () => {
   const { serverId } = useParams();
   const navigate = useNavigate();
@@ -46,6 +49,10 @@ const ServerBrowser = () => {
   const [loadingNodes, setLoadingNodes] = useState({});
   const [copiedField, setCopiedField] = useState(null);
   const [downloadedFiles, setDownloadedFiles] = useState([]);
+  const [activeTab, setActiveTab] = useState('info');
+  const [fileContent, setFileContent] = useState(null);
+  const [loadingContent, setLoadingContent] = useState(false);
+  const [beautified, setBeautified] = useState(false);
 
   useEffect(() => {
     loadServer();
@@ -58,6 +65,13 @@ const ServerBrowser = () => {
     }
   }, [server, ignoreCache]);
 
+  // Reset tab quando selecionar novo item
+  useEffect(() => {
+    setActiveTab('info');
+    setFileContent(null);
+    setBeautified(false);
+  }, [selectedItem?.id]);
+
   const loadServer = async () => {
     try {
       const response = await axios.get(`${API}/servers/${serverId}`);
@@ -65,6 +79,93 @@ const ServerBrowser = () => {
     } catch (error) {
       console.error('Error loading server:', error);
       toast.error('Erro ao carregar servidor');
+    }
+  };
+
+  // Verifica se é um arquivo de texto
+  const isTextFile = (filename) => {
+    if (!filename) return false;
+    const lowerName = filename.toLowerCase();
+    return TEXT_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+  };
+
+  // Carrega o conteúdo do arquivo para visualização
+  const loadFileContent = async () => {
+    if (!selectedItem || !isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath)) {
+      toast.error('Arquivo precisa ser sincronizado primeiro');
+      return;
+    }
+
+    setLoadingContent(true);
+    try {
+      const response = await axios.get(`${API}/servers/${serverId}/file-content`, {
+        params: { 
+          file_path: selectedItem.fullPath || selectedItem.serverPath,
+          share_name: selectedItem.shareName
+        }
+      });
+      setFileContent(response.data.content);
+      setBeautified(false);
+    } catch (error) {
+      console.error('Error loading file content:', error);
+      toast.error('Erro ao carregar conteúdo do arquivo');
+    } finally {
+      setLoadingContent(false);
+    }
+  };
+
+  // Beautify do conteúdo
+  const beautifyContent = () => {
+    if (!fileContent) return;
+    
+    try {
+      const filename = selectedItem?.name?.toLowerCase() || '';
+      let beautifiedContent = fileContent;
+      
+      if (filename.endsWith('.json')) {
+        beautifiedContent = JSON.stringify(JSON.parse(fileContent), null, 2);
+      } else if (filename.endsWith('.xml') || filename.endsWith('.config')) {
+        // Formatação básica de XML
+        beautifiedContent = fileContent
+          .replace(/></g, '>\n<')
+          .replace(/(<[^>]+>)/g, (match) => match);
+      }
+      
+      setFileContent(beautifiedContent);
+      setBeautified(true);
+      toast.success('Conteúdo formatado');
+    } catch (error) {
+      toast.error('Erro ao formatar conteúdo');
+    }
+  };
+
+  // Download do arquivo para a máquina do usuário
+  const openFile = async () => {
+    if (!selectedItem) return;
+    
+    try {
+      const response = await axios.get(`${API}/servers/${serverId}/file-download`, {
+        params: { 
+          file_path: selectedItem.fullPath || selectedItem.serverPath,
+          share_name: selectedItem.shareName
+        },
+        responseType: 'blob'
+      });
+      
+      // Criar URL para download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', selectedItem.name);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Download iniciado');
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error('Erro ao baixar arquivo');
     }
   };
 
