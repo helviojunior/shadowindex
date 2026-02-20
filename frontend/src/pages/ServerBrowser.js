@@ -687,13 +687,15 @@ const ServerBrowser = () => {
     
     setLoading(true);
     try {
+      const fileSize = parseInt(selectedItem.size) || 0;
       const response = await axios.post(
         `${API}/servers/${serverId}/download`,
         null,
         {
           params: {
             file_path: selectedItem.fullPath || selectedItem.serverPath,
-            share_name: selectedItem.shareName
+            share_name: selectedItem.shareName,
+            expected_size: fileSize
           }
         }
       );
