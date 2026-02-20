@@ -476,11 +476,22 @@ async def execute_sql(request: SqlExecuteRequest, db: AsyncSession = Depends(get
         try:
             root = ET.fromstring(f"<root>{result_str}</root>")
             
-            # Verificar erro de acesso
+            # Verificar erro no formato diffgr (message + stacktrace)
             for result_elem in root.findall(".//Result"):
                 message_elem = result_elem.find("message")
+                stacktrace_elem = result_elem.find("stacktrace")
+                
+                # Se tem message e stacktrace, é um erro
+                if message_elem is not None and stacktrace_elem is not None:
+                    error_message = message_elem.text or ""
+                    stacktrace = stacktrace_elem.text or ""
+                    full_error = f"{error_message}\n\nStackTrace:\n{stacktrace}" if stacktrace else error_message
+                    raise Exception(full_error)
+                
+                # Verificar erro simples (apenas message com palavras-chave de erro)
                 if message_elem is not None and message_elem.text:
-                    if "error" in message_elem.text.lower() or "denied" in message_elem.text.lower():
+                    msg_lower = message_elem.text.lower()
+                    if any(keyword in msg_lower for keyword in ["error", "denied", "exception", "failed", "invalid", "cannot", "unable"]):
                         raise Exception(message_elem.text)
             
             # Extrair colunas e dados
