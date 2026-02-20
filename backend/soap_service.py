@@ -195,7 +195,8 @@ class SoapService:
             raise Exception(f"Erro ao chamar o WebService SOAP: {str(e)}")
 
 async def get_default_soap_service(db: AsyncSession) -> SoapService:
-    """Get the default SOAP service"""
+    """Get the default SOAP service with active proxy if configured"""
+    # Buscar SOAP API URL
     result = await db.execute(
         select(SoapApiUrl).where(SoapApiUrl.name == "Default SOAP API")
     )
@@ -204,4 +205,26 @@ async def get_default_soap_service(db: AsyncSession) -> SoapService:
     if not soap_api:
         raise Exception("Nenhuma API SOAP configurada")
     
-    return SoapService(soap_api.uri)
+    # Buscar proxy ativo
+    proxy_url = None
+    result = await db.execute(
+        select(AppConfig).where(AppConfig.key == "active_proxy_id")
+    )
+    proxy_config = result.scalar_one_or_none()
+    
+    if proxy_config and proxy_config.value and proxy_config.value != "null":
+        try:
+            proxy_id = int(proxy_config.value)
+            result = await db.execute(
+                select(ProxyServer).where(ProxyServer.id == proxy_id)
+            )
+            proxy = result.scalar_one_or_none()
+            
+            if proxy:
+                # Construir URL do proxy (formato: http://ip:port)
+                proxy_url = f"http://{proxy.ip}:{proxy.port}"
+                logger.info(f"Active proxy configured: {proxy.name} ({proxy_url})")
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid proxy_id in config: {e}")
+    
+    return SoapService(soap_api.uri, proxy_url)
