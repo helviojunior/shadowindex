@@ -540,37 +540,42 @@ async def get_server_shares(
             import xml.etree.ElementTree as ET
             root = ET.fromstring(f"<root>{result_str}</root>")
             
+            # Limpar shares antigos antes de adicionar novos (evita duplicação)
+            await db.execute(
+                delete(ServerShare).where(ServerShare.server_guid == server.guid)
+            )
+            
             shares_found = []
+            seen_names = set()  # Evitar duplicados na mesma resposta
+            
             for result_elem in root.findall(".//Result"):
                 share_name = result_elem.find("name")
                 share_type = result_elem.find("type")
                 remark = result_elem.find("remark")
                 
                 if share_name is not None and share_name.text:
+                    name_text = share_name.text.strip()
+                    
+                    # Pular se já vimos este nome (evita duplicados)
+                    if name_text in seen_names:
+                        continue
+                    seen_names.add(name_text)
+                    
                     share_data = {
-                        "name": share_name.text,
-                        "type": share_type.text if share_type is not None and share_type.text else "Unknown",
-                        "remark": remark.text if remark is not None and remark.text else ""
+                        "name": name_text,
+                        "type": share_type.text.strip() if share_type is not None and share_type.text else "Unknown",
+                        "remark": remark.text.strip() if remark is not None and remark.text else ""
                     }
                     shares_found.append(share_data)
                     
-                    # Verificar se já existe
-                    check = await db.execute(
-                        select(ServerShare).where(
-                            ServerShare.server_guid == server.guid,
-                            ServerShare.share_name == share_data["name"]
-                        )
+                    # Adicionar novo share
+                    db_share = ServerShare(
+                        server_guid=server.guid,
+                        share_name=share_data["name"],
+                        share_type=share_data["type"],
+                        remark=share_data["remark"]
                     )
-                    existing = check.scalar_one_or_none()
-                    
-                    if not existing:
-                        db_share = ServerShare(
-                            server_guid=server.guid,
-                            share_name=share_data["name"],
-                            share_type=share_data["type"],
-                            remark=share_data["remark"]
-                        )
-                        db.add(db_share)
+                    db.add(db_share)
             
             # Atualizar contador e marcar como verificado
             server.shares_count = len(shares_found)
@@ -582,9 +587,9 @@ async def get_server_shares(
             import logging
             logging.getLogger(__name__).warning(f"Failed to fetch shares via SOAP: {e}")
     
-    # Obter shares do banco
+    # Obter shares do banco (ordenado por nome)
     result = await db.execute(
-        select(ServerShare).where(ServerShare.server_guid == server.guid)
+        select(ServerShare).where(ServerShare.server_guid == server.guid).order_by(ServerShare.share_name)
     )
     return result.scalars().all()
 
