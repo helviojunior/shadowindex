@@ -63,26 +63,6 @@ const SoapOperations = () => {
         <p className="text-muted-foreground mt-2">Execute operações no WebService SOAP</p>
       </div>
 
-      {/* Global Options */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Opções Globais</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="ignore-cache" 
-              checked={ignoreCache} 
-              onCheckedChange={setIgnoreCache}
-              data-testid="ignore-cache-switch"
-            />
-            <Label htmlFor="ignore-cache">
-              Ignorar Cache (forçar nova consulta)
-            </Label>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Operations Tabs */}
       <Card>
         <CardHeader>
