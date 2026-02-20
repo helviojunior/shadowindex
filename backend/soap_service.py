@@ -1,4 +1,4 @@
-import aiohttp
+import requests
 import ssl
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import SoapCache, AppConfig, SoapApiUrl, ProxyServer
 import logging
-import certifi
+import asyncio
+import urllib3
+
+# Desabilitar warnings de SSL
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +27,6 @@ class SoapService:
         if proxy_url:
             logger.info(f"SoapService initialized with proxy: {proxy_url}")
             logger.info(f"Target URL: {self.soap_url}")
-            # Se está usando proxy e a URL é HTTPS, pode ter problemas de SSL
-            if self.soap_url.startswith('https://'):
-                logger.warning("Using HTTPS through proxy - SSL issues may occur")
     
     @staticmethod
     def _generate_cache_key(operation: str, params: dict) -> str:
@@ -103,6 +104,33 @@ class SoapService:
         
         return envelope
     
+    def _make_request(self, soap_envelope: str, headers: dict) -> str:
+        """Make synchronous HTTP request using requests library"""
+        # Configurar proxies se disponível
+        proxies = None
+        if self.proxy_url:
+            logger.info(f"Using proxy: {self.proxy_url}")
+            proxies = {
+                'http': self.proxy_url,
+                'https': self.proxy_url
+            }
+        
+        # Fazer requisição POST - verify=False ignora erros de SSL
+        response = requests.post(
+            self.soap_url,
+            data=soap_envelope.encode('utf-8'),
+            headers=headers,
+            proxies=proxies,
+            verify=False,  # Ignora verificação de SSL
+            timeout=120
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"SOAP error: {response.status_code} - {response.text}")
+            raise Exception(f"SOAP request failed with status {response.status_code}")
+        
+        return response.text
+    
     async def call_soap_operation(
         self,
         db: AsyncSession,
@@ -136,106 +164,68 @@ class SoapService:
         }
         
         try:
-            # Configurar proxy se disponível
-            if self.proxy_url:
-                logger.info(f"Using proxy: {self.proxy_url}")
-            
-            # Criar contexto SSL que ignora todos os erros
-            import ssl as ssl_module
-            ssl_context = ssl_module.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl_module.CERT_NONE
-            ssl_context.options |= ssl_module.OP_NO_SSLv2
-            ssl_context.options |= ssl_module.OP_NO_SSLv3
-            
-            # Connector com SSL personalizado
-            connector = aiohttp.TCPConnector(
-                ssl=ssl_context,
-                force_close=True,
-                enable_cleanup_closed=True
+            # Executar requisição síncrona em thread separada
+            response_text = await asyncio.to_thread(
+                self._make_request,
+                soap_envelope,
+                headers
             )
             
-            async with aiohttp.ClientSession(
-                connector=connector,
-                trust_env=False  # Ignora variáveis de ambiente de proxy
-            ) as session:
-                request_kwargs = {
-                    'data': soap_envelope,
-                    'headers': headers,
-                    'timeout': aiohttp.ClientTimeout(total=120, connect=30),
-                    'ssl': ssl_context
-                }
-                
-                # Adicionar proxy se configurado
-                if self.proxy_url:
-                    request_kwargs['proxy'] = self.proxy_url
-                
-                async with session.post(self.soap_url, **request_kwargs) as response:
-                    
-                    if response.status != 200:
-                        error_text = await response.text()
-                        logger.error(f"SOAP error: {response.status} - {error_text}")
-                        raise Exception(f"SOAP request failed with status {response.status}")
-                    
-                    response_text = await response.text()
-                    
-                    # Extract result from SOAP response
-                    root = ET.fromstring(response_text)
-                    
-                    # Namespace handling
-                    namespaces = {
-                        'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
-                        'test': 'http://test/'
-                    }
-                    
-                    # Find the result element
-                    result_elem = root.find(f'.//test:{operation}Response/test:{operation}Result', namespaces)
-                    
-                    if result_elem is None:
-                        # Try without namespace
-                        result_elem = root.find(f'.//{operation}Response/{operation}Result')
-                    
-                    if result_elem is None:
-                        logger.error(f"Could not find result in SOAP response: {response_text[:500]}")
-                        raise Exception("Invalid SOAP response format")
-                    
-                    # Get the inner XML or text
-                    if len(result_elem) > 0:
-                        # Has child elements, return full XML
-                        result_str = ET.tostring(result_elem, encoding='unicode')
-                    else:
-                        # Just text content
-                        result_str = result_elem.text or ""
-                    
-                    # Save to cache
-                    await self._save_to_cache(db, cache_key, operation, soap_envelope, result_str)
-                    
-                    return result_str
-        
-        except aiohttp.ClientConnectorError as e:
-            error_msg = str(e)
-            if "ssl" in error_msg.lower() or "SSL" in error_msg or "EOF" in error_msg:
-                logger.error(f"SSL/TLS connection failed (possibly proxy issue): {e}")
-                raise Exception(f"Erro de SSL/TLS na conexão (verifique o proxy): {str(e)}")
+            # Extract result from SOAP response
+            root = ET.fromstring(response_text)
+            
+            # Namespace handling
+            namespaces = {
+                'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
+                'test': 'http://test/'
+            }
+            
+            # Find the result element
+            result_elem = root.find(f'.//test:{operation}Response/test:{operation}Result', namespaces)
+            
+            if result_elem is None:
+                # Try without namespace
+                result_elem = root.find(f'.//{operation}Response/{operation}Result')
+            
+            if result_elem is None:
+                logger.error(f"Could not find result in SOAP response: {response_text[:500]}")
+                raise Exception("Invalid SOAP response format")
+            
+            # Get the inner XML or text
+            if len(result_elem) > 0:
+                # Has child elements, return full XML
+                result_str = ET.tostring(result_elem, encoding='unicode')
             else:
-                logger.error(f"Connection failed: {e}")
-                raise Exception(f"Erro de conexão: {str(e)}")
-        except aiohttp.ClientError as e:
-            logger.error(f"HTTP request failed: {e}")
-            raise Exception(f"Erro ao conectar ao WebService SOAP: {str(e)}")
+                # Just text content
+                result_str = result_elem.text or ""
+            
+            # Save to cache
+            await self._save_to_cache(db, cache_key, operation, soap_envelope, result_str)
+            
+            return result_str
+        
+        except requests.exceptions.SSLError as e:
+            logger.error(f"SSL Error: {e}")
+            raise Exception(f"Erro de SSL: {str(e)}")
+        except requests.exceptions.ProxyError as e:
+            logger.error(f"Proxy Error: {e}")
+            raise Exception(f"Erro de proxy: {str(e)}")
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection Error: {e}")
+            raise Exception(f"Erro de conexão: {str(e)}")
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Timeout Error: {e}")
+            raise Exception(f"Timeout na requisição: {str(e)}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request Error: {e}")
+            raise Exception(f"Erro na requisição: {str(e)}")
         except ET.ParseError as e:
             logger.error(f"XML parsing failed: {e}")
             raise Exception(f"Erro ao processar resposta XML: {str(e)}")
-        except ssl.SSLError as e:
-            logger.error(f"SSL Error: {e}")
-            raise Exception(f"Erro de SSL: {str(e)}")
         except Exception as e:
-            error_str = str(e)
-            if "EOF" in error_str or "ssl" in error_str.lower():
-                logger.error(f"SSL/Connection error: {e}")
-                raise Exception(f"Erro de SSL/conexão (verifique se o proxy suporta HTTPS): {str(e)}")
             logger.error(f"SOAP call failed: {e}")
             raise Exception(f"Erro ao chamar o WebService SOAP: {str(e)}")
+
 
 async def get_default_soap_service(db: AsyncSession) -> SoapService:
     """Get the default SOAP service with active proxy if configured"""
