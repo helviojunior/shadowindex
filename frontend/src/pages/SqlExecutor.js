@@ -585,12 +585,7 @@ const SqlExecutor = () => {
             Voltar
           </Button>
           <div className="flex items-center gap-3">
-            {connection.db_type_color && (
-              <div 
-                className="w-4 h-4 rounded-full" 
-                style={{ backgroundColor: connection.db_type_color }}
-              />
-            )}
+            {connection.db_type_name && getDatabaseIcon(connection.db_type_name, "w-6 h-6")}
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-semibold">{connection.name}</h1>
