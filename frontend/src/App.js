@@ -32,6 +32,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/servers" element={<Servers />} />
+              <Route path="/servers/:serverId" element={<ServerBrowser />} />
               <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
               <Route path="/credentials" element={<Credentials />} />
               <Route path="/db-connections" element={<DatabaseConnections />} />
