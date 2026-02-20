@@ -297,6 +297,38 @@ async def delete_db_connection(conn_id: int, db: AsyncSession = Depends(get_db))
     await db.commit()
     return {"message": "Database connection deleted"}
 
+@api_router.put("/db-connections/{conn_id}", response_model=DatabaseConnectionResponse)
+async def update_db_connection(conn_id: int, conn_data: DatabaseConnectionCreate, db: AsyncSession = Depends(get_db)):
+    # Check if connection exists
+    result = await db.execute(select(DatabaseConnection).where(DatabaseConnection.id == conn_id))
+    existing = result.scalar_one_or_none()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    # Update fields
+    existing.name = conn_data.name
+    existing.connection_string = conn_data.connection_string
+    existing.db_type_id = conn_data.db_type_id
+    # Reset verification status when connection string changes
+    existing.verified = False
+    existing.last_verified_at = None
+    
+    await db.commit()
+    await db.refresh(existing)
+    
+    # Get type info
+    db_type = None
+    if existing.db_type_id:
+        result = await db.execute(select(DatabaseType).where(DatabaseType.id == existing.db_type_id))
+        db_type = result.scalar_one_or_none()
+    
+    return {
+        **{c.name: getattr(existing, c.name) for c in existing.__table__.columns},
+        "db_type_name": db_type.name if db_type else None,
+        "db_type_code": db_type.code if db_type else None,
+        "db_type_color": db_type.color if db_type else None,
+    }
+
 @api_router.get("/db-connections/{conn_id}", response_model=DatabaseConnectionResponse)
 async def get_db_connection(conn_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(DatabaseConnection).where(DatabaseConnection.id == conn_id))
