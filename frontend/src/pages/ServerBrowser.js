@@ -462,15 +462,58 @@ const ServerBrowser = () => {
   const refreshShares = async () => {
     setLoadingShares(true);
     try {
+      // Salvar estado atual de expansão e filhos antes do refresh
+      const prevExpandedNodes = { ...expandedNodes };
+      const prevNodeChildren = { ...nodeChildren };
+      
       const response = await axios.get(`${API}/servers/${serverId}/shares?refresh=true`);
       
-      // Preservar estado de expansão e filhos já carregados
-      // Apenas atualizar os shares sem resetar a árvore
-      setShares(response.data);
+      // Atualizar shares preservando o estado de expansão
+      // Criar mapa de shares antigos para comparar
+      const oldSharesMap = {};
+      shares.forEach(s => {
+        oldSharesMap[s.share_name] = s;
+      });
       
-      // Atualizar os dados dos shares existentes sem limpar expansão
-      // Os shares que estavam expandidos continuarão expandidos
-      // e seus filhos já carregados serão mantidos
+      // Mesclar dados novos com estado de expansão
+      const updatedShares = response.data.map(newShare => {
+        const oldShare = oldSharesMap[newShare.share_name];
+        // Preservar children_fetched se já estava marcado no share antigo
+        if (oldShare && oldShare.children_fetched) {
+          return { ...newShare, children_fetched: true };
+        }
+        return newShare;
+      });
+      
+      setShares(updatedShares);
+      
+      // Restaurar estado de expansão e filhos
+      // Só manter nós que ainda existem nos novos shares
+      const newShareNames = new Set(response.data.map(s => s.share_name));
+      const validExpandedNodes = {};
+      const validNodeChildren = {};
+      
+      Object.keys(prevExpandedNodes).forEach(nodeId => {
+        // Verificar se o nó ainda é válido
+        if (nodeId.startsWith('share-')) {
+          const shareName = nodeId.replace('share-', '');
+          if (newShareNames.has(shareName)) {
+            validExpandedNodes[nodeId] = prevExpandedNodes[nodeId];
+            if (prevNodeChildren[nodeId]) {
+              validNodeChildren[nodeId] = prevNodeChildren[nodeId];
+            }
+          }
+        } else {
+          // Nós filhos - manter se o pai ainda existir
+          validExpandedNodes[nodeId] = prevExpandedNodes[nodeId];
+          if (prevNodeChildren[nodeId]) {
+            validNodeChildren[nodeId] = prevNodeChildren[nodeId];
+          }
+        }
+      });
+      
+      setExpandedNodes(validExpandedNodes);
+      setNodeChildren(validNodeChildren);
       
       toast.success(`${response.data.length} compartilhamentos atualizados`);
     } catch (error) {
