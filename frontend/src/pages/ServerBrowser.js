@@ -1629,7 +1629,7 @@ const ServerBrowser = () => {
           )}
           
           {/* Items Tab Content */}
-          {activeTab === 'objetos' && (isShare || isDirectory) && (
+          {activeTab === 'objetos' && (isShare || isDirectory) && !isAccessDenied && (
             <div className="flex-1 overflow-hidden flex flex-col">
               {(() => {
                 const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
