@@ -47,7 +47,6 @@ const menuItems = [
 ];
 
 const Layout = ({ children, darkMode, setDarkMode }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
