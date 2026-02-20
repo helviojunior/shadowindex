@@ -392,8 +392,27 @@ const ServerBrowser = () => {
     try {
       const response = await axios.get(`${API}/servers/${serverId}/downloads`);
       setDownloadedFiles(response.data.map(f => f.file_path));
+      // Criar mapa de informações por file_path
+      const infoMap = {};
+      response.data.forEach(f => {
+        infoMap[f.file_path] = f;
+      });
+      setDownloadedFilesInfo(infoMap);
     } catch (error) {
       console.error('Error loading downloads:', error);
+    }
+  };
+
+  // Carregar versões do arquivo selecionado
+  const loadFileVersions = async (filePath) => {
+    try {
+      const response = await axios.get(`${API}/servers/${serverId}/file-versions`, {
+        params: { file_path: filePath }
+      });
+      setFileVersions(response.data);
+    } catch (error) {
+      console.error('Error loading file versions:', error);
+      setFileVersions([]);
     }
   };
 
