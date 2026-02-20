@@ -53,7 +53,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   });
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const location = useLocation();
-  const { ignoreCache, setIgnoreCache, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
+  const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
 
   // Detect small screen
   useEffect(() => {
@@ -77,6 +77,10 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   const handleProxyChange = async (value) => {
     const proxyId = value === 'none' ? null : parseInt(value);
     await updateActiveProxy(proxyId);
+  };
+
+  const handleOfflineModeToggle = async () => {
+    await setOfflineMode(!offlineMode);
   };
 
   return (
