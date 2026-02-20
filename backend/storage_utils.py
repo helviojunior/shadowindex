@@ -124,6 +124,21 @@ def get_server_storage_stats(server_guid: str) -> dict:
     
     return stats
 
+
+def get_file_path(server_guid: str, share_name: str, sanitized_path: str) -> str:
+    """
+    Retorna o caminho completo de um arquivo sincronizado
+    
+    Args:
+        server_guid: GUID do servidor
+        share_name: Nome do compartilhamento
+        sanitized_path: Caminho sanitizado relativo ao storage
+    
+    Returns:
+        str: Caminho completo do arquivo
+    """
+    return str(Path(STORAGE_BASE_PATH) / sanitized_path)
+
 def format_size(size_bytes: int) -> str:
     """Formata tamanho em bytes para formato legível"""
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
