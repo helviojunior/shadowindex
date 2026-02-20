@@ -732,7 +732,6 @@ async def browse_server_directory(
         for result_elem in root.findall(".//Result"):
             # Verificar se é um erro de acesso negado
             message_elem = result_elem.find("message")
-            stacktrace_elem = result_elem.find("stacktrace")
             
             if message_elem is not None and message_elem.text:
                 msg_text = message_elem.text.lower()
