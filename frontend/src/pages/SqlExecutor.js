@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
@@ -10,6 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   ArrowLeft, 
   Play, 
@@ -25,7 +31,9 @@ import {
   Download,
   FileSpreadsheet,
   Plus,
-  X
+  X,
+  GripHorizontal,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,10 +48,15 @@ const SqlExecutor = () => {
   const [presets, setPresets] = useState([]);
   const [history, setHistory] = useState([]);
   const [showPresets, setShowPresets] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [editorHeight, setEditorHeight] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
   
-  // Múltiplas tabs - cada tab tem sua própria query e resultado
+  const containerRef = useRef(null);
+  const resizeRef = useRef(null);
+  
+  // Múltiplas tabs
   const [tabs, setTabs] = useState([
     { id: 1, name: 'Query 1', query: '', result: null, loading: false }
   ]);
@@ -54,6 +67,36 @@ const SqlExecutor = () => {
     loadPresets();
     loadHistory();
   }, [connectionId]);
+
+  // Resizing logic
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing || !containerRef.current) return;
+      
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newHeight = e.clientY - containerRect.top - 140; // Account for header and tabs
+      
+      // Min and max heights
+      const minHeight = 100;
+      const maxHeight = window.innerHeight - 350;
+      
+      setEditorHeight(Math.max(minHeight, Math.min(maxHeight, newHeight)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const loadConnection = async () => {
     try {
@@ -77,7 +120,7 @@ const SqlExecutor = () => {
 
   const loadHistory = async () => {
     try {
-      const response = await axios.get(`${API}/sql/history?connection_id=${connectionId}&limit=20`);
+      const response = await axios.get(`${API}/sql/history?connection_id=${connectionId}&limit=50`);
       setHistory(response.data);
     } catch (error) {
       console.error('Error loading history:', error);
@@ -92,16 +135,17 @@ const SqlExecutor = () => {
     ));
   };
 
-  const addNewTab = () => {
+  const addNewTab = (initialQuery = '') => {
     const newTab = {
       id: tabIdCounter.current++,
       name: `Query ${tabIdCounter.current - 1}`,
-      query: '',
+      query: initialQuery,
       result: null,
       loading: false
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabIndex(tabs.length);
+    return newTab;
   };
 
   const closeTab = (idx, e) => {
@@ -160,26 +204,21 @@ const SqlExecutor = () => {
     toast.success(`Preset "${preset.name}" selecionado`);
   };
 
-  const reExecuteFromHistory = (historyItem) => {
-    updateCurrentTab({ query: historyItem.query });
-    setShowHistory(false);
-    
-    if (historyItem.result) {
-      try {
-        const parsed = JSON.parse(historyItem.result);
-        updateCurrentTab({
-          result: {
-            success: historyItem.success,
-            columns: parsed.columns,
-            rows: parsed.rows,
-            row_count: parsed.rows?.length || 0,
-            execution_time_ms: historyItem.execution_time_ms,
-            error_message: historyItem.error_message
-          }
-        });
-      } catch {
-        // Se não conseguir parsear, só preenche a query
-      }
+  // Criar nova aba com query do histórico
+  const openHistoryInNewTab = (historyItem) => {
+    addNewTab(historyItem.query);
+    setShowHistoryModal(false);
+    toast.success('Nova aba criada com a query do histórico');
+  };
+
+  const deleteHistoryItem = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await axios.delete(`${API}/sql/history/${id}`);
+      loadHistory();
+      toast.success('Item removido do histórico');
+    } catch (error) {
+      toast.error('Erro ao remover item');
     }
   };
 
@@ -193,13 +232,11 @@ const SqlExecutor = () => {
 
     const { columns, rows } = currentTab.result;
     
-    // Criar conteúdo CSV
     const csvContent = [
       columns.join(','),
       ...rows.map(row => 
         row.map(cell => {
           const cellStr = String(cell || '');
-          // Escapar aspas e envolver em aspas se contiver vírgulas
           if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
             return `"${cellStr.replace(/"/g, '""')}"`;
           }
@@ -208,7 +245,6 @@ const SqlExecutor = () => {
       )
     ].join('\n');
 
-    // Download
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -228,15 +264,10 @@ const SqlExecutor = () => {
 
     const { columns, rows } = currentTab.result;
     
-    // Criar worksheet
     const wsData = [columns, ...rows];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-    
-    // Criar workbook
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
-    
-    // Download
     XLSX.writeFile(wb, `query_result_${new Date().toISOString().slice(0, 10)}.xlsx`);
     
     toast.success('Exportado para Excel');
@@ -251,7 +282,6 @@ const SqlExecutor = () => {
     }
   };
 
-  // Função de highlight para SQL
   const highlightSQL = (code) => {
     return highlight(code, languages.sql, 'sql');
   };
@@ -267,7 +297,11 @@ const SqlExecutor = () => {
   const currentTab = getCurrentTab();
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col" data-testid="sql-executor-page">
+    <div 
+      ref={containerRef}
+      className="h-[calc(100vh-120px)] flex flex-col" 
+      data-testid="sql-executor-page"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-4">
@@ -325,7 +359,7 @@ const SqlExecutor = () => {
           </div>
         ))}
         <button
-          onClick={addNewTab}
+          onClick={() => addNewTab()}
           className="flex items-center justify-center w-7 h-7 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
           data-testid="add-query-tab"
         >
@@ -333,10 +367,10 @@ const SqlExecutor = () => {
         </button>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Query Editor */}
-        <div className="w-1/2 flex flex-col border-r border-border">
+      {/* Main Content - Vertical Layout */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Section - Query Editor */}
+        <div className="flex flex-col border-b border-border" style={{ height: editorHeight }}>
           {/* Toolbar */}
           <div className="flex items-center gap-2 p-3 border-b border-border bg-muted/30">
             <Button 
@@ -355,7 +389,7 @@ const SqlExecutor = () => {
             <div className="relative">
               <Button 
                 variant="outline" 
-                onClick={() => { setShowPresets(!showPresets); setShowHistory(false); }}
+                onClick={() => setShowPresets(!showPresets)}
                 data-testid="show-presets-btn"
               >
                 <ListOrdered className="w-4 h-4 mr-2" />
@@ -394,62 +428,23 @@ const SqlExecutor = () => {
               )}
             </div>
             
-            <div className="relative">
-              <Button 
-                variant="outline" 
-                onClick={() => { setShowHistory(!showHistory); setShowPresets(false); }}
-                data-testid="show-history-btn"
-              >
-                <History className="w-4 h-4 mr-2" />
-                Histórico
-                <ChevronDown className="w-4 h-4 ml-2" />
-              </Button>
-              
-              {showHistory && (
-                <Card className="absolute top-full left-0 mt-1 w-96 z-50 shadow-lg">
-                  <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm">Histórico de Queries</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <ScrollArea className="max-h-80">
-                      {history.length === 0 ? (
-                        <p className="text-sm text-muted-foreground p-3">Nenhuma query no histórico</p>
-                      ) : (
-                        history.map((item) => (
-                          <div
-                            key={item.id}
-                            className="p-3 hover:bg-muted cursor-pointer border-b border-border last:border-0"
-                            onClick={() => reExecuteFromHistory(item)}
-                            data-testid={`history-item-${item.id}`}
-                          >
-                            <div className="flex items-center gap-2 mb-1">
-                              {item.success ? (
-                                <CheckCircle className="w-3 h-3 text-green-500" />
-                              ) : (
-                                <XCircle className="w-3 h-3 text-red-500" />
-                              )}
-                              <span className="text-xs text-muted-foreground">
-                                {formatDate(item.executed_at)}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                ({item.execution_time_ms}ms)
-                              </span>
-                            </div>
-                            <div className="text-xs font-mono truncate">{item.query}</div>
-                            {!item.success && item.error_message && (
-                              <div className="text-xs text-red-400 mt-1 truncate">{item.error_message}</div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowHistoryModal(true)}
+              data-testid="show-history-btn"
+            >
+              <History className="w-4 h-4 mr-2" />
+              Histórico
+            </Button>
+
+            <div className="flex-1" />
+
+            <span className="text-xs text-muted-foreground">
+              Arraste a barra abaixo para redimensionar
+            </span>
           </div>
           
-          {/* Query Editor with Syntax Highlighting */}
+          {/* Query Editor */}
           <div className="flex-1 overflow-auto bg-zinc-900">
             <Editor
               value={currentTab.query}
@@ -473,19 +468,32 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
           </div>
         </div>
 
-        {/* Right Panel - Results */}
-        <div className="w-1/2 flex flex-col bg-background">
-          {/* Tabs & Export Buttons */}
-          <div className="flex items-center justify-between px-4 pt-3 border-b border-border">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-green-500 pb-3 border-b-2 border-green-500">
-                Resultado
-              </span>
+        {/* Resize Handle */}
+        <div
+          ref={resizeRef}
+          className="h-2 bg-muted hover:bg-primary/30 cursor-ns-resize flex items-center justify-center transition-colors"
+          onMouseDown={() => setIsResizing(true)}
+          data-testid="resize-handle"
+        >
+          <GripHorizontal className="w-4 h-4 text-muted-foreground" />
+        </div>
+
+        {/* Bottom Section - Results */}
+        <div className="flex-1 flex flex-col bg-background overflow-hidden">
+          {/* Result Header */}
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Resultado</span>
+              {currentTab.result?.success && (
+                <Badge variant="outline" className="text-green-500 border-green-500">
+                  {currentTab.result.row_count} linha(s)
+                </Badge>
+              )}
             </div>
             
             {/* Export Buttons */}
             {currentTab.result?.success && currentTab.result?.columns && (
-              <div className="flex items-center gap-2 pb-2">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -508,12 +516,12 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
             )}
           </div>
 
-          {/* Tab Content */}
+          {/* Result Content */}
           <ScrollArea className="flex-1">
             <div className="p-4">
               {!currentTab.result ? (
-                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                  <Database className="w-12 h-12 mb-4 opacity-30" />
+                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                  <Database className="w-10 h-10 mb-3 opacity-30" />
                   <p>Execute uma query para ver os resultados</p>
                 </div>
               ) : currentTab.result.success ? (
@@ -528,7 +536,6 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                       <Clock className="w-4 h-4" />
                       {currentTab.result.execution_time_ms}ms
                     </span>
-                    <span>{currentTab.result.row_count} linha(s)</span>
                   </div>
                   
                   {/* Result Table */}
@@ -539,7 +546,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                           <thead className="bg-muted">
                             <tr>
                               {currentTab.result.columns.map((col, idx) => (
-                                <th key={idx} className="px-4 py-2 text-left font-medium border-b border-border">
+                                <th key={idx} className="px-4 py-2 text-left font-medium border-b border-border whitespace-nowrap">
                                   {col}
                                 </th>
                               ))}
@@ -549,7 +556,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                             {currentTab.result.rows.map((row, rowIdx) => (
                               <tr key={rowIdx} className="hover:bg-muted/50">
                                 {row.map((cell, cellIdx) => (
-                                  <td key={cellIdx} className="px-4 py-2 border-b border-border font-mono">
+                                  <td key={cellIdx} className="px-4 py-2 border-b border-border font-mono whitespace-nowrap">
                                     {cell || <span className="text-muted-foreground italic">NULL</span>}
                                   </td>
                                 ))}
@@ -572,17 +579,94 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                       {currentTab.result.error_message}
                     </p>
                   </div>
-                  {currentTab.result.execution_time_ms && (
-                    <p className="text-sm text-muted-foreground">
-                      Tempo de execução: {currentTab.result.execution_time_ms}ms
-                    </p>
-                  )}
                 </div>
               )}
             </div>
           </ScrollArea>
         </div>
       </div>
+
+      {/* History Modal */}
+      <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Histórico de Queries
+            </DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="max-h-[60vh] pr-4">
+            {history.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <History className="w-12 h-12 mb-4 opacity-30" />
+                <p>Nenhuma query no histórico</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {history.map((item) => (
+                  <Card 
+                    key={item.id} 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => openHistoryInNewTab(item)}
+                    data-testid={`history-modal-item-${item.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            {item.success ? (
+                              <Badge variant="outline" className="text-green-500 border-green-500">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Sucesso
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-red-500 border-red-500">
+                                <XCircle className="w-3 h-3 mr-1" />
+                                Erro
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(item.executed_at)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {item.execution_time_ms}ms
+                            </span>
+                          </div>
+                          
+                          <pre className="text-sm font-mono bg-muted p-3 rounded overflow-x-auto whitespace-pre-wrap max-h-24">
+                            {item.query}
+                          </pre>
+                          
+                          {!item.success && item.error_message && (
+                            <div className="mt-2 text-sm text-red-400 truncate">
+                              {item.error_message}
+                            </div>
+                          )}
+                          
+                          <p className="mt-2 text-xs text-primary">
+                            Clique para abrir em nova aba
+                          </p>
+                        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => deleteHistoryItem(item.id, e)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          data-testid={`delete-history-${item.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
