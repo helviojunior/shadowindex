@@ -1507,7 +1507,7 @@ async def download_server_file(
             select(FileVersion).where(
                 FileVersion.server_guid == server.guid,
                 FileVersion.file_path == file_path,
-                FileVersion.is_current == True
+                FileVersion.is_current.is_(True)
             )
         )
         current_version = result.scalar_one_or_none()
