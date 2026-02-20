@@ -236,7 +236,7 @@ const SoapOperations = () => {
                   data-testid="execute-exec4-btn"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <PlayCircle className="w-4 h-4 mr-2" />}
-                  Executar Exec4
+                  List Path
                 </Button>
               </div>
             </TabsContent>
