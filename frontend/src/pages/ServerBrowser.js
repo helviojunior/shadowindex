@@ -570,26 +570,54 @@ const ServerBrowser = () => {
           </div>
         )}
         
-        {/* Tabs: Info e View */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="mx-4 mt-4 w-fit">
-            <TabsTrigger value="info" className="gap-2">
-              <FileText className="w-4 h-4" />
-              Info
-            </TabsTrigger>
-            {isFile && downloaded && (
-              <TabsTrigger value="view" className="gap-2" onClick={loadFileContent}>
-                <Eye className="w-4 h-4" />
-                View
-              </TabsTrigger>
-            )}
-          </TabsList>
+        {/* Tabs Flat Style */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Tab Headers - Flat Style */}
+          <div className="px-4 pt-4 border-b border-border">
+            <div className="flex gap-8">
+              <button
+                onClick={() => setActiveTab('info')}
+                className={`pb-3 text-sm font-medium transition-colors relative ${
+                  activeTab === 'info' 
+                    ? 'text-green-500' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                General
+                {activeTab === 'info' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                )}
+              </button>
+              
+              {isFile && downloaded && canViewContent && (
+                <button
+                  onClick={() => {
+                    setActiveTab('view');
+                    loadFileContent();
+                  }}
+                  className={`pb-3 text-sm font-medium transition-colors relative ${
+                    activeTab === 'view' 
+                      ? 'text-green-500' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  View
+                  {activeTab === 'view' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
           
-          {/* Tab Info */}
-          <TabsContent value="info" className="flex-1 mt-0">
-            <ScrollArea className="h-full">
+          {/* Tab Content */}
+          {activeTab === 'info' && (
+            <ScrollArea className="flex-1">
               <div className="p-4">
-                <div className="flex flex-col gap-2">
+                {/* Info Section Header */}
+                <h3 className="text-base font-medium mb-4 pb-2 border-b border-border/50">Info</h3>
+                
+                <div className="flex flex-col gap-3">
                   {/* Name */}
                   <InfoRow 
                     label="Name" 
