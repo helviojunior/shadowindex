@@ -103,13 +103,42 @@ class DownloadedFile(Base):
     downloaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 async def init_db():
+    """Initialize database and apply schema migrations"""
+    import sqlite3
+    
+    # Primeiro, criar todas as tabelas que não existem
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
-    # Create default proxy and config
+    # Aplicar migrações manuais para colunas que podem não existir
+    db_path = DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Verificar e adicionar colunas na tabela server_shares
+        cursor.execute("PRAGMA table_info(server_shares)")
+        columns = {col[1] for col in cursor.fetchall()}
+        
+        if 'access_denied' not in columns:
+            cursor.execute('ALTER TABLE server_shares ADD COLUMN access_denied BOOLEAN DEFAULT 0')
+            logger.info("Added column 'access_denied' to server_shares")
+        
+        if 'error_message' not in columns:
+            cursor.execute('ALTER TABLE server_shares ADD COLUMN error_message VARCHAR')
+            logger.info("Added column 'error_message' to server_shares")
+        
+        conn.commit()
+        conn.close()
+        logger.info("Database migrations completed")
+    except Exception as e:
+        logger.warning(f"Migration check failed: {e}")
+    
+    # Create default records
     async with AsyncSessionLocal() as session:
-        # Check if default proxy exists
         from sqlalchemy import select
+        
+        # Check if default proxy exists
         result = await session.execute(select(ProxyServer).where(ProxyServer.name == "Default Host Proxy"))
         if not result.scalar_one_or_none():
             default_proxy = ProxyServer(
@@ -135,6 +164,8 @@ async def init_db():
             session.add(default_soap)
         
         await session.commit()
+    
+    logger.info("Database initialized")
 
 async def get_db():
     async with AsyncSessionLocal() as session:
