@@ -28,6 +28,11 @@ Portuguese (pt-BR)
 ## Completed Features
 
 ### 2026-02-20
+- [x] Added `has_children` and `children_fetched` flags to ServerShare model
+- [x] Backend updates flags when browsing directories
+- [x] Frontend uses DB flags for initial color rendering (gray = not fetched, red = access denied)
+- [x] Moved DB to local path: `/app/backend/data/ops_integration.db`
+- [x] Moved storage to local path: `/app/backend/data/storage/`
 - [x] Removed `<h3>Info</h3>` tag from info panel
 - [x] Implemented tree hierarchy lines (vertical + horizontal connectors like JFrog)
 - [x] Dashboard: Added "Servidores" and "Arquivos Baixados" stat cards
