@@ -463,38 +463,6 @@ const ServerBrowser = () => {
     // Cor do texto baseada no status de fetch
     const textColor = isAccessDenied ? 'text-red-500' : (isNotFetched ? 'text-muted-foreground' : '');
     
-    // Renderiza as linhas de hierarquia
-    const renderTreeLines = () => {
-      if (depth === 0) return null;
-      
-      return (
-        <div className="flex" style={{ width: `${(depth) * 16}px` }}>
-          {parentLines.map((showLine, idx) => (
-            <div 
-              key={idx} 
-              className="w-4 h-full flex justify-center"
-            >
-              {showLine && (
-                <div className="w-px h-full bg-border" />
-              )}
-            </div>
-          ))}
-          {/* Linha horizontal conectora */}
-          <div className="w-4 h-full flex items-center">
-            <div className="flex items-center h-full">
-              {/* Linha vertical (metade superior ou completa) */}
-              <div className="w-px h-full flex flex-col">
-                <div className={`w-px flex-1 bg-border`} />
-                {isLastChild ? null : <div className="w-px flex-1 bg-border" />}
-              </div>
-              {/* Linha horizontal */}
-              <div className="w-2 h-px bg-border" />
-            </div>
-          </div>
-        </div>
-      );
-    };
-    
     return (
       <div key={nodeId}>
         <div
@@ -514,8 +482,43 @@ const ServerBrowser = () => {
           }}
           data-testid={`tree-node-${safeTestId}`}
         >
-          {/* Tree Lines */}
-          {renderTreeLines()}
+          {/* Tree Lines - Renderiza linhas verticais para cada nível de profundidade */}
+          {depth > 0 && (
+            <div className="flex items-stretch" style={{ height: '32px' }}>
+              {/* Linhas verticais dos pais */}
+              {parentLines.map((showLine, idx) => (
+                <div 
+                  key={idx} 
+                  className="w-4 flex justify-center"
+                >
+                  {showLine && (
+                    <div className="w-px bg-border/60" style={{ height: '100%' }} />
+                  )}
+                </div>
+              ))}
+              {/* Linha conectora do item atual */}
+              <div className="w-4 flex items-center relative">
+                {/* Linha vertical (metade superior ou completa dependendo se é último) */}
+                <div 
+                  className="absolute left-1/2 -translate-x-1/2 w-px bg-border/60" 
+                  style={{ 
+                    top: 0, 
+                    height: isLastChild ? '50%' : '100%'
+                  }} 
+                />
+                {/* Linha horizontal */}
+                <div 
+                  className="absolute bg-border/60" 
+                  style={{ 
+                    left: '50%', 
+                    width: '50%', 
+                    height: '1px',
+                    top: '50%'
+                  }} 
+                />
+              </div>
+            </div>
+          )}
           
           {/* Expand/Collapse Arrow */}
           {isDirectory && item.type !== 'AccessDenied' ? (
@@ -571,10 +574,10 @@ const ServerBrowser = () => {
         
         {/* Children */}
         {isExpanded && children.length > 0 && (
-          <div className="relative">
+          <div>
             {children.map((child, index) => {
               const isLast = index === children.length - 1;
-              // Propagar as linhas para os filhos
+              // Propagar as linhas para os filhos - mostrar linha se não for o último
               const newParentLines = [...parentLines, !isLastChild];
               return renderTreeNode(child, depth + 1, currentShareName, isLast, newParentLines);
             })}
