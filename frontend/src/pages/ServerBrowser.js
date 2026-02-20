@@ -83,7 +83,16 @@ const ServerBrowser = () => {
 
   // Reset tab quando selecionar novo item e carregar versões
   useEffect(() => {
-    setActiveTab('info');
+    // Definir aba padrão baseado no tipo de item
+    const isShare = selectedItem?.itemType === 'share';
+    const isDirectory = selectedItem?.itemType === 'Directory';
+    
+    if (isShare || isDirectory) {
+      setActiveTab('objetos');
+    } else {
+      setActiveTab('info');
+    }
+    
     setFileContent(null);
     setRawFileContent(null);
     setFilePreviewUrl(null);
