@@ -660,7 +660,7 @@ const ServerBrowser = () => {
     }
   };
 
-  const handleSelectItem = async (item, type, path, shareName = '') => {
+  const handleSelectItem = (item, type, path, shareName = '') => {
     // Definir o item selecionado para mostrar no painel Info
     setSelectedItem({
       ...item,
@@ -669,20 +669,6 @@ const ServerBrowser = () => {
       shareName: shareName,
       fetchedAt: new Date().toISOString()
     });
-    
-    // Se for diretório ou share e ainda não foi expandido, expandir automaticamente
-    const isShare = !!item.share_name;
-    const isDirectory = type === 'Directory' || type === 'share';
-    const nodeId = String(item.id || `share-${item.share_name}`);
-    const isExpanded = expandedNodes[nodeId];
-    const hasLoadedChildren = nodeChildren[nodeId] !== undefined;
-    const childrenFetched = isShare ? item.children_fetched : (item.childrenFetched === true || hasLoadedChildren);
-    
-    if (isDirectory && !isExpanded && !childrenFetched) {
-      // Expandir automaticamente e carregar filhos
-      setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
-      await loadDirectory(nodeId, path, shareName);
-    }
   };
 
   const handleDownload = async () => {
