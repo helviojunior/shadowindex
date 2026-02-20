@@ -52,18 +52,24 @@ const BeautifyTest = () => {
   // Aplica syntax highlighting ao conteúdo
   const applySyntaxHighlight = (content) => {
     return content
-      // Tags de abertura e fechamento
-      .replace(/(&lt;\/?)([\w:-]+)/g, '$1<span class="text-blue-400">$2</span>')
-      // Atributos
-      .replace(/([\w:-]+)(=)/g, '<span class="text-yellow-400">$1</span>$2')
-      // Valores de atributos
-      .replace(/(=)(&quot;[^&]*&quot;)/g, '$1<span class="text-green-400">$2</span>')
-      // Comentários
-      .replace(/(&lt;!--.*?--&gt;)/gs, '<span class="text-gray-500 italic">$1</span>')
-      // Fechamento de tags
-      .replace(/(&gt;)/g, '<span class="text-blue-400">$1</span>')
-      // Declaração XML
-      .replace(/(&lt;\?.*?\?&gt;)/g, '<span class="text-purple-400">$1</span>');
+      // Declaração XML - <?xml ... ?>
+      .replace(/(&lt;\?xml[^?]*\?&gt;)/gi, '<span style="color: #c084fc;">$1</span>')
+      // Comentários - <!-- ... -->
+      .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span style="color: #6b7280; font-style: italic;">$1</span>')
+      // Tags de fechamento - </tagname>
+      .replace(/(&lt;\/)([\w:-]+)(&gt;)/g, '<span style="color: #60a5fa;">$1$2$3</span>')
+      // Tags auto-fechadas - <tagname ... />
+      .replace(/(&lt;)([\w:-]+)([^&]*?)(\/&gt;)/g, '<span style="color: #60a5fa;">$1$2</span>$3<span style="color: #60a5fa;">$4</span>')
+      // Tags de abertura - <tagname>
+      .replace(/(&lt;)([\w:-]+)(&gt;)/g, '<span style="color: #60a5fa;">$1$2$3</span>')
+      // Tags de abertura com atributos - <tagname attr="value">
+      .replace(/(&lt;)([\w:-]+)(\s)/g, '<span style="color: #60a5fa;">$1$2</span>$3')
+      // Nomes de atributos
+      .replace(/\s([\w:-]+)(=)/g, ' <span style="color: #facc15;">$1</span>$2')
+      // Valores de atributos entre aspas
+      .replace(/(=)(&quot;)([^&]*)(&quot;)/g, '$1<span style="color: #4ade80;">$2$3$4</span>')
+      // Fechamento de tag >
+      .replace(/([^-])(&gt;)(?!<\/span>)/g, '$1<span style="color: #60a5fa;">$2</span>');
   };
 
   const loadSampleXml = async () => {
