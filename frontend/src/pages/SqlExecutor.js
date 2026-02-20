@@ -286,14 +286,8 @@ const SqlExecutor = () => {
       updateCurrentTab({ result: response.data, loading: false });
       loadHistory();
 
-      if (response.data.success) {
-        toast.success(`Query executada em ${response.data.execution_time_ms}ms - ${response.data.row_count} resultado(s)`);
-      } else {
-        toast.error('Erro ao executar query');
-      }
     } catch (error) {
       console.error('Error executing query:', error);
-      toast.error('Erro ao executar query');
       updateCurrentTab({ 
         result: {
           success: false,
