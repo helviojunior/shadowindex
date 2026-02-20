@@ -1,4 +1,5 @@
 import aiohttp
+import ssl
 from datetime import datetime, timezone, timedelta
 import hashlib
 import json
@@ -8,6 +9,14 @@ from database import SoapCache, AppConfig, SoapApiUrl, ProxyServer
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Criar contexto SSL que ignora erros de certificado
+def create_insecure_ssl_context():
+    """Cria um contexto SSL que ignora erros de certificado TLS"""
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    return ssl_context
 
 class SoapService:
     def __init__(self, soap_url: str, proxy_url: str = None):
