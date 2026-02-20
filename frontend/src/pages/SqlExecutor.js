@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
@@ -25,7 +25,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  RefreshCw,
   ChevronDown,
   Database,
   Download,
@@ -33,12 +32,26 @@ import {
   Plus,
   X,
   GripHorizontal,
-  Trash2
+  Trash2,
+  Zap,
+  Keyboard
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// SQL Keywords for autocomplete
+const SQL_KEYWORDS = [
+  'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'LIKE', 'BETWEEN',
+  'ORDER BY', 'GROUP BY', 'HAVING', 'LIMIT', 'OFFSET', 'JOIN', 'INNER JOIN',
+  'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'ON', 'AS', 'DISTINCT', 'COUNT',
+  'SUM', 'AVG', 'MIN', 'MAX', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET',
+  'DELETE', 'CREATE', 'TABLE', 'DROP', 'ALTER', 'INDEX', 'PRIMARY KEY',
+  'FOREIGN KEY', 'REFERENCES', 'NULL', 'NOT NULL', 'DEFAULT', 'UNIQUE',
+  'UNION', 'UNION ALL', 'EXCEPT', 'INTERSECT', 'CASE', 'WHEN', 'THEN',
+  'ELSE', 'END', 'CAST', 'CONVERT', 'COALESCE', 'NULLIF', 'TOP', 'DESC', 'ASC'
+];
 
 const SqlExecutor = () => {
   const { connectionId } = useParams();
