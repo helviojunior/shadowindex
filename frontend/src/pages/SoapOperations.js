@@ -24,6 +24,22 @@ const SoapOperations = () => {
   const [execForm, setExecForm] = useState({ connStr: '', query: '' });
   const [exec4Form, setExec4Form] = useState({ s1: '' });
   const [exec5Form, setExec5Form] = useState({ s1: '' });
+  
+  // DB Connections for Exec
+  const [dbConnections, setDbConnections] = useState([]);
+
+  useEffect(() => {
+    loadDbConnections();
+  }, []);
+
+  const loadDbConnections = async () => {
+    try {
+      const response = await axios.get(`${API}/db-connections`);
+      setDbConnections(response.data);
+    } catch (error) {
+      console.error('Error loading DB connections:', error);
+    }
+  };
 
   const handleOperation = async (operation, data) => {
     setLoading(true);
