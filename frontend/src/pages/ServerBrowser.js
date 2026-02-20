@@ -1012,13 +1012,13 @@ const ServerBrowser = () => {
                       }
                     }}
                   >
-                    <SelectTrigger className="w-24 h-7 ml-2">
+                    <SelectTrigger className="w-auto min-w-[140px] h-7 ml-2 mr-4">
                       <SelectValue placeholder="Versão" />
                     </SelectTrigger>
                     <SelectContent>
                       {fileVersions.map((v) => (
                         <SelectItem key={v.id} value={v.id.toString()}>
-                          v{v.version_number} {v.is_current && '✓'}
+                          v{v.version_number} - {new Date(v.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} {v.is_current && '✓'}
                         </SelectItem>
                       ))}
                     </SelectContent>
