@@ -737,64 +737,136 @@ const ServerBrowser = () => {
     }
   };
 
-  // Função para buscar itens de um diretório recursivamente
-  const fetchDirectoryItems = async (path, shareName, currentDepth, maxDepth, maxSizeBytes, cancelledRef) => {
-    if (currentDepth > maxDepth || cancelledRef.current) return [];
+  // Função para processar download de um diretório (incremental)
+  const processDirectoryDownload = async (path, shareName, currentDepth, maxDepth, maxSizeBytes, cancelledRef) => {
+    if (currentDepth > maxDepth || cancelledRef.current) return;
     
     try {
+      // Buscar conteúdo do diretório
       const response = await axios.post(
         `${API}/servers/${serverId}/browse`,
         null,
         { params: { path, ignore_cache: false, share_name: shareName } }
       );
       
-      if (response.data.accessDenied) return [];
+      if (response.data.accessDenied) return;
       
       const items = response.data.items || [];
-      let allItems = [];
       
-      for (const item of items) {
+      // Atualizar o ícone azul na árvore (marcar como fetched)
+      const nodeId = path === `\\\\${server?.ip}\\${shareName}` 
+        ? `share-${shareName}` 
+        : String(items[0]?.id || path).replace(/[^a-zA-Z0-9]/g, '_');
+      
+      // Atualizar nodeChildren para mostrar na árvore
+      setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
+      
+      // Marcar share como fetched se for o nível raiz
+      if (currentDepth === 1) {
+        setShares(prev => prev.map(s => 
+          s.share_name === shareName 
+            ? { ...s, children_fetched: true, has_children: items.length > 0 }
+            : s
+        ));
+      }
+      
+      // Separar arquivos e diretórios
+      const files = items.filter(i => i.type === 'File');
+      const directories = items.filter(i => i.type === 'Directory');
+      
+      // 1. Primeiro: Baixar todos os arquivos do diretório atual
+      for (const file of files) {
         if (cancelledRef.current) break;
         
-        if (item.type === 'File') {
-          const fileSize = parseInt(item.size) || 0;
-          if (fileSize <= maxSizeBytes) {
-            allItems.push({
-              ...item,
-              shareName,
-              status: 'pending',
-              error: null
-            });
-          } else {
-            allItems.push({
-              ...item,
-              shareName,
-              status: 'skipped',
-              error: `Tamanho excede limite (${formatSize(fileSize)})`
-            });
-          }
-        } else if (item.type === 'Directory' && currentDepth < maxDepth) {
-          // Recursivamente buscar subdiretórios
-          const subItems = await fetchDirectoryItems(
-            item.fullPath, 
-            shareName, 
-            currentDepth + 1, 
-            maxDepth, 
-            maxSizeBytes,
-            cancelledRef
+        const fileSize = parseInt(file.size) || 0;
+        
+        if (fileSize > maxSizeBytes) {
+          // Arquivo muito grande - adicionar como skipped
+          setBulkDownloadItems(prev => [...prev, {
+            ...file,
+            shareName,
+            status: 'skipped',
+            error: `Tamanho excede limite (${formatSize(fileSize)})`
+          }]);
+          setBulkDownloadStats(prev => ({ 
+            ...prev, 
+            total: prev.total + 1, 
+            skipped: prev.skipped + 1 
+          }));
+          continue;
+        }
+        
+        // Adicionar à lista com status downloading
+        const itemIndex = bulkDownloadItems.length;
+        setBulkDownloadItems(prev => [...prev, {
+          ...file,
+          shareName,
+          status: 'downloading',
+          error: null
+        }]);
+        setBulkDownloadStats(prev => ({ ...prev, total: prev.total + 1 }));
+        
+        try {
+          await axios.post(
+            `${API}/servers/${serverId}/download`,
+            null,
+            {
+              params: {
+                file_path: file.fullPath,
+                share_name: shareName
+              }
+            }
           );
-          allItems = [...allItems, ...subItems];
+          
+          // Atualizar para completed
+          setBulkDownloadItems(prev => prev.map((it, idx) => 
+            it.fullPath === file.fullPath && it.status === 'downloading'
+              ? { ...it, status: 'completed' } 
+              : it
+          ));
+          setBulkDownloadStats(prev => ({ ...prev, completed: prev.completed + 1 }));
+          
+          // Atualizar lista de downloads
+          if (!downloadedFiles.includes(file.fullPath)) {
+            setDownloadedFiles(prev => [...prev, file.fullPath]);
+          }
+        } catch (error) {
+          // Atualizar para failed
+          setBulkDownloadItems(prev => prev.map((it, idx) => 
+            it.fullPath === file.fullPath && it.status === 'downloading'
+              ? { ...it, status: 'failed', error: error.message } 
+              : it
+          ));
+          setBulkDownloadStats(prev => ({ ...prev, failed: prev.failed + 1 }));
         }
       }
       
-      return allItems;
+      // 2. Depois: Entrar em cada subdiretório recursivamente
+      if (currentDepth < maxDepth) {
+        for (const dir of directories) {
+          if (cancelledRef.current) break;
+          
+          // Expandir o nó na árvore
+          const dirNodeId = String(dir.id || dir.fullPath).replace(/[^a-zA-Z0-9]/g, '_');
+          setExpandedNodes(prev => ({ ...prev, [dirNodeId]: true }));
+          
+          // Processar subdiretório
+          await processDirectoryDownload(
+            dir.fullPath,
+            shareName,
+            currentDepth + 1,
+            maxDepth,
+            maxSizeBytes,
+            cancelledRef
+          );
+        }
+      }
     } catch (error) {
-      console.error('Error fetching directory:', error);
-      return [];
+      console.error('Error processing directory:', error);
     }
   };
 
-  // Iniciar download em massa
+  // Iniciar download em massa (versão incremental)
   const startBulkDownload = async () => {
     if (!selectedItem) return;
     
@@ -813,81 +885,29 @@ const ServerBrowser = () => {
     // Ref para controle de cancelamento
     const cancelledRef = { current: false };
     
-    // Buscar todos os arquivos recursivamente
-    toast.info('Buscando arquivos...');
-    const items = await fetchDirectoryItems(path, shareName, 1, bulkDownloadConfig.depth, maxSizeBytes, cancelledRef);
-    
-    if (items.length === 0) {
-      toast.info('Nenhum arquivo encontrado para download');
-      setBulkDownloadActive(false);
-      return;
-    }
-    
-    const skippedCount = items.filter(i => i.status === 'skipped').length;
-    const pendingItems = items.filter(i => i.status === 'pending');
-    
-    setBulkDownloadItems(items);
-    setBulkDownloadStats({ 
-      total: items.length, 
-      completed: 0, 
-      failed: 0, 
-      skipped: skippedCount 
-    });
-    
-    toast.info(`Encontrados ${pendingItems.length} arquivos para download`);
-    
-    // Processar downloads um por um
-    for (let i = 0; i < items.length; i++) {
-      if (bulkDownloadCancelled || cancelledRef.current) {
-        setBulkDownloadItems(prev => prev.map((item, idx) => 
-          idx >= i && item.status === 'pending' ? { ...item, status: 'cancelled' } : item
-        ));
-        break;
+    // Watch para cancelamento
+    const checkCancelled = setInterval(() => {
+      if (bulkDownloadCancelled) {
+        cancelledRef.current = true;
+        clearInterval(checkCancelled);
       }
-      
-      const item = items[i];
-      if (item.status !== 'pending') continue;
-      
-      // Atualizar status para downloading
-      setBulkDownloadItems(prev => prev.map((it, idx) => 
-        idx === i ? { ...it, status: 'downloading' } : it
-      ));
-      
-      try {
-        await axios.post(
-          `${API}/servers/${serverId}/download`,
-          null,
-          {
-            params: {
-              file_path: item.fullPath,
-              share_name: item.shareName
-            }
-          }
-        );
-        
-        // Atualizar status para completed
-        setBulkDownloadItems(prev => prev.map((it, idx) => 
-          idx === i ? { ...it, status: 'completed' } : it
-        ));
-        setBulkDownloadStats(prev => ({ ...prev, completed: prev.completed + 1 }));
-        
-        // Atualizar lista de downloads
-        if (!downloadedFiles.includes(item.fullPath)) {
-          setDownloadedFiles(prev => [...prev, item.fullPath]);
-        }
-      } catch (error) {
-        // Atualizar status para failed
-        setBulkDownloadItems(prev => prev.map((it, idx) => 
-          idx === i ? { ...it, status: 'failed', error: error.message } : it
-        ));
-        setBulkDownloadStats(prev => ({ ...prev, failed: prev.failed + 1 }));
-      }
-    }
+    }, 100);
     
+    toast.info('Iniciando download...');
+    
+    // Processar diretório de forma incremental
+    await processDirectoryDownload(path, shareName, 1, bulkDownloadConfig.depth, maxSizeBytes, cancelledRef);
+    
+    clearInterval(checkCancelled);
     setBulkDownloadActive(false);
     loadServer();
     loadDownloadedFiles();
-    toast.success('Download em massa concluído');
+    
+    if (cancelledRef.current) {
+      toast.info('Download cancelado');
+    } else {
+      toast.success('Download em massa concluído');
+    }
   };
 
   // Cancelar download em massa
