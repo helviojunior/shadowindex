@@ -17,6 +17,7 @@ const Servers = () => {
   const [servers, setServers] = useState([]);
   const [formData, setFormData] = useState({ name: '', ip: '' });
   const [loading, setLoading] = useState(false);
+  const [resolvingIp, setResolvingIp] = useState(false);
 
   useEffect(() => {
     loadServers();
