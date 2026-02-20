@@ -543,7 +543,7 @@ async def get_server(
     return server
 
 @api_router.put("/servers/{server_id}", response_model=ServerResponse)
-async def update_server(server_id: int, server: ServerCreate, db: AsyncSession = Depends(get_db)):
+async def update_server_full(server_id: int, server: ServerCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Server).where(Server.id == server_id))
     db_server = result.scalar_one_or_none()
     if not db_server:
