@@ -235,9 +235,10 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 })}
               </nav>
 
-              {/* Footer with collapse toggle */}
+              {/* Footer with collapse toggle - only visible on large screens */}
               <div className={cn(
                 "border-t border-border transition-all duration-300 flex items-end relative",
+                "hidden lg:flex",
                 sidebarCollapsed ? "p-2 justify-center min-h-[60px]" : "p-3 justify-between min-h-[70px]"
               )}>
                 {/* Version info - only when expanded */}
@@ -268,14 +269,6 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
               </div>
             </div>
           </aside>
-
-          {/* Overlay for mobile */}
-          {sidebarOpen && (
-            <div
-              className="fixed inset-0 z-30 bg-black/50 lg:hidden top-[53px]"
-              onClick={() => setSidebarOpen(false)}
-            />
-          )}
 
           {/* Page Content */}
           <main className="flex-1 overflow-y-auto p-6 bg-background">
