@@ -463,11 +463,16 @@ const ServerBrowser = () => {
     setLoadingShares(true);
     try {
       const response = await axios.get(`${API}/servers/${serverId}/shares?refresh=true`);
+      
+      // Preservar estado de expansão e filhos já carregados
+      // Apenas atualizar os shares sem resetar a árvore
       setShares(response.data);
-      // Limpar filhos pré-carregados ao fazer refresh
-      setNodeChildren({});
-      setExpandedNodes({});
-      toast.success(`${response.data.length} compartilhamentos encontrados`);
+      
+      // Atualizar os dados dos shares existentes sem limpar expansão
+      // Os shares que estavam expandidos continuarão expandidos
+      // e seus filhos já carregados serão mantidos
+      
+      toast.success(`${response.data.length} compartilhamentos atualizados`);
     } catch (error) {
       console.error('Error refreshing shares:', error);
       toast.error('Erro ao atualizar compartilhamentos');
