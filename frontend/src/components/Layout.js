@@ -176,10 +176,11 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 className={cn(
-                  "flex items-center justify-center w-12 h-14 rounded-l-lg",
+                  "flex items-center justify-center rounded-l-lg",
                   "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
-                  sidebarCollapsed ? "" : "absolute right-0 bottom-0"
+                  sidebarCollapsed ? "mb-[10px]" : "absolute right-0 bottom-0 mb-[10px]"
                 )}
+                style={{ height: '45px', width: '35px' }}
                 data-testid="sidebar-collapse-btn"
               >
                 {sidebarCollapsed ? (
