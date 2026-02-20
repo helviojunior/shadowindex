@@ -857,36 +857,27 @@ const ServerBrowser = () => {
                 ) : fileContent ? (
                   <div className="space-y-4">
                     {/* Toolbar */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={beautifyContent}
-                          disabled={beautified}
-                        >
-                          <Code className="w-4 h-4 mr-2" />
-                          {beautified ? 'Formatado' : 'Beautify'}
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => copyToClipboard(fileContent, 'content')}
-                        >
-                          {copiedField === 'content' ? (
-                            <Check className="w-4 h-4 mr-2 text-green-500" />
-                          ) : (
-                            <Copy className="w-4 h-4 mr-2" />
-                          )}
-                          Copiar
-                        </Button>
-                      </div>
+                    <div className="flex items-center gap-2">
                       <Button 
                         size="sm" 
-                        onClick={openFile}
+                        variant="outline" 
+                        onClick={beautifyContent}
+                        disabled={beautified}
                       >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
+                        <Code className="w-4 h-4 mr-2" />
+                        {beautified ? 'Formatado' : 'Beautify'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => copyToClipboard(fileContent, 'content')}
+                      >
+                        {copiedField === 'content' ? (
+                          <Check className="w-4 h-4 mr-2 text-green-500" />
+                        ) : (
+                          <Copy className="w-4 h-4 mr-2" />
+                        )}
+                        Copiar
                       </Button>
                     </div>
                 
@@ -899,14 +890,6 @@ const ServerBrowser = () => {
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                     <Eye className="w-8 h-8 mb-2" />
                     <p>Clique em "View" para carregar o conteúdo</p>
-                    {!canViewContent && downloaded && (
-                      <div className="mt-4">
-                        <Button size="sm" onClick={openFile}>
-                          <Download className="w-4 h-4 mr-2" />
-                          Download Arquivo
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
