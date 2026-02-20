@@ -1158,19 +1158,6 @@ const ServerBrowser = () => {
             <Download className="w-3 h-3 mr-1" />
             {server.downloaded_files_count} Downloads
           </Badge>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={refreshShares}
-            disabled={loadingShares}
-            data-testid="refresh-shares-btn"
-          >
-            {loadingShares ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
-          </Button>
         </div>
       </div>
 
@@ -1178,10 +1165,25 @@ const ServerBrowser = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Tree View */}
         <div className="w-80 border-r border-border bg-card flex flex-col">
-          <div className="p-3 border-b border-border">
+          <div className="p-3 border-b border-border flex items-center justify-between">
             <h3 className="text-sm font-medium text-muted-foreground">
               Compartilhamentos
             </h3>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-7 w-7"
+              onClick={refreshShares}
+              disabled={loadingShares}
+              data-testid="refresh-shares-btn"
+              title="Recarregar compartilhamentos"
+            >
+              {loadingShares ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+            </Button>
           </div>
           
           <ScrollArea className="flex-1">
