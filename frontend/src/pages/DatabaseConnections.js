@@ -363,7 +363,7 @@ const DatabaseConnections = () => {
                       <td className="px-4 py-3">
                         <button
                           onClick={() => openSqlExecutor(conn.id)}
-                          className="font-medium hover:text-primary transition-colors cursor-pointer"
+                          className="font-medium hover:text-primary hover:underline transition-colors cursor-pointer"
                           data-testid={`open-executor-${conn.id}`}
                         >
                           {conn.name}
