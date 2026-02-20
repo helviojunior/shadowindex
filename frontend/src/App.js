@@ -11,6 +11,8 @@ import SoapOperations from "@/pages/SoapOperations";
 import Servers from "@/pages/Servers";
 import ServerBrowser from "@/pages/ServerBrowser";
 import BeautifyTest from "@/pages/BeautifyTest";
+import SqlExecutor from "@/pages/SqlExecutor";
+import SqlPresets from "@/pages/SqlPresets";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 
@@ -36,6 +38,9 @@ function App() {
               <Route path="/servers/:serverId" element={<ServerBrowser />} />
               <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
               <Route path="/credentials" element={<Credentials />} />
+              <Route path="/sql" element={<DatabaseConnections />} />
+              <Route path="/sql/presets" element={<SqlPresets />} />
+              <Route path="/sql/execute/:connectionId" element={<SqlExecutor />} />
               <Route path="/db-connections" element={<DatabaseConnections />} />
               <Route path="/proxy-servers" element={<ProxyServers />} />
               <Route path="/soap-apis" element={<SoapApis />} />
