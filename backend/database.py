@@ -63,6 +63,40 @@ class AppConfig(Base):
     value = Column(String, nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+class Server(Base):
+    __tablename__ = "servers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    guid = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=False)
+    ip = Column(String, nullable=False)
+    verified = Column(Boolean, default=False)
+    shares_count = Column(Integer, default=0)
+    downloaded_files_count = Column(Integer, default=0)
+    last_verified_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class ServerShare(Base):
+    __tablename__ = "server_shares"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    server_guid = Column(String, nullable=False, index=True)
+    share_name = Column(String, nullable=False)
+    share_type = Column(String, nullable=True)
+    remark = Column(String, nullable=True)
+    discovered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DownloadedFile(Base):
+    __tablename__ = "downloaded_files"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    server_guid = Column(String, nullable=False, index=True)
+    share_name = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    sanitized_path = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=True)
+    downloaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
