@@ -166,14 +166,28 @@ const SoapOperations = () => {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="exec-connStr">Connection String</Label>
-                  <Input
-                    id="exec-connStr"
-                    data-testid="exec-connstr-input"
-                    placeholder="Server=localhost;Database=mydb;User=admin;Password=pass;"
+                  <Label htmlFor="exec-connStr">Conexão de Banco de Dados</Label>
+                  <Select
                     value={execForm.connStr}
-                    onChange={(e) => setExecForm({ ...execForm, connStr: e.target.value })}
-                  />
+                    onValueChange={(value) => setExecForm({ ...execForm, connStr: value })}
+                  >
+                    <SelectTrigger data-testid="exec-connection-select">
+                      <SelectValue placeholder="Selecione uma conexão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dbConnections.length === 0 ? (
+                        <SelectItem value="_none" disabled>
+                          Nenhuma conexão cadastrada
+                        </SelectItem>
+                      ) : (
+                        dbConnections.map((conn) => (
+                          <SelectItem key={conn.id} value={conn.connection_string}>
+                            {conn.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="exec-query">Query SQL</Label>
@@ -192,7 +206,7 @@ const SoapOperations = () => {
                   data-testid="execute-exec-btn"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <PlayCircle className="w-4 h-4 mr-2" />}
-                  Executar Exec
+                  Consulta SQL
                 </Button>
               </div>
             </TabsContent>
