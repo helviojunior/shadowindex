@@ -34,7 +34,8 @@ import {
   GripHorizontal,
   Trash2,
   Zap,
-  Keyboard
+  Keyboard,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 
