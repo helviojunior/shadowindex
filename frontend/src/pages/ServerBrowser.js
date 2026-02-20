@@ -53,6 +53,8 @@ const ServerBrowser = () => {
   const [loadingNodes, setLoadingNodes] = useState({});
   const [copiedField, setCopiedField] = useState(null);
   const [downloadedFiles, setDownloadedFiles] = useState([]);
+  const [downloadedFilesInfo, setDownloadedFilesInfo] = useState({}); // Info completa dos arquivos baixados
+  const [fileVersions, setFileVersions] = useState([]); // Versões do arquivo selecionado
   const [activeTab, setActiveTab] = useState('info');
   const [fileContent, setFileContent] = useState(null);
   const [rawFileContent, setRawFileContent] = useState(null); // Conteúdo original sem formatação
