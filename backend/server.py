@@ -463,6 +463,203 @@ async def get_server_storage_stats_endpoint(server_id: int, db: AsyncSession = D
     return stats
 
 
+# Server SOAP Operations
+@api_router.post("/servers/{server_id}/shares")
+async def get_server_shares_soap(server_id: int, db: AsyncSession = Depends(get_db)):
+    """Busca compartilhamentos do servidor via SOAP e atualiza o banco"""
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Chamar SOAP Shares
+    soap_service = await get_default_soap_service(db)
+    params = {"s1": server.ip, "s2": ""}
+    
+    try:
+        result_str = await soap_service.call_soap_operation(db, "Shares", params, False)
+        
+        # Parsear XML e salvar shares
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(result_str)
+        
+        shares = []
+        for result_elem in root.findall(".//{http://test/}Result"):
+            share_name = result_elem.find("{http://test/}name")
+            share_type = result_elem.find("{http://test/}type")
+            remark = result_elem.find("{http://test/}remark")
+            
+            if share_name is not None:
+                share_data = {
+                    "name": share_name.text if share_name.text else "",
+                    "type": share_type.text if share_type is not None and share_type.text else "Unknown",
+                    "remark": remark.text if remark is not None and remark.text else ""
+                }
+                shares.append(share_data)
+                
+                # Verificar se já existe
+                check = await db.execute(
+                    select(ServerShare).where(
+                        ServerShare.server_guid == server.guid,
+                        ServerShare.share_name == share_data["name"]
+                    )
+                )
+                existing = check.scalar_one_or_none()
+                
+                if not existing:
+                    db_share = ServerShare(
+                        server_guid=server.guid,
+                        share_name=share_data["name"],
+                        share_type=share_data["type"],
+                        remark=share_data["remark"]
+                    )
+                    db.add(db_share)
+        
+        # Atualizar contador e marcar como verificado
+        server.shares_count = len(shares)
+        server.verified = True
+        server.last_verified_at = datetime.now(timezone.utc)
+        await db.commit()
+        
+        return {
+            "success": True,
+            "shares": shares,
+            "count": len(shares)
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/servers/{server_id}/browse")
+async def browse_server_directory(
+    server_id: int,
+    path: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista arquivos e diretórios de um caminho no servidor"""
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Chamar SOAP Exec4
+    soap_service = await get_default_soap_service(db)
+    params = {"s1": path, "s2": ""}
+    
+    try:
+        result_str = await soap_service.call_soap_operation(db, "Exec4", params, False)
+        
+        # Parsear XML
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(result_str)
+        
+        items = []
+        for result_elem in root.findall(".//{http://test/}Result"):
+            item_type = result_elem.find("{http://test/}type")
+            name = result_elem.find("{http://test/}name")
+            length = result_elem.find("{http://test/}length")
+            lastwritetime = result_elem.find("{http://test/}lastwritetime")
+            fullname = result_elem.find("{http://test/}fullname")
+            
+            if name is not None:
+                item = {
+                    "type": item_type.text if item_type is not None and item_type.text else "Unknown",
+                    "name": name.text if name.text else "",
+                    "size": length.text if length is not None and length.text else "---",
+                    "modified": lastwritetime.text if lastwritetime is not None and lastwritetime.text else "",
+                    "fullPath": fullname.text if fullname is not None and fullname.text else ""
+                }
+                items.append(item)
+        
+        # Marcar como verificado
+        if not server.verified:
+            server.verified = True
+            server.last_verified_at = datetime.now(timezone.utc)
+            await db.commit()
+        
+        return {
+            "success": True,
+            "path": path,
+            "items": items,
+            "count": len(items)
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/servers/{server_id}/download")
+async def download_server_file(
+    server_id: int,
+    file_path: str,
+    share_name: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Baixa um arquivo do servidor via SOAP"""
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Chamar SOAP Exec5
+    soap_service = await get_default_soap_service(db)
+    params = {"s1": file_path, "s2": ""}
+    
+    try:
+        result_str = await soap_service.call_soap_operation(db, "Exec5", params, False)
+        
+        # Extrair conteúdo base64
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(result_str)
+        
+        # O conteúdo base64 está no texto do elemento raiz
+        content_base64 = root.text if root.text else ""
+        
+        if not content_base64:
+            raise Exception("Arquivo vazio ou não encontrado")
+        
+        # Salvar arquivo no storage
+        from storage_utils import save_downloaded_file
+        full_path, sanitized_path = save_downloaded_file(
+            server.guid,
+            share_name,
+            file_path,
+            content_base64
+        )
+        
+        # Calcular tamanho
+        import base64
+        file_size = len(base64.b64decode(content_base64))
+        
+        # Salvar registro no banco
+        downloaded_file = DownloadedFile(
+            server_guid=server.guid,
+            share_name=share_name,
+            file_path=file_path,
+            sanitized_path=sanitized_path,
+            file_size=file_size
+        )
+        db.add(downloaded_file)
+        
+        # Atualizar contador
+        server.downloaded_files_count += 1
+        await db.commit()
+        
+        return {
+            "success": True,
+            "file_path": file_path,
+            "sanitized_path": sanitized_path,
+            "size": file_size,
+            "size_formatted": format_size(file_size)
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 # Include router
 app.include_router(api_router)
 
