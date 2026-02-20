@@ -437,12 +437,12 @@ const ServerBrowser = () => {
         
         {/* Info Content */}
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="p-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
               Info
             </h3>
             
-            <div className="space-y-3">
+            <div className="flex flex-col gap-2">
               {/* Name */}
               <InfoRow 
                 label="Name" 
