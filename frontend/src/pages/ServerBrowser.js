@@ -69,6 +69,13 @@ const ServerBrowser = () => {
   const [loadingContent, setLoadingContent] = useState(false);
   const [beautified, setBeautified] = useState(false);
   const [itemsSortConfig, setItemsSortConfig] = useState({ key: 'name', direction: 'asc' });
+  
+  // Estados para download recursivo
+  const [bulkDownloadConfig, setBulkDownloadConfig] = useState({ depth: 2, maxSize: 10 }); // maxSize em MB
+  const [bulkDownloadActive, setBulkDownloadActive] = useState(false);
+  const [bulkDownloadItems, setBulkDownloadItems] = useState([]); // Lista de itens a baixar
+  const [bulkDownloadCancelled, setBulkDownloadCancelled] = useState(false);
+  const [bulkDownloadStats, setBulkDownloadStats] = useState({ total: 0, completed: 0, failed: 0, skipped: 0 });
 
   useEffect(() => {
     loadServer();
