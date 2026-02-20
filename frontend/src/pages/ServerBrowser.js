@@ -42,7 +42,7 @@ const ServerBrowser = () => {
 
   const loadServer = async () => {
     try {
-      const response = await axios.get(`${API}/servers/${serverId}`);
+      const response = await axios.get(`${API}/servers/${serverId}?refresh=${ignoreCache}`);
       setServer(response.data);
     } catch (error) {
       console.error('Error loading server:', error);
@@ -53,10 +53,10 @@ const ServerBrowser = () => {
   const loadShares = async () => {
     setLoadingShares(true);
     try {
-      const response = await axios.post(`${API}/servers/${serverId}/shares`);
-      setShares(response.data.shares);
+      const response = await axios.get(`${API}/servers/${serverId}/shares?refresh=${ignoreCache}`);
+      setShares(response.data);
       setView('shares');
-      toast.success(`${response.data.count} compartilhamentos encontrados`);
+      toast.success(`${response.data.length} compartilhamentos encontrados`);
     } catch (error) {
       console.error('Error loading shares:', error);
       toast.error('Erro ao carregar compartilhamentos');
