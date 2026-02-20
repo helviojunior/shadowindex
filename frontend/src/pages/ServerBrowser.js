@@ -603,8 +603,36 @@ const ServerBrowser = () => {
         }
       );
       
-      toast.success(`Arquivo baixado: ${response.data.size_formatted}`);
-      setDownloadedFiles(prev => [...prev, selectedItem.fullPath || selectedItem.serverPath]);
+      // Mostrar mensagem baseada no status
+      const { status, message, sha1_hash, version } = response.data;
+      
+      if (status === 'unchanged') {
+        toast.info(`${message} (v${version})`);
+      } else if (status === 'updated') {
+        toast.success(`${message} (v${version})`);
+      } else {
+        toast.success(`${message}: ${response.data.size_formatted}`);
+      }
+      
+      // Atualizar lista de downloads
+      const filePath = selectedItem.fullPath || selectedItem.serverPath;
+      if (!downloadedFiles.includes(filePath)) {
+        setDownloadedFiles(prev => [...prev, filePath]);
+      }
+      
+      // Atualizar info do arquivo
+      setDownloadedFilesInfo(prev => ({
+        ...prev,
+        [filePath]: {
+          ...prev[filePath],
+          sha1_hash: sha1_hash,
+          file_size: response.data.size,
+          downloaded_at: new Date().toISOString()
+        }
+      }));
+      
+      // Recarregar versões
+      loadFileVersions(filePath);
       loadServer();
     } catch (error) {
       console.error('Error downloading file:', error);
