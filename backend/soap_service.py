@@ -125,13 +125,23 @@ class SoapService:
         }
         
         try:
+            # Configurar proxy se disponível
+            connector = None
+            if self.proxy_url:
+                logger.info(f"Using proxy: {self.proxy_url}")
+            
             async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.soap_url,
-                    data=soap_envelope,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
+                request_kwargs = {
+                    'data': soap_envelope,
+                    'headers': headers,
+                    'timeout': aiohttp.ClientTimeout(total=30)
+                }
+                
+                # Adicionar proxy se configurado
+                if self.proxy_url:
+                    request_kwargs['proxy'] = self.proxy_url
+                
+                async with session.post(self.soap_url, **request_kwargs) as response:
                     
                     if response.status != 200:
                         error_text = await response.text()
