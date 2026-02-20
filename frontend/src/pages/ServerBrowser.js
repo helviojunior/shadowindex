@@ -37,7 +37,9 @@ import {
   XCircle,
   CheckCircle,
   Clock,
-  Ban
+  Ban,
+  Focus,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
