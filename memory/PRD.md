@@ -130,10 +130,10 @@ Portuguese (pt-BR)
 ```
 
 ## Key DB Schema
-- **SystemSettings:** `{key, value}` - Global state like `offline_mode`
-- **ServerShare:** `{id, server_id, share_name, ..., access_denied, error_message}`
-- **ServerFile:** `{id, server_id, share_name, ..., access_denied, error_message, downloaded}`
-- **SoapCache:** `{id, operation, params, response, timestamp}`
+- **ServerShare:** `{id, server_guid, share_name, ..., access_denied, error_message, has_children, children_fetched}`
+- **ServerItem:** `{id, server_guid, share_name, parent_path, item_type, name, full_path, size, modified, access_denied, error_message, has_children, children_fetched}`
+- **SoapCache:** `{id, query_hash, operation, request_data, response_data, timestamp}`
+- **AppConfig:** `{id, key, value, updated_at}` - Global state like `offline_mode`, `active_proxy_id`
 
 ## 3rd Party Integrations
 - **Custom SOAP Web Service:** Private SOAP API at sdweb.suzanonet.com.br
