@@ -28,9 +28,12 @@ Portuguese (pt-BR)
 ## Completed Features
 
 ### 2026-02-20
+- [x] Auto-beautify: XML/JSON files are automatically formatted when loaded
+- [x] Changed buttons: "Beautify" becomes "Raw Content" when formatted, vice-versa
+- [x] Copy button always copies original RAW content
+- [x] Gray color logic now applies to ALL directories (not just shares)
 - [x] Implemented XML/JSON Beautify with proper indentation
 - [x] Added syntax highlighting with colors (tags=blue, attributes=yellow, values=green, comments=gray)
-- [x] Copy RAW button copies original content without formatting
 - [x] Created /beautify-test page for demonstration
 - [x] Directory color logic now matches shares (gray=not fetched, blue=fetched, red=access denied)
 - [x] Access denied no longer propagates to parent items - only affects the specific node
