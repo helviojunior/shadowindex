@@ -10,10 +10,48 @@ export const AppProvider = ({ children }) => {
     return saved === 'true';
   });
 
+  // Estado do modo offline
+  const [offlineMode, setOfflineModeState] = useState(false);
+  const [loadingOffline, setLoadingOffline] = useState(true);
+
   // Estado do proxy ativo
   const [activeProxy, setActiveProxy] = useState(null);
   const [proxies, setProxies] = useState([]);
   const [loadingProxy, setLoadingProxy] = useState(true);
+
+  // Carregar status do modo offline
+  const fetchOfflineMode = useCallback(async () => {
+    try {
+      setLoadingOffline(true);
+      const response = await fetch(`${API_URL}/api/offline-mode`);
+      if (response.ok) {
+        const data = await response.json();
+        setOfflineModeState(data.offline_mode);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar modo offline:', error);
+    } finally {
+      setLoadingOffline(false);
+    }
+  }, []);
+
+  // Definir modo offline
+  const setOfflineMode = useCallback(async (enabled) => {
+    try {
+      const response = await fetch(`${API_URL}/api/offline-mode?enabled=${enabled}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.ok) {
+        setOfflineModeState(enabled);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Erro ao definir modo offline:', error);
+      return false;
+    }
+  }, []);
 
   // Carregar lista de proxies
   const fetchProxies = useCallback(async () => {
@@ -68,7 +106,8 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     fetchProxies();
     fetchActiveProxy();
-  }, [fetchProxies, fetchActiveProxy]);
+    fetchOfflineMode();
+  }, [fetchProxies, fetchActiveProxy, fetchOfflineMode]);
 
   useEffect(() => {
     localStorage.setItem('ignoreCache', ignoreCache);
@@ -78,6 +117,9 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{ 
       ignoreCache, 
       setIgnoreCache,
+      offlineMode,
+      setOfflineMode,
+      loadingOffline,
       activeProxy,
       proxies,
       loadingProxy,
