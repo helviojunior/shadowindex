@@ -673,70 +673,68 @@ const ServerBrowser = () => {
                   )}
                   
                   {/* Remark - apenas para shares */}
-              {isShare && selectedItem.remark && (
-                <InfoRow 
-                  label="Remark" 
-                  value={selectedItem.remark}
-                />
-              )}
-              
-              {/* Type - apenas para shares */}
-              {isShare && selectedItem.share_type && (
-                <InfoRow 
-                  label="Share Type" 
-                  value={selectedItem.share_type}
-                />
-              )}
-            </div>
-          </div>
-        </ScrollArea>
-      </TabsContent>
-      
-      {/* Tab View - para arquivos sincronizados */}
-      <TabsContent value="view" className="flex-1 mt-0 flex flex-col">
-        <ScrollArea className="flex-1">
-          <div className="p-4">
-            {loadingContent ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin" />
+                  {isShare && selectedItem.remark && (
+                    <InfoRow 
+                      label="Remark" 
+                      value={selectedItem.remark}
+                    />
+                  )}
+                  
+                  {/* Type - apenas para shares */}
+                  {isShare && selectedItem.share_type && (
+                    <InfoRow 
+                      label="Share Type" 
+                      value={selectedItem.share_type}
+                    />
+                  )}
+                </div>
               </div>
-            ) : fileContent ? (
-              <div className="space-y-4">
-                {/* Toolbar */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {canViewContent && (
+            </ScrollArea>
+          )}
+          
+          {/* View Content */}
+          {activeTab === 'view' && (
+            <ScrollArea className="flex-1">
+              <div className="p-4">
+                {loadingContent ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : fileContent ? (
+                  <div className="space-y-4">
+                    {/* Toolbar */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={beautifyContent}
+                          disabled={beautified}
+                        >
+                          <Code className="w-4 h-4 mr-2" />
+                          {beautified ? 'Formatado' : 'Beautify'}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => copyToClipboard(fileContent, 'content')}
+                        >
+                          {copiedField === 'content' ? (
+                            <Check className="w-4 h-4 mr-2 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4 mr-2" />
+                          )}
+                          Copiar
+                        </Button>
+                      </div>
                       <Button 
                         size="sm" 
-                        variant="outline" 
-                        onClick={beautifyContent}
-                        disabled={beautified}
+                        onClick={openFile}
                       >
-                        <Code className="w-4 h-4 mr-2" />
-                        {beautified ? 'Formatado' : 'Beautify'}
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
                       </Button>
-                    )}
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => copyToClipboard(fileContent, 'content')}
-                    >
-                      {copiedField === 'content' ? (
-                        <Check className="w-4 h-4 mr-2 text-green-500" />
-                      ) : (
-                        <Copy className="w-4 h-4 mr-2" />
-                      )}
-                      Copiar
-                    </Button>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    onClick={openFile}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
+                    </div>
                 
                 {/* Content */}
                 <pre className="p-4 bg-muted/50 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto">
