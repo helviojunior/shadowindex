@@ -79,11 +79,84 @@ const SqlExecutor = () => {
   const resizeRef = useRef(null);
   const editorRef = useRef(null);
   
-  // Múltiplas tabs
-  const [tabs, setTabs] = useState([
-    { id: 1, name: 'Query 1', query: '', result: null, loading: false }
-  ]);
-  const tabIdCounter = useRef(2);
+  // Cache key for localStorage
+  const CACHE_KEY = `sql_tabs_${connectionId}`;
+  
+  // Load tabs from cache or use default
+  const getInitialTabs = () => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.tabs && parsed.tabs.length > 0) {
+          // Reset loading state for all tabs
+          return parsed.tabs.map(tab => ({ ...tab, loading: false }));
+        }
+      }
+    } catch (e) {
+      console.error('Error loading cached tabs:', e);
+    }
+    return [{ id: 1, name: 'Query 1', query: '', result: null, loading: false }];
+  };
+  
+  const getInitialTabIndex = () => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (typeof parsed.activeTabIndex === 'number') {
+          return parsed.activeTabIndex;
+        }
+      }
+    } catch (e) {
+      console.error('Error loading cached tab index:', e);
+    }
+    return 0;
+  };
+  
+  const getInitialTabIdCounter = () => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (typeof parsed.tabIdCounter === 'number') {
+          return parsed.tabIdCounter;
+        }
+      }
+    } catch (e) {
+      console.error('Error loading cached tab counter:', e);
+    }
+    return 2;
+  };
+  
+  // Múltiplas tabs - initialized from cache
+  const [tabs, setTabs] = useState(getInitialTabs);
+  const [initialActiveTab] = useState(getInitialTabIndex);
+  const tabIdCounter = useRef(getInitialTabIdCounter());
+  
+  // Set initial active tab after first render
+  useEffect(() => {
+    if (initialActiveTab < tabs.length) {
+      setActiveTabIndex(initialActiveTab);
+    }
+  }, []);
+  
+  // Save tabs to cache whenever they change
+  useEffect(() => {
+    try {
+      const cacheData = {
+        tabs: tabs.map(tab => ({
+          ...tab,
+          loading: false // Don't persist loading state
+        })),
+        activeTabIndex,
+        tabIdCounter: tabIdCounter.current
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    } catch (e) {
+      console.error('Error saving tabs to cache:', e);
+    }
+  }, [tabs, activeTabIndex, CACHE_KEY]);
 
   useEffect(() => {
     loadConnection(); // This will also load presets after getting db_type_id
