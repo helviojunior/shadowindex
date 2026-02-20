@@ -27,6 +27,16 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-20 (Session 5 - SQL Enhancements)
+- [x] **Ctrl+Enter keyboard shortcut** - Executar query com atalho Ctrl+Enter (já implementado)
+- [x] **Test Connection button** - Botão "Testar Conexão" (ícone raio ⚡) na página de conexões SQL
+- [x] **59 SQL Presets** - Lista extensa de presets para MSSQL, MySQL, PostgreSQL e Oracle:
+  - **MSSQL (17 presets):** Server Version, Current User, Current Database, Is Admin, Is Public Role, List Databases, List Schemas, List Tables, List Columns, Find Sensitive Columns, List Users, List Admin Users, List Impersonate Permissions, List Server Roles, List SQL Services, SQL Services Detail, Database Size
+  - **MySQL (13 presets):** Server Version, Current User, Current Database, List Databases, List Schemas, List Tables, List Columns, Find Sensitive Columns, List Users, List Admin Users, Database Size, Show Grants, Show Variables
+  - **PostgreSQL (14 presets):** Server Version, Current User, Current Database, List Databases, List Schemas, List Tables, List Columns, Find Sensitive Columns, List Users, List Admin Users, List Roles, Database Size, Table Sizes, Active Connections
+  - **Oracle (13 presets):** Server Version, Current User, Current Database, List Schemas, List Tables, List All Tables, List Columns, Find Sensitive Columns, List Users, List Admin Users, Current Privileges, Database Size, Active Sessions
+  - **Universal (2 presets):** Select All (Limit 100), Count Records
+
 ### 2026-02-20 (Session 4 - DB Types & Presets)
 - [x] **DatabaseType table** - Nova tabela para tipos de banco (MS-SQL, MySQL, PostgreSQL, Oracle, SQLite, MariaDB, MongoDB)
 - [x] **DB Type selection on connection** - Seletor de tipo de banco ao criar conexão SQL
@@ -34,14 +44,12 @@ Portuguese (pt-BR)
 - [x] **SQL Presets linked to DB Type** - Presets vinculados ao tipo de banco (ou universal se null)
 - [x] **Filtered presets in SQL Editor** - Presets filtrados automaticamente pelo tipo de banco da conexão
 - [x] **DB Type colors** - Cada tipo de banco tem sua cor característica (MS-SQL=#CC2927, MySQL=#4479A1, PostgreSQL=#336791, etc.)
-- [x] **Default presets per DB type** - 6 presets MS-SQL, 5 presets MySQL, 5 presets PostgreSQL, 1 preset Universal
 - [x] **Presets filter by type** - Filtro de tipo de banco na página de presets
 - [x] Backend endpoints: GET `/api/db-types`
 - [x] Updated models: `DatabaseType`, `DatabaseConnection.db_type_id`, `SqlPreset.db_type_id`
 
 ### 2026-02-20 (Session 3 - SQL Module)
 - [x] **SQL Presets CRUD** - Comandos SQL pré-definidos com nome, query e descrição
-- [x] **Default Presets** - 6 presets MS-SQL carregados automaticamente no startup (Is Admin, List Databases, Current User, Database Size, List Tables, Server Version)
 - [x] **SQL Query History** - Histórico de todas queries executadas com resultado, tempo e status
 - [x] **SQL Executor Page** - Interface tipo phpMyAdmin para executar comandos SQL
 - [x] **Vertical Layout** - Editor SQL em cima, resultados embaixo (layout de 2 linhas)
@@ -148,7 +156,7 @@ Portuguese (pt-BR)
 │   │   ├── ops_integration.db   # SQLite database
 │   │   └── storage/             # Downloaded files
 │   ├── requirements.txt
-│   ├── database.py              # SQLAlchemy models & init
+│   ├── database.py              # SQLAlchemy models & init (with 59 default presets)
 │   ├── server.py                # Main FastAPI app, all endpoints
 │   ├── soap_service.py          # SOAP client with caching
 │   └── storage_utils.py         # File storage utilities
@@ -161,6 +169,9 @@ Portuguese (pt-BR)
 │   │   ├── contexts/
 │   │   │   └── AppContext.js      # Global state (offline mode, cache)
 │   │   └── pages/
+│   │       ├── SqlExecutor.js     # SQL editor with Ctrl+Enter shortcut
+│   │       ├── DatabaseConnections.js  # Connections table with Test Connection button
+│   │       ├── SqlPresets.js      # Presets management (59 presets)
 │   │       ├── ServerBrowser.js   # File tree + info panel (with pre-loading)
 │   │       ├── BeautifyTest.js    # Test page for beautify feature
 │   │       └── ...
@@ -173,15 +184,16 @@ Portuguese (pt-BR)
 - **ServerItem:** `{id, server_guid, share_name, parent_path, item_type, name, full_path, size, modified, access_denied, error_message, has_children, children_fetched}`
 - **SoapCache:** `{id, query_hash, operation, request_data, response_data, timestamp}`
 - **AppConfig:** `{id, key, value, updated_at}` - Global state like `offline_mode`, `active_proxy_id`
-- **DatabaseConnection:** `{id, name, connection_string, verified, last_verified_at, created_at}`
-- **SqlPreset:** `{id, name, query, description, created_at, updated_at}`
+- **DatabaseType:** `{id, name, code, icon, color}` - Supported database types
+- **DatabaseConnection:** `{id, name, db_type_id, connection_string, verified, last_verified_at, created_at}`
+- **SqlPreset:** `{id, db_type_id, name, query, description, created_at, updated_at}`
 - **SqlQueryHistory:** `{id, connection_id, connection_name, query, result, success, error_message, execution_time_ms, executed_at}`
 
 ## 3rd Party Integrations
 - **Custom SOAP Web Service:** Private SOAP API at sdweb.suzanonet.com.br
-- **UI Libraries:** lucide-react for icons
+- **UI Libraries:** lucide-react for icons, PrismJS for syntax highlighting, xlsx for Excel export
 
 ## Critical Notes
 - User is very specific about UI/UX - pay attention to reference images and CSS requests
 - SOAP API is unreliable - use "Offline Mode" for development with cached data
-- Database migration is custom (not Alembic) - ensure schema changes reflected in both server.py and models.py
+- Database migration is custom (not Alembic) - ensure schema changes reflected in both server.py and database.py
