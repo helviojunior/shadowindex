@@ -170,27 +170,112 @@ const ServerBrowser = () => {
     }
   };
 
+  // Formata XML com indentação adequada
+  const formatXml = (xml) => {
+    let formatted = '';
+    let indent = '';
+    const tab = '  ';
+    
+    // Remover espaços extras e quebras de linha
+    xml = xml.replace(/>\s*</g, '><').trim();
+    
+    xml.split(/(<[^>]+>)/g).forEach((node) => {
+      if (!node.trim()) return;
+      
+      if (node.match(/^<\/\w/)) {
+        // Tag de fechamento - reduzir indentação
+        indent = indent.substring(tab.length);
+        formatted += indent + node + '\n';
+      } else if (node.match(/^<\w[^>]*[^\/]>$/)) {
+        // Tag de abertura - adicionar e aumentar indentação
+        formatted += indent + node + '\n';
+        indent += tab;
+      } else if (node.match(/^<\w[^>]*\/>$/)) {
+        // Tag auto-fechada
+        formatted += indent + node + '\n';
+      } else if (node.match(/^<\?/)) {
+        // Declaração XML
+        formatted += node + '\n';
+      } else if (node.match(/^<!/)) {
+        // Comentário ou DOCTYPE
+        formatted += indent + node + '\n';
+      } else {
+        // Conteúdo de texto
+        if (node.trim()) {
+          formatted += indent + node.trim() + '\n';
+        }
+      }
+    });
+    
+    return formatted.trim();
+  };
+
+  // Aplica syntax highlighting ao conteúdo
+  const applySyntaxHighlight = (content, fileType) => {
+    if (fileType === 'xml' || fileType === 'config') {
+      // Highlight para XML
+      return content
+        // Tags
+        .replace(/(&lt;\/?[\w:-]+)/g, '<span class="text-blue-400">$1</span>')
+        .replace(/([\w:-]+)(=)/g, '<span class="text-yellow-400">$1</span>$2')
+        // Valores de atributos
+        .replace(/(=)(&quot;[^&]*&quot;)/g, '$1<span class="text-green-400">$2</span>')
+        .replace(/(=)(&#39;[^&]*&#39;)/g, '$1<span class="text-green-400">$2</span>')
+        // Comentários
+        .replace(/(&lt;!--.*?--&gt;)/gs, '<span class="text-gray-500">$1</span>')
+        // Fechamento de tags
+        .replace(/(&gt;)/g, '<span class="text-blue-400">$1</span>')
+        // Declaração XML
+        .replace(/(&lt;\?.*?\?&gt;)/g, '<span class="text-purple-400">$1</span>');
+    } else if (fileType === 'json') {
+      // Highlight para JSON
+      return content
+        // Chaves
+        .replace(/(&quot;[\w-]+&quot;)(\s*:)/g, '<span class="text-blue-400">$1</span>$2')
+        // Strings
+        .replace(/(:\s*)(&quot;[^&]*&quot;)/g, '$1<span class="text-green-400">$2</span>')
+        // Números
+        .replace(/(:\s*)(\d+\.?\d*)/g, '$1<span class="text-orange-400">$2</span>')
+        // Booleanos e null
+        .replace(/\b(true|false|null)\b/g, '<span class="text-purple-400">$1</span>');
+    }
+    return content;
+  };
+
   // Beautify do conteúdo
   const beautifyContent = () => {
-    if (!fileContent) return;
+    if (!rawFileContent) return;
     
     try {
       const filename = selectedItem?.name?.toLowerCase() || '';
-      let beautifiedContent = fileContent;
+      let beautifiedContent = rawFileContent;
+      let fileType = 'text';
       
       if (filename.endsWith('.json')) {
-        beautifiedContent = JSON.stringify(JSON.parse(fileContent), null, 2);
+        fileType = 'json';
+        // Formatar JSON
+        beautifiedContent = JSON.stringify(JSON.parse(rawFileContent), null, 2);
       } else if (filename.endsWith('.xml') || filename.endsWith('.config')) {
-        // Formatação básica de XML
-        beautifiedContent = fileContent
-          .replace(/></g, '>\n<')
-          .replace(/(<[^>]+>)/g, (match) => match);
+        fileType = 'xml';
+        // Formatar XML
+        beautifiedContent = formatXml(rawFileContent);
       }
       
-      setFileContent(beautifiedContent);
+      // Escapar HTML e aplicar syntax highlighting
+      const escaped = beautifiedContent
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      
+      const highlighted = applySyntaxHighlight(escaped, fileType);
+      
+      setFileContent(highlighted);
       setBeautified(true);
-      toast.success('Conteúdo formatado');
+      toast.success('Conteúdo formatado com syntax highlighting');
     } catch (error) {
+      console.error('Beautify error:', error);
       toast.error('Erro ao formatar conteúdo');
     }
   };
