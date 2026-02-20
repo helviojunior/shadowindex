@@ -565,6 +565,16 @@ const ServerBrowser = () => {
             ? { ...s, children_fetched: true, has_children: items.length > 0 }
             : s
         ));
+        
+        // Persistir no banco de dados
+        try {
+          await axios.patch(`${API}/servers/${serverId}/shares/${encodeURIComponent(shareName)}`, {
+            children_fetched: true,
+            has_children: items.length > 0
+          });
+        } catch (err) {
+          console.error('Error updating share flags:', err);
+        }
       }
       
       if (items.length === 0) {
