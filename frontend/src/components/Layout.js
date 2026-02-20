@@ -255,19 +255,19 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                   </div>
                 )}
                 
-                {/* Collapse/Expand Button - flush to right edge */}
+                {/* Collapse/Expand Button */}
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                   className={cn(
-                    "flex items-center justify-center rounded-l-lg",
-                    "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
-                    effectiveCollapsed ? "" : "absolute right-0 bottom-[10px]"
+                    "flex items-center justify-center transition-all duration-200",
+                    effectiveCollapsed 
+                      ? "w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 hover:border-primary/50 shadow-sm"
+                      : "absolute right-0 bottom-[10px] w-[35px] h-[45px] rounded-l-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground"
                   )}
-                  style={{ height: '45px', width: '35px' }}
                   data-testid="sidebar-collapse-btn"
                 >
                   {effectiveCollapsed ? (
-                    <ChevronRight size={20} />
+                    <ChevronRight size={18} />
                   ) : (
                     <ChevronLeft size={20} />
                   )}
