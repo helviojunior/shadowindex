@@ -10,7 +10,7 @@ services:
       - "9090:8001"
     volumes:
       - ./backend:/app
-      - backend-db:/app/data
+      - ./ops_integration_data:/app/data
     environment:
       - CORS_ORIGINS=*
     extra_hosts:
@@ -34,6 +34,3 @@ services:
       - backend
     command: yarn start
     restart: unless-stopped
-
-volumes:
-  backend-db:
