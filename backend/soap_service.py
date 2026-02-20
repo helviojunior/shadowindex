@@ -18,6 +18,14 @@ class SoapService:
         self.soap_url = soap_url.replace('?WSDL', '').replace('?wsdl', '')
         self.base_url = self.soap_url.split('/dna')[0] if '/dna' in self.soap_url else self.soap_url.rsplit('/', 1)[0]
         self.proxy_url = proxy_url  # Ex: "http://192.168.1.1:8080"
+        
+        # Log SSL info
+        if proxy_url:
+            logger.info(f"SoapService initialized with proxy: {proxy_url}")
+            logger.info(f"Target URL: {self.soap_url}")
+            # Se está usando proxy e a URL é HTTPS, pode ter problemas de SSL
+            if self.soap_url.startswith('https://'):
+                logger.warning("Using HTTPS through proxy - SSL issues may occur")
     
     @staticmethod
     def _generate_cache_key(operation: str, params: dict) -> str:
