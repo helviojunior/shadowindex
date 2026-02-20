@@ -1,86 +1,114 @@
-# Ops Integration Desk - PRD
+# Ops Integration Desk - Product Requirements Document
 
 ## Original Problem Statement
-Dashboard web para gerenciar credenciais, conexões de banco de dados, servidores proxy e URLs de API SOAP. Integração com um web service SOAP externo para operações como Resolve, Shares, Exec, etc. Mecanismo de cache de 24 horas para respostas SOAP e suporte a modo offline.
-
-## Core Requirements
-- Panel web com layout dark mode e sidebar colapsável
-- Usar SQLite3 para armazenamento de dados
-- Seções "Cadastro" para Credenciais, Conexões de BD, Servidores Proxy e URLs SOAP
-- Opção global para selecionar proxy ativo
-- Opção global para ignorar cache
-- Cache de 24 horas para respostas SOAP
-- Modo offline baseado em cache
-- Gerenciamento de servidores com estatísticas
-- File browser interativo por servidor (estilo JFrog)
+Build a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. The application integrates with an external SOAP web service for various operations (Resolve, Shares, Exec, etc.), implements a 24-hour caching mechanism for SOAP responses, and supports an offline mode. Includes a server management feature with an interactive file browser that dynamically loads data from the SOAP API.
 
 ## Tech Stack
-- **Frontend:** React, Tailwind CSS, Shadcn UI, React Router
-- **Backend:** FastAPI, Pydantic, SQLAlchemy (async), requests
-- **Database:** SQLite
+- **Frontend:** React, Tailwind CSS, Shadcn/UI
+- **Backend:** FastAPI, SQLAlchemy
+- **Database:** SQLite with custom auto-migration
 
-## What's Been Implemented (as of 2026-02-20)
-- [x] Layout UI completo (sidebar colapsável, header fixo, tema dark)
-- [x] CRUD completo para Credenciais, DB Connections, Proxies, SOAP APIs, Servers
-- [x] Integração com web service SOAP externo
-- [x] Sistema de cache de 24 horas para respostas SOAP
-- [x] Toggle global "Ignorar Cache" - funcional em todas as páginas
-- [x] Seletor de proxy ativo no header
-- [x] Rotas de servidores com refresh automático via SOAP
-- [x] **File browser estilo JFrog** com:
-  - Árvore de diretórios à esquerda
-  - Painel de informações à direita
-  - Suporte a shares com caracteres especiais ($)
-  - Diferentes informações baseadas no tipo de item (Share/Directory/File)
-  - Navegação hierárquica com expand/collapse
-  - Carregamento dinâmico de subdiretórios via SOAP Exec4
-  - Download de arquivos via SOAP Exec5
-  - **Tratamento de erros de acesso negado** com ícones vermelhos e mensagens de erro
-- [x] Parsing XML sem namespace hardcoded
-- [x] URI SOAP dinâmica do banco de dados
-- [x] Correção de duplicação de shares no refresh
-- [x] Botão Resolve IP - parsing robusto de resposta JSON/XML
-- [x] Página SOAP Operations - tabs funcionando com estado controlado
-- [x] Parsing robusto do Exec5 para download de arquivos (SOAP envelope completo)
-- [x] **Modo Offline Global** com:
-  - Botão na barra superior (Online/Offline)
-  - Persistência no banco de dados via AppConfig
-  - Desabilita "Ignorar Cache" quando offline (usa obrigatoriamente o cache)
-  - Respeitado em todas as operações SOAP
-- [x] **Migração automática do banco de dados** - SQLAlchemy aplica alterações de schema automaticamente ao iniciar
+## Core Requirements
+- Web panel with dark mode layout and collapsible left sidebar
+- SQLite3 for data storage with automatic schema migration
+- "Cadastro" (Registration) sections for Credentials, DB Connections, Proxy Servers, SOAP API URLs
+- Global option to select active proxy for all SOAP requests
+- Global option to ignore cache for all operations
+- 24-hour caching mechanism for SOAP responses
+- Global "Offline Mode" relying solely on cache
+- "Servers" management to register servers (name, IP) and track statistics
+- Interactive, JFrog-style file browser for each server
+- Handling for "Access Denied" errors during file browsing
+
+## User's Preferred Language
+Portuguese (pt-BR)
+
+---
+
+## Completed Features
+
+### 2026-02-20
+- [x] Sidebar menu reorder: Servidores → SQL → Operações SOAP → Credenciais → SOAP APIs → Proxy Servers
+- [x] Renamed "Conexões DB" to "SQL"
+- [x] Changed order of info panel rows: "Access Status" before "Fetched Date"
+- [x] Fixed JSX syntax error in ServerBrowser.js (orphan TabsContent/Tabs tags)
+
+### Previous Sessions
+- [x] Server Browser Redesign: Two-panel JFrog-style layout with file tree and tabbed info/viewer panel
+- [x] "Access Denied" Handling: End-to-end handling for SOAP API access errors
+- [x] Global Offline Mode: Toggle in header with backend state persistence
+- [x] File Viewing/Downloading: View tab for text files, download any file from server storage
+- [x] Conditional View Tab: Only shows for known text file extensions
+- [x] Flat Tab Styling: Green underline and text for active tab
+- [x] Bug Fixes: Shares with $ symbol, duplicate share listings, broken tabs, JSON parsing errors
+- [x] Basic DB Auto-Migration: Script in server.py to check/add missing columns
+
+---
 
 ## Pending Issues
-- Nenhum issue pendente
 
-## Upcoming Tasks
-- [ ] Verificar armazenamento de cache das respostas SOAP
+### P1 - High Priority
+1. **Implement "Beautify" functionality** in file viewer
+   - Button exists but lacks formatting logic
+   - Install library (e.g., js-beautify) and implement handleBeautify function
 
-## Future/Backlog
-- [ ] Consolidar lógica SOAP em módulo separado (refatoração)
+### P2 - Medium Priority  
+2. **Verify cache storage mechanism**
+   - Confirm SOAP responses are saved to `soap_cache` table
+   - Test with SQLite CLI after triggering uncached SOAP call
 
-## Key Files
-- `backend/server.py` - API endpoints e lógica de negócio
-- `backend/soap_service.py` - Cliente SOAP com cache
-- `backend/database.py` - Modelos SQLAlchemy
-- `frontend/src/pages/ServerBrowser.js` - File browser estilo JFrog
-- `frontend/src/components/Layout.js` - Layout principal
-- `frontend/src/contexts/AppContext.js` - Estado global
-- `frontend/src/pages/` - Páginas da aplicação
+---
 
-## API Endpoints
-- `/api/credentials` - CRUD credenciais
-- `/api/db-connections` - CRUD conexões BD
-- `/api/proxy-servers` - CRUD proxies
-- `/api/soap-apis` - CRUD URLs SOAP
-- `/api/servers` - CRUD servidores
-- `/api/servers/:id` - Detalhes do servidor (nova rota)
-- `/api/servers/:id/shares` - Compartilhamentos do servidor
-- `/api/servers/:id/browse` - Navegar diretórios (Exec4)
-- `/api/servers/:id/download` - Baixar arquivo (Exec5)
-- `/api/soap/{operation}` - Operações SOAP (Resolve, Shares, Exec, Exec4, Exec5)
-- `/api/active-proxy` - GET/PUT proxy ativo
+## Backlog / Future Tasks
 
-## Notes
-- API SOAP externa retorna 403 Forbidden (acesso restrito)
-- Funcionalidade de proxy bloqueada por erro SSL
-- Linguagem preferida do usuário: Português
+### P2
+- **Mock SOAP Service for Testing:** Create mock service for robustly testing XML parsing without relying on unreliable live API
+
+### P3
+- **Refactor DB Schema Migration:** Replace custom migration script with Alembic for robust schema management
+
+### P4
+- **Complete File Download Tracking:** Store `downloaded` flag in ServerFile model after successful sync
+
+---
+
+## Architecture
+
+```
+/app/
+├── backend/
+│   ├── requirements.txt
+│   ├── models.py        # SQLAlchemy ORM models
+│   ├── server.py        # Main FastAPI app, all endpoints, SOAP logic
+│   ├── soap_service.py  # SOAP client logic
+│   ├── storage_utils.py # Utilities for file storage paths
+│   └── ops_integration.db
+├── frontend/
+│   ├── package.json
+│   ├── src/
+│   │   ├── App.js
+│   │   ├── components/
+│   │   │   └── Layout.js          # Sidebar, header, offline toggle
+│   │   ├── contexts/
+│   │   │   └── AppContext.js      # Global state (offline mode, cache)
+│   │   └── pages/
+│   │       ├── ServerBrowser.js   # File tree + info panel
+│   │       └── ...
+│   └── ...
+└── ...
+```
+
+## Key DB Schema
+- **SystemSettings:** `{key, value}` - Global state like `offline_mode`
+- **ServerShare:** `{id, server_id, share_name, ..., access_denied, error_message}`
+- **ServerFile:** `{id, server_id, share_name, ..., access_denied, error_message, downloaded}`
+- **SoapCache:** `{id, operation, params, response, timestamp}`
+
+## 3rd Party Integrations
+- **Custom SOAP Web Service:** Private SOAP API at sdweb.suzanonet.com.br
+- **UI Libraries:** lucide-react for icons
+
+## Critical Notes
+- User is very specific about UI/UX - pay attention to reference images and CSS requests
+- SOAP API is unreliable - use "Offline Mode" for development with cached data
+- Database migration is custom (not Alembic) - ensure schema changes reflected in both server.py and models.py
