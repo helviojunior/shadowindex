@@ -249,6 +249,47 @@ async def init_db():
             )
             session.add(default_soap)
         
+        # Create default SQL presets if none exist
+        result = await session.execute(select(SqlPreset))
+        existing_presets = result.scalars().all()
+        
+        if len(existing_presets) == 0:
+            default_presets = [
+                SqlPreset(
+                    name="MS-SQL: Is Admin",
+                    query="SELECT IS_SRVROLEMEMBER('sysadmin')",
+                    description="Verifica se o usuário atual é sysadmin"
+                ),
+                SqlPreset(
+                    name="MS-SQL: List Databases",
+                    query="SELECT name FROM sys.databases WHERE database_id > 4;",
+                    description="Lista todos os bancos de dados do usuário"
+                ),
+                SqlPreset(
+                    name="MS-SQL: Current User",
+                    query="SELECT SYSTEM_USER, USER_NAME()",
+                    description="Retorna o usuário atual do sistema"
+                ),
+                SqlPreset(
+                    name="MS-SQL: Database Size",
+                    query="SELECT DB_NAME() AS [Database], SUM(size * 8 / 1024) AS [Size (MB)] FROM sys.database_files GROUP BY type_desc",
+                    description="Mostra o tamanho do banco de dados atual"
+                ),
+                SqlPreset(
+                    name="MS-SQL: List Tables",
+                    query="SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_SCHEMA, TABLE_NAME",
+                    description="Lista todas as tabelas do banco atual"
+                ),
+                SqlPreset(
+                    name="MS-SQL: Server Version",
+                    query="SELECT @@VERSION",
+                    description="Retorna a versão do SQL Server"
+                )
+            ]
+            for preset in default_presets:
+                session.add(preset)
+            logger.info("Created default SQL presets")
+        
         await session.commit()
     
     logger.info("Database initialized")
