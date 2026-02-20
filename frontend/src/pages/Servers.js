@@ -6,12 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Função para validar se é um IP válido
+const isValidIp = (ip) => {
+  if (!ip) return false;
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (!ipRegex.test(ip)) return false;
+  const parts = ip.split('.');
+  return parts.every(part => {
+    const num = parseInt(part, 10);
+    return num >= 0 && num <= 255;
+  });
+};
 
 const Servers = () => {
   const navigate = useNavigate();
@@ -20,6 +32,8 @@ const Servers = () => {
   const [formData, setFormData] = useState({ name: '', ip: '' });
   const [loading, setLoading] = useState(false);
   const [resolvingIp, setResolvingIp] = useState(false);
+  const [editingServer, setEditingServer] = useState(null);
+  const [editIp, setEditIp] = useState('');
 
   useEffect(() => {
     loadServers();
