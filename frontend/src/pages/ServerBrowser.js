@@ -270,7 +270,9 @@ const ServerBrowser = () => {
     const isLoading = loadingNodes[nodeId];
     const children = nodeChildren[nodeId] || [];
     const isDirectory = item.type === 'Directory' || isShare;
+    const isFile = item.type === 'File';
     const isAccessDenied = item.access_denied || item.accessDenied || item.type === 'AccessDenied';
+    const isDownloaded = isFile && isFileDownloaded(item.fullPath);
     const isSelected = selectedItem?.id === nodeId || 
                        (isShare && selectedItem?.share_name === item.share_name && selectedItem?.itemType === 'share');
     
@@ -280,9 +282,9 @@ const ServerBrowser = () => {
     
     const currentShareName = isShare ? item.share_name : shareName;
     
-    // Cor do ícone baseada no status de acesso
+    // Cor do ícone baseada no status de acesso e download
     const iconColor = isAccessDenied ? 'text-red-500' : 'text-blue-500';
-    const fileIconColor = isAccessDenied ? 'text-red-500' : 'text-muted-foreground';
+    const fileIconColor = isAccessDenied ? 'text-red-500' : (isDownloaded ? 'text-green-500' : 'text-muted-foreground');
     
     return (
       <div key={nodeId}>
@@ -325,7 +327,7 @@ const ServerBrowser = () => {
             <span className="w-5" />
           )}
           
-          {/* Icon - vermelho se acesso negado */}
+          {/* Icon - vermelho se acesso negado, verde se baixado */}
           {item.type === 'AccessDenied' ? (
             <File className="w-4 h-4 text-red-500 flex-shrink-0" />
           ) : isShare ? (
@@ -336,6 +338,8 @@ const ServerBrowser = () => {
             ) : (
               <Folder className={`w-4 h-4 ${iconColor} flex-shrink-0`} />
             )
+          ) : isDownloaded ? (
+            <FileCheck className={`w-4 h-4 ${fileIconColor} flex-shrink-0`} />
           ) : (
             <File className={`w-4 h-4 ${fileIconColor} flex-shrink-0`} />
           )}
