@@ -677,12 +677,28 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
         <div className="flex-1 flex flex-col bg-background overflow-hidden">
           {/* Result Header */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <span className="text-sm font-medium">Resultado</span>
               {currentTab.result?.success && (
-                <Badge variant="outline" className="text-green-500 border-green-500">
-                  {currentTab.result.row_count} linha(s)
-                </Badge>
+                <>
+                  <Badge variant="outline" className="text-green-500 border-green-500">
+                    {currentTab.result.row_count} linha(s)
+                  </Badge>
+                  <span className="flex items-center gap-1 text-sm text-green-500">
+                    <CheckCircle className="w-4 h-4" />
+                    Sucesso
+                  </span>
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    {currentTab.result.execution_time_ms}ms
+                  </span>
+                </>
+              )}
+              {currentTab.result && !currentTab.result.success && (
+                <span className="flex items-center gap-1 text-sm text-red-500">
+                  <XCircle className="w-4 h-4" />
+                  Erro
+                </span>
               )}
             </div>
             
