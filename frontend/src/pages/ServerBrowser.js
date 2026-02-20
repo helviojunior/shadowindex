@@ -493,9 +493,39 @@ const ServerBrowser = () => {
     return path;
   };
 
-  const loadDirectory = async (nodeId, path, shareName = '') => {
+  const loadDirectory = async (nodeId, path, shareName = '', forceRefresh = false) => {
     setLoadingNodes(prev => ({ ...prev, [nodeId]: true }));
     try {
+      // Passo 1: Se não estiver forçando refresh, tentar carregar do banco primeiro
+      if (!forceRefresh && !ignoreCache) {
+        try {
+          const cachedResponse = await axios.get(
+            `${API}/servers/${serverId}/items`,
+            { params: { parent_path: path } }
+          );
+          
+          if (cachedResponse.data.items && cachedResponse.data.items.length > 0) {
+            // Encontrou dados em cache no banco
+            const items = cachedResponse.data.items.map((item, idx) => ({
+              ...item,
+              id: `${nodeId}-${item.id || idx}`,
+              parentPath: path,
+              shareName: shareName,
+              hasChildren: item.hasChildren,
+              childrenFetched: item.childrenFetched
+            }));
+            
+            setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
+            console.log(`[Cache] Loaded ${items.length} items from database for: ${path}`);
+            return; // Retornar sem fazer chamada SOAP
+          }
+        } catch (cacheError) {
+          // Se falhar ao buscar do cache, continua para buscar via SOAP
+          console.log('[Cache] No cached data, will fetch from SOAP');
+        }
+      }
+      
+      // Passo 2: Buscar via SOAP (se não encontrou em cache ou forceRefresh)
       const response = await axios.post(
         `${API}/servers/${serverId}/browse`,
         null,
