@@ -265,14 +265,14 @@ const SqlPresets = () => {
                     <div className="space-y-3">
                       <div className="grid grid-cols-3 gap-3">
                         <Select
-                          value={editData.db_type_id}
-                          onValueChange={(value) => setEditData({ ...editData, db_type_id: value })}
+                          value={editData.db_type_id || 'universal'}
+                          onValueChange={(value) => setEditData({ ...editData, db_type_id: value === 'universal' ? '' : value })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Universal" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Universal</SelectItem>
+                            <SelectItem value="universal">Universal</SelectItem>
                             {dbTypes.map((type) => (
                               <SelectItem key={type.id} value={type.id.toString()}>
                                 {type.name}
