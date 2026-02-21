@@ -45,7 +45,7 @@ O sistema já está rodando no ambiente Kubernetes:
 # Frontend na porta 3000
 ```
 
-Acesse: https://sql-file-manager-1.preview.emergentagent.com/
+Acesse: https://download-hub-117.preview.emergentagent.com/
 
 ### Opção 2: Docker Compose (Porta 9090)
 
