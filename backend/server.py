@@ -164,14 +164,29 @@ api_router = APIRouter(prefix="/api")
 class CredentialCreate(BaseModel):
     domain: str
     username: str
-    password: str
+    password: Optional[str] = None
+    ntlm_hash: Optional[str] = None
+    
+    @model_validator(mode='after')
+    def validate_password_or_hash(self):
+        if not self.password and not self.ntlm_hash:
+            raise ValueError('É obrigatório informar uma senha OU um hash NTLM')
+        return self
+
+class CredentialUpdate(BaseModel):
+    domain: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    ntlm_hash: Optional[str] = None
 
 class CredentialResponse(BaseModel):
     id: int
     domain: str
     username: str
-    password: str
+    password: Optional[str] = None
+    ntlm_hash: Optional[str] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
 
 # Database Type Models
