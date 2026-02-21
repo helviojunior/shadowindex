@@ -27,6 +27,14 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 15 - SQL Connections Plugin Selection)
+- [x] **Plugin Selection for SQL Connections:**
+  - Added `plugin_type` and `plugin_config` fields to DatabaseConnection model
+  - Updated DatabaseConnections.js UI with plugin selector
+  - Table shows plugin column for each connection
+  - Edit modal includes plugin selection
+  - Alembic migration for new fields
+
 ### 2026-02-21 (Session 15 - SOCKS Proxy & Plugin Selection UI)
 - [x] **SOCKS Proxy Support:**
   - Added `proxy_type`, `username`, `password` fields to ProxyServer model
