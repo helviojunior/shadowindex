@@ -489,10 +489,15 @@ class DirectInteractionPlugin(BasePlugin):
         # Parse path to extract server, share, and directory
         server_ip, share_name, dir_path = self._parse_smb_path(path)
         
-        cache_key = f"direct_dir:{server_ip}:{share_name}:{dir_path}:{self.credential_id}"
+        cache_params = {
+            "server_ip": server_ip,
+            "share_name": share_name,
+            "dir_path": dir_path,
+            "credential_id": self.credential_id
+        }
         
         if not ignore_cache:
-            cached = self.cache.get(cache_key)
+            cached = await self.cache.get("direct_dir", cache_params)
             if cached:
                 logger.debug(f"Directory cache hit for {path}")
                 return [DirectoryItem(**d) for d in cached]
@@ -552,7 +557,7 @@ class DirectInteractionPlugin(BasePlugin):
             items = await loop.run_in_executor(None, do_list_directory)
             
             # Cache the result
-            self.cache.set(cache_key, [d.__dict__ for d in items], ttl_hours=24)
+            await self.cache.set("direct_dir", cache_params, [d.__dict__ for d in items], ttl_hours=24)
             
             logger.info(f"Listed {len(items)} items in {path}")
             return items
