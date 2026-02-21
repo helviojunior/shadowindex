@@ -1190,6 +1190,11 @@ const ServerBrowser = () => {
     toast.info('Cancelando downloads...');
   };
 
+  // Cancelar sync individual
+  const cancelSingleDownload = () => {
+    singleDownloadCancelledRef.current = true;
+  };
+
   // Cancelar item específico
   const cancelBulkDownloadItem = (index) => {
     setBulkDownloadItems(prev => prev.map((item, idx) => 
