@@ -1146,14 +1146,20 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"message": "Server deleted"}
 
+# ==========================================
+# DEPRECATED ENDPOINTS - Use API V2 (/api/v2/...)
+# ==========================================
+
 # Server Shares
-@api_router.get("/servers/{server_id}/shares", response_model=List[ServerShareResponse])
+@api_router.get("/servers/{server_id}/shares", response_model=List[ServerShareResponse], deprecated=True)
 async def get_server_shares(
     server_id: int, 
     refresh: bool = False,
     db: AsyncSession = Depends(get_db)
 ):
     """
+    [DEPRECATED] Use GET /api/v2/servers/{server_id}/shares
+    
     Obtém compartilhamentos do servidor.
     Se refresh=True ou se shares_count=0, busca via SOAP Shares primeiro.
     Caso contrário, usa dados do cache/banco.
