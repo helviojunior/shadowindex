@@ -21,9 +21,9 @@ def sanitize_path_component(name: str) -> str:
     sanitized = sanitized.strip('_')
     return sanitized if sanitized else 'unnamed'
 
-def get_server_storage_path(server_id: int) -> Path:
-    """Retorna o caminho base do servidor usando ID"""
-    return Path(STORAGE_BASE_PATH) / str(server_id)
+def get_server_storage_path(server_id_or_guid) -> Path:
+    """Retorna o caminho base do servidor usando ID ou GUID"""
+    return Path(STORAGE_BASE_PATH) / str(server_id_or_guid)
 
 def get_file_storage_path_by_id(server_id: int, file_id: int, version: int = 1) -> Path:
     """
