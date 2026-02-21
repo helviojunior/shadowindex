@@ -27,6 +27,18 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 12 - Scan Jobs & Download Sorting)
+- [x] **Botão "Limpar Finalizados" para Scan Jobs**
+  - Adicionado botão `data-testid="clear-finished-scans"` na seção de Scan Jobs
+  - Só aparece quando há scans com status `completed`, `cancelled` ou `failed`
+  - Chama endpoint `POST /api/scans/clear-finished`
+- [x] **Ordenação de Downloads na lista**
+  - Downloads agora são ordenados por status: `downloading > pending > completed > failed > cancelled > skipped`
+  - Arquivos em download sempre aparecem primeiro
+- [x] **UI da seção de Scan Jobs melhorada**
+  - Botões "Limpar Finalizados" e "Cancelar Todos" condicionais
+  - Melhor organização visual dos botões
+
 ### 2026-02-21 (Session 11 - Bug Fixes & UI Polish)
 - [x] **Bug Fix Crítico: DownloadedFile.remote_path**
   - Corrigido em `download_worker.py`: Alterado `remote_path` → `file_path` 
