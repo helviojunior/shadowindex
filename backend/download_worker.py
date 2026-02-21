@@ -13,15 +13,29 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-
-from database import DownloadJob, Server, DownloadedFile, FileVersion, AsyncSessionLocal, engine
-from soap_service import SoapService, get_default_soap_service
-from storage_utils import save_downloaded_file, calculate_sha1_from_base64, save_empty_file
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy import select, update, MetaData, Table
 
 logger = logging.getLogger(__name__)
+
+# Configurações do worker
+MAX_CONCURRENT_DOWNLOADS = 3
+CHUNK_SIZE = 1024 * 1024  # 1MB chunks
+WORKER_POLL_INTERVAL = 2  # segundos entre verificações
+
+# Instância global do worker
+_worker_instance: Optional['DownloadWorker'] = None
+
+# Criar engine separado para o worker
+import os
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+DATABASE_PATH = os.path.join(DATA_DIR, "ops_integration.db")
+WORKER_DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
+
+worker_engine = create_async_engine(WORKER_DATABASE_URL, echo=False)
+WorkerSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=worker_engine, class_=AsyncSession)
 
 # Configurações do worker
 MAX_CONCURRENT_DOWNLOADS = 3
