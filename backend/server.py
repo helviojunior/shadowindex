@@ -3066,6 +3066,18 @@ logging.basicConfig(
 async def startup_event():
     await init_db()
     logging.info("Database initialized")
+    
+    # Iniciar worker de downloads em background
+    from download_worker import start_download_worker
+    await start_download_worker()
+    logging.info("Download worker started")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Parar worker de downloads
+    from download_worker import stop_download_worker
+    await stop_download_worker()
+    logging.info("Download worker stopped")
 
 if __name__ == "__main__":
     import uvicorn
