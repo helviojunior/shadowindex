@@ -1568,6 +1568,18 @@ const ServerBrowser = () => {
                     />
                   )}
                   
+                  {/* Senha PFX - apenas para certificados PFX com senha descoberta */}
+                  {isFile && downloaded && isCertificateFile(selectedItem?.name) && 
+                   fileContent?.password_used && (
+                    <InfoRow 
+                      label="Senha PFX" 
+                      value={fileContent.password_used}
+                      valueClassName="font-mono bg-yellow-500/10 px-2 py-1 rounded"
+                      onCopy={() => copyToClipboard(fileContent.password_used, 'pfx_password')}
+                      copied={copiedField === 'pfx_password'}
+                    />
+                  )}
+                  
                   {/* Remark - apenas para shares */}
                   {isShare && selectedItem.remark && (
                     <InfoRow 
