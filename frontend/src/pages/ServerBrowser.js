@@ -97,6 +97,20 @@ const ServerBrowser = () => {
   const [bulkDownloadStats, setBulkDownloadStats] = useState({ total: 0, completed: 0, failed: 0, skipped: 0 });
   const bulkDownloadCancelledRef = useRef(false); // Ref para cancelamento síncrono
 
+  // Estados para busca
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchFilters, setSearchFilters] = useState({
+    extension: '',
+    sha1: '',
+    dateFrom: '',
+    dateTo: '',
+    itemType: '' // '', 'File', 'Directory'
+  });
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const searchTimeoutRef = useRef(null);
+
   // Carregar configurações gerais para os valores default dos combos
   useEffect(() => {
     const loadGeneralSettings = async () => {
