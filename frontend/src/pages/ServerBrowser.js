@@ -3026,11 +3026,19 @@ const ServerBrowser = () => {
                 const children = nodeChildren[nodeId] || [];
                 const isLoading = loadingNodes[nodeId];
                 
-                // Função de ordenação
+                // Função de ordenação - Diretórios sempre primeiro (estilo Windows Explorer)
                 const sortItems = (items) => {
                   if (!items || items.length === 0) return [];
                   
                   return [...items].sort((a, b) => {
+                    // Primeiro critério: Diretórios sempre vêm antes de arquivos
+                    const aIsDir = a.type === 'Directory';
+                    const bIsDir = b.type === 'Directory';
+                    
+                    if (aIsDir && !bIsDir) return -1;
+                    if (!aIsDir && bIsDir) return 1;
+                    
+                    // Segundo critério: Ordenação pela coluna selecionada
                     let aVal, bVal;
                     
                     switch (itemsSortConfig.key) {
