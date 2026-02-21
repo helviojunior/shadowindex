@@ -1705,7 +1705,6 @@ const ServerBrowser = () => {
                             )}
                           </div>
                         </div>
-                        </div>
                         
                         {/* Certificates */}
                         {fileContent.certificates?.map((cert, idx) => (
