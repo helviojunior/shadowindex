@@ -1940,36 +1940,129 @@ async def get_certificate_info(
     ext = file_path.lower().split('.')[-1]
     certificates = []
     private_key_info = None
+    used_password = None
     
     try:
         # PFX/P12 - Certificado com chave privada
         if ext in ['pfx', 'p12']:
-            try:
-                pwd = password.encode() if password else None
-                private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(
-                    cert_data, pwd, default_backend()
+            from database import PfxPassword
+            
+            # Função auxiliar para tentar abrir PFX com senha
+            def try_open_pfx(pwd_str):
+                try:
+                    pwd = pwd_str.encode() if pwd_str else None
+                    pk, cert, additional = pkcs12.load_key_and_certificates(
+                        cert_data, pwd, default_backend()
+                    )
+                    return pk, cert, additional, pwd_str
+                except Exception:
+                    return None, None, None, None
+            
+            # 1. Primeiro, verificar se já temos a senha salva para este arquivo
+            existing_pwd = await db.execute(
+                select(PfxPassword).where(
+                    PfxPassword.server_guid == server.guid,
+                    PfxPassword.file_path == file_path
                 )
+            )
+            existing_pwd = existing_pwd.scalar_one_or_none()
+            
+            private_key = None
+            certificate = None
+            additional_certs = None
+            
+            # Tentar senha salva primeiro
+            if existing_pwd:
+                private_key, certificate, additional_certs, used_password = try_open_pfx(existing_pwd.password)
+            
+            # 2. Se não funcionou e uma senha foi fornecida, tentar essa
+            if not certificate and password:
+                private_key, certificate, additional_certs, used_password = try_open_pfx(password)
                 
+                # Se funcionou, salvar a senha
                 if certificate:
-                    certificates.append(certificate)
-                if additional_certs:
-                    certificates.extend(additional_certs)
+                    subject_cn = None
+                    for attr in certificate.subject:
+                        if attr.oid._name == 'commonName':
+                            subject_cn = attr.value
+                            break
+                    
+                    if existing_pwd:
+                        existing_pwd.password = password
+                        existing_pwd.subject_cn = subject_cn
+                    else:
+                        new_pwd = PfxPassword(
+                            server_guid=server.guid,
+                            file_path=file_path,
+                            password=password,
+                            subject_cn=subject_cn
+                        )
+                        db.add(new_pwd)
+                    await db.commit()
+            
+            # 3. Se não funcionou, tentar brute-force com senhas conhecidas
+            if not certificate:
+                known_passwords = await db.execute(
+                    select(PfxPassword.password).where(
+                        PfxPassword.server_guid == server.guid
+                    ).distinct()
+                )
+                known_passwords = [p[0] for p in known_passwords.fetchall()]
                 
-                if private_key:
-                    private_key_info = {
-                        "has_private_key": True,
-                        "key_type": type(private_key).__name__,
-                        "key_size": getattr(private_key, 'key_size', None)
-                    }
-            except Exception as e:
-                if "password" in str(e).lower() or "mac" in str(e).lower():
-                    return {
-                        "type": "pfx",
-                        "error": "Certificado protegido por senha",
-                        "requires_password": True,
-                        "message": "Forneça a senha para visualizar o certificado"
-                    }
-                raise
+                for known_pwd in known_passwords:
+                    private_key, certificate, additional_certs, used_password = try_open_pfx(known_pwd)
+                    if certificate:
+                        # Salvar a senha que funcionou
+                        subject_cn = None
+                        for attr in certificate.subject:
+                            if attr.oid._name == 'commonName':
+                                subject_cn = attr.value
+                                break
+                        
+                        if existing_pwd:
+                            existing_pwd.password = known_pwd
+                            existing_pwd.subject_cn = subject_cn
+                        else:
+                            new_pwd = PfxPassword(
+                                server_guid=server.guid,
+                                file_path=file_path,
+                                password=known_pwd,
+                                subject_cn=subject_cn
+                            )
+                            db.add(new_pwd)
+                        await db.commit()
+                        break
+            
+            # 4. Se ainda não funcionou, pedir senha
+            if not certificate:
+                # Buscar senhas conhecidas para sugestão
+                known_passwords = await db.execute(
+                    select(PfxPassword.password, PfxPassword.subject_cn).where(
+                        PfxPassword.server_guid == server.guid
+                    ).distinct()
+                )
+                known_list = [{"password": p[0], "subject_cn": p[1]} for p in known_passwords.fetchall()]
+                
+                return {
+                    "type": "pfx",
+                    "error": "Certificado protegido por senha",
+                    "requires_password": True,
+                    "message": "Forneça a senha para visualizar o certificado",
+                    "known_passwords": len(known_list),
+                    "file_path": file_path
+                }
+            
+            if certificate:
+                certificates.append(certificate)
+            if additional_certs:
+                certificates.extend(additional_certs)
+            
+            if private_key:
+                private_key_info = {
+                    "has_private_key": True,
+                    "key_type": type(private_key).__name__,
+                    "key_size": getattr(private_key, 'key_size', None)
+                }
         
         # PEM - Pode conter múltiplos certificados
         elif ext in ['pem', 'crt', 'cer']:
