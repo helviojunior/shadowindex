@@ -3512,66 +3512,83 @@ const ServerBrowser = () => {
             
             <div className="p-3 border-b border-border flex items-center justify-between">
               <h3 className="text-sm font-medium text-muted-foreground">
-                Compartilhamentos
+                Arquivos
               </h3>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-7 w-7"
-                onClick={refreshShares}
-                disabled={loadingShares}
-                data-testid="refresh-shares-btn"
-                title="Recarregar compartilhamentos"
-              >
-                {loadingShares ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4" />
+              <div className="flex items-center gap-1">
+                {/* Botão de exportar resultados da busca */}
+                {searchResults && searchResults.total > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={exportSearchResultsToJson}
+                    data-testid="export-search-btn"
+                    title="Exportar resultados para JSON"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
                 )}
-              </Button>
-              
-              {/* Botão de foco - mostra apenas item selecionado */}
-              {selectedItem && (
+                
+                {/* Botão de foco - mostra apenas item selecionado */}
+                {selectedItem && (
+                  <Button 
+                    variant={focusedItem ? "default" : "ghost"}
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      if (focusedItem) {
+                        setFocusedItem(null);
+                        // Scroll para o objeto selecionado após sair do modo foco
+                        setTimeout(() => {
+                          const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
+                          const safeId = nodeId.replace(/\$/g, '_dollar_');
+                          const element = document.querySelector(`[data-testid="tree-node-${safeId}"]`);
+                          if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }, 100);
+                      } else {
+                        const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
+                        const shareName = selectedItem.itemType === 'share' 
+                          ? selectedItem.share_name 
+                          : selectedItem.shareName;
+                        setFocusedItem({
+                          nodeId,
+                          shareName,
+                          path: selectedItem.serverPath || selectedItem.fullPath,
+                          name: selectedItem.name || selectedItem.share_name,
+                          isShare: selectedItem.itemType === 'share'
+                        });
+                      }
+                    }}
+                    data-testid="focus-item-btn"
+                    title={focusedItem ? "Mostrar todos" : "Focar no item selecionado"}
+                  >
+                    {focusedItem ? (
+                      <X className="w-4 h-4" />
+                    ) : (
+                      <Focus className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
+                
+                {/* Botão recarregar */}
                 <Button 
-                  variant={focusedItem ? "default" : "ghost"}
+                  variant="ghost" 
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => {
-                    if (focusedItem) {
-                      setFocusedItem(null);
-                      // Scroll para o objeto selecionado após sair do modo foco
-                      setTimeout(() => {
-                        const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
-                        const safeId = nodeId.replace(/\$/g, '_dollar_');
-                        const element = document.querySelector(`[data-testid="tree-node-${safeId}"]`);
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                      }, 100);
-                    } else {
-                      const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
-                      const shareName = selectedItem.itemType === 'share' 
-                        ? selectedItem.share_name 
-                        : selectedItem.shareName;
-                      setFocusedItem({
-                        nodeId,
-                        shareName,
-                        path: selectedItem.serverPath || selectedItem.fullPath,
-                        name: selectedItem.name || selectedItem.share_name,
-                        isShare: selectedItem.itemType === 'share'
-                      });
-                    }
-                  }}
-                  data-testid="focus-item-btn"
-                  title={focusedItem ? "Mostrar todos" : "Focar no item selecionado"}
+                  onClick={refreshShares}
+                  disabled={loadingShares}
+                  data-testid="refresh-shares-btn"
+                  title="Recarregar arquivos"
                 >
-                  {focusedItem ? (
-                    <X className="w-4 h-4" />
+                  {loadingShares ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Focus className="w-4 h-4" />
+                    <RefreshCw className="w-4 h-4" />
                   )}
                 </Button>
-              )}
+              </div>
             </div>
             
             {/* Indicador de foco */}
