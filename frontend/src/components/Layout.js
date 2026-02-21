@@ -245,7 +245,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
       <div 
         key={item.id} 
         className="relative"
-        onMouseEnter={() => handleMenuHover(item.id)}
+        onMouseEnter={(e) => handleMenuHover(item.id, e)}
         onMouseLeave={handleMenuLeave}
       >
         {/* Parent menu item */}
