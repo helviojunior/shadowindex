@@ -2894,6 +2894,18 @@ const ServerBrowser = () => {
                               <XCircle className="w-4 h-4 text-muted-foreground hover:text-red-500" />
                             </Button>
                           )}
+                          {item.status === 'skipped' && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => forceDownloadItem(item, idx)}
+                              title="Forçar download deste arquivo"
+                            >
+                              <Download className="w-3 h-3 mr-1" />
+                              Forçar
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}
