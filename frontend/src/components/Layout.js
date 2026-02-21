@@ -573,8 +573,18 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           </aside>
 
           {/* Page Content */}
-          <main className="flex-1 overflow-y-auto p-6 bg-background">
+          <main className="flex-1 overflow-y-auto p-6 bg-background relative">
             {children}
+            
+            {/* Enterprise tagline - subtle fixed card */}
+            <div className="fixed bottom-4 left-56 z-10 pointer-events-none transition-all duration-300"
+                 style={{ left: effectiveCollapsed ? '5rem' : '14rem' }}>
+              <div className="bg-card/40 backdrop-blur-sm border border-border/30 rounded-lg px-3 py-1.5 shadow-sm">
+                <p className="text-[10px] text-muted-foreground/70 font-medium tracking-wide">
+                  Enterprise Data Discovery & Credential Intelligence Platform
+                </p>
+              </div>
+            </div>
           </main>
         </div>
       </div>
