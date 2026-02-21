@@ -2327,7 +2327,11 @@ const ServerBrowser = () => {
                             {item.status === 'downloading' && (
                               <div className="flex items-center gap-1">
                                 <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-                                <span className="text-xs text-blue-500">Baixando...</span>
+                                <span className="text-xs text-blue-500">
+                                  {item.progress !== undefined && item.progress > 0 
+                                    ? `${item.progress}%` 
+                                    : 'Baixando...'}
+                                </span>
                               </div>
                             )}
                             {item.status === 'completed' && (
