@@ -382,20 +382,16 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           )}>
             {/* Logo - Always visible in header, centered */}
             {effectiveCollapsed ? (
-              <img 
-                src="/assets/stratasec_icon.png" 
-                alt="Stratasec" 
-                className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
-              />
+              <div className="text-lg font-bold text-primary">
+                SI
+              </div>
             ) : (
-              <img 
-                src="/assets/stratasec_light.png" 
-                alt="Stratasec" 
-                className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-              />
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold tracking-tight">
+                  <span className="text-primary">Shadow</span>
+                  <span className="text-foreground">Index</span>
+                </span>
+              </div>
             )}
           </div>
           
