@@ -2087,7 +2087,8 @@ async def get_certificate_info(
                         break
             
             # 4. Se ainda não funcionou, pedir senha
-            if not certificate:
+            has_any_cert = certificate is not None or (additional_certs and len(additional_certs) > 0)
+            if not has_any_cert:
                 # Buscar senhas conhecidas para sugestão
                 known_passwords = await db.execute(
                     select(PfxPassword.password, PfxPassword.subject_cn).where(
@@ -2105,8 +2106,10 @@ async def get_certificate_info(
                     "file_path": file_path
                 }
             
+            # Adicionar certificado principal (se existir)
             if certificate:
                 certificates.append(certificate)
+            # Adicionar certificados adicionais (se existirem)
             if additional_certs:
                 certificates.extend(additional_certs)
             
