@@ -1395,7 +1395,7 @@ const ServerBrowser = () => {
           )}
           
           {/* Expand/Collapse Arrow */}
-          {isDirectory && item.type !== 'AccessDenied' ? (
+          {isDirectory ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
