@@ -947,19 +947,33 @@ const ServerBrowser = () => {
     }
     
     // Aguardar o estado atualizar
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 400));
     
     // 2. Expandir cada diretório intermediário sequencialmente
     // Precisamos construir o path incrementalmente e buscar cada nível
     let currentPath = sharePath;
     let parentNodeId = shareNodeId;
     
+    // Função para buscar o estado atual de nodeChildren
+    const getNodeChildren = () => {
+      return new Promise(resolve => {
+        // Forçar uma atualização para obter o estado mais recente
+        setNodeChildren(prev => {
+          resolve(prev);
+          return prev;
+        });
+      });
+    };
+    
     for (let i = 2; i < pathParts.length - 1; i++) {
       currentPath += `\\${pathParts[i]}`;
       const dirName = pathParts[i];
       
       // Buscar os filhos do nó pai para encontrar o ID correto deste diretório
-      const currentChildren = nodeChildren[parentNodeId] || [];
+      const currentNodeChildren = await getNodeChildren();
+      const currentChildren = currentNodeChildren[parentNodeId] || [];
+      
+      console.log(`[Navigate] Buscando "${dirName}" em ${parentNodeId}, ${currentChildren.length} filhos disponíveis`);
       
       // Encontrar o diretório pelo nome ou fullPath
       const dirItem = currentChildren.find(child => 
@@ -968,6 +982,7 @@ const ServerBrowser = () => {
       
       if (dirItem) {
         const dirNodeId = String(dirItem.id);
+        console.log(`[Navigate] Encontrado: ${dirName} -> ${dirNodeId}`);
         
         // Expandir este nó
         setExpandedNodes(prev => ({ ...prev, [dirNodeId]: true }));
@@ -982,28 +997,34 @@ const ServerBrowser = () => {
         // Atualizar o parentNodeId para o próximo nível
         parentNodeId = dirNodeId;
         
-        // Pequeno delay entre cada nível
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Aguardar estado atualizar
+        await new Promise(resolve => setTimeout(resolve, 300));
       } else {
-        console.warn(`Diretório não encontrado: ${dirName} em ${parentNodeId}`);
-        // Tentar carregar o diretório pai novamente
+        console.warn(`[Navigate] Diretório não encontrado: ${dirName} em ${parentNodeId}`);
+        console.log(`[Navigate] Filhos disponíveis:`, currentChildren.map(c => c.name));
+        
+        // Tentar carregar o diretório pai novamente com forceRefresh
         try {
           const prevPath = currentPath.substring(0, currentPath.lastIndexOf('\\'));
           await loadDirectory(parentNodeId, prevPath, shareName, true);
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 300));
           
           // Tentar novamente encontrar o diretório
-          const refreshedChildren = nodeChildren[parentNodeId] || [];
+          const refreshedNodeChildren = await getNodeChildren();
+          const refreshedChildren = refreshedNodeChildren[parentNodeId] || [];
           const refreshedDirItem = refreshedChildren.find(child => 
             child.name === dirName || child.fullPath === currentPath
           );
           
           if (refreshedDirItem) {
             const dirNodeId = String(refreshedDirItem.id);
+            console.log(`[Navigate] Encontrado após refresh: ${dirName} -> ${dirNodeId}`);
             setExpandedNodes(prev => ({ ...prev, [dirNodeId]: true }));
             await loadDirectory(dirNodeId, currentPath, shareName);
             parentNodeId = dirNodeId;
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => setTimeout(resolve, 300));
+          } else {
+            console.error(`[Navigate] Ainda não encontrado após refresh: ${dirName}`);
           }
         } catch (e) {
           console.error(`Falha ao recarregar diretório pai:`, e);
@@ -1040,10 +1061,13 @@ const ServerBrowser = () => {
     
     // 4. Fazer scroll para o item na árvore após um delay maior
     setTimeout(() => {
-      // Tentar encontrar o elemento na árvore
-      const itemElement = document.querySelector(`[data-item-path="${CSS.escape(result.full_path)}"]`);
+      // Tentar encontrar o elemento na árvore pelo fullPath
+      const escapedPath = CSS.escape(result.full_path);
+      const itemElement = document.querySelector(`[data-item-path="${escapedPath}"]`);
       const shareElement = document.querySelector(`[data-node-id="${shareNodeId}"]`);
       const targetElement = itemElement || shareElement;
+      
+      console.log(`[Navigate] Scroll para elemento:`, targetElement ? 'encontrado' : 'não encontrado', result.full_path);
       
       if (targetElement) {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1060,7 +1084,7 @@ const ServerBrowser = () => {
           targetElement.style.borderRadius = '';
         }, 2500);
       }
-    }, 600);
+    }, 800);
   };
 
   const loadShares = async () => {
