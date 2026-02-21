@@ -1560,6 +1560,50 @@ async def browse_server_directory(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+async def update_access_denied_status(db: AsyncSession, server_guid: str, share_name: str, file_path: str, error_message: str = None):
+    """
+    Atualiza o status de acesso negado para a pasta pai ou share do arquivo.
+    Extrai o caminho do pai a partir do file_path e atualiza o item correspondente.
+    """
+    # Extrair o caminho do diretório pai
+    # file_path: \\SERVER\Share\Folder\file.txt -> parent: \\SERVER\Share\Folder
+    parent_path = '\\'.join(file_path.rstrip('\\').split('\\')[:-1])
+    
+    if not parent_path:
+        return
+    
+    # Verificar se é o nível raiz do share (parent_path termina com share_name)
+    is_share_root = parent_path.rstrip('\\').endswith(share_name)
+    
+    if is_share_root:
+        # Atualizar o share
+        result = await db.execute(
+            select(ServerShare).where(
+                ServerShare.server_guid == server_guid,
+                ServerShare.share_name == share_name
+            )
+        )
+        share = result.scalar_one_or_none()
+        if share:
+            share.access_denied = True
+            share.error_message = error_message or "Acesso negado"
+            await db.commit()
+    else:
+        # Atualizar o item do diretório pai
+        result = await db.execute(
+            select(ServerItem).where(
+                ServerItem.server_guid == server_guid,
+                ServerItem.full_path == parent_path
+            )
+        )
+        parent_item = result.scalar_one_or_none()
+        if parent_item:
+            parent_item.access_denied = True
+            parent_item.error_message = error_message or "Acesso negado"
+            await db.commit()
+
+
 @api_router.post("/servers/{server_id}/download")
 async def download_server_file(
     server_id: int,
