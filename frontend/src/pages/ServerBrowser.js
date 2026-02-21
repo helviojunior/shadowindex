@@ -2296,26 +2296,33 @@ const ServerBrowser = () => {
                 )}
               </Button>
               
-              {/* Botão de foco - mostra apenas share selecionado */}
-              {selectedItem && (selectedItem.itemType === 'share' || selectedItem.shareName) && (
+              {/* Botão de foco - mostra apenas item selecionado */}
+              {selectedItem && (
                 <Button 
-                  variant={focusedShare ? "default" : "ghost"}
+                  variant={focusedItem ? "default" : "ghost"}
                   size="icon"
                   className="h-7 w-7"
                   onClick={() => {
-                    if (focusedShare) {
-                      setFocusedShare(null);
+                    if (focusedItem) {
+                      setFocusedItem(null);
                     } else {
+                      const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
                       const shareName = selectedItem.itemType === 'share' 
                         ? selectedItem.share_name 
                         : selectedItem.shareName;
-                      setFocusedShare(shareName);
+                      setFocusedItem({
+                        nodeId,
+                        shareName,
+                        path: selectedItem.serverPath || selectedItem.fullPath,
+                        name: selectedItem.name || selectedItem.share_name,
+                        isShare: selectedItem.itemType === 'share'
+                      });
                     }
                   }}
-                  data-testid="focus-share-btn"
-                  title={focusedShare ? "Mostrar todos os compartilhamentos" : "Focar no compartilhamento selecionado"}
+                  data-testid="focus-item-btn"
+                  title={focusedItem ? "Mostrar todos" : "Focar no item selecionado"}
                 >
-                  {focusedShare ? (
+                  {focusedItem ? (
                     <X className="w-4 h-4" />
                   ) : (
                     <Focus className="w-4 h-4" />
@@ -2325,16 +2332,16 @@ const ServerBrowser = () => {
             </div>
             
             {/* Indicador de foco */}
-            {focusedShare && (
+            {focusedItem && (
               <div className="px-3 py-1.5 bg-primary/10 border-b border-border flex items-center justify-between">
-                <span className="text-xs text-primary">
-                  Focado em: <strong>{focusedShare}</strong>
+                <span className="text-xs text-primary truncate">
+                  Focado em: <strong>{focusedItem.name}</strong>
                 </span>
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className="h-5 text-xs px-2"
-                  onClick={() => setFocusedShare(null)}
+                  className="h-5 text-xs px-2 flex-shrink-0"
+                  onClick={() => setFocusedItem(null)}
                 >
                   Mostrar todos
                 </Button>
@@ -2352,10 +2359,30 @@ const ServerBrowser = () => {
                     Nenhum compartilhamento encontrado
                   </p>
                 ) : (
-                  (focusedShare 
-                    ? shares.filter(s => s.share_name === focusedShare)
-                    : shares
-                  ).map((share, index, arr) => renderTreeNode(share, 0, '', index === arr.length - 1, []))
+                  (() => {
+                    // Se há um item focado
+                    if (focusedItem) {
+                      // Se o foco é em um share, mostrar apenas esse share
+                      if (focusedItem.isShare) {
+                        const filteredShares = shares.filter(s => s.share_name === focusedItem.shareName);
+                        return filteredShares.map((share, index, arr) => 
+                          renderTreeNode(share, 0, '', index === arr.length - 1, [])
+                        );
+                      }
+                      
+                      // Se o foco é em um diretório/arquivo dentro de um share
+                      // Mostrar o share, mas apenas o path até o item focado
+                      const filteredShares = shares.filter(s => s.share_name === focusedItem.shareName);
+                      return filteredShares.map((share, index, arr) => 
+                        renderTreeNode(share, 0, '', index === arr.length - 1, [], focusedItem.nodeId)
+                      );
+                    }
+                    
+                    // Sem foco, mostrar tudo
+                    return shares.map((share, index, arr) => 
+                      renderTreeNode(share, 0, '', index === arr.length - 1, [])
+                    );
+                  })()
                 )}
               </div>
             </ScrollArea>
