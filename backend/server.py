@@ -9,9 +9,16 @@ import logging
 import os
 import json
 import time
-import magic
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Tentar importar magic (opcional)
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    MAGIC_AVAILABLE = False
+    logging.warning("libmagic não disponível - mimetype não será calculado")
 
 from database import (
     init_db, get_db, 
@@ -34,7 +41,9 @@ load_dotenv(ROOT_DIR / '.env')
 
 # Função auxiliar para calcular mimetype
 def get_file_mimetype(file_path: str) -> Optional[str]:
-    """Calcula o mimetype de um arquivo usando libmagic"""
+    """Calcula o mimetype de um arquivo usando libmagic (se disponível)"""
+    if not MAGIC_AVAILABLE:
+        return None
     try:
         mime = magic.Magic(mime=True)
         return mime.from_file(file_path)
