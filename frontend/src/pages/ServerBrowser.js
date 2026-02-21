@@ -883,12 +883,12 @@ const ServerBrowser = () => {
         
         if (fileSize > maxSizeBytes) {
           // Arquivo muito grande - adicionar como skipped
-          setBulkDownloadItems(prev => [...prev, {
+          setBulkDownloadItems(prev => [{
             ...file,
             shareName,
             status: 'skipped',
             error: `Tamanho excede limite (${formatSize(fileSize)})`
-          }]);
+          }, ...prev]);
           setBulkDownloadStats(prev => ({ 
             ...prev, 
             total: prev.total + 1, 
@@ -897,13 +897,13 @@ const ServerBrowser = () => {
           continue;
         }
         
-        // Adicionar à lista com status downloading
-        setBulkDownloadItems(prev => [...prev, {
+        // Adicionar à lista com status downloading (no início)
+        setBulkDownloadItems(prev => [{
           ...file,
           shareName,
           status: 'downloading',
           error: null
-        }]);
+        }, ...prev]);
         setBulkDownloadStats(prev => ({ ...prev, total: prev.total + 1 }));
         
         try {
