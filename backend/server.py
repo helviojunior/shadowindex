@@ -1626,14 +1626,16 @@ async def update_directory_access_denied_status(db: AsyncSession, server_guid: s
 @api_router.post("/servers/{server_id}/clear-access-denied")
 async def clear_access_denied_status(
     server_id: int,
-    item_path: str,
-    item_type: str,  # "file", "directory", "share"
-    share_name: str = None,
+    item_path: str = None,
+    item_type: str = "file",  # "file", "directory", "share"
+    share_id: int = None,  # ID do share (para evitar problemas com caracteres especiais)
+    item_id: int = None,  # ID do item (ServerItem)
     db: AsyncSession = Depends(get_db)
 ):
     """
     Limpa o status de acesso negado de um item (arquivo, pasta ou share).
     Permite re-testar o acesso.
+    Usa IDs ao invés de nomes para evitar problemas com caracteres especiais.
     """
     # Obter servidor
     result = await db.execute(select(Server).where(Server.id == server_id))
@@ -1641,22 +1643,38 @@ async def clear_access_denied_status(
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
-    if item_type == "share":
-        # Limpar status do share
+    if item_type == "share" and share_id:
+        # Limpar status do share pelo ID
         result = await db.execute(
             select(ServerShare).where(
                 ServerShare.server_guid == server.guid,
-                ServerShare.share_name == share_name or item_path.split('\\')[-1]
+                ServerShare.id == share_id
             )
         )
         share = result.scalar_one_or_none()
         if share:
             share.access_denied = False
             share.error_message = None
+            share.children_fetched = False  # Permitir re-fetch
             await db.commit()
-            return {"success": True, "message": "Status de acesso do share limpo"}
-    else:
-        # Limpar status de arquivo ou diretório
+            return {"success": True, "message": "Status de acesso do share limpo", "share_name": share.share_name}
+    elif item_id:
+        # Limpar status de arquivo ou diretório pelo ID
+        result = await db.execute(
+            select(ServerItem).where(
+                ServerItem.server_guid == server.guid,
+                ServerItem.id == item_id
+            )
+        )
+        item = result.scalar_one_or_none()
+        if item:
+            item.access_denied = False
+            item.error_message = None
+            item.children_fetched = False  # Permitir re-fetch
+            await db.commit()
+            return {"success": True, "message": "Status de acesso do item limpo", "full_path": item.full_path}
+    elif item_path:
+        # Fallback: buscar pelo path
         result = await db.execute(
             select(ServerItem).where(
                 ServerItem.server_guid == server.guid,
@@ -1667,8 +1685,9 @@ async def clear_access_denied_status(
         if item:
             item.access_denied = False
             item.error_message = None
+            item.children_fetched = False
             await db.commit()
-            return {"success": True, "message": "Status de acesso do item limpo"}
+            return {"success": True, "message": "Status de acesso do item limpo", "full_path": item.full_path}
     
     return {"success": False, "message": "Item não encontrado"}
 
