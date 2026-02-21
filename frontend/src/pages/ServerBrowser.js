@@ -1007,7 +1007,9 @@ const ServerBrowser = () => {
   // Cancelar item específico
   const cancelBulkDownloadItem = (index) => {
     setBulkDownloadItems(prev => prev.map((item, idx) => 
-      idx === index && item.status === 'pending' ? { ...item, status: 'cancelled' } : item
+      idx === index && (item.status === 'pending' || item.status === 'downloading') 
+        ? { ...item, status: 'cancelled' } 
+        : item
     ));
   };
 
