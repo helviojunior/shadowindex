@@ -1846,13 +1846,17 @@ async def download_server_file_chunk(
         # Calcular tamanho do chunk recebido
         import base64
         chunk_data = base64.b64decode(content_base64) if content_base64 else b""
+        actual_chunk_size = len(chunk_data)
+        
+        # É último chunk se: recebeu menos bytes que o solicitado OU recebeu 0 bytes
+        is_last = actual_chunk_size < chunk_size or actual_chunk_size == 0
         
         return {
             "success": True,
             "offset": offset,
-            "chunk_size": len(chunk_data),
+            "chunk_size": actual_chunk_size,
             "content_base64": content_base64,
-            "is_last_chunk": len(chunk_data) < chunk_size
+            "is_last_chunk": is_last
         }
     
     except Exception as e:
