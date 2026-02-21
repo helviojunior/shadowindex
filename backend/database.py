@@ -132,6 +132,7 @@ class ServerShare(Base):
     __tablename__ = "server_shares"
     
     id = Column(Integer, primary_key=True, index=True)
+    server_id = Column(Integer, ForeignKey("servers.id"), nullable=True, index=True)
     server_guid = Column(String, nullable=False, index=True)
     share_name = Column(String, nullable=False)
     share_type = Column(String, nullable=True)
