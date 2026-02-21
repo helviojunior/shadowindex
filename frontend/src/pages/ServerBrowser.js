@@ -796,29 +796,48 @@ const ServerBrowser = () => {
     // Expandir a árvore até o item
     const pathParts = result.full_path.split('\\').filter(p => p);
     
+    if (pathParts.length < 2) {
+      toast.error('Caminho inválido');
+      return;
+    }
+    
     // Construir os paths intermediários
     let currentPath = `\\\\${pathParts[0]}\\${pathParts[1]}`; // \\IP\ShareName
     const shareNodeId = `share-${shareName}`;
     
+    // Coletar todos os nodeIds que precisam ser expandidos
+    const nodesToExpand = {};
+    const loadPromises = [];
+    
     // Expandir share
-    if (!expandedNodes[shareNodeId]) {
-      setExpandedNodes(prev => ({ ...prev, [shareNodeId]: true }));
-      await loadDirectory(shareNodeId, currentPath, shareName);
+    nodesToExpand[shareNodeId] = true;
+    if (!nodeChildren[shareNodeId] || nodeChildren[shareNodeId].length === 0) {
+      loadPromises.push(loadDirectory(shareNodeId, currentPath, shareName));
     }
     
-    // Expandir diretórios intermediários
+    // Aguardar carregamento do share antes de continuar
+    if (loadPromises.length > 0) {
+      await Promise.all(loadPromises);
+    }
+    
+    // Expandir diretórios intermediários sequencialmente
     for (let i = 2; i < pathParts.length - 1; i++) {
       currentPath += `\\${pathParts[i]}`;
       const nodeId = `${shareNodeId}-${currentPath.replace(/[^a-zA-Z0-9]/g, '_')}`;
       
-      if (!expandedNodes[nodeId]) {
-        setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
+      nodesToExpand[nodeId] = true;
+      
+      // Verificar se precisa carregar os filhos
+      if (!nodeChildren[nodeId] || nodeChildren[nodeId].length === 0) {
         await loadDirectory(nodeId, currentPath, shareName);
       }
     }
     
-    // Selecionar o item
-    setSelectedItem({
+    // Expandir todos os nós de uma vez
+    setExpandedNodes(prev => ({ ...prev, ...nodesToExpand }));
+    
+    // Selecionar o item (abre as abas de detalhes)
+    const selectedItemData = {
       id: result.id,
       name: result.name,
       fullPath: result.full_path,
@@ -827,13 +846,43 @@ const ServerBrowser = () => {
       itemType: result.item_type,
       type: result.item_type,
       size: result.size,
-      modified: result.modified
-    });
+      modified: result.modified,
+      sha1_hash: result.sha1_hash,
+      is_downloaded: result.is_downloaded
+    };
+    setSelectedItem(selectedItemData);
     
-    // Limpar busca
-    clearSearch();
+    // Carregar informações adicionais se for arquivo
+    if (result.item_type === 'File') {
+      // Verificar se está na fila
+      checkFileInQueue(result.full_path, shareName);
+      
+      // Carregar versões se já foi baixado
+      if (result.is_downloaded) {
+        loadFileVersions(result.full_path);
+      }
+    }
     
-    toast.success(`Navegando para ${result.name}`);
+    // Fazer scroll para o item na árvore após um pequeno delay
+    setTimeout(() => {
+      // Tentar encontrar o elemento na árvore pelo data-testid ou pelo texto
+      const itemElement = document.querySelector(`[data-item-path="${CSS.escape(result.full_path)}"]`) ||
+                          document.querySelector(`[data-node-id="${shareNodeId}"]`);
+      
+      if (itemElement) {
+        itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Adicionar um destaque temporário
+        itemElement.classList.add('ring-2', 'ring-primary');
+        setTimeout(() => {
+          itemElement.classList.remove('ring-2', 'ring-primary');
+        }, 2000);
+      }
+    }, 300);
+    
+    // NÃO limpar a busca - manter os resultados visíveis
+    // O usuário pode continuar navegando pelos resultados
+    
+    toast.success(`Selecionado: ${result.name}`);
   };
 
   const loadShares = async () => {
