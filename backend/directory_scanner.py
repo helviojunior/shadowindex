@@ -191,10 +191,25 @@ class DirectoryScanner:
         
         async with AsyncSessionLocal() as db:
             for scan_job in jobs_to_process:
+                # Verificar se foi cancelado
+                if scan_job.id in self.cancelled_ids or scan_job.parent_id in self.cancelled_ids:
+                    scan_job.status = 'cancelled'
+                    self.completed_scans.append(scan_job)
+                    print(f"=== SCANNER: Skipping cancelled job {scan_job.id} ===", flush=True)
+                    continue
+                
                 try:
+                    scan_job.status = 'scanning'
                     print(f"=== SCANNER: Scanning directory: {scan_job.path} ===", flush=True)
                     await self._scan_directory(db, scan_job)
+                    scan_job.status = 'completed'
+                    self.completed_scans.append(scan_job)
+                    # Manter apenas últimos 50 completados
+                    if len(self.completed_scans) > 50:
+                        self.completed_scans = self.completed_scans[-50:]
                 except Exception as e:
+                    scan_job.status = 'failed'
+                    self.completed_scans.append(scan_job)
                     print(f"=== SCANNER ERROR scanning {scan_job.path}: {e} ===", flush=True)
                     logger.error(f"Error scanning directory {scan_job.path}: {e}")
     
