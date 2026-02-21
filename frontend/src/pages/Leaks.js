@@ -717,18 +717,18 @@ const Leaks = () => {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <p className="text-xs text-muted-foreground">Arquivo Original</p>
-                  {getFileSource(selectedFinding.File) && (
+                  {selectedFinding.detection_source && (
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      {getFileSource(selectedFinding.File) === 'ocr' ? 'Detectado via OCR' : 'Detectado via Metadata'}
+                      {selectedFinding.detection_source === 'ocr' ? 'Detectado via OCR' : 'Detectado via Metadata'}
                     </Badge>
                   )}
                 </div>
                 <p className="font-mono text-sm break-all bg-muted p-2 rounded">
-                  {selectedFinding.originalFile || getOriginalFileName(selectedFinding.File)}
+                  {selectedFinding.original_file || selectedFinding.File}
                 </p>
-                {getFileSource(selectedFinding.File) && (
+                {selectedFinding.detection_source && selectedFinding.scanned_file && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Arquivo de análise: <span className="font-mono">{selectedFinding.File}</span>
+                    Arquivo de análise: <span className="font-mono">{selectedFinding.scanned_file}</span>
                   </p>
                 )}
               </div>
