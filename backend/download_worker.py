@@ -254,6 +254,7 @@ class DownloadWorker:
         """Salva o conteúdo do arquivo no storage"""
         from database import DownloadedFile
         from storage_utils import get_server_storage_path
+        import magic
         
         try:
             logger.info(f"Saving file content for job {job.id}: {job.file_path}")
@@ -300,6 +301,15 @@ class DownloadWorker:
             
             logger.info(f"File saved successfully: {full_storage_path}")
             
+            # Calcular mimetype usando libmagic
+            mimetype = None
+            try:
+                mime = magic.Magic(mime=True)
+                mimetype = mime.from_file(str(full_storage_path))
+                logger.info(f"Calculated mimetype: {mimetype}")
+            except Exception as e:
+                logger.warning(f"Could not calculate mimetype: {e}")
+            
             # Atualizar job
             job.downloaded_bytes = len(file_bytes)
             job.total_bytes = len(file_bytes)
@@ -320,6 +330,7 @@ class DownloadWorker:
                 logger.info(f"Updating existing DownloadedFile id={downloaded_file.id}")
                 downloaded_file.sha1_hash = sha1_hash
                 downloaded_file.file_size = len(file_bytes)
+                downloaded_file.mimetype = mimetype
                 downloaded_file.downloaded_at = datetime.now(timezone.utc)
                 downloaded_file.sanitized_path = relative_path
             else:
@@ -332,6 +343,7 @@ class DownloadWorker:
                     sanitized_path=relative_path,
                     sha1_hash=sha1_hash,
                     file_size=len(file_bytes),
+                    mimetype=mimetype,
                     downloaded_at=datetime.now(timezone.utc)
                 )
                 db.add(downloaded_file)
