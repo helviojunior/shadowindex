@@ -1860,43 +1860,78 @@ const ServerBrowser = () => {
                     
                     await axios.post(`${API}/servers/${serverId}/clear-access-denied`, null, { params });
                     
+                    const clearedData = {
+                      access_denied: false,
+                      accessDenied: false,
+                      error_message: null,
+                      children_fetched: false
+                    };
+                    
                     // Atualizar a UI - remover o status de acesso negado
                     if (isShare) {
+                      // Atualizar o share na lista pelo share_name
                       setShares(prev => prev.map(s => 
-                        s.id === selectedItem.id
-                          ? { ...s, access_denied: false, error_message: null, children_fetched: false }
+                        s.share_name === selectedItem.share_name
+                          ? { ...s, ...clearedData }
                           : s
                       ));
                       
                       // Limpar os filhos carregados para forçar re-fetch
-                      const nodeId = `share-${selectedItem.share_name}`;
+                      // Tentar ambos os formatos de nodeId
+                      const nodeIdByName = `share-${selectedItem.share_name}`;
+                      const nodeIdById = String(selectedItem.id);
+                      
                       setNodeChildren(prev => {
                         const newState = { ...prev };
-                        delete newState[nodeId];
+                        delete newState[nodeIdByName];
+                        delete newState[nodeIdById];
                         return newState;
                       });
-                      setExpandedNodes(prev => ({ ...prev, [nodeId]: false }));
+                      setExpandedNodes(prev => {
+                        const newState = { ...prev };
+                        newState[nodeIdByName] = false;
+                        newState[nodeIdById] = false;
+                        return newState;
+                      });
+                    } else {
+                      // Para diretórios - atualizar em todos os nodeChildren
+                      setNodeChildren(prev => {
+                        const newState = { ...prev };
+                        
+                        for (const parentKey of Object.keys(newState)) {
+                          const children = newState[parentKey];
+                          if (!children || !Array.isArray(children)) continue;
+                          
+                          const updatedChildren = children.map(child => {
+                            if (child.fullPath === itemPath || child.id === selectedItem.id) {
+                              return { ...child, ...clearedData };
+                            }
+                            return child;
+                          });
+                          
+                          newState[parentKey] = [...updatedChildren];
+                        }
+                        
+                        return newState;
+                      });
                     }
                     
                     // Atualizar o item selecionado
                     setSelectedItem(prev => ({
                       ...prev,
-                      access_denied: false,
-                      accessDenied: false,
-                      error_message: null,
-                      children_fetched: false
+                      ...clearedData
                     }));
                     
-                    toast.success('Status de acesso limpo. Clique novamente para re-testar.');
+                    toast.success('Flag de bloqueio limpa. Clique novamente para re-testar.');
                   } catch (error) {
                     console.error('Error clearing access denied:', error);
-                    toast.error('Erro ao limpar status de acesso');
+                    toast.error('Erro ao limpar flag de bloqueio');
                   }
                 }}
                 data-testid="clear-access-denied-button"
               >
                 <RefreshCw className="w-3 h-3 mr-1" />
-                Limpar e Re-testar
+                Limpar flag de bloqueio
               </Button>
             </div>
           </div>
