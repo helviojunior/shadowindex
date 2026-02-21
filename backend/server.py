@@ -161,30 +161,72 @@ app = FastAPI(title="Ops Integration Desk")
 api_router = APIRouter(prefix="/api")
 
 # Pydantic Models
-class CredentialCreate(BaseModel):
-    domain: str
-    username: str
-    password: Optional[str] = None
-    ntlm_hash: Optional[str] = None
-    
-    @model_validator(mode='after')
-    def validate_password_or_hash(self):
-        if not self.password and not self.ntlm_hash:
-            raise ValueError('É obrigatório informar uma senha OU um hash NTLM')
-        return self
+# Credential type enum
+CREDENTIAL_TYPES = ["user_password", "token", "ssh_key"]
 
-class CredentialUpdate(BaseModel):
+class CredentialCreate(BaseModel):
+    name: Optional[str] = None
+    credential_type: str = "user_password"  # user_password, token, ssh_key
+    # For user_password type
     domain: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
     ntlm_hash: Optional[str] = None
+    # For token type
+    token: Optional[str] = None
+    token_type: Optional[str] = None  # bearer, api_key, etc.
+    # For ssh_key type
+    ssh_private_key: Optional[str] = None
+    ssh_passphrase: Optional[str] = None
+    ssh_public_key: Optional[str] = None
+    
+    @model_validator(mode='after')
+    def validate_credential(self):
+        if self.credential_type not in CREDENTIAL_TYPES:
+            raise ValueError(f'Tipo de credencial inválido. Use: {", ".join(CREDENTIAL_TYPES)}')
+        
+        if self.credential_type == "user_password":
+            if not self.username:
+                raise ValueError('Usuário é obrigatório para credencial tipo user_password')
+            if not self.password and not self.ntlm_hash:
+                raise ValueError('É obrigatório informar uma senha OU um hash NTLM')
+        elif self.credential_type == "token":
+            if not self.token:
+                raise ValueError('Token é obrigatório para credencial tipo token')
+        elif self.credential_type == "ssh_key":
+            if not self.ssh_private_key:
+                raise ValueError('Chave SSH privada é obrigatória para credencial tipo ssh_key')
+        return self
+
+class CredentialUpdate(BaseModel):
+    name: Optional[str] = None
+    credential_type: Optional[str] = None
+    domain: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    ntlm_hash: Optional[str] = None
+    token: Optional[str] = None
+    token_type: Optional[str] = None
+    ssh_private_key: Optional[str] = None
+    ssh_passphrase: Optional[str] = None
+    ssh_public_key: Optional[str] = None
 
 class CredentialResponse(BaseModel):
     id: int
-    domain: str
-    username: str
+    name: Optional[str] = None
+    credential_type: str = "user_password"
+    domain: Optional[str] = None
+    username: Optional[str] = None
     password: Optional[str] = None
     ntlm_hash: Optional[str] = None
+    token: Optional[str] = None
+    token_type: Optional[str] = None
+    ssh_private_key: Optional[str] = None
+    ssh_passphrase: Optional[str] = None
+    ssh_public_key: Optional[str] = None
+    verified: bool = False
+    last_verified_at: Optional[datetime] = None
+    verification_error: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
