@@ -1781,6 +1781,11 @@ const ServerBrowser = () => {
                                     Certificado {cert.index}
                                     {cert.is_self_signed && <span className="text-xs text-muted-foreground ml-2">(Auto-assinado)</span>}
                                   </span>
+                                  {cert.has_private_key && (
+                                    <Badge variant="secondary" className="bg-purple-500/20 text-purple-400 border-purple-500">
+                                      🔑 Chave Privada
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {cert.is_expired ? (
