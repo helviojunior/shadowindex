@@ -788,6 +788,29 @@ const ServerBrowser = () => {
     setShowAdvancedSearch(false);
   };
 
+  // Função para destacar termos de busca no texto
+  const highlightSearchTerm = (text, query) => {
+    if (!query || !text) return text;
+    
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const index = lowerText.indexOf(lowerQuery);
+    
+    if (index === -1) return text;
+    
+    const before = text.substring(0, index);
+    const match = text.substring(index, index + query.length);
+    const after = text.substring(index + query.length);
+    
+    return (
+      <>
+        {before}
+        <span className="bg-yellow-500/40 text-yellow-200 px-0.5 rounded">{match}</span>
+        {after}
+      </>
+    );
+  };
+
   // Navegar para um resultado de busca
   const navigateToSearchResult = async (result) => {
     // Encontrar o share do resultado
