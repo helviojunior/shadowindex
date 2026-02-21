@@ -290,6 +290,15 @@ class GitleaksService:
                                 # Evitar duplicatas
                                 if not any(f.get('Fingerprint') == finding.get('Fingerprint') 
                                           for f in self._findings):
+                                    
+                                    # Normalizar caminho do arquivo (tratar .ocr e .metadata)
+                                    file_info = normalize_file_path(finding.get('File', ''))
+                                    
+                                    finding['original_file'] = file_info['original_file']
+                                    finding['scanned_file'] = file_info['scanned_file']
+                                    finding['detection_source'] = file_info['source']
+                                    finding['File'] = file_info['original_file']
+                                    
                                     self._findings.append(finding)
                                     loaded_count += 1
                 except Exception as e:
