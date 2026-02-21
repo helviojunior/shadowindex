@@ -11,8 +11,8 @@ Build a web dashboard to manage credentials, database connections, proxy servers
 ## Core Requirements
 - Web panel with dark mode layout and collapsible left sidebar
 - SQLite3 for data storage with Alembic schema migration
-- "Cadastro" (Registration) sections for Credentials, DB Connections, Proxy Servers
-- **Plugin-based architecture** for server communication (SOAP, future: SMB, etc.)
+- "Cadastro" (Registration) sections for Credentials (with NTLM hash), DB Connections, Proxy Servers
+- **Plugin-based architecture** for server communication (SOAP, Direct Interaction)
 - Global option to select active proxy for all requests
 - Global option to ignore cache for all operations
 - 24-hour caching mechanism for SOAP responses
@@ -27,6 +27,27 @@ Portuguese (pt-BR)
 ---
 
 ## Completed Features
+
+### 2026-02-22 (Session 17 - Credentials NTLM, Editing, Direct Interaction Plugin)
+- [x] **Credentials Improvements:**
+  - Added `ntlm_hash` field to store NTLM hash (format: LM:NT or just NT)
+  - Added `updated_at` field for tracking modifications
+  - Validation: password OR ntlm_hash is required (at least one)
+  - Added `PUT /api/credentials/{id}` endpoint for editing
+  - UI with edit button, inline editing mode
+- [x] **Proxy Servers Editing:**
+  - Added `PUT /api/proxy-servers/{id}` endpoint for editing
+  - UI with edit button, inline editing for all fields
+- [x] **Direct Interaction Plugin (NEW):**
+  - Plugin type: `direct_interaction`
+  - Configuration: `credential_id`, `dns_mode`, `dns_servers`
+  - Implements `resolve_address()` for DNS resolution
+  - Supports: system DNS, custom DNS servers, SOCKS proxy for DNS
+  - Other methods raise `NotImplementedException` (SMB coming later)
+  - New page: `/plugins/direct` with test interface
+- [x] **Tests:**
+  - Created `/app/backend/tests/test_credentials_proxy_direct.py` with 21 tests
+  - All tests passing (100% backend, 100% frontend)
 
 ### 2026-02-22 (Session 16 - Plugin Architecture Evolution & SOAP Refactoring)
 - [x] **Plugin Architecture Evolution:**
