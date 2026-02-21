@@ -354,6 +354,90 @@ const Downloads = () => {
         </div>
       ) : null}
 
+      {/* Scan Jobs Section */}
+      {scanJobs.length > 0 && (
+        <Card>
+          <CardHeader className="py-3">
+            <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => setShowScanJobs(!showScanJobs)}
+              >
+                {showScanJobs ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                <FolderSearch className="w-5 h-5 text-blue-500" />
+                <CardTitle className="text-base">Scan Jobs</CardTitle>
+                <Badge variant="secondary">
+                  {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length} ativos
+                </Badge>
+              </div>
+              {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={cancelAllScans}
+                  className="h-7"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Cancelar Todos
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          
+          {showScanJobs && (
+            <CardContent className="pt-0">
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {scanJobs.filter(s => !s.parent_id).map((scan) => {
+                  const StatusIcon = scanStatusConfig[scan.status]?.icon || Clock;
+                  const isActive = scan.status === 'pending' || scan.status === 'scanning';
+                  
+                  return (
+                    <div 
+                      key={scan.id}
+                      className="flex items-center justify-between p-2 rounded border border-border bg-muted/30"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <StatusIcon className={cn(
+                          "w-4 h-4 flex-shrink-0",
+                          scanStatusConfig[scan.status]?.color,
+                          scan.status === 'scanning' && "animate-spin"
+                        )} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate" title={scan.path}>
+                            {scan.path.split('\\').pop() || scan.path}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Profundidade: {scan.depth}/{scan.max_depth}
+                            {scan.files_found > 0 && ` • ${scan.files_found} arquivos`}
+                            {scan.dirs_found > 0 && ` • ${scan.dirs_found} pastas`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {scanStatusConfig[scan.status]?.label}
+                        </Badge>
+                        {isActive && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => cancelScanJob(scan.id)}
+                            className="h-6 w-6 p-0"
+                            title="Cancelar scan"
+                          >
+                            <X className="w-4 h-4 text-muted-foreground hover:text-red-500" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
       {/* Download list grouped by server */}
       {Object.keys(jobsByServer).length === 0 ? (
         <Card>
