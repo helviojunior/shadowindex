@@ -279,6 +279,14 @@ class ProxyServerCreate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
 
+class ProxyServerUpdate(BaseModel):
+    name: Optional[str] = None
+    ip: Optional[str] = None
+    port: Optional[int] = None
+    proxy_type: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+
 class ProxyServerResponse(BaseModel):
     id: int
     name: str
