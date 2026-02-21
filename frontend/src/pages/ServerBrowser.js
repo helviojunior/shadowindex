@@ -847,7 +847,7 @@ const ServerBrowser = () => {
       
       // 1. Primeiro: Baixar todos os arquivos do diretório atual
       for (const file of files) {
-        if (cancelledRef.current) break;
+        if (bulkDownloadCancelledRef.current) break;
         
         const fileSize = parseInt(file.size) || 0;
         
@@ -868,7 +868,6 @@ const ServerBrowser = () => {
         }
         
         // Adicionar à lista com status downloading
-        const itemIndex = bulkDownloadItems.length;
         setBulkDownloadItems(prev => [...prev, {
           ...file,
           shareName,
@@ -891,7 +890,7 @@ const ServerBrowser = () => {
           );
           
           // Atualizar para completed
-          setBulkDownloadItems(prev => prev.map((it, idx) => 
+          setBulkDownloadItems(prev => prev.map((it) => 
             it.fullPath === file.fullPath && it.status === 'downloading'
               ? { ...it, status: 'completed' } 
               : it
