@@ -153,32 +153,54 @@ const ImportServers = () => {
     setImportResults(null);
 
     const hostsToImport = parsedHosts.filter(h => selectedHosts.has(h.ip));
-    const results = { success: [], failed: [] };
-
-    for (const host of hostsToImport) {
-      try {
-        await axios.post(`${API}/servers`, {
-          name: host.name,
-          ip: host.ip,
-          plugin_type: 'direct_interaction',  // Default plugin
-          plugin_config: {}
-        });
-        results.success.push(host);
-      } catch (error) {
-        const errorMsg = error.response?.data?.detail || error.message;
-        results.failed.push({ ...host, error: errorMsg });
+    
+    try {
+      // Usar o novo endpoint de importação em lote
+      const response = await axios.post(`${API}/v2/servers/import/nmap`, {
+        hosts: hostsToImport.map(h => ({
+          ip: h.ip,
+          name: h.name,
+          hasSMB: h.hasSMB,
+          hasDB: h.hasDB,
+          dbTypes: h.dbTypes
+        }))
+      });
+      
+      const data = response.data;
+      
+      // Mapear resposta para formato esperado pela UI
+      const results = {
+        success: data.details.filter(d => d.id !== undefined),
+        failed: data.details.filter(d => d.error !== undefined),
+        skipped: data.details.filter(d => d.reason !== undefined)
+      };
+      
+      setImportResults(results);
+      
+      if (data.imported > 0) {
+        toast.success(`${data.imported} servidores importados com sucesso`);
       }
+      if (data.skipped > 0) {
+        toast.warning(`${data.skipped} servidores já existiam e foram ignorados`);
+      }
+      if (data.failed > 0) {
+        toast.error(`${data.failed} servidores falharam na importação`);
+      }
+      
+    } catch (error) {
+      console.error('Import error:', error);
+      const errorMsg = error.response?.data?.detail || error.message;
+      toast.error(`Erro na importação: ${errorMsg}`);
+      
+      // Fallback: mostrar todos como falha
+      setImportResults({
+        success: [],
+        failed: hostsToImport.map(h => ({ ...h, error: errorMsg })),
+        skipped: []
+      });
     }
-
-    setImportResults(results);
+    
     setImporting(false);
-
-    if (results.success.length > 0) {
-      toast.success(`${results.success.length} servidores importados com sucesso`);
-    }
-    if (results.failed.length > 0) {
-      toast.error(`${results.failed.length} servidores falharam na importação`);
-    }
   };
 
   const clearAll = () => {
