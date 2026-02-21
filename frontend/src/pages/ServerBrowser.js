@@ -2275,7 +2275,7 @@ const ServerBrowser = () => {
                     value={fileVersions.find(v => v.is_current)?.id?.toString() || ''}
                     onValueChange={async (versionId) => {
                       try {
-                        await axios.post(`${API}/servers/${serverId}/file-versions/${versionId}/set-current`);
+                        await axios.post(`${API_V2}/servers/${serverId}/files/${versionId}/set-current`);
                         const filePath = selectedItem.fullPath || selectedItem.serverPath;
                         loadFileVersions(filePath);
                         loadDownloadedFiles();
