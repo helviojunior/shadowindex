@@ -261,7 +261,7 @@ const Downloads = () => {
               onClick={() => setActiveFilter(isActive ? null : status)}
               data-testid={`filter-${status}`}
             >
-              <CardContent className="p-4">
+              <CardContent className="p-4 pt-4">
                 <Icon className={cn("w-5 h-5 absolute top-3 right-3", config.textColor)} />
                 <div>
                   <p className="text-2xl font-bold">{count}</p>
@@ -281,7 +281,7 @@ const Downloads = () => {
           onClick={() => setActiveFilter(null)}
           data-testid="filter-all"
         >
-          <CardContent className="p-4">
+          <CardContent className="p-4 pt-4">
             <Download className="w-5 h-5 absolute top-3 right-3 text-muted-foreground" />
             <div>
               <p className="text-2xl font-bold">{stats.total}</p>
