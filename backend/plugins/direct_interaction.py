@@ -171,11 +171,15 @@ class DirectInteractionPlugin(BasePlugin):
         Raises:
             ConnectionException: If resolution fails
         """
-        cache_key = f"direct_resolve:{hostname}:{self.dns_mode}:{','.join(self.dns_servers)}"
+        cache_params = {
+            "hostname": hostname,
+            "dns_mode": self.dns_mode,
+            "dns_servers": self.dns_servers
+        }
         
         # Check cache first
         if not ignore_cache:
-            cached = self.cache.get(cache_key)
+            cached = await self.cache.get("direct_resolve", cache_params)
             if cached:
                 logger.debug(f"DNS cache hit for {hostname}: {cached}")
                 return cached
@@ -189,7 +193,7 @@ class DirectInteractionPlugin(BasePlugin):
                 ip = await self._resolve_with_system_dns(hostname)
             
             # Cache the result
-            self.cache.set(cache_key, ip, ttl_hours=24)
+            await self.cache.set("direct_resolve", cache_params, ip, ttl_hours=24)
             
             logger.info(f"Resolved {hostname} -> {ip}")
             return ip
