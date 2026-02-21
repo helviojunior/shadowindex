@@ -193,9 +193,21 @@ class GitleaksService:
                                 job.findings_count = len(findings)
                                 # Adicionar ao cache global com metadata
                                 for finding in findings:
+                                    # Normalizar caminho do arquivo (tratar .ocr e .metadata)
+                                    file_info = normalize_file_path(finding.get('File', ''))
+                                    
                                     finding['job_id'] = job.job_id
                                     finding['server_id'] = job.server_id
                                     finding['scanned_at'] = job.completed_at.isoformat()
+                                    
+                                    # Adicionar informações do arquivo normalizado
+                                    finding['original_file'] = file_info['original_file']
+                                    finding['scanned_file'] = file_info['scanned_file']
+                                    finding['detection_source'] = file_info['source']  # "ocr", "metadata" ou None
+                                    
+                                    # Atualizar o File para mostrar o arquivo original
+                                    finding['File'] = file_info['original_file']
+                                    
                                     self._findings.append(finding)
                             else:
                                 job.findings_count = 0
