@@ -263,6 +263,7 @@ const ServerBrowser = () => {
     setFilePreviewUrl(null);
     setBeautified(false);
     setBase64Decoded(false);
+    setContentLoadError(false); // Reset erro ao mudar de arquivo
   }, [selectedItem?.id, selectedItem?.fullPath]);
 
   // Carregar conteúdo automaticamente quando aba View for selecionada
@@ -272,8 +273,8 @@ const ServerBrowser = () => {
       return;
     }
     
-    // Se já tem conteúdo ou está carregando, não fazer nada
-    if (fileContent || filePreviewUrl || loadingContent) {
+    // Se já tem conteúdo, está carregando, ou teve erro, não fazer nada
+    if (fileContent || filePreviewUrl || loadingContent || contentLoadError) {
       return;
     }
     
@@ -284,7 +285,7 @@ const ServerBrowser = () => {
     if (isDownloaded && canView) {
       loadFileContent();
     }
-  }, [activeTab, selectedItem?.id, fileContent, filePreviewUrl, loadingContent, downloadedFiles]);
+  }, [activeTab, selectedItem?.id, fileContent, filePreviewUrl, loadingContent, contentLoadError, downloadedFiles]);
 
   const loadServer = async () => {
     try {
