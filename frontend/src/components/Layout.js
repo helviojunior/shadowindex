@@ -500,8 +500,8 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
             <div className="flex flex-col h-full">
               {/* Menu Items */}
               <nav className={cn(
-                "flex-1 space-y-1 overflow-y-auto scrollbar-thin",
-                effectiveCollapsed ? "p-2 pt-3" : "p-3"
+                "flex-1 space-y-0.5 overflow-y-auto scrollbar-thin pt-2",
+                effectiveCollapsed ? "px-2" : "px-0"
               )}>
                 {menuStructure.map(renderMenuItem)}
               </nav>
