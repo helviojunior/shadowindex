@@ -352,6 +352,8 @@ class DirectoryScanner:
                     files_added += 1
             
             await db.commit()
+            scan_job.files_found = files_added
+            scan_job.dirs_found = dirs_added
             print(f"=== SCANNER: Scanned {full_path}, added {files_added} files, {dirs_added} subdirs ===", flush=True)
             logger.info(f"Scanned directory: {full_path}, found {len(items)} items")
             
