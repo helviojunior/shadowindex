@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from .base import BasePlugin, PluginConfig
 from .soap_api import SoapApiPlugin
+from .direct_interaction import DirectInteractionPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Registry of available plugins
 PLUGIN_REGISTRY: Dict[str, Type[BasePlugin]] = {
     "soap_api": SoapApiPlugin,
+    "direct_interaction": DirectInteractionPlugin,
 }
 
 
