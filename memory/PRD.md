@@ -27,6 +27,22 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 10 - Sistema de Downloads Backend-Driven)
+- [x] **P0 Bug Fix: Destaque de menu ativo incorreto** - Corrigida função `findActiveMenu` em `Layout.js`
+- [x] **P1 Bug Fix: Menu flyout verificado** - Confirmado funcionamento correto do flyout quando sidebar colapsado
+- [x] **UI: Forms colapsáveis em todas as telas de cadastro** (Conexões, Proxy, Credenciais, SOAP APIs, Servidores, Presets)
+- [x] **Priorização de IPv4 na função Resolve** - Criada função `extract_ipv4_from_resolve_result()`
+- [x] **Labels de tabs de Operações SOAP** (Exec→Consulta SQL, Exec4→Lista Diretório, Exec5→Download File)
+- [x] **Worker de Downloads em Background**
+  - Criado `download_worker.py` com processamento assíncrono
+  - Máximo de 3 downloads simultâneos
+  - Processamento em background independente do navegador
+- [x] **Lógica de download inteligente no ServerBrowser**
+  - Arquivo < 1MB: download direto via frontend
+  - Arquivo > 1MB: enviado para fila de downloads (backend)
+  - Download em massa: coleta arquivos e envia para fila em lote
+- [x] **Página de Downloads funcional com polling a cada 2s**
+
 ### 2026-02-21 (Session 9 - Multi-level Menu & Download System)
 - [x] **Side Panel Multi-nível estilo JFrog**
   - Menu com suporte a multi-nível (Dashboard, Arquivos, SQL, Configuração, Tools)
