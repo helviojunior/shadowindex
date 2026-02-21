@@ -1894,16 +1894,23 @@ const ServerBrowser = () => {
                         return newState;
                       });
                     } else {
-                      // Para diretórios - atualizar em todos os nodeChildren
+                      // Para diretórios - encontrar o nodeId do diretório e limpar
+                      const dirNodeId = String(selectedItem.id);
+                      
+                      // Atualizar o item em todos os nodeChildren do pai
                       setNodeChildren(prev => {
                         const newState = { ...prev };
                         
+                        // Remover os filhos do diretório (forçar re-fetch)
+                        delete newState[dirNodeId];
+                        
+                        // Também atualizar o item no pai para limpar access_denied
                         for (const parentKey of Object.keys(newState)) {
                           const children = newState[parentKey];
                           if (!children || !Array.isArray(children)) continue;
                           
                           const updatedChildren = children.map(child => {
-                            if (child.fullPath === itemPath || child.id === selectedItem.id) {
+                            if (child.fullPath === itemPath || child.id === selectedItem.id || String(child.id) === dirNodeId) {
                               return { ...child, ...clearedData };
                             }
                             return child;
@@ -1912,6 +1919,13 @@ const ServerBrowser = () => {
                           newState[parentKey] = [...updatedChildren];
                         }
                         
+                        return newState;
+                      });
+                      
+                      // Colapsar o diretório para forçar re-fetch ao expandir
+                      setExpandedNodes(prev => {
+                        const newState = { ...prev };
+                        newState[dirNodeId] = false;
                         return newState;
                       });
                     }
