@@ -50,6 +50,35 @@ class AuthenticationException(PluginException):
         super().__init__(message or "Authentication failed")
 
 
+class AuthenticationFailureException(PluginException):
+    """Raised when authentication fails with specific details about the failure"""
+    def __init__(
+        self, 
+        username: str = None, 
+        domain: str = None, 
+        reason: str = None,
+        message: str = None
+    ):
+        details = {}
+        if username:
+            details["username"] = username
+        if domain:
+            details["domain"] = domain
+        if reason:
+            details["reason"] = reason
+        
+        msg = message or f"Authentication failed"
+        if username:
+            msg += f" for user '{domain}\\{username}'" if domain else f" for user '{username}'"
+        if reason:
+            msg += f": {reason}"
+        
+        super().__init__(msg, details)
+        self.username = username
+        self.domain = domain
+        self.reason = reason
+
+
 class TimeoutException(PluginException):
     """Raised when an operation times out"""
     def __init__(self, operation: str, timeout_seconds: int, message: str = None):
