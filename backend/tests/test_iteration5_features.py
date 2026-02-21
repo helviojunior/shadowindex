@@ -59,12 +59,12 @@ class TestCredentialTypes:
     
     def test_create_user_password_with_ntlm_only(self):
         """Create user_password credential with NTLM hash only (no password)"""
-        response = requests.post(f"{BASE_URL}/api/credentials", json={
+        response = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials", json={
             "name": "TEST_ntlm_only",
             "credential_type": "user_password",
             "username": "ntlmuser",
             "ntlm_hash": "aad3b435b51404ee:8846f7eaee8fb117"
-        })
+        }))
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["password"] is None
@@ -73,11 +73,11 @@ class TestCredentialTypes:
     
     def test_create_user_password_without_name(self):
         """Create user_password credential without optional name field"""
-        response = requests.post(f"{BASE_URL}/api/credentials", json={
+        response = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials", json={
             "credential_type": "user_password",
             "username": "no_name_user",
             "password": "pass123"
-        })
+        }))
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["name"] is None  # Name is optional
