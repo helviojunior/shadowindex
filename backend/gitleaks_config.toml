@@ -1,0 +1,5 @@
+title = "ShadowIndex Gitleaks configuration"
+
+[extend]
+useDefault = true
+disabledRules = ["generic-api-key"]
