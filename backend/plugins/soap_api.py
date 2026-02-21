@@ -41,12 +41,16 @@ class SoapApiPlugin(BasePlugin):
     Plugin for server communication via SOAP Web Service.
     
     Configuration:
-        - soap_url: URL of the SOAP API endpoint
+        - soap_url: URL of the SOAP API endpoint (required)
+        - timeout: Request timeout in seconds (optional, default: 120)
+        - namespace: SOAP namespace (optional, default: http://test/)
     """
     
     PLUGIN_TYPE = "soap_api"
     PLUGIN_NAME = "SOAP API Plugin"
     PLUGIN_VERSION = "1.0.0"
+    PLUGIN_DESCRIPTION = "Communicates with servers via SOAP Web Service"
+    REQUIRED_CONFIG = ["soap_url"]
     
     def __init__(self, config: PluginConfig, proxy_url: Optional[str] = None):
         super().__init__(config, proxy_url)
@@ -57,10 +61,90 @@ class SoapApiPlugin(BasePlugin):
             # Remove WSDL suffix if present
             self.soap_url = self.soap_url.replace('?WSDL', '').replace('?wsdl', '')
         
+        # Additional config
+        self.timeout = config.get("timeout", 120)
+        self.namespace = config.get("namespace", "http://test/")
+        
         self.cache = get_cache()
         
         if proxy_url:
             logger.info(f"SoapApiPlugin initialized with proxy: {proxy_url}")
+    
+    @classmethod
+    def get_config_schema(cls) -> Dict[str, Any]:
+        """Get JSON schema for SOAP plugin configuration"""
+        return {
+            "type": "object",
+            "properties": {
+                "soap_url": {
+                    "type": "string",
+                    "title": "SOAP API URL",
+                    "description": "URL do endpoint SOAP (sem ?WSDL)",
+                    "format": "uri"
+                },
+                "timeout": {
+                    "type": "integer",
+                    "title": "Timeout",
+                    "description": "Timeout em segundos para requisições",
+                    "default": 120,
+                    "minimum": 5,
+                    "maximum": 600
+                },
+                "namespace": {
+                    "type": "string",
+                    "title": "Namespace",
+                    "description": "Namespace SOAP",
+                    "default": "http://test/"
+                }
+            },
+            "required": ["soap_url"]
+        }
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Check SOAP service connectivity"""
+        if not self.soap_url:
+            return {
+                "healthy": False,
+                "message": "SOAP URL not configured",
+                "details": {}
+            }
+        
+        try:
+            # Try a simple request to check connectivity
+            response = await asyncio.to_thread(
+                requests.get,
+                self.soap_url + "?WSDL",
+                timeout=10,
+                verify=False
+            )
+            
+            if response.status_code == 200:
+                return {
+                    "healthy": True,
+                    "message": "SOAP service is reachable",
+                    "details": {
+                        "url": self.soap_url,
+                        "status_code": response.status_code
+                    }
+                }
+            else:
+                return {
+                    "healthy": False,
+                    "message": f"SOAP service returned status {response.status_code}",
+                    "details": {
+                        "url": self.soap_url,
+                        "status_code": response.status_code
+                    }
+                }
+        except Exception as e:
+            return {
+                "healthy": False,
+                "message": f"Failed to connect: {str(e)}",
+                "details": {
+                    "url": self.soap_url,
+                    "error": str(e)
+                }
+            }
     
     def _build_soap_envelope(self, operation: str, params: Dict[str, Any]) -> str:
         """Build SOAP envelope XML"""
