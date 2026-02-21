@@ -3499,6 +3499,24 @@ const ServerBrowser = () => {
                     </div>
                   ) : (
                     <div className="divide-y divide-border">
+                      {/* Header com total e botão de exportar */}
+                      <div className="px-3 py-2 bg-muted/30 flex items-center justify-between sticky top-0 z-10">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {searchResults.total} resultado(s) encontrado(s)
+                        </span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={exportSearchResultsToJson}
+                          data-testid="export-search-btn"
+                          title="Exportar resultados para JSON"
+                        >
+                          <FileJson className="w-3 h-3 mr-1" />
+                          Exportar
+                        </Button>
+                      </div>
+                      
                       {/* Diretórios */}
                       {searchResults.directories?.length > 0 && (
                         <div>
