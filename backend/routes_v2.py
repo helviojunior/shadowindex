@@ -845,6 +845,322 @@ async def queue_item(server_id: int, item_id: int, db: AsyncSession = Depends(ge
     }
 
 
+class DownloadRequest(BaseModel):
+    content_base64: Optional[str] = None
+
+class QueueRequest(BaseModel):
+    server_id: int
+    share_name: str
+    file_path: str
+    file_name: str
+    file_size: Optional[int] = None
+    max_file_size_bytes: Optional[int] = None
+    max_depth: Optional[int] = None
+
+
+@router.post("/servers/{server_id}/download")
+async def download_file_by_path(
+    server_id: int,
+    file_path: str,
+    share_name: str,
+    expected_size: int = 0,
+    request: Optional[DownloadRequest] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Download de arquivo via path - para compatibilidade com chunked downloads"""
+    from soap_service import get_default_soap_service
+    from storage_utils import save_downloaded_file, format_size
+    from server import get_file_mimetype
+    import base64
+    
+    server = await get_server_or_404(db, server_id)
+    
+    content = None
+    
+    # Se recebeu content_base64, usar isso (chunked download)
+    if request and request.content_base64:
+        try:
+            content = base64.b64decode(request.content_base64).decode('utf-8', errors='replace')
+        except Exception as e:
+            logger.error(f"Error decoding base64 content: {e}")
+            raise HTTPException(status_code=400, detail="Erro ao decodificar conteúdo base64")
+    else:
+        # Buscar via SOAP
+        soap_service = await get_default_soap_service(db)
+        params = {"s1": file_path, "s2": "", "l1": 0, "l2": 0}
+        
+        try:
+            content = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
+        except Exception as e:
+            logger.error(f"Error downloading file {file_path}: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    if not content:
+        raise HTTPException(status_code=500, detail="Resposta vazia do servidor")
+    
+    # Verificar erros
+    content_lower = content.lower()
+    if "access" in content_lower and "denied" in content_lower:
+        raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+    
+    if "not found" in content_lower or "cannot find" in content_lower:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
+    
+    # Verificar se já existe no banco
+    existing_result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.server_guid == server.guid,
+            DownloadedFile.file_path == file_path
+        )
+    )
+    existing = existing_result.scalar_one_or_none()
+    
+    # Calcular hash do novo conteúdo
+    import hashlib
+    new_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+    
+    # Verificar se arquivo já existe com mesmo hash
+    if existing and existing.sha1_hash == new_hash:
+        return {
+            "success": True,
+            "file_id": existing.id,
+            "status": "unchanged",
+            "message": "Arquivo não modificado",
+            "sha1_hash": new_hash,
+            "size": existing.file_size,
+            "size_formatted": format_size(existing.file_size) if existing.file_size else "0 B",
+            "version": 1
+        }
+    
+    # Determinar versão
+    version = 1
+    if existing:
+        # Buscar última versão
+        version_result = await db.execute(
+            select(FileVersion).where(
+                FileVersion.server_guid == server.guid,
+                FileVersion.file_path == file_path
+            ).order_by(FileVersion.version_number.desc())
+        )
+        last_version = version_result.scalar_one_or_none()
+        if last_version:
+            version = last_version.version_number + 1
+    
+    # Salvar arquivo
+    full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
+        server.guid,
+        share_name,
+        file_path,
+        content,
+        version
+    )
+    
+    mimetype = get_file_mimetype(full_path)
+    
+    if existing:
+        # Criar nova versão
+        new_version = FileVersion(
+            server_guid=server.guid,
+            file_path=file_path,
+            version_number=version,
+            sha1_hash=sha1_hash,
+            file_size=file_size,
+            mimetype=mimetype,
+            is_current=True
+        )
+        db.add(new_version)
+        
+        # Marcar versões anteriores como não-current
+        await db.execute(
+            select(FileVersion).where(
+                FileVersion.server_guid == server.guid,
+                FileVersion.file_path == file_path,
+                FileVersion.version_number != version
+            )
+        )
+        
+        # Atualizar arquivo existente
+        existing.sanitized_path = sanitized_path
+        existing.sha1_hash = sha1_hash
+        existing.file_size = file_size
+        existing.mimetype = mimetype
+        existing.downloaded_at = datetime.now(timezone.utc)
+        await db.commit()
+        
+        return {
+            "success": True,
+            "file_id": existing.id,
+            "status": "updated",
+            "message": "Arquivo atualizado",
+            "sha1_hash": sha1_hash,
+            "size": file_size,
+            "size_formatted": format_size(file_size),
+            "version": version
+        }
+    else:
+        # Criar novo arquivo
+        downloaded_file = DownloadedFile(
+            server_guid=server.guid,
+            share_name=share_name,
+            file_path=file_path,
+            sanitized_path=sanitized_path,
+            file_size=file_size,
+            sha1_hash=sha1_hash,
+            mimetype=mimetype
+        )
+        db.add(downloaded_file)
+        
+        # Criar primeira versão
+        first_version = FileVersion(
+            server_guid=server.guid,
+            file_path=file_path,
+            version_number=1,
+            sha1_hash=sha1_hash,
+            file_size=file_size,
+            mimetype=mimetype,
+            is_current=True
+        )
+        db.add(first_version)
+        
+        server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
+        await db.commit()
+        await db.refresh(downloaded_file)
+        
+        return {
+            "success": True,
+            "file_id": downloaded_file.id,
+            "status": "new",
+            "message": "Arquivo baixado",
+            "sha1_hash": sha1_hash,
+            "size": file_size,
+            "size_formatted": format_size(file_size),
+            "version": 1
+        }
+
+
+@router.post("/servers/{server_id}/download-chunk")
+async def download_chunk(
+    server_id: int,
+    file_path: str,
+    share_name: str,
+    offset: int = 0,
+    chunk_size: int = 512000,
+    db: AsyncSession = Depends(get_db)
+):
+    """Download de um chunk de arquivo via SOAP"""
+    from soap_service import get_default_soap_service
+    import base64
+    
+    server = await get_server_or_404(db, server_id)
+    
+    # Chamar SOAP Exec5 com offset e chunk_size
+    soap_service = await get_default_soap_service(db)
+    params = {"s1": file_path, "s2": "", "l1": offset, "l2": chunk_size}
+    
+    try:
+        result_str = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
+        
+        if not result_str:
+            return {
+                "success": True,
+                "data": "",
+                "bytes_read": 0,
+                "is_last": True
+            }
+        
+        # Verificar erros
+        result_lower = result_str.lower()
+        if "access" in result_lower and "denied" in result_lower:
+            raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+        
+        # Codificar em base64
+        content_base64 = base64.b64encode(result_str.encode('utf-8')).decode('ascii')
+        bytes_read = len(result_str)
+        is_last = bytes_read < chunk_size
+        
+        return {
+            "success": True,
+            "data": content_base64,
+            "bytes_read": bytes_read,
+            "is_last": is_last
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading chunk from {file_path}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/downloads")
+async def create_download_job(request: QueueRequest, db: AsyncSession = Depends(get_db)):
+    """Cria um job de download na fila"""
+    server = await get_server_or_404(db, request.server_id)
+    
+    # Verificar se já está na fila
+    existing = await db.execute(
+        select(DownloadJob).where(
+            DownloadJob.server_id == request.server_id,
+            DownloadJob.file_path == request.file_path,
+            DownloadJob.status.in_(['pending', 'downloading'])
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Arquivo já está na fila de downloads")
+    
+    # Criar job
+    job = DownloadJob(
+        server_id=request.server_id,
+        server_name=server.name,
+        server_ip=server.ip,
+        share_name=request.share_name,
+        file_path=request.file_path,
+        file_name=request.file_name,
+        file_size=request.file_size,
+        max_file_size_bytes=request.max_file_size_bytes,
+        max_depth=request.max_depth,
+        status='pending'
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+    
+    return {
+        "success": True,
+        "job_id": job.id,
+        "message": "Arquivo adicionado à fila de downloads"
+    }
+
+
+@router.post("/downloads/check-queue")
+async def check_queue(
+    server_id: int,
+    file_path: str,
+    share_name: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Verifica se arquivo está na fila de downloads"""
+    server = await get_server_or_404(db, server_id)
+    
+    result = await db.execute(
+        select(DownloadJob).where(
+            DownloadJob.server_id == server_id,
+            DownloadJob.file_path == file_path,
+            DownloadJob.status.in_(['pending', 'downloading'])
+        )
+    )
+    job = result.scalar_one_or_none()
+    
+    if job:
+        return {
+            "in_queue": True,
+            "job_id": job.id,
+            "status": job.status
+        }
+    
+    return {"in_queue": False, "job_id": None, "status": None}
+
+
 # ==========================================
 # Downloaded File Endpoints
 # ==========================================
