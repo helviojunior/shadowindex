@@ -1563,7 +1563,7 @@ const ServerBrowser = () => {
                 <div className="flex flex-col gap-3">
                   {/* Name */}
                   <InfoRow 
-                    label="Name" 
+                    label="Nome" 
                     value={String(itemName)}
                     onCopy={() => copyToClipboard(String(itemName), 'name')}
                     copied={copiedField === 'name'}
@@ -1571,7 +1571,7 @@ const ServerBrowser = () => {
                   
                   {/* Server Path */}
                   <InfoRow 
-                    label="Server Path" 
+                    label="Caminho" 
                     value={selectedItem.serverPath}
                     onCopy={() => copyToClipboard(selectedItem.serverPath, 'path')}
                     copied={copiedField === 'path'}
@@ -1579,21 +1579,21 @@ const ServerBrowser = () => {
                   
                   {/* Access Status */}
                   <InfoRow 
-                    label="Access Status" 
+                    label="Status de Acesso" 
                     value={accessStatus}
                     valueClassName={accessStatusColor}
                   />
                   
                   {/* Fetched Date */}
                   <InfoRow 
-                    label="Fetched Date" 
+                    label="Data de Leitura" 
                     value={formatDate(selectedItem.fetchedAt)}
                   />
                   
                   {/* Last Write Time - para diretórios e arquivos */}
                   {(isDirectory || isFile) && selectedItem.modified && (
                     <InfoRow 
-                      label="Last Modified" 
+                      label="Última Modificação" 
                       value={formatDate(selectedItem.modified)}
                     />
                   )}
@@ -1601,7 +1601,7 @@ const ServerBrowser = () => {
                   {/* Size - apenas para arquivos */}
                   {isFile && !isAccessDenied && (
                     <InfoRow 
-                      label="Size" 
+                      label="Tamanho" 
                       value={formatSize(selectedItem.size)}
                     />
                   )}
@@ -1609,7 +1609,7 @@ const ServerBrowser = () => {
                   {/* Sync Status - apenas para arquivos */}
                   {isFile && !isAccessDenied && (
                     <InfoRow 
-                      label="Sync Status" 
+                      label="Status de Sincronização" 
                       value={downloaded ? 'Sincronizado' : 'Não sincronizado'}
                       valueClassName={downloaded ? 'text-green-500' : 'text-muted-foreground'}
                     />
@@ -1618,7 +1618,7 @@ const ServerBrowser = () => {
                   {/* SHA1 Hash - apenas para arquivos sincronizados */}
                   {isFile && downloaded && downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath]?.sha1_hash && (
                     <InfoRow 
-                      label="SHA1 Hash" 
+                      label="Hash SHA1" 
                       value={downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath].sha1_hash}
                       valueClassName="font-mono text-xs"
                     />
