@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Trash2, Plus, CheckCircle, XCircle, Play, Database, Loader2, Zap, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, XCircle, Play, Database, Loader2, Zap, Pencil, ChevronUp, Plug } from 'lucide-react';
 import { toast } from 'sonner';
 import { getDatabaseIcon } from '@/components/DatabaseIcons';
 
@@ -33,22 +33,36 @@ const DatabaseConnections = () => {
   const navigate = useNavigate();
   const [connections, setConnections] = useState([]);
   const [dbTypes, setDbTypes] = useState([]);
-  const [formData, setFormData] = useState({ name: '', db_type_id: '', connection_string: '' });
+  const [availablePlugins, setAvailablePlugins] = useState({});
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    db_type_id: '', 
+    connection_string: '',
+    plugin_type: 'soap_api',
+    plugin_config: {}
+  });
   const [loading, setLoading] = useState(false);
   const [testingConnectionId, setTestingConnectionId] = useState(null);
   const [testingNewConnection, setTestingNewConnection] = useState(false);
-  const [newConnectionTestResult, setNewConnectionTestResult] = useState(null); // 'success', 'error', null
+  const [newConnectionTestResult, setNewConnectionTestResult] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState(null);
-  const [editFormData, setEditFormData] = useState({ name: '', db_type_id: '', connection_string: '' });
+  const [editFormData, setEditFormData] = useState({ 
+    name: '', 
+    db_type_id: '', 
+    connection_string: '',
+    plugin_type: 'soap_api',
+    plugin_config: {}
+  });
   const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     loadConnections();
     loadDbTypes();
+    loadAvailablePlugins();
   }, []);
 
   const loadConnections = async () => {
@@ -70,6 +84,19 @@ const DatabaseConnections = () => {
     }
   };
 
+  const loadAvailablePlugins = async () => {
+    try {
+      const response = await axios.get(`${API}/plugins`);
+      setAvailablePlugins(response.data);
+    } catch (error) {
+      console.error('Error loading plugins:', error);
+      // Fallback to known plugins
+      setAvailablePlugins({
+        soap_api: { type: 'soap_api', name: 'SOAP API Plugin', version: '1.0.0' }
+      });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -78,13 +105,16 @@ const DatabaseConnections = () => {
       const payload = {
         name: formData.name,
         connection_string: formData.connection_string,
-        db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null
+        db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null,
+        plugin_type: formData.plugin_type,
+        plugin_config: formData.plugin_config
       };
       
       await axios.post(`${API}/db-connections`, payload);
       toast.success('Conexão cadastrada com sucesso');
-      setFormData({ name: '', db_type_id: '', connection_string: '' });
+      setFormData({ name: '', db_type_id: '', connection_string: '', plugin_type: 'soap_api', plugin_config: {} });
       setNewConnectionTestResult(null);
+      setShowAddForm(false);
       loadConnections();
     } catch (error) {
       console.error('Error creating connection:', error);
@@ -109,7 +139,9 @@ const DatabaseConnections = () => {
       const tempPayload = {
         name: `_temp_test_${Date.now()}`,
         connection_string: formData.connection_string,
-        db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null
+        db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null,
+        plugin_type: formData.plugin_type,
+        plugin_config: formData.plugin_config
       };
       
       // Create temp connection
@@ -168,7 +200,7 @@ const DatabaseConnections = () => {
 
       if (response.data.success) {
         toast.success(`Conexão OK! (${response.data.execution_time_ms}ms)`);
-        loadConnections(); // Reload to update verified status
+        loadConnections();
       } else {
         toast.error(`Falha na conexão: ${response.data.error_message}`);
       }
@@ -185,7 +217,9 @@ const DatabaseConnections = () => {
     setEditFormData({
       name: conn.name,
       db_type_id: conn.db_type_id?.toString() || '',
-      connection_string: conn.connection_string
+      connection_string: conn.connection_string,
+      plugin_type: conn.plugin_type || 'soap_api',
+      plugin_config: conn.plugin_config || {}
     });
     setEditModalOpen(true);
   };
@@ -198,7 +232,9 @@ const DatabaseConnections = () => {
       const payload = {
         name: editFormData.name,
         connection_string: editFormData.connection_string,
-        db_type_id: editFormData.db_type_id ? parseInt(editFormData.db_type_id) : null
+        db_type_id: editFormData.db_type_id ? parseInt(editFormData.db_type_id) : null,
+        plugin_type: editFormData.plugin_type,
+        plugin_config: editFormData.plugin_config
       };
       
       await axios.put(`${API}/db-connections/${editingConnection.id}`, payload);
@@ -221,6 +257,13 @@ const DatabaseConnections = () => {
     } catch {
       return dateString;
     }
+  };
+
+  const getPluginLabel = (pluginType) => {
+    if (availablePlugins[pluginType]) {
+      return availablePlugins[pluginType].name;
+    }
+    return pluginType || 'SOAP API';
   };
 
   return (
@@ -258,7 +301,7 @@ const DatabaseConnections = () => {
           </CardHeader>
           <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome</Label>
                 <Input
@@ -291,6 +334,27 @@ const DatabaseConnections = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="plugin_type">Plugin de Conexão</Label>
+                <Select
+                  value={formData.plugin_type}
+                  onValueChange={(value) => setFormData({ ...formData, plugin_type: value, plugin_config: {} })}
+                >
+                  <SelectTrigger data-testid="db-plugin-select">
+                    <SelectValue placeholder="Selecione o plugin..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(availablePlugins).map(([type, info]) => (
+                      <SelectItem key={type} value={type}>
+                        <div className="flex items-center gap-2">
+                          <Plug className="w-4 h-4" />
+                          {info.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="connection_string">Connection String</Label>
@@ -301,7 +365,7 @@ const DatabaseConnections = () => {
                 value={formData.connection_string}
                 onChange={(e) => {
                   setFormData({ ...formData, connection_string: e.target.value });
-                  setNewConnectionTestResult(null); // Reset test result when connection string changes
+                  setNewConnectionTestResult(null);
                 }}
                 rows={2}
                 required
@@ -363,6 +427,7 @@ const DatabaseConnections = () => {
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium">Nome</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Tipo</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Plugin</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Connection String</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Última Verificação</th>
@@ -396,9 +461,15 @@ const DatabaseConnections = () => {
                         )}
                       </td>
                       <td className="px-4 py-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Plug className="w-4 h-4 text-muted-foreground" />
+                          {getPluginLabel(conn.plugin_type)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
                         <code className="text-xs bg-muted px-2 py-1 rounded max-w-xs truncate block">
-                          {conn.connection_string.length > 50 
-                            ? conn.connection_string.substring(0, 50) + '...' 
+                          {conn.connection_string.length > 40 
+                            ? conn.connection_string.substring(0, 40) + '...' 
                             : conn.connection_string}
                         </code>
                       </td>
@@ -494,26 +565,49 @@ const DatabaseConnections = () => {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-db-type">Tipo de Banco</Label>
-                <Select
-                  value={editFormData.db_type_id}
-                  onValueChange={(value) => setEditFormData({ ...editFormData, db_type_id: value })}
-                >
-                  <SelectTrigger data-testid="edit-db-type-select">
-                    <SelectValue placeholder="Selecione o tipo..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dbTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          {getDatabaseIcon(type.name, "w-4 h-4")}
-                          {type.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-db-type">Tipo de Banco</Label>
+                  <Select
+                    value={editFormData.db_type_id}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, db_type_id: value })}
+                  >
+                    <SelectTrigger data-testid="edit-db-type-select">
+                      <SelectValue placeholder="Selecione o tipo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dbTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            {getDatabaseIcon(type.name, "w-4 h-4")}
+                            {type.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-plugin-type">Plugin de Conexão</Label>
+                  <Select
+                    value={editFormData.plugin_type}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, plugin_type: value, plugin_config: {} })}
+                  >
+                    <SelectTrigger data-testid="edit-plugin-select">
+                      <SelectValue placeholder="Selecione o plugin..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(availablePlugins).map(([type, info]) => (
+                        <SelectItem key={type} value={type}>
+                          <div className="flex items-center gap-2">
+                            <Plug className="w-4 h-4" />
+                            {info.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-connection-string">Connection String</Label>
