@@ -181,7 +181,7 @@ class DownloadWorker:
                 await db.commit()
                 raise
     
-    async def _download_direct(self, db: AsyncSession, job: DownloadJob, soap_service: SoapService, full_path: str):
+    async def _download_direct(self, db: AsyncSession, job, soap_service, full_path: str, server):
         """Download direto (arquivo pequeno)"""
         params = {"s1": full_path, "l1": "0", "l2": "0"}
         result = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
@@ -197,9 +197,9 @@ class DownloadWorker:
             raise Exception("File not found")
         
         # Salvar arquivo
-        await self._save_file_content(db, job, result)
+        await self._save_file_content(db, job, result, server)
     
-    async def _download_chunked(self, db: AsyncSession, job: DownloadJob, soap_service: SoapService, full_path: str):
+    async def _download_chunked(self, db: AsyncSession, job, soap_service, full_path: str, server):
         """Download em chunks (arquivo grande)"""
         total_size = job.file_size or 0
         downloaded = 0
@@ -235,7 +235,7 @@ class DownloadWorker:
         
         # Concatenar chunks e salvar
         full_content = ''.join(chunks)
-        await self._save_file_content(db, job, full_content)
+        await self._save_file_content(db, job, full_content, server)
     
     async def _save_file_content(self, db: AsyncSession, job: DownloadJob, content: str):
         """Salva o conteúdo do arquivo no storage"""
