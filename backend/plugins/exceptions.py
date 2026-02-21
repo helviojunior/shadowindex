@@ -67,7 +67,7 @@ class AuthenticationFailureException(PluginException):
         if reason:
             details["reason"] = reason
         
-        msg = message or f"Authentication failed"
+        msg = message or "Authentication failed"
         if username:
             msg += f" for user '{domain}\\{username}'" if domain else f" for user '{username}'"
         if reason:
