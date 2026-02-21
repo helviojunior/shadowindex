@@ -720,13 +720,20 @@ const ServerBrowser = () => {
           // Extrair o nome do share do nodeId (formato: "share-ShareName")
           const shareNameFromNodeId = nodeId.substring(6); // Remove "share-"
           
-          console.log('[AccessDenied] Atualizando share:', shareNameFromNodeId, updatedItemData);
+          console.log('[AccessDenied] Tentando atualizar share. nodeId:', nodeId, 'shareNameFromNodeId:', shareNameFromNodeId);
+          console.log('[AccessDenied] updatedItemData:', updatedItemData);
           
           // Forçar nova referência do array para garantir re-render
           setShares(prev => {
+            console.log('[AccessDenied] Shares anteriores:', prev.map(s => ({ id: s.id, name: s.share_name, access_denied: s.access_denied })));
+            
             const newShares = prev.map(s => {
-              if (s.share_name === shareNameFromNodeId) {
-                console.log('[AccessDenied] Match encontrado, atualizando:', s.share_name);
+              // Comparar tanto pelo nome quanto pelo nodeId construído
+              const shareNodeId = `share-${s.share_name}`;
+              const isMatch = s.share_name === shareNameFromNodeId || shareNodeId === nodeId;
+              
+              if (isMatch) {
+                console.log('[AccessDenied] Match encontrado! share_name:', s.share_name);
                 // Criar novo objeto com todas as propriedades atualizadas
                 return { 
                   ...s, 
@@ -739,6 +746,9 @@ const ServerBrowser = () => {
               }
               return s;
             });
+            
+            console.log('[AccessDenied] Shares novos:', newShares.map(s => ({ id: s.id, name: s.share_name, access_denied: s.access_denied })));
+            
             // Forçar nova referência do array
             return [...newShares];
           });
