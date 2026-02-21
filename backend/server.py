@@ -1931,12 +1931,14 @@ async def download_server_file_chunk(
                         exec5_result = elem
                         break
             
-            # Função para verificar se é mensagem de erro
-            def check_error_message(text):
+            # Função para verificar se é mensagem de erro e atualizar DB
+            async def check_error_message_and_update(text):
                 if not text:
                     return
                 text_lower = text.lower()
                 if 'is denied' in text_lower or ('access' in text_lower and 'denied' in text_lower):
+                    # Atualizar status no banco antes de lançar exceção
+                    await update_access_denied_status(db, server.guid, share_name, file_path, "Acesso negado ao arquivo")
                     raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
                 elif 'could not find' in text_lower or ('not found' in text_lower and 'file' in text_lower):
                     raise HTTPException(status_code=404, detail="Arquivo não encontrado")
@@ -1946,19 +1948,19 @@ async def download_server_file_chunk(
                     raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
             
             # Verificar também o texto bruto do resultado para erros
-            check_error_message(result_str)
+            await check_error_message_and_update(result_str)
             
             if exec5_result is not None and exec5_result.text:
                 result_text = exec5_result.text.strip()
                 
                 # Verificar erro ANTES de decodificar (erro vem em texto claro)
-                check_error_message(result_text)
+                await check_error_message_and_update(result_text)
                 
                 content_base64 = result_text
             else:
                 # Tentar extrair texto de qualquer elemento filho ou do root
                 fallback_text = root.text.strip() if root.text else ""
-                check_error_message(fallback_text)
+                await check_error_message_and_update(fallback_text)
                 content_base64 = fallback_text
                 
         except HTTPException:
@@ -1978,6 +1980,7 @@ async def download_server_file_chunk(
                     if 'is denied' in decoded_text.lower() or 'at System.' in decoded_text:
                         # É uma mensagem de erro, não conteúdo válido
                         if 'denied' in decoded_text.lower():
+                            await update_access_denied_status(db, server.guid, share_name, file_path, "Acesso negado ao arquivo")
                             raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
                         else:
                             error_line = decoded_text.split('\n')[0] if '\n' in decoded_text else decoded_text[:200]
@@ -1990,6 +1993,7 @@ async def download_server_file_chunk(
             # Se falhar o decode base64, pode ser mensagem de erro em texto claro
             if 'denied' in content_base64.lower() or 'at System.' in content_base64:
                 if 'denied' in content_base64.lower():
+                    await update_access_denied_status(db, server.guid, share_name, file_path, "Acesso negado ao arquivo")
                     raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
                 else:
                     error_line = content_base64.split('\n')[0] if '\n' in content_base64 else content_base64[:200]
