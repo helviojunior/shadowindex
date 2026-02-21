@@ -24,14 +24,29 @@ const ResizableHandle = ({
 }) => (
   <ResizablePrimitive.PanelResizeHandle
     className={cn(
-      "relative flex w-px items-center justify-center bg-border transition-all duration-200 hover:bg-blue-500 hover:w-1 after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:hover:h-1 data-[panel-group-direction=vertical]:hover:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:-translate-y-1/2 data-[panel-group-direction=vertical]:after:translate-x-0 [&[data-panel-group-direction=vertical]>div]:rotate-90",
+      "group relative flex w-px items-center justify-center bg-border transition-all duration-200",
+      "hover:bg-blue-500 hover:w-1",
+      "data-[resize-handle-active]:bg-blue-500 data-[resize-handle-active]:w-1",
+      "after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2",
+      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1",
+      "data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full",
+      "data-[panel-group-direction=vertical]:hover:h-1 data-[panel-group-direction=vertical]:hover:w-full",
+      "data-[panel-group-direction=vertical]:data-[resize-handle-active]:h-1",
+      "data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1",
+      "data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:-translate-y-1/2",
+      "data-[panel-group-direction=vertical]:after:translate-x-0",
+      "[&[data-panel-group-direction=vertical]>div]:rotate-90",
       className
     )}
     {...props}>
     {withHandle && (
       <div
-        className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border transition-colors duration-200 group-hover:bg-blue-500 group-hover:border-blue-500">
-        <GripVertical className="h-2.5 w-2.5" />
+        className={cn(
+          "z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border transition-all duration-200",
+          "group-hover:bg-blue-500 group-hover:border-blue-600",
+          "group-data-[resize-handle-active]:bg-blue-500 group-data-[resize-handle-active]:border-blue-600"
+        )}>
+        <GripVertical className="h-2.5 w-2.5 transition-colors duration-200 group-hover:text-white group-data-[resize-handle-active]:text-white" />
       </div>
     )}
   </ResizablePrimitive.PanelResizeHandle>
