@@ -706,9 +706,9 @@ const ServerBrowser = () => {
       
     } catch (error) {
       console.error('Error loading shares:', error);
-      // Fallback para o endpoint antigo
+      // Fallback para API V2 com refresh
       try {
-        const fallbackResponse = await axios.get(`${API}/servers/${serverId}/shares?refresh=${ignoreCache}`);
+        const fallbackResponse = await axios.get(`${API_V2}/servers/${serverId}/shares?refresh=${ignoreCache}`);
         setShares(fallbackResponse.data);
       } catch (fallbackError) {
         toast.error('Erro ao carregar compartilhamentos');
@@ -725,7 +725,8 @@ const ServerBrowser = () => {
       const prevExpandedNodes = { ...expandedNodes };
       const prevNodeChildren = { ...nodeChildren };
       
-      const response = await axios.get(`${API}/servers/${serverId}/shares?refresh=true`);
+      // Usar API V2 com refresh=true
+      const response = await axios.get(`${API_V2}/servers/${serverId}/shares?refresh=true`);
       
       // Atualizar shares preservando o estado de expansão
       // Criar mapa de shares antigos para comparar
