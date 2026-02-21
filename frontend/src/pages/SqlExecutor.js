@@ -30,6 +30,7 @@ import {
   Database,
   Download,
   FileSpreadsheet,
+  FileJson,
   Plus,
   X,
   GripHorizontal,
