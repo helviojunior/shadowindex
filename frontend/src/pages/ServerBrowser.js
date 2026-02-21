@@ -40,8 +40,7 @@ import {
   Ban,
   Focus,
   X,
-  FileJson,
-  Binary
+  FileJson
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
