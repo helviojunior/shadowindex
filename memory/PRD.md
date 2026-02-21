@@ -27,6 +27,12 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 11 - UI Polish & Spacing Verification)
+- [x] **Verificação de espaçamento vertical consistente**
+  - Confirmado: Todas as 8 páginas principais usam `space-y-6` (24px) no container principal
+  - Páginas verificadas: Downloads, Servers, Settings, Credentials, ProxyServers, SoapApis, DatabaseConnections, SqlPresets
+  - Testing agent confirmou 100% de consistência
+
 ### 2026-02-22 (Session 10 - Sistema de Downloads Backend-Driven v2)
 - [x] **Resolve separado para IPv4**
   - `/api/soap/resolve` - Retorna lista completa de IPs (para Operações SOAP)
