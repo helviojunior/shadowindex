@@ -1615,6 +1615,15 @@ const ServerBrowser = () => {
                     />
                   )}
                   
+                  {/* MIME Type - apenas para arquivos sincronizados */}
+                  {isFile && downloaded && downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath]?.mimetype && (
+                    <InfoRow 
+                      label="MIME Type" 
+                      value={downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath].mimetype}
+                      valueClassName="font-mono text-xs"
+                    />
+                  )}
+                  
                   {/* SHA1 Hash - apenas para arquivos sincronizados */}
                   {isFile && downloaded && downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath]?.sha1_hash && (
                     <InfoRow 
