@@ -700,20 +700,21 @@ const ServerBrowser = () => {
       
       // Verificar se houve erro de acesso negado
       if (response.data.accessDenied) {
-        // Marcar o nó como tendo acesso negado (apenas o nó atual, não os pais)
+        // Não criar nó filho - apenas mostrar toast e marcar como vazio
+        // O status de acesso negado já foi salvo no backend
         setNodeChildren(prev => ({ 
           ...prev, 
-          [nodeId]: [{
-            id: `${nodeId}-error`,
-            type: 'AccessDenied',
-            name: 'Acesso Negado',
-            errorMessage: response.data.errorMessage,
-            accessDenied: true
-          }]
+          [nodeId]: []  // Sem filhos - diretório marcado como acesso negado
         }));
         
-        // NÃO atualizar o share pai - apenas mostrar o erro no nó atual
-        // O backend só marca o share como acesso negado se for no nível raiz
+        // Atualizar o share na lista local se for um share
+        if (nodeId.startsWith('share-')) {
+          setShares(prev => prev.map(s => 
+            s.share_name === shareName 
+              ? { ...s, access_denied: true, error_message: response.data.errorMessage, children_fetched: true, has_children: false }
+              : s
+          ));
+        }
         
         toast.error(`Acesso negado: ${path.split('\\').pop() || shareName}`);
         return;
