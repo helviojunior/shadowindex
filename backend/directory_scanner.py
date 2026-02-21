@@ -301,7 +301,7 @@ async def stop_directory_scanner():
     await scanner.stop()
 
 
-async def queue_directory_scan(server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int]):
+async def queue_directory_scan(server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True):
     """Adiciona um diretório para ser escaneado"""
     scanner = get_scanner()
-    await scanner.add_scan_job(server_id, share_name, path, max_depth, max_file_size_bytes)
+    await scanner.add_scan_job(server_id, share_name, path, max_depth, max_file_size_bytes, apply_filters)
