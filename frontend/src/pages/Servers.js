@@ -297,19 +297,57 @@ const Servers = () => {
       {/* Servers Table Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Servidores Cadastrados</CardTitle>
-          <CardDescription>{servers.length} servidores no sistema</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Servidores Cadastrados</CardTitle>
+              <CardDescription>
+                {filteredAndSortedServers.length === servers.length 
+                  ? `${servers.length} servidores no sistema`
+                  : `${filteredAndSortedServers.length} de ${servers.length} servidores`
+                }
+              </CardDescription>
+            </div>
+            {/* Campo de busca */}
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome ou IP..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+                data-testid="server-search-input"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {servers.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">Nenhum servidor cadastrado</p>
+          ) : filteredAndSortedServers.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">Nenhum servidor encontrado para "{searchTerm}"</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[500px] border rounded-lg">
               <table className="w-full">
-                <thead>
+                <thead className="bg-muted/50 sticky top-0">
                   <tr className="border-b border-border">
-                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">Nome</th>
-                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">IP</th>
+                    <th 
+                      className="text-left p-3 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center">
+                        Nome
+                        {getSortIcon('name')}
+                      </div>
+                    </th>
+                    <th 
+                      className="text-left p-3 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => handleSort('ip')}
+                    >
+                      <div className="flex items-center">
+                        IP
+                        {getSortIcon('ip')}
+                      </div>
+                    </th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">Verificado</th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">
                       <HardDrive className="w-4 h-4 inline mr-1" />
@@ -324,7 +362,7 @@ const Servers = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {servers.map((server) => (
+                  {filteredAndSortedServers.map((server) => (
                     <tr
                       key={server.id}
                       data-testid={`server-item-${server.id}`}
