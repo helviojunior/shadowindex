@@ -2267,7 +2267,7 @@ const ServerBrowser = () => {
                           </div>
                         </td>
                         <td className="px-4 py-2 border-b border-border text-center">
-                          {item.status === 'pending' && bulkDownloadActive && (
+                          {(item.status === 'pending' || item.status === 'downloading') && bulkDownloadActive && (
                             <Button 
                               size="sm" 
                               variant="ghost"
