@@ -1911,15 +1911,18 @@ const ServerBrowser = () => {
               
               {/* Botão de download */}
               {!bulkDownloadActive ? (
-                <Button 
-                  size="sm" 
-                  className="h-7"
-                  onClick={startBulkDownload}
-                  data-testid="bulk-download-button"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    className="h-7"
+                    onClick={startBulkDownloadQueue}
+                    data-testid="bulk-download-queue-button"
+                    title="Enviar para fila de downloads (recomendado)"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Enviar para Fila
+                  </Button>
+                </div>
               ) : (
                 <Button 
                   size="sm" 
