@@ -2008,6 +2008,7 @@ async def get_certificate_info(
                 private_key, certificate, additional_certs, used_password = try_open_pfx(existing_pwd.password, "saved-password")
             
             # 2. Se não funcionou e uma senha foi fornecida, tentar essa
+            print(f"DEBUG user-password check: certificate={certificate is not None}, password={repr(password)}, len_check={len(str(password)) if password else 0}")
             if not certificate and password and len(str(password)) > 0:
                 private_key, certificate, additional_certs, used_password = try_open_pfx(password, "user-provided")
                 
