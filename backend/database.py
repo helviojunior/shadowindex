@@ -256,157 +256,22 @@ DEFAULT_SETTINGS = {
 
 
 async def init_db():
-    """Initialize database and apply schema migrations"""
-    import sqlite3
+    """Initialize database using Alembic migrations and create default records"""
+    from alembic.config import Config
+    from alembic import command
+    import os
     
-    # Primeiro, criar todas as tabelas que não existem
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    # Aplicar migrações manuais para colunas que podem não existir
-    db_path = DATABASE_PATH
+    # Executar migrações Alembic
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        # Verificar e adicionar colunas na tabela server_shares
-        cursor.execute("PRAGMA table_info(server_shares)")
-        columns = {col[1] for col in cursor.fetchall()}
-        
-        if 'access_denied' not in columns:
-            cursor.execute('ALTER TABLE server_shares ADD COLUMN access_denied BOOLEAN DEFAULT 0')
-            logger.info("Added column 'access_denied' to server_shares")
-        
-        if 'error_message' not in columns:
-            cursor.execute('ALTER TABLE server_shares ADD COLUMN error_message VARCHAR')
-            logger.info("Added column 'error_message' to server_shares")
-        
-        if 'has_children' not in columns:
-            cursor.execute('ALTER TABLE server_shares ADD COLUMN has_children BOOLEAN DEFAULT 0')
-            logger.info("Added column 'has_children' to server_shares")
-        
-        if 'children_fetched' not in columns:
-            cursor.execute('ALTER TABLE server_shares ADD COLUMN children_fetched BOOLEAN DEFAULT 0')
-            logger.info("Added column 'children_fetched' to server_shares")
-        
-        if 'server_id' not in columns:
-            cursor.execute('ALTER TABLE server_shares ADD COLUMN server_id INTEGER')
-            logger.info("Added column 'server_id' to server_shares")
-        
-        conn.commit()
-        conn.close()
-        logger.info("Database migrations completed")
+        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "alembic"))
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations applied successfully")
     except Exception as e:
-        logger.warning(f"Migration check failed: {e}")
-    
-    # Migração para database_connections
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("PRAGMA table_info(database_connections)")
-        columns = {col[1] for col in cursor.fetchall()}
-        
-        if 'verified' not in columns:
-            cursor.execute('ALTER TABLE database_connections ADD COLUMN verified BOOLEAN DEFAULT 0')
-            logger.info("Added column 'verified' to database_connections")
-        
-        if 'last_verified_at' not in columns:
-            cursor.execute('ALTER TABLE database_connections ADD COLUMN last_verified_at DATETIME')
-            logger.info("Added column 'last_verified_at' to database_connections")
-        
-        if 'db_type_id' not in columns:
-            cursor.execute('ALTER TABLE database_connections ADD COLUMN db_type_id INTEGER')
-            logger.info("Added column 'db_type_id' to database_connections")
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning(f"Migration check for database_connections failed: {e}")
-    
-    # Migration for sql_presets table
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("PRAGMA table_info(sql_presets)")
-        columns = {col[1] for col in cursor.fetchall()}
-        
-        if 'db_type_id' not in columns:
-            cursor.execute('ALTER TABLE sql_presets ADD COLUMN db_type_id INTEGER')
-            logger.info("Added column 'db_type_id' to sql_presets")
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning(f"Migration check for sql_presets failed: {e}")
-    
-    # Migration for downloaded_files table
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("PRAGMA table_info(downloaded_files)")
-        columns = {col[1] for col in cursor.fetchall()}
-        
-        if 'sha1_hash' not in columns:
-            cursor.execute('ALTER TABLE downloaded_files ADD COLUMN sha1_hash VARCHAR(40)')
-            logger.info("Added column 'sha1_hash' to downloaded_files")
-        
-        if 'mimetype' not in columns:
-            cursor.execute('ALTER TABLE downloaded_files ADD COLUMN mimetype VARCHAR')
-            logger.info("Added column 'mimetype' to downloaded_files")
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning(f"Migration check for downloaded_files failed: {e}")
-    
-    # Migration for file_versions table
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("PRAGMA table_info(file_versions)")
-        columns = {col[1] for col in cursor.fetchall()}
-        
-        if 'mimetype' not in columns:
-            cursor.execute('ALTER TABLE file_versions ADD COLUMN mimetype VARCHAR')
-            logger.info("Added column 'mimetype' to file_versions")
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning(f"Migration check for file_versions failed: {e}")
-    
-    # Migration for download_jobs table
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("PRAGMA table_info(download_jobs)")
-        columns = {col[1] for col in cursor.fetchall()}
-        
-        if 'max_file_size_bytes' not in columns:
-            cursor.execute('ALTER TABLE download_jobs ADD COLUMN max_file_size_bytes INTEGER')
-            logger.info("Added column 'max_file_size_bytes' to download_jobs")
-        
-        if 'max_depth' not in columns:
-            cursor.execute('ALTER TABLE download_jobs ADD COLUMN max_depth INTEGER')
-            logger.info("Added column 'max_depth' to download_jobs")
-        
-        if 'is_directory' not in columns:
-            cursor.execute('ALTER TABLE download_jobs ADD COLUMN is_directory BOOLEAN DEFAULT 0')
-            logger.info("Added column 'is_directory' to download_jobs")
-        
-        if 'parent_job_id' not in columns:
-            cursor.execute('ALTER TABLE download_jobs ADD COLUMN parent_job_id INTEGER')
-            logger.info("Added column 'parent_job_id' to download_jobs")
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning(f"Migration check for download_jobs failed: {e}")
+        logger.warning(f"Alembic migration failed, falling back to create_all: {e}")
+        # Fallback: criar tabelas se Alembic falhar
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     
     # Create default records
     async with AsyncSessionLocal() as session:
