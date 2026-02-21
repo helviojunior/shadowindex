@@ -186,6 +186,15 @@ Portuguese (pt-BR)
 
 *No pending issues at this time.*
 
+### 2026-02-22 (Session 10 - Sidebar Bug Fixes)
+- [x] **P0 Bug Fix: Destaque de menu ativo incorreto** - Corrigida função `findActiveMenu` em `Layout.js`
+  - Problema: Navegar para `/sql/presets` destacava "Conexões" ao invés de "Presets"
+  - Causa: A função iterava na ordem do array e fazia match com `/sql` antes de `/sql/presets` devido ao `startsWith`
+  - Solução: Ordenar submenus por tamanho de path (descendente) antes de verificar, garantindo que paths mais específicos sejam verificados primeiro
+- [x] **P1 Bug Fix: Menu flyout verificado** - Confirmado funcionamento correto do flyout quando sidebar colapsado
+  - O flyout aparece corretamente ao hover sobre ícones do menu
+  - Submenu ativo é destacado corretamente no flyout
+
 ---
 
 ## Backlog / Future Tasks
