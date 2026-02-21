@@ -1138,7 +1138,8 @@ async def check_queue(
     db: AsyncSession = Depends(get_db)
 ):
     """Verifica se arquivo está na fila de downloads"""
-    server = await get_server_or_404(db, server_id)
+    # Validar servidor existe
+    await get_server_or_404(db, server_id)
     
     result = await db.execute(
         select(DownloadJob).where(
