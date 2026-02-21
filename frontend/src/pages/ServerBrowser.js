@@ -152,16 +152,24 @@ const ServerBrowser = () => {
 
   // Carregar conteúdo automaticamente quando aba View for selecionada
   useEffect(() => {
-    if (activeTab === 'view' && selectedItem?.itemType === 'File' && !fileContent && !filePreviewUrl && !loadingContent) {
-      const filePath = selectedItem.fullPath || selectedItem.serverPath;
-      const isDownloaded = downloadedFiles.includes(filePath);
-      const canView = canPreviewFile(selectedItem.name);
-      
-      if (isDownloaded && canView) {
-        loadFileContent();
-      }
+    // Só executar se estiver na aba view e for um arquivo
+    if (activeTab !== 'view' || selectedItem?.itemType !== 'File') {
+      return;
     }
-  }, [activeTab, selectedItem?.id]);
+    
+    // Se já tem conteúdo ou está carregando, não fazer nada
+    if (fileContent || filePreviewUrl || loadingContent) {
+      return;
+    }
+    
+    const filePath = selectedItem.fullPath || selectedItem.serverPath;
+    const isDownloaded = downloadedFiles.includes(filePath);
+    const canView = canPreviewFile(selectedItem.name);
+    
+    if (isDownloaded && canView) {
+      loadFileContent();
+    }
+  }, [activeTab, selectedItem?.id, fileContent, filePreviewUrl, loadingContent, downloadedFiles]);
 
   const loadServer = async () => {
     try {
