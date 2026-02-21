@@ -2473,6 +2473,223 @@ async def import_servers_from_nmap_xml_file(
             "skipped": 0,
             "hosts_found": 0
         }
+
+
+# ==========================================
+# GitLeaks Endpoints
+# ==========================================
+
+class GitleaksScanRequest(BaseModel):
+    target_path: str
+    server_id: Optional[int] = None
+
+@router.get("/gitleaks/status")
+async def get_gitleaks_status():
+    """Verifica se o GitLeaks está disponível"""
+    import shutil
+    
+    gitleaks_path = shutil.which("gitleaks") or "/usr/sbin/gitleaks"
+    is_available = os.path.exists(gitleaks_path) and os.access(gitleaks_path, os.X_OK)
+    
+    version = None
+    if is_available:
+        try:
+            import subprocess
+            result = subprocess.run([gitleaks_path, "version"], capture_output=True, text=True)
+            version = result.stdout.strip()
+        except Exception:
+            pass
+    
+    return {
+        "available": is_available,
+        "path": gitleaks_path if is_available else None,
+        "version": version
+    }
+
+@router.post("/gitleaks/scan")
+async def start_gitleaks_scan(request: GitleaksScanRequest):
+    """Inicia um scan do GitLeaks em background"""
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    
+    try:
+        job = await service.start_scan(request.target_path, request.server_id)
+        return {
+            "success": True,
+            "job_id": job.job_id,
+            "status": job.status,
+            "message": "Scan iniciado em background"
+        }
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Erro ao iniciar scan GitLeaks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/gitleaks/jobs")
+async def list_gitleaks_jobs(active_only: bool = False):
+    """Lista todos os jobs do GitLeaks"""
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    
+    if active_only:
+        jobs = service.get_active_jobs()
+    else:
+        jobs = service.get_all_jobs()
+    
+    return {
+        "jobs": jobs,
+        "total": len(jobs)
+    }
+
+@router.get("/gitleaks/jobs/{job_id}")
+async def get_gitleaks_job(job_id: str):
+    """Obtém detalhes de um job específico"""
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    job = service.get_job(job_id)
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    
+    return job.to_dict()
+
+@router.post("/gitleaks/jobs/{job_id}/cancel")
+async def cancel_gitleaks_job(job_id: str):
+    """Cancela um job em execução"""
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    success = await service.cancel_job(job_id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    
+    return {
+        "success": True,
+        "message": "Job cancelado"
+    }
+
+@router.get("/gitleaks/findings")
+async def get_gitleaks_findings(
+    server_id: Optional[int] = None,
+    job_id: Optional[str] = None
+):
+    """Retorna findings do GitLeaks"""
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    
+    if job_id:
+        findings = service.get_findings_by_job(job_id)
+    elif server_id:
+        findings = service.get_findings_by_server(server_id)
+    else:
+        findings = service.get_all_findings()
+    
+    # Agrupar por arquivo para melhor visualização
+    files_map = {}
+    for finding in findings:
+        file_path = finding.get('File', 'unknown')
+        if file_path not in files_map:
+            files_map[file_path] = {
+                "file": file_path,
+                "findings": [],
+                "count": 0
+            }
+        files_map[file_path]["findings"].append(finding)
+        files_map[file_path]["count"] += 1
+    
+    return {
+        "total_findings": len(findings),
+        "total_files": len(files_map),
+        "files": list(files_map.values()),
+        "findings": findings
+    }
+
+@router.delete("/gitleaks/findings")
+async def clear_gitleaks_findings():
+    """Limpa todos os findings do cache"""
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    count = service.clear_findings()
+    
+    return {
+        "success": True,
+        "cleared": count,
+        "message": f"{count} findings removidos"
+    }
+
+@router.post("/gitleaks/findings/reload")
+async def reload_gitleaks_findings():
+    """Recarrega findings dos arquivos de relatório em disco"""
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    count = service.load_findings_from_disk()
+    
+    return {
+        "success": True,
+        "loaded": count,
+        "message": f"{count} findings carregados de disco"
+    }
+
+@router.delete("/gitleaks/jobs/clear-finished")
+async def clear_finished_gitleaks_jobs():
+    """Remove jobs finalizados (completed, failed, cancelled)"""
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    count = service.clear_old_jobs()
+    
+    return {
+        "success": True,
+        "cleared": count,
+        "message": f"{count} jobs removidos"
+    }
+
+
+@router.post("/gitleaks/scan-server/{server_id}")
+async def scan_server_storage(
+    server_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Inicia um scan do GitLeaks no storage de um servidor específico.
+    Escaneia todos os arquivos baixados desse servidor.
+    """
+    from gitleaks_service import get_gitleaks_service
+    from storage_utils import get_server_storage_path
+    
+    server = await get_server_or_404(db, server_id)
+    
+    # Obter caminho do storage do servidor
+    storage_path = get_server_storage_path(server.guid)
+    
+    if not os.path.exists(storage_path):
+        raise HTTPException(status_code=404, detail="Nenhum arquivo baixado para este servidor")
+    
+    service = get_gitleaks_service()
+    
+    try:
+        job = await service.start_scan(storage_path, server_id)
+        return {
+            "success": True,
+            "job_id": job.job_id,
+            "server_id": server_id,
+            "server_name": server.name,
+            "target_path": storage_path,
+            "status": job.status,
+            "message": f"Scan iniciado para servidor {server.name}"
+        }
+    except Exception as e:
+        logger.error(f"Erro ao iniciar scan para servidor {server_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
     
     # Importar hosts
     results = {
