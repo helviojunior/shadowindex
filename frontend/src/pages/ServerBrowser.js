@@ -193,6 +193,21 @@ const ServerBrowser = () => {
     }
   }, [selectedItem?.id, bulkDownloadActive]);
 
+  // Atualizar aba quando downloadedFiles mudar (arquivo foi sincronizado)
+  useEffect(() => {
+    if (!selectedItem || selectedItem.itemType !== 'File') return;
+    
+    const filePath = selectedItem.fullPath || selectedItem.serverPath;
+    const isDownloaded = downloadedFiles.includes(filePath);
+    const canView = canPreviewFile(selectedItem.name);
+    
+    // Se arquivo foi sincronizado e pode ser visualizado, atualizar aba
+    if (isDownloaded && canView && activeTab === 'info') {
+      setActiveTab('view');
+      loadFileVersions(filePath);
+    }
+  }, [downloadedFiles, selectedItem?.id]);
+
   // Carregar conteúdo automaticamente quando aba View for selecionada
   useEffect(() => {
     // Só executar se estiver na aba view e for um arquivo
