@@ -285,7 +285,7 @@ const SqlPresets = () => {
           {filteredPresets.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">Nenhum preset encontrado</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredPresets.map((preset) => (
                 <div
                   key={preset.id}
