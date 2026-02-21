@@ -273,60 +273,36 @@ class DirectoryScanner:
         
         result = result.strip()
         
-        # Se for XML (SOAP response)
-        if result.startswith('<'):
-            try:
-                import xml.etree.ElementTree as ET
-                
-                # Remover namespaces para facilitar o parsing
-                # O XML tem namespaces como soap:, diffgr:, etc
-                import re
-                # Remove namespace prefixes
-                clean_xml = re.sub(r'<(/?)(\w+):', r'<\1', result)
-                # Remove xmlns declarations
-                clean_xml = re.sub(r'\s+xmlns[^=]*="[^"]*"', '', clean_xml)
-                
-                root = ET.fromstring(clean_xml)
-                
-                # Procurar por elementos Result (formato Exec4)
-                for result_elem in root.findall('.//Result'):
-                    item_type = result_elem.findtext('type') or 'File'
-                    item_name = result_elem.findtext('name') or ''
-                    item_size = result_elem.findtext('length') or '0'
-                    item_fullname = result_elem.findtext('fullname') or ''
-                    
-                    if item_name and item_name not in ['.', '..']:
-                        items.append({
-                            'name': item_name,
-                            'type': item_type,
-                            'size': item_size,
-                            'fullname': item_fullname
-                        })
-                
-                print(f"=== SCANNER PARSE: Found {len(items)} Result elements ===", flush=True)
-                
-            except Exception as e:
-                print(f"=== SCANNER PARSE ERROR (XML): {e} ===", flush=True)
-                logger.warning(f"Error parsing XML directory listing: {e}")
+        # Usar regex para extrair os elementos Result diretamente
+        # Isso é mais robusto do que tentar fazer parse XML com namespaces complexos
+        import re
         
-        # Se for CSV ou texto separado por linha (fallback)
-        else:
-            lines = result.split('\n')
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                
-                parts = line.split('|') if '|' in line else line.split(',')
-                if len(parts) >= 2:
-                    item_dict = {
-                        'name': parts[0].strip(),
-                        'type': parts[1].strip() if len(parts) > 1 else 'File',
-                        'size': parts[2].strip() if len(parts) > 2 else '0'
-                    }
-                    if item_dict['name'] and item_dict['name'] not in ['.', '..']:
-                        items.append(item_dict)
+        # Pattern para encontrar cada bloco <Result>...</Result>
+        result_pattern = re.compile(r'<Result[^>]*>(.*?)</Result>', re.DOTALL | re.IGNORECASE)
         
+        for match in result_pattern.finditer(result):
+            result_content = match.group(1)
+            
+            # Extrair campos individuais
+            type_match = re.search(r'<type>([^<]*)</type>', result_content, re.IGNORECASE)
+            name_match = re.search(r'<name>([^<]*)</name>', result_content, re.IGNORECASE)
+            length_match = re.search(r'<length>([^<]*)</length>', result_content, re.IGNORECASE)
+            fullname_match = re.search(r'<fullname>([^<]*)</fullname>', result_content, re.IGNORECASE)
+            
+            item_type = type_match.group(1) if type_match else 'File'
+            item_name = name_match.group(1) if name_match else ''
+            item_size = length_match.group(1) if length_match else '0'
+            item_fullname = fullname_match.group(1) if fullname_match else ''
+            
+            if item_name and item_name not in ['.', '..']:
+                items.append({
+                    'name': item_name,
+                    'type': item_type,
+                    'size': item_size,
+                    'fullname': item_fullname
+                })
+        
+        print(f"=== SCANNER PARSE: Found {len(items)} Result elements ===", flush=True)
         return items
 
 
