@@ -117,7 +117,7 @@ const ServerBrowser = () => {
     const isShare = selectedItem?.itemType === 'share';
     const isDirectory = selectedItem?.itemType === 'Directory';
     const isFile = selectedItem?.itemType === 'File';
-    const isAccessDenied = selectedItem?.type === 'AccessDenied' || selectedItem?.accessDenied;
+    const isAccessDenied = selectedItem?.accessDenied || selectedItem?.access_denied;
     
     // Limpar dados de download ao mudar de diretório/share (apenas se não estiver baixando)
     if (isShare || isDirectory) {
