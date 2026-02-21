@@ -1911,11 +1911,6 @@ const ServerBrowser = () => {
                         Copiar
                       </Button>
                     </div>
-                        <Badge variant="secondary" className="text-xs bg-yellow-500/20 text-yellow-500">
-                          BOM Detectado
-                        </Badge>
-                      )}
-                    </div>
                 
                     {/* Content */}
                     {beautified ? (
