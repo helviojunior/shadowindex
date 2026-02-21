@@ -1849,13 +1849,14 @@ const ServerBrowser = () => {
     setLoading(true);
     
     try {
-      // Usar o endpoint de scan que processa 100% no backend
-      const response = await axios.post(`${API}/downloads/scan`, {
-        server_id: parseInt(serverId),
-        share_name: shareName,
-        path: path,
-        max_depth: maxDepth,
-        max_file_size_bytes: maxSizeBytes > 0 ? maxSizeBytes : null
+      // Usar o endpoint de scan V2
+      const response = await axios.post(`${API_V2}/downloads/scan`, null, {
+        params: {
+          server_id: parseInt(serverId),
+          share_name: shareName,
+          path: path,
+          max_depth: maxDepth
+        }
       });
       
       toast.success(response.data.message);
