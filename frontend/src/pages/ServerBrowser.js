@@ -1747,27 +1747,23 @@ const ServerBrowser = () => {
                     ) : (
                       <>
                         {/* Header */}
-                        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="text-green-500 border-green-500">
-                              {fileContent.type?.toUpperCase()}
+                        <div className="flex items-center flex-wrap gap-3 mb-4">
+                          <Badge variant="outline" className="text-green-500 border-green-500">
+                            {fileContent.type?.toUpperCase()}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {fileContent.total_certificates} certificado(s)
+                          </span>
+                          {fileContent.private_key?.has_private_key && (
+                            <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500">
+                              🔑 Contém Chave Privada
                             </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {fileContent.total_certificates} certificado(s)
-                            </span>
-                            {fileContent.password_used && (
-                              <Badge variant="secondary" className="text-xs">
-                                Senha: {fileContent.password_used}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {fileContent.private_key?.has_private_key && (
-                              <Badge variant="destructive">
-                                Contém Chave Privada
-                              </Badge>
-                            )}
-                          </div>
+                          )}
+                          {fileContent.password_used && (
+                            <Badge variant="secondary" className="text-xs">
+                              Senha: {fileContent.password_used}
+                            </Badge>
+                          )}
                         </div>
                         
                         {/* Certificates */}
