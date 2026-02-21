@@ -289,7 +289,7 @@ const Servers = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Servidor</Label>
                   <Input
@@ -325,7 +325,53 @@ const Servers = () => {
                     </Button>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plugin_type">Plugin</Label>
+                  <Select 
+                    value={formData.plugin_type} 
+                    onValueChange={(value) => setFormData({ ...formData, plugin_type: value, plugin_config: {} })}
+                  >
+                    <SelectTrigger data-testid="server-plugin-select">
+                      <SelectValue placeholder="Selecione o plugin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(availablePlugins).map(([type, info]) => (
+                        <SelectItem key={type} value={type}>
+                          <div className="flex items-center gap-2">
+                            <Plug className="w-4 h-4" />
+                            {info.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              
+              {/* Plugin-specific configuration */}
+              {formData.plugin_type === 'soap_api' && (
+                <div className="pt-2 border-t border-border">
+                  <div className="space-y-2">
+                    <Label htmlFor="soap_url">URL da API SOAP (opcional - usa padrão se vazio)</Label>
+                    <Input
+                      id="soap_url"
+                      data-testid="server-soap-url-input"
+                      placeholder={soapApiUrl || "http://servidor/soap/api"}
+                      value={formData.plugin_config.soap_url || ''}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        plugin_config: { ...formData.plugin_config, soap_url: e.target.value }
+                      })}
+                    />
+                    {soapApiUrl && (
+                      <p className="text-xs text-muted-foreground">
+                        URL padrão configurada: {soapApiUrl}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <Button type="submit" disabled={loading} data-testid="add-server-btn">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Servidor
