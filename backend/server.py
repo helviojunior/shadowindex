@@ -2291,12 +2291,19 @@ async def get_certificate_info(
             
             cert_infos.append(cert_info)
         
+        # Ordenar certificados: primeiro os que têm chave privada
+        cert_infos_sorted = sorted(cert_infos, key=lambda x: (not x.get('has_private_key', False), x.get('index', 0)))
+        
+        # Reindexar após ordenação
+        for i, cert in enumerate(cert_infos_sorted):
+            cert['index'] = i + 1
+        
         result = {
             "type": ext,
             "file_path": file_path,
-            "total_certificates": len(cert_infos),
+            "total_certificates": len(cert_infos_sorted),
             "private_key": private_key_info,
-            "certificates": cert_infos
+            "certificates": cert_infos_sorted
         }
         
         # Incluir senha usada se for PFX
