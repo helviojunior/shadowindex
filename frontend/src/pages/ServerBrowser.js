@@ -1037,7 +1037,7 @@ const ServerBrowser = () => {
   };
 
   // Renderiza um nó da árvore com linhas de hierarquia
-  const renderTreeNode = (item, depth = 0, shareName = '', isLastChild = true, parentLines = []) => {
+  const renderTreeNode = (item, depth = 0, shareName = '', isLastChild = true, parentLines = [], focusedNodeId = null) => {
     const isShare = !!item.share_name;
     const rawNodeId = item.id || `share-${item.share_name}`;
     const nodeId = String(rawNodeId);
@@ -1052,6 +1052,9 @@ const ServerBrowser = () => {
     const isDownloaded = isFile && isFileDownloaded(item.fullPath);
     const isSelected = selectedItem?.id === nodeId || 
                        (isShare && selectedItem?.share_name === item.share_name && selectedItem?.itemType === 'share');
+    
+    // Se há um foco e este nó é o focado, mostrar apenas ele
+    const isFocusedNode = focusedNodeId && nodeId === focusedNodeId;
     
     const path = isShare 
       ? buildPath(server.ip, item.share_name)
