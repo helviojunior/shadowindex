@@ -553,6 +553,35 @@ const SqlExecutor = () => {
     toast.success('Exportado para Excel');
   };
 
+  // Exportar para JSON
+  const exportToJSON = () => {
+    const currentTab = getCurrentTab();
+    if (!currentTab.result?.success || !currentTab.result?.columns) {
+      toast.error('Nenhum resultado para exportar');
+      return;
+    }
+
+    const { columns, rows } = currentTab.result;
+    
+    // Converter rows para objetos com nomes de colunas
+    const data = rows.map(row => {
+      const obj = {};
+      columns.forEach((col, idx) => {
+        obj[col] = row[idx];
+      });
+      return obj;
+    });
+    
+    const jsonContent = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = getExportFileName('json');
+    link.click();
+    
+    toast.success('Exportado para JSON');
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '---';
     try {
