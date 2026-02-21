@@ -1876,15 +1876,20 @@ async def download_server_file_chunk(
             if exec5_result is not None and exec5_result.text:
                 result_text = exec5_result.text.strip()
                 
-                # Verificar se é mensagem de erro
-                if 'is denied' in result_text.lower() or 'access' in result_text.lower() and 'denied' in result_text.lower():
-                    raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
-                elif 'could not find' in result_text.lower() or 'not found' in result_text.lower():
-                    raise HTTPException(status_code=404, detail="Arquivo não encontrado")
-                elif 'error' in result_text.lower() and 'at System.' in result_text:
-                    # Erro genérico do .NET
-                    error_line = result_text.split('\n')[0] if '\n' in result_text else result_text[:200]
-                    raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
+                # Função para verificar se é mensagem de erro
+                def check_error_message(text):
+                    text_lower = text.lower()
+                    if 'is denied' in text_lower or ('access' in text_lower and 'denied' in text_lower):
+                        raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+                    elif 'could not find' in text_lower or ('not found' in text_lower and 'file' in text_lower):
+                        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+                    elif 'at System.' in text:
+                        # Erro genérico do .NET - stack trace
+                        error_line = text.split('\n')[0] if '\n' in text else text[:200]
+                        raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
+                
+                # Verificar erro ANTES de decodificar (erro vem em texto claro)
+                check_error_message(result_text)
                 
                 content_base64 = result_text
             else:
@@ -1895,9 +1900,36 @@ async def download_server_file_chunk(
         except ET.ParseError:
             content_base64 = result_str.strip()
         
-        # Calcular tamanho do chunk recebido
+        # Tentar decodificar base64
         import base64
-        chunk_data = base64.b64decode(content_base64) if content_base64 else b""
+        try:
+            chunk_data = base64.b64decode(content_base64) if content_base64 else b""
+            
+            # Verificar erro DEPOIS de decodificar (caso o conteúdo decodificado seja texto de erro)
+            if chunk_data:
+                try:
+                    decoded_text = chunk_data.decode('utf-8', errors='ignore')
+                    if 'is denied' in decoded_text.lower() or 'at System.' in decoded_text:
+                        # É uma mensagem de erro, não conteúdo válido
+                        if 'denied' in decoded_text.lower():
+                            raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+                        else:
+                            error_line = decoded_text.split('\n')[0] if '\n' in decoded_text else decoded_text[:200]
+                            raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
+                except UnicodeDecodeError:
+                    pass  # Conteúdo binário válido
+        except HTTPException:
+            raise
+        except Exception:
+            # Se falhar o decode base64, pode ser mensagem de erro em texto claro
+            if 'denied' in content_base64.lower() or 'at System.' in content_base64:
+                if 'denied' in content_base64.lower():
+                    raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+                else:
+                    error_line = content_base64.split('\n')[0] if '\n' in content_base64 else content_base64[:200]
+                    raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
+            chunk_data = b""
+        
         actual_chunk_size = len(chunk_data)
         
         # É último chunk se: recebeu menos bytes que o solicitado OU recebeu 0 bytes
