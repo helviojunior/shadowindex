@@ -872,6 +872,15 @@ const ServerBrowser = () => {
       }
     };
     
+    // Gerar nome do arquivo: search-results-SERVERNAME-YYYYMMDD-EPOCH.json
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const epoch = now.getTime();
+    const serverName = (server?.name || `server${serverId}`).replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `search-results-${serverName}-${year}${month}${day}-${epoch}.json`;
+    
     // Criar e baixar o arquivo JSON
     const jsonString = JSON.stringify(exportData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -879,7 +888,7 @@ const ServerBrowser = () => {
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = `search-results-${server?.name || serverId}-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
