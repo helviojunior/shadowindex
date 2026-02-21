@@ -795,11 +795,19 @@ const ServerBrowser = () => {
           if (!prev) return prev;
           
           // Verificar se é o item selecionado (share ou diretório)
-          const isSelectedShare = prev.itemType === 'share' && prev.share_name === shareName && nodeId.startsWith('share-');
+          const shareNameFromNodeId = nodeId.startsWith('share-') ? nodeId.substring(6) : '';
+          const isSelectedShare = prev.itemType === 'share' && prev.share_name === shareNameFromNodeId;
           const isSelectedDir = prev.fullPath === path || prev.id === nodeId;
           
           if (isSelectedShare || isSelectedDir) {
-            return { ...prev, ...updatedItemData };
+            return { 
+              ...prev, 
+              access_denied: true,
+              accessDenied: true,
+              error_message: errorMsg,
+              children_fetched: true,
+              has_children: false
+            };
           }
           return prev;
         });
