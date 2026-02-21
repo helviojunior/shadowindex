@@ -142,13 +142,13 @@ class TestCredentialTypes:
     # ============== ssh_key type tests ==============
     def test_create_ssh_key_credential_full(self):
         """Create ssh_key credential with all fields"""
-        response = requests.post(f"{BASE_URL}/api/credentials", json={
+        response = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials", json={
             "name": "TEST_ssh_key_full",
             "credential_type": "ssh_key",
             "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\ntest_key_content\n-----END OPENSSH PRIVATE KEY-----",
             "ssh_passphrase": "mypassphrase",
             "ssh_public_key": "ssh-rsa AAAAB3NzaC1yc2E..."
-        })
+        }))
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["credential_type"] == "ssh_key"
@@ -160,10 +160,10 @@ class TestCredentialTypes:
     
     def test_create_ssh_key_without_passphrase(self):
         """Create ssh_key credential without optional passphrase"""
-        response = requests.post(f"{BASE_URL}/api/credentials", json={
+        response = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials", json={
             "credential_type": "ssh_key",
             "ssh_private_key": "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----"
-        })
+        }))
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["ssh_passphrase"] is None
