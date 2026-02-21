@@ -1062,13 +1062,12 @@ const ServerBrowser = () => {
             const combinedBase64 = allChunks.join('');
             await axios.post(
               `${API}/servers/${serverId}/download`,
-              null,
+              { content_base64: combinedBase64 },
               {
                 params: {
                   file_path: file.fullPath,
                   share_name: shareName,
-                  expected_size: fileSize,
-                  content_base64: combinedBase64
+                  expected_size: fileSize
                 }
               }
             );
