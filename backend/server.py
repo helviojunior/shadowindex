@@ -1955,14 +1955,28 @@ async def get_certificate_info(
         if ext in ['pfx', 'p12']:
             
             # Função auxiliar para tentar abrir PFX com senha
-            def try_open_pfx(pwd_str):
+            def try_open_pfx(pwd_str, context=""):
+                pwd_display = "None" if pwd_str is None else ("empty" if pwd_str == "" else f"***({len(pwd_str)} chars)")
                 try:
                     pwd = pwd_str.encode() if pwd_str else None
                     pk, cert, additional = pkcs12.load_key_and_certificates(
                         cert_data, pwd, default_backend()
                     )
+                    if cert:
+                        subject_cn = None
+                        for attr in cert.subject:
+                            if attr.oid._name == 'commonName':
+                                subject_cn = attr.value
+                                break
+                        print(f"PFX SUCCESS [{context}]: password={pwd_display}, CN={subject_cn}")
                     return pk, cert, additional, pwd_str
-                except Exception:
+                except Exception as e:
+                    error_msg = str(e)
+                    # Simplificar mensagem de erro comum
+                    if "mac verify failure" in error_msg.lower() or "bad decrypt" in error_msg.lower():
+                        print(f"PFX FAILED [{context}]: password={pwd_display}, error=Senha incorreta")
+                    else:
+                        print(f"PFX FAILED [{context}]: password={pwd_display}, error={error_msg[:100]}")
                     return None, None, None, None
             
             # 1. Primeiro, verificar se já temos a senha salva para este arquivo
@@ -1978,19 +1992,17 @@ async def get_certificate_info(
             certificate = None
             additional_certs = None
             
-            print(f"PFX: file_path={file_path}, password provided={password is not None and len(str(password)) > 0}, existing_pwd={existing_pwd is not None}")
+            print(f"PFX OPEN: file={file_path}, user_password={'Yes' if password and len(str(password)) > 0 else 'No'}, saved_password={'Yes' if existing_pwd else 'No'}")
             
             # 0. Primeiro, tentar sem senha (alguns PFX não têm senha)
             if not certificate:
-                print(f"Trying without password for {file_path}")
-                private_key, certificate, additional_certs, used_password = try_open_pfx(None)
+                private_key, certificate, additional_certs, used_password = try_open_pfx(None, "no-password")
                 if certificate:
                     used_password = ""  # Sem senha
             
             # 1. Se não funcionou, tentar senha salva
             if not certificate and existing_pwd:
-                print(f"Trying saved password for {file_path}")
-                private_key, certificate, additional_certs, used_password = try_open_pfx(existing_pwd.password)
+                private_key, certificate, additional_certs, used_password = try_open_pfx(existing_pwd.password, "saved-password")
             
             # 2. Se não funcionou e uma senha foi fornecida, tentar essa
             if not certificate and password and len(str(password)) > 0:
