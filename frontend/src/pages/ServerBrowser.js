@@ -2174,15 +2174,9 @@ const ServerBrowser = () => {
                   </div>
                   
                   {bulkDownloadActive && (
-                    <Button 
-                      size="sm" 
-                      variant="destructive"
-                      className="h-7"
-                      onClick={cancelBulkDownload}
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Cancelar Tudo
-                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Download em andamento...
+                    </span>
                   )}
                 </div>
                 
