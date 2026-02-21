@@ -953,23 +953,15 @@ const ServerBrowser = () => {
     setActiveTab('download');
     
     toast.info('Iniciando download...');
-      if (bulkDownloadCancelled) {
-        cancelledRef.current = true;
-        clearInterval(checkCancelled);
-      }
-    }, 100);
-    
-    toast.info('Iniciando download...');
     
     // Processar diretório de forma incremental
-    await processDirectoryDownload(path, shareName, 1, bulkDownloadConfig.depth, maxSizeBytes, cancelledRef);
+    await processDirectoryDownload(path, shareName, 1, bulkDownloadConfig.depth, maxSizeBytes);
     
-    clearInterval(checkCancelled);
     setBulkDownloadActive(false);
     loadServer();
     loadDownloadedFiles();
     
-    if (cancelledRef.current) {
+    if (bulkDownloadCancelledRef.current) {
       toast.info('Download cancelado');
     } else {
       toast.success('Download em massa concluído');
@@ -978,7 +970,7 @@ const ServerBrowser = () => {
 
   // Cancelar download em massa
   const cancelBulkDownload = () => {
-    setBulkDownloadCancelled(true);
+    bulkDownloadCancelledRef.current = true;
     toast.info('Cancelando downloads...');
   };
 
