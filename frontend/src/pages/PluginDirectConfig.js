@@ -55,7 +55,9 @@ const PluginDirectConfig = () => {
     
     try {
       const config = {
-        credential_id: testConfig.credential_id ? parseInt(testConfig.credential_id) : null,
+        credential_id: testConfig.credential_id && testConfig.credential_id !== 'none' 
+          ? parseInt(testConfig.credential_id) 
+          : null,
         dns_mode: testConfig.dns_mode,
         dns_servers: testConfig.dns_mode === 'custom' && testConfig.dns_servers
           ? testConfig.dns_servers.split(',').map(s => s.trim()).filter(Boolean)
