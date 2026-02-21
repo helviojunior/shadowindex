@@ -387,9 +387,16 @@ const Downloads = () => {
           {showScanJobs && (
             <CardContent className="pt-0">
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {scanJobs.filter(s => !s.parent_id).map((scan) => {
+                {scanJobs
+                  .filter(s => s.status === 'pending' || s.status === 'scanning')
+                  .slice(0, 50)
+                  .map((scan) => {
                   const StatusIcon = scanStatusConfig[scan.status]?.icon || Clock;
                   const isActive = scan.status === 'pending' || scan.status === 'scanning';
+                  const pathParts = scan.path.split('\\');
+                  const displayPath = pathParts.length > 3 
+                    ? `...\\${pathParts.slice(-3).join('\\')}`
+                    : scan.path;
                   
                   return (
                     <div 
@@ -404,10 +411,10 @@ const Downloads = () => {
                         )} />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate" title={scan.path}>
-                            {scan.path.split('\\').pop() || scan.path}
+                            {displayPath}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Profundidade: {scan.depth}/{scan.max_depth}
+                            Nível: {scan.depth}/{scan.max_depth}
                             {scan.files_found > 0 && ` • ${scan.files_found} arquivos`}
                             {scan.dirs_found > 0 && ` • ${scan.dirs_found} pastas`}
                           </p>
@@ -417,7 +424,7 @@ const Downloads = () => {
                         <Badge variant="outline" className="text-xs">
                           {scanStatusConfig[scan.status]?.label}
                         </Badge>
-                        {isActive && (
+                        {isActive && !scan.parent_id && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -432,6 +439,11 @@ const Downloads = () => {
                     </div>
                   );
                 })}
+                {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 50 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Mostrando 50 de {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length} scans ativos
+                  </p>
+                )}
               </div>
             </CardContent>
           )}
