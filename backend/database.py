@@ -24,10 +24,25 @@ class Credential(Base):
     __tablename__ = "credentials"
     
     id = Column(Integer, primary_key=True, index=True)
-    domain = Column(String, nullable=False)
-    username = Column(String, nullable=False)
-    password = Column(String, nullable=True)  # Password or NTLM hash required
+    name = Column(String, nullable=True)  # Optional friendly name
+    credential_type = Column(String, nullable=False, default="user_password")  # user_password, token, ssh_key
+    # For user_password type
+    domain = Column(String, nullable=True)
+    username = Column(String, nullable=True)
+    password = Column(String, nullable=True)  # Password or NTLM hash required for user_password
     ntlm_hash = Column(String, nullable=True)  # NTLM hash (format: LM:NT or just NT)
+    # For token type
+    token = Column(Text, nullable=True)
+    token_type = Column(String, nullable=True)  # bearer, api_key, etc.
+    # For ssh_key type
+    ssh_private_key = Column(Text, nullable=True)
+    ssh_passphrase = Column(String, nullable=True)
+    ssh_public_key = Column(Text, nullable=True)
+    # Verification
+    verified = Column(Boolean, default=False)
+    last_verified_at = Column(DateTime, nullable=True)
+    verification_error = Column(String, nullable=True)
+    # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
