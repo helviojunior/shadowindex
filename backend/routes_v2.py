@@ -1181,8 +1181,7 @@ async def download_file_by_path(
     )
     existing = existing_result.scalar_one_or_none()
     
-    # Converter conteúdo para bytes
-    content_bytes = content.encode('utf-8')
+    # content_bytes já está em bytes após process_file_content()
     
     # Calcular hash do novo conteúdo
     new_hash = hashlib.sha1(content_bytes).hexdigest()
