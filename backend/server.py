@@ -802,12 +802,36 @@ async def soap_resolve(
             db, "Resolve", params, request.ignore_cache
         )
         
+        # Retorna o resultado completo (lista de IPs) para Operações SOAP
+        return {
+            "operation": "Resolve",
+            "result": result,  # Resultado completo com todos os IPs
+            "from_cache": not request.ignore_cache
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/soap/resolve-ipv4")
+async def soap_resolve_ipv4(
+    request: SoapOperationRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Resolve priorizando IPv4 - usado para adicionar servidores"""
+    soap_service = await get_default_soap_service(db)
+    params = {"s1": request.s1, "s2": request.s2}
+    
+    try:
+        result = await soap_service.call_soap_operation(
+            db, "Resolve", params, request.ignore_cache
+        )
+        
         # Extrair IPv4 prioritário do resultado
         ipv4_result = extract_ipv4_from_resolve_result(result)
         
         return {
             "operation": "Resolve",
-            "result": ipv4_result or result,  # Retorna IPv4 se encontrado, senão o resultado original
+            "result": ipv4_result or result,  # Retorna IPv4 se encontrado
             "from_cache": not request.ignore_cache
         }
     except Exception as e:
