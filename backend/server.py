@@ -1590,6 +1590,23 @@ async def download_server_file(
         try:
             result_str = await soap_service.call_soap_operation(db, "Exec5", params, False)
             
+            # Função para verificar se é mensagem de erro
+            def check_download_error(text):
+                if not text:
+                    return
+                text_lower = text.lower()
+                if 'is denied' in text_lower or ('access' in text_lower and 'denied' in text_lower):
+                    raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+                elif 'could not find' in text_lower or ('not found' in text_lower and 'file' in text_lower):
+                    raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+                elif 'at System.' in text:
+                    # Erro genérico do .NET - stack trace
+                    error_line = text.split('\n')[0] if '\n' in text else text[:200]
+                    raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
+            
+            # Verificar erro no texto bruto primeiro
+            check_download_error(result_str)
+            
             # Extrair conteúdo base64 do XML
             import xml.etree.ElementTree as ET
             
@@ -1615,18 +1632,13 @@ async def download_server_file(
                     result_text = exec5_result.text.strip()
                     
                     # Verificar se é mensagem de erro
-                    if 'is denied' in result_text.lower() or ('access' in result_text.lower() and 'denied' in result_text.lower()):
-                        raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
-                    elif 'could not find' in result_text.lower() or 'not found' in result_text.lower():
-                        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
-                    elif 'error' in result_text.lower() and 'at System.' in result_text:
-                        # Erro genérico do .NET
-                        error_line = result_text.split('\n')[0] if '\n' in result_text else result_text[:200]
-                        raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
+                    check_download_error(result_text)
                     
                     content_base64 = result_text
                 else:
-                    content_base64 = root.text.strip() if root.text else ""
+                    fallback_text = root.text.strip() if root.text else ""
+                    check_download_error(fallback_text)
+                    content_base64 = fallback_text
                     
             except HTTPException:
                 raise  # Re-raise HTTPException
