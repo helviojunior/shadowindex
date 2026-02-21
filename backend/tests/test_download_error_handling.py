@@ -9,8 +9,6 @@ class TestDownloadErrorHandling:
     
     def test_check_error_message_access_denied(self):
         """Verifica se mensagem de acesso negado é detectada"""
-        from server import api_router
-        
         # Simular mensagem de erro típica do SOAP
         error_messages = [
             "Access to the path '\\\\SERVER\\Share\\file.txt' is denied.",
