@@ -1760,23 +1760,42 @@ const ServerBrowser = () => {
                   try {
                     const itemType = isShare ? 'share' : (isDirectory ? 'directory' : 'file');
                     const itemPath = selectedItem.fullPath || selectedItem.serverPath || '';
-                    const shareName = isShare ? selectedItem.share_name : selectedItem.shareName;
                     
-                    await axios.post(`${API}/servers/${serverId}/clear-access-denied`, null, {
-                      params: {
-                        item_path: itemPath,
-                        item_type: itemType,
-                        share_name: shareName
+                    // Usar IDs ao invés de nomes para evitar problemas com caracteres especiais
+                    const params = {
+                      item_type: itemType
+                    };
+                    
+                    if (isShare) {
+                      // Para shares, usar o ID do share
+                      params.share_id = selectedItem.id;
+                    } else {
+                      // Para arquivos/diretórios, usar o ID do item ou o path como fallback
+                      if (selectedItem.dbId) {
+                        params.item_id = selectedItem.dbId;
+                      } else {
+                        params.item_path = itemPath;
                       }
-                    });
+                    }
+                    
+                    await axios.post(`${API}/servers/${serverId}/clear-access-denied`, null, { params });
                     
                     // Atualizar a UI - remover o status de acesso negado
                     if (isShare) {
                       setShares(prev => prev.map(s => 
-                        s.share_name === selectedItem.share_name
-                          ? { ...s, access_denied: false, error_message: null }
+                        s.id === selectedItem.id
+                          ? { ...s, access_denied: false, error_message: null, children_fetched: false }
                           : s
                       ));
+                      
+                      // Limpar os filhos carregados para forçar re-fetch
+                      const nodeId = `share-${selectedItem.share_name}`;
+                      setNodeChildren(prev => {
+                        const newState = { ...prev };
+                        delete newState[nodeId];
+                        return newState;
+                      });
+                      setExpandedNodes(prev => ({ ...prev, [nodeId]: false }));
                     }
                     
                     // Atualizar o item selecionado
@@ -1784,10 +1803,11 @@ const ServerBrowser = () => {
                       ...prev,
                       access_denied: false,
                       accessDenied: false,
-                      error_message: null
+                      error_message: null,
+                      children_fetched: false
                     }));
                     
-                    toast.success('Status de acesso limpo. Tente acessar novamente.');
+                    toast.success('Status de acesso limpo. Clique novamente para re-testar.');
                   } catch (error) {
                     console.error('Error clearing access denied:', error);
                     toast.error('Erro ao limpar status de acesso');
