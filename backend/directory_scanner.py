@@ -266,43 +266,11 @@ class DirectoryScanner:
     
     def _parse_directory_listing(self, result: str) -> List[dict]:
         """Parseia o resultado da listagem de diretório (formato SOAP Exec4)"""
-        items = []
+        # Usar a função utilitária do server.py
+        from server import parse_exec4_directory_listing
         
-        if not result or not result.strip():
-            return items
-        
-        result = result.strip()
-        
-        # Usar regex para extrair os elementos Result diretamente
-        # Isso é mais robusto do que tentar fazer parse XML com namespaces complexos
-        import re
-        
-        # Pattern para encontrar cada bloco <Result>...</Result>
-        result_pattern = re.compile(r'<Result[^>]*>(.*?)</Result>', re.DOTALL | re.IGNORECASE)
-        
-        for match in result_pattern.finditer(result):
-            result_content = match.group(1)
-            
-            # Extrair campos individuais
-            type_match = re.search(r'<type>([^<]*)</type>', result_content, re.IGNORECASE)
-            name_match = re.search(r'<name>([^<]*)</name>', result_content, re.IGNORECASE)
-            length_match = re.search(r'<length>([^<]*)</length>', result_content, re.IGNORECASE)
-            fullname_match = re.search(r'<fullname>([^<]*)</fullname>', result_content, re.IGNORECASE)
-            
-            item_type = type_match.group(1) if type_match else 'File'
-            item_name = name_match.group(1) if name_match else ''
-            item_size = length_match.group(1) if length_match else '0'
-            item_fullname = fullname_match.group(1) if fullname_match else ''
-            
-            if item_name and item_name not in ['.', '..']:
-                items.append({
-                    'name': item_name,
-                    'type': item_type,
-                    'size': item_size,
-                    'fullname': item_fullname
-                })
-        
-        print(f"=== SCANNER PARSE: Found {len(items)} Result elements ===", flush=True)
+        items = parse_exec4_directory_listing(result)
+        print(f"=== SCANNER PARSE: Found {len(items)} items ===", flush=True)
         return items
 
 
