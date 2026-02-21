@@ -290,6 +290,37 @@ async def search_items(
                     is_downloaded=True
                 ))
     
+    # 3. Buscar no conteúdo OCR se houver query de texto
+    if search.query and len(search.query) >= 3:
+        ocr_conditions = [
+            FileVersion.server_guid == server.guid,
+            FileVersion.ocr_processed == True,
+            FileVersion.ocr_content.ilike(f"%{search.query}%")
+        ]
+        
+        ocr_query = select(FileVersion).where(and_(*ocr_conditions)).limit(search.limit)
+        ocr_result = await db.execute(ocr_query)
+        
+        existing_paths = {r.full_path for r in results}
+        
+        for version in ocr_result.scalars().all():
+            if version.file_path not in existing_paths:
+                name = version.file_path.split('\\')[-1] if '\\' in version.file_path else version.file_path.split('/')[-1]
+                
+                results.append(SearchResultItem(
+                    id=version.id,
+                    type='ocr',
+                    item_type='File',
+                    name=name,
+                    full_path=version.file_path,
+                    share_name=version.share_name,
+                    size=str(version.file_size) if version.file_size else None,
+                    sha1_hash=version.sha1_hash,
+                    modified=None,
+                    downloaded_at=version.created_at,
+                    is_downloaded=True
+                ))
+    
     # Ordenar por nome
     results.sort(key=lambda x: (x.item_type != 'Directory', x.name.lower()))
     
