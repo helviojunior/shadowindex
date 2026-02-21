@@ -89,11 +89,35 @@ const ServerBrowser = () => {
   const singleDownloadCancelledRef = useRef(false); // Ref para cancelamento do sync individual
   
   // Estados para download recursivo
-  const [bulkDownloadConfig, setBulkDownloadConfig] = useState({ depth: 2, maxSize: 10 }); // maxSize em MB
+  const [bulkDownloadConfig, setBulkDownloadConfig] = useState({ depth: 5, maxSize: 100 }); // maxSize em MB
   const [bulkDownloadActive, setBulkDownloadActive] = useState(false);
   const [bulkDownloadItems, setBulkDownloadItems] = useState([]); // Lista de itens a baixar
   const [bulkDownloadStats, setBulkDownloadStats] = useState({ total: 0, completed: 0, failed: 0, skipped: 0 });
   const bulkDownloadCancelledRef = useRef(false); // Ref para cancelamento síncrono
+
+  // Carregar configurações gerais para os valores default dos combos
+  useEffect(() => {
+    const loadGeneralSettings = async () => {
+      try {
+        const response = await axios.get(`${API}/settings`);
+        const settings = response.data;
+        
+        const depth = settings.default_depth_levels?.value 
+          ? parseInt(settings.default_depth_levels.value) 
+          : 5;
+        const maxSize = settings.default_max_file_size_mb?.value 
+          ? parseInt(settings.default_max_file_size_mb.value) 
+          : 100;
+        
+        setBulkDownloadConfig({ depth, maxSize });
+      } catch (error) {
+        console.error('Error loading general settings:', error);
+        // Manter valores default em caso de erro
+      }
+    };
+    
+    loadGeneralSettings();
+  }, []);
 
   useEffect(() => {
     loadServer();
