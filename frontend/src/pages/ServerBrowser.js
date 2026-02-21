@@ -48,7 +48,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 // Extensões de arquivos de texto que podem ser visualizados
-const TEXT_EXTENSIONS = ['.txt', '.md', '.xml', '.json', '.config', '.cfg', '.ini', '.log', '.csv', '.yaml', '.yml', '.html', '.htm', '.css', '.js', '.ts', '.py', '.sh', '.bat', '.ps1', '.sql', '.env', '.reg', '.asp', '.aspx', '.asmx', '.conf', '.asa', '.asax', '.inc'];
+const TEXT_EXTENSIONS = ['.txt', '.md', '.xml', '.json', '.config', '.cfg', '.ini', '.log', '.csv', '.yaml', '.yml', '.html', '.htm', '.css', '.js', '.ts', '.py', '.sh', '.bat', '.ps1', '.sql', '.env', '.reg', '.asp', '.aspx', '.asmx', '.conf', '.asa', '.asax', '.inc', '.cs'];
 
 // Extensões de arquivos de imagem que podem ser visualizados
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.svg'];
