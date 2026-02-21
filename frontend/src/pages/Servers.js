@@ -126,33 +126,11 @@ const Servers = () => {
         ignore_cache: ignoreCache
       });
 
-      // Parse o resultado - pode ser texto simples ou XML
+      // O backend já retorna o IPv4 prioritário
       const result = response.data.result;
-      let ipAddress = '';
       
-      // Tentar extrair IP do resultado
-      if (result) {
-        // Se for XML, tentar parsear
-        if (result.trim().startsWith('<')) {
-          try {
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(result, 'text/xml');
-            const textContent = xmlDoc.documentElement?.textContent || '';
-            const ips = textContent.split(',').map(ip => ip.trim()).filter(ip => ip);
-            ipAddress = ips[0] || '';
-          } catch (e) {
-            // Se falhar parsing XML, trata como texto
-            ipAddress = result.trim().split(',')[0].trim();
-          }
-        } else {
-          // Texto simples - pode ser IP direto ou lista separada por vírgula
-          const cleaned = result.trim();
-          const ips = cleaned.split(',').map(ip => ip.trim()).filter(ip => ip);
-          ipAddress = ips[0] || '';
-        }
-      }
-      
-      if (ipAddress) {
+      if (result && result.trim()) {
+        const ipAddress = result.trim();
         setFormData({ ...formData, ip: ipAddress });
         toast.success(`IP resolvido: ${ipAddress}`);
       } else {
