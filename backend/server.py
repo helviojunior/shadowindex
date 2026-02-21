@@ -2999,6 +2999,8 @@ async def create_batch_download_jobs(
     db: AsyncSession = Depends(get_db)
 ):
     """Cria múltiplos jobs de download em lote"""
+    from sqlalchemy.orm import Session
+    
     # Obter informações do servidor
     result = await db.execute(select(Server).where(Server.id == request.server_id))
     server = result.scalar_one_or_none()
@@ -3013,6 +3015,8 @@ async def create_batch_download_jobs(
     created = 0
     skipped = 0
     skipped_by_extension = 0
+    
+    jobs_to_add = []
     
     for file_info in request.files:
         file_path = file_info.get('file_path') or file_info.get('fullPath') or file_info.get('path')
@@ -3061,8 +3065,12 @@ async def create_batch_download_jobs(
             max_file_size_bytes=request.max_file_size_bytes,
             max_depth=request.max_depth
         )
-        db.add(job)
+        jobs_to_add.append(job)
         created += 1
+    
+    # Adicionar todos os jobs de uma vez
+    for job in jobs_to_add:
+        db.add(job)
     
     await db.commit()
     
