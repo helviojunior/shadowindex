@@ -46,6 +46,7 @@ import { useApp } from '@/contexts/AppContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+const API_V2 = `${BACKEND_URL}/api/v2`;  // API V2 com endpoints baseados em IDs
 
 // Extensões de arquivos de texto que podem ser visualizados
 const TEXT_EXTENSIONS = ['.txt', '.md', '.xml', '.json', '.config', '.cfg', '.ini', '.log', '.csv', '.yaml', '.yml', '.html', '.htm', '.css', '.js', '.ts', '.py', '.sh', '.bat', '.ps1', '.sql', '.env', '.reg', '.asp', '.aspx', '.asmx', '.conf', '.asa', '.asax', '.inc', '.cs', '.ascx'];
