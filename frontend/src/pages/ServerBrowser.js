@@ -709,12 +709,19 @@ const ServerBrowser = () => {
         
         const errorMsg = response.data.errorMessage || 'Acesso negado';
         
+        // Detectar se é um share pelo path (formato: \\IP\ShareName - sem subpastas adicionais)
+        // Um share tem exatamente 4 partes quando dividido por \: ['', '', 'IP', 'ShareName']
+        const pathParts = path.split('\\').filter(p => p !== '');
+        const isSharePath = pathParts.length === 2; // IP + ShareName
+        
+        console.log('[AccessDenied] path:', path, 'pathParts:', pathParts, 'isSharePath:', isSharePath, 'shareName:', shareName);
+        
         // Atualizar o share na lista local se for um share
-        if (nodeId.startsWith('share-')) {
-          // Extrair o nome do share do nodeId (formato: "share-ShareName")
-          const shareNameFromNodeId = nodeId.substring(6); // Remove "share-"
+        if (isSharePath || nodeId.startsWith('share-')) {
+          // Extrair o nome do share do path ou do nodeId
+          const shareNameToFind = isSharePath ? pathParts[1] : (nodeId.startsWith('share-') ? nodeId.substring(6) : shareName);
           
-          console.log('[AccessDenied] Tentando atualizar share. nodeId:', nodeId, 'shareNameFromNodeId:', shareNameFromNodeId);
+          console.log('[AccessDenied] Atualizando share. shareNameToFind:', shareNameToFind);
           
           // Atualizar usando função síncrona para garantir que o estado anterior é o mais recente
           setShares(prevShares => {
@@ -723,7 +730,7 @@ const ServerBrowser = () => {
             let foundMatch = false;
             const newShares = prevShares.map(s => {
               // Comparar pelo nome do share
-              if (s.share_name === shareNameFromNodeId) {
+              if (s.share_name === shareNameToFind) {
                 console.log('[AccessDenied] ✓ Match por share_name:', s.share_name);
                 foundMatch = true;
                 return { 
@@ -739,7 +746,7 @@ const ServerBrowser = () => {
             });
             
             if (!foundMatch) {
-              console.log('[AccessDenied] ✗ Nenhum match encontrado para:', shareNameFromNodeId);
+              console.log('[AccessDenied] ✗ Nenhum match encontrado para:', shareNameToFind);
             }
             
             return newShares;
