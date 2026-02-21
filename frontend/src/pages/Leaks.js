@@ -53,12 +53,35 @@ import {
   ChevronRight,
   Download,
   XCircle,
-  Clock
+  Clock,
+  FileText,
+  FileSearch
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api/v2`;
+
+/**
+ * Remove extensões .ocr e .metadata do nome do arquivo
+ * Arquivos com essas extensões indicam que o leak foi encontrado através de OCR ou metadata
+ * mas a referência deve ser ao arquivo original
+ */
+const getOriginalFileName = (filePath) => {
+  if (!filePath) return '';
+  // Remove .ocr e .metadata do final do caminho
+  return filePath.replace(/\.(ocr|metadata)$/i, '');
+};
+
+/**
+ * Verifica se o arquivo é derivado de OCR ou metadata
+ */
+const getFileSource = (filePath) => {
+  if (!filePath) return null;
+  if (filePath.toLowerCase().endsWith('.ocr')) return 'ocr';
+  if (filePath.toLowerCase().endsWith('.metadata')) return 'metadata';
+  return null;
+};
 
 const Leaks = () => {
   // State para findings
