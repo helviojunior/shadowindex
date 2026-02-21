@@ -1,6 +1,12 @@
 version: '3.8'
 
 services:
+  tika:
+    image: apache/tika:latest-full
+    container_name: ops-integration-tika
+    restart: unless-stopped
+    # No port exposure - internal only
+
   backend:
     build:
       context: ./backend
@@ -12,10 +18,13 @@ services:
       - ./ops_integration_data:/app/data
     environment:
       - CORS_ORIGINS=*
+      - TIKA_SERVER_URL=http://tika:9998
     extra_hosts:
       - "proxy.local:host-gateway"
     command: uvicorn server:app --host 0.0.0.0 --port 8001
     restart: unless-stopped
+    depends_on:
+      - tika
 
   frontend:
     build:
