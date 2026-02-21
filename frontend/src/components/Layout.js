@@ -275,14 +275,18 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
         {/* Flyout menu when collapsed */}
         {effectiveCollapsed && isHovered && (
           <div 
-            className="absolute left-full top-0 ml-2 z-50 min-w-[180px]"
+            className="fixed ml-2 z-[9999] min-w-[180px]"
+            style={{ 
+              left: '64px',
+              top: 'auto'
+            }}
             onMouseEnter={() => handleMenuHover(item.id)}
             onMouseLeave={handleMenuLeave}
           >
             {/* Arrow indicator */}
-            <div className="absolute left-0 top-3 -ml-1.5 w-3 h-3 bg-card border-l border-t border-border rotate-[-45deg]" />
+            <div className="absolute left-0 top-3 -ml-1.5 w-3 h-3 bg-card border-l border-t border-border rotate-[-45deg] z-[9999]" />
             
-            <div className="bg-card border border-border rounded-lg shadow-lg py-2 ml-1">
+            <div className="bg-card border border-border rounded-lg shadow-xl py-2 ml-1">
               {/* Header */}
               <div className="px-3 py-2 border-b border-border">
                 <span className="font-semibold text-sm">{item.label}</span>
@@ -299,7 +303,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                     className={cn(
                       "block px-4 py-2 text-sm transition-colors",
                       isChildActive
-                        ? "text-primary bg-primary/5 font-medium"
+                        ? "text-emerald-400 bg-emerald-400/10 font-medium"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
