@@ -256,12 +256,17 @@ class ProxyServerCreate(BaseModel):
     name: str
     ip: str
     port: int
+    proxy_type: Optional[str] = "http"  # "http" or "socks5"
+    username: Optional[str] = None
+    password: Optional[str] = None
 
 class ProxyServerResponse(BaseModel):
     id: int
     name: str
     ip: str
     port: int
+    proxy_type: Optional[str] = "http"
+    username: Optional[str] = None
     created_at: datetime
 
 class SoapApiUrlCreate(BaseModel):
