@@ -13,6 +13,7 @@ import ServerBrowser from "@/pages/ServerBrowser";
 import BeautifyTest from "@/pages/BeautifyTest";
 import SqlExecutor from "@/pages/SqlExecutor";
 import SqlPresets from "@/pages/SqlPresets";
+import Downloads from "@/pages/Downloads";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 
@@ -37,6 +38,7 @@ function App() {
               <Route path="/servers" element={<Servers />} />
               <Route path="/servers/:serverId" element={<ServerBrowser />} />
               <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
+              <Route path="/downloads" element={<Downloads />} />
               <Route path="/credentials" element={<Credentials />} />
               <Route path="/sql" element={<DatabaseConnections />} />
               <Route path="/sql/presets" element={<SqlPresets />} />
