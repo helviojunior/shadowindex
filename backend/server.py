@@ -2049,7 +2049,7 @@ async def get_certificate_info(
             print(f"DEBUG user-password check: certificate={certificate}, password={repr(password)}, len_check={len(str(password)) if password else 0}")
             print(f"DEBUG conditions: not_cert={not certificate}, has_pwd={bool(password)}, len_ok={len(str(password)) > 0 if password else False}")
             if not certificate and password and len(str(password)) > 0:
-                print(f"DEBUG: Entering user-provided password block")
+                print("DEBUG: Entering user-provided password block")
                 private_key, certificate, additional_certs, used_password = try_open_pfx(password, "user-provided")
                 
                 # Se funcionou, salvar a senha
