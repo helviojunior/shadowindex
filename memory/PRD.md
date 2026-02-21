@@ -27,6 +27,29 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 10 - Sistema de Downloads Backend-Driven v2)
+- [x] **Resolve separado para IPv4**
+  - `/api/soap/resolve` - Retorna lista completa de IPs (para Operações SOAP)
+  - `/api/soap/resolve-ipv4` - Retorna apenas IPv4 prioritário (para adicionar servidores)
+- [x] **Fix: Path duplicado no download** - Verificação se path já é UNC completo
+- [x] **Layout melhorado da página de Downloads**
+  - Cards com ícones em círculos
+  - Ícone de "Baixando" alterado (sem animação de loading)
+  - Melhor separação visual entre cards
+- [x] **Nova página: Configurações > Gerais**
+  - Downloads Simultâneos (afeta worker)
+  - Níveis de Profundidade (default do combo)
+  - Tamanho Máximo (default do combo)
+- [x] **Modelo AppSettings** - Persistência de configurações no banco
+- [x] **Directory Scanner Worker** (`directory_scanner.py`)
+  - Lista diretórios recursivamente
+  - Adiciona arquivos à fila de downloads
+  - Respeita limites de profundidade
+  - Não contabiliza no limite de downloads simultâneos
+- [x] **Download Worker atualizado**
+  - Lê configurações do banco
+  - Número de workers configurável via AppSettings
+
 ### 2026-02-22 (Session 10 - Sistema de Downloads Backend-Driven)
 - [x] **P0 Bug Fix: Destaque de menu ativo incorreto** - Corrigida função `findActiveMenu` em `Layout.js`
 - [x] **P1 Bug Fix: Menu flyout verificado** - Confirmado funcionamento correto do flyout quando sidebar colapsado
