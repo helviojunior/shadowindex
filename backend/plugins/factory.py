@@ -110,9 +110,19 @@ async def get_active_proxy_url(db: AsyncSession) -> Optional[str]:
             proxy = result.scalar_one_or_none()
             
             if proxy:
-                # Build proxy URL
-                # TODO: Add SOCKS support when implemented
-                return f"http://{proxy.ip}:{proxy.port}"
+                proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
+                username = getattr(proxy, 'username', None)
+                password = getattr(proxy, 'password', None)
+                
+                # Build proxy URL based on type
+                if proxy_type == 'socks5':
+                    if username and password:
+                        return f"socks5://{username}:{password}@{proxy.ip}:{proxy.port}"
+                    else:
+                        return f"socks5://{proxy.ip}:{proxy.port}"
+                else:
+                    # HTTP proxy
+                    return f"http://{proxy.ip}:{proxy.port}"
         except (ValueError, TypeError) as e:
             logger.warning(f"Invalid proxy_id in config: {e}")
     
