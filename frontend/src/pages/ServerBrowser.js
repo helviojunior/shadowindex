@@ -972,13 +972,13 @@ const ServerBrowser = () => {
           continue;
         }
         
-        // Adicionar à lista com status downloading (no início) com progresso
+        // Adicionar à lista com status downloading (no início) - sem progresso até primeiro retorno
         setBulkDownloadItems(prev => [{
           ...file,
           shareName,
           fileSize,
           status: 'downloading',
-          progress: 0,
+          progress: null,  // null = aguardando primeiro chunk
           error: null
         }, ...prev]);
         setBulkDownloadStats(prev => ({ ...prev, total: prev.total + 1 }));
