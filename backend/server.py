@@ -99,6 +99,58 @@ def get_file_mimetype(file_path: str) -> Optional[str]:
         logging.warning(f"Erro ao calcular mimetype: {e}")
         return None
 
+
+def parse_exec4_directory_listing(xml_result: str) -> List[dict]:
+    """
+    Parseia o resultado XML do Exec4 (listagem de diretório).
+    Retorna lista de dicts com: type, name, size, modified, fullPath
+    """
+    import xml.etree.ElementTree as ET
+    
+    items = []
+    if not xml_result or not xml_result.strip():
+        return items
+    
+    try:
+        root = ET.fromstring(xml_result)
+        
+        for result_elem in root.findall(".//Result"):
+            # Verificar se é um erro de acesso negado
+            message_elem = result_elem.find("message")
+            if message_elem is not None and message_elem.text:
+                msg_text = message_elem.text.lower()
+                if "access" in msg_text and "denied" in msg_text:
+                    continue
+            
+            item_type = result_elem.find("type")
+            name = result_elem.find("name")
+            length = result_elem.find("length")
+            lastwritetime = result_elem.find("lastwritetime")
+            fullname = result_elem.find("fullname")
+            
+            if name is not None and name.text:
+                # Parsear o size como número
+                size_value = 0
+                if length is not None and length.text:
+                    try:
+                        size_value = int(length.text)
+                    except (ValueError, TypeError):
+                        size_value = 0
+                
+                item = {
+                    "type": item_type.text if item_type is not None and item_type.text else "Unknown",
+                    "name": name.text,
+                    "size": size_value,
+                    "modified": lastwritetime.text if lastwritetime is not None and lastwritetime.text else "",
+                    "fullPath": fullname.text if fullname is not None and fullname.text else ""
+                }
+                items.append(item)
+    except ET.ParseError as e:
+        logging.warning(f"Erro ao parsear XML do Exec4: {e}")
+    
+    return items
+
+
 # Create the main app
 app = FastAPI(title="Ops Integration Desk")
 
