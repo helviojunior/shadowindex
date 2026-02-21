@@ -3178,6 +3178,34 @@ async def scan_directory_for_download(
     }
 
 
+@api_router.get("/scans")
+async def get_scan_jobs():
+    """Lista todos os scan jobs (pendentes e recentes)"""
+    from directory_scanner import get_scanner
+    scanner = get_scanner()
+    return scanner.get_scan_jobs()
+
+
+@api_router.post("/scans/{scan_id}/cancel")
+async def cancel_scan_job(scan_id: str):
+    """Cancela um scan job específico"""
+    from directory_scanner import get_scanner
+    scanner = get_scanner()
+    success = await scanner.cancel_scan(scan_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Scan job não encontrado ou já finalizado")
+    return {"success": True}
+
+
+@api_router.post("/scans/cancel-all")
+async def cancel_all_scan_jobs():
+    """Cancela todos os scan jobs pendentes"""
+    from directory_scanner import get_scanner
+    scanner = get_scanner()
+    count = await scanner.cancel_all_scans()
+    return {"success": True, "cancelled": count}
+
+
 @api_router.post("/downloads/{job_id}/cancel")
 async def cancel_download_job(
     job_id: int,
