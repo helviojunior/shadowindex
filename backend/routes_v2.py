@@ -1192,6 +1192,7 @@ async def download_file_by_path(
             sha1_hash=sha1_hash,
             file_size=file_size,
             mimetype=mimetype,
+            local_path=full_path,
             is_current=True
         )
         db.add(new_version)
