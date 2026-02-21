@@ -1291,6 +1291,15 @@ const ServerBrowser = () => {
     const itemName = isShare ? selectedItem.share_name : selectedItem.name;
     const downloaded = isFile && isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath);
     const canViewContent = isFile && downloaded && canPreviewFile(selectedItem.name);
+    
+    // Determinar status de acesso
+    // - Para shares: children_fetched indica que foi verificado
+    // - Para diretórios: childrenFetched indica que foi verificado
+    // - Para arquivos: se foi baixado, acesso é permitido
+    const childrenFetched = isShare ? selectedItem.children_fetched : selectedItem.childrenFetched;
+    const accessVerified = isAccessDenied || childrenFetched || downloaded;
+    const accessStatus = isAccessDenied ? 'Negado' : (accessVerified ? 'Permitido' : 'Desconhecido');
+    const accessStatusColor = isAccessDenied ? 'text-red-500 font-medium' : (accessVerified ? 'text-green-500' : 'text-muted-foreground');
 
     // Cor do ícone no header baseada no status de acesso
     const headerIconColor = isAccessDenied ? 'text-red-500' : (isShare || isDirectory ? 'text-blue-500' : (downloaded ? 'text-green-500' : 'text-muted-foreground'));
