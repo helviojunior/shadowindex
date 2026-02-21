@@ -886,8 +886,6 @@ const ServerBrowser = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
-    toast.success(`Exportados ${searchResults.total} resultados para JSON`);
   };
 
   // Função para destacar termos de busca no texto
