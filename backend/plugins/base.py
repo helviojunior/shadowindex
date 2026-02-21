@@ -2,23 +2,59 @@
 Base Plugin Interface
 
 Abstract base class that all plugins must implement.
+Provides standard interfaces for server communication plugins.
+
+Architecture:
+- All plugins must inherit from BasePlugin
+- Plugins use PluginConfig for configuration
+- Standard exceptions should be raised for error conditions
+- All operations are async
 """
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class PluginConfig:
-    """Base configuration for plugins"""
+    """
+    Base configuration for plugins.
+    
+    Attributes:
+        plugin_type: Unique identifier for the plugin type (e.g., 'soap_api', 'smb')
+        extra: Dictionary containing plugin-specific configuration values
+    """
     plugin_type: str
     extra: Dict[str, Any] = field(default_factory=dict)
     
     def get(self, key: str, default: Any = None) -> Any:
         """Get a configuration value from extra"""
         return self.extra.get(key, default)
+    
+    def require(self, key: str) -> Any:
+        """
+        Get a required configuration value.
+        
+        Raises:
+            ValueError: If the key is not present in config
+        """
+        if key not in self.extra:
+            raise ValueError(f"Required configuration key '{key}' not found for plugin '{self.plugin_type}'")
+        return self.extra[key]
+    
+    def validate(self, required_keys: List[str]) -> List[str]:
+        """
+        Validate that all required keys are present.
+        
+        Returns:
+            List of missing keys (empty if all present)
+        """
+        return [key for key in required_keys if key not in self.extra]
 
 
 @dataclass
