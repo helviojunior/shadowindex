@@ -707,13 +707,7 @@ const ServerBrowser = () => {
           [nodeId]: []  // Sem filhos - diretório marcado como acesso negado
         }));
         
-        const updatedItemData = {
-          access_denied: true, 
-          accessDenied: true,
-          error_message: response.data.errorMessage, 
-          children_fetched: true, 
-          has_children: false
-        };
+        const errorMsg = response.data.errorMessage || 'Acesso negado';
         
         // Atualizar o share na lista local se for um share
         if (nodeId.startsWith('share-')) {
@@ -721,25 +715,22 @@ const ServerBrowser = () => {
           const shareNameFromNodeId = nodeId.substring(6); // Remove "share-"
           
           console.log('[AccessDenied] Tentando atualizar share. nodeId:', nodeId, 'shareNameFromNodeId:', shareNameFromNodeId);
-          console.log('[AccessDenied] updatedItemData:', updatedItemData);
           
-          // Forçar nova referência do array para garantir re-render
-          setShares(prev => {
-            console.log('[AccessDenied] Shares anteriores:', prev.map(s => ({ id: s.id, name: s.share_name, access_denied: s.access_denied })));
+          // Atualizar usando função síncrona para garantir que o estado anterior é o mais recente
+          setShares(prevShares => {
+            console.log('[AccessDenied] prevShares:', prevShares.map(s => s.share_name));
             
-            const newShares = prev.map(s => {
-              // Comparar tanto pelo nome quanto pelo nodeId construído
-              const shareNodeId = `share-${s.share_name}`;
-              const isMatch = s.share_name === shareNameFromNodeId || shareNodeId === nodeId;
-              
-              if (isMatch) {
-                console.log('[AccessDenied] Match encontrado! share_name:', s.share_name);
-                // Criar novo objeto com todas as propriedades atualizadas
+            let foundMatch = false;
+            const newShares = prevShares.map(s => {
+              // Comparar pelo nome do share
+              if (s.share_name === shareNameFromNodeId) {
+                console.log('[AccessDenied] ✓ Match por share_name:', s.share_name);
+                foundMatch = true;
                 return { 
                   ...s, 
                   access_denied: true,
                   accessDenied: true,
-                  error_message: response.data.errorMessage || 'Acesso negado',
+                  error_message: errorMsg,
                   children_fetched: true,
                   has_children: false
                 };
@@ -747,10 +738,11 @@ const ServerBrowser = () => {
               return s;
             });
             
-            console.log('[AccessDenied] Shares novos:', newShares.map(s => ({ id: s.id, name: s.share_name, access_denied: s.access_denied })));
+            if (!foundMatch) {
+              console.log('[AccessDenied] ✗ Nenhum match encontrado para:', shareNameFromNodeId);
+            }
             
-            // Forçar nova referência do array
-            return [...newShares];
+            return newShares;
           });
         } else {
           // É um diretório - atualizar o item em TODOS os nodeChildren
