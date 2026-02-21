@@ -1014,8 +1014,6 @@ const ServerBrowser = () => {
         }, 2500);
       }
     }, 500);
-    
-    toast.success(`Selecionado: ${result.name}`);
   };
 
   const loadShares = async () => {
