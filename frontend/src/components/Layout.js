@@ -313,7 +313,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
 
         {/* Inline submenu when expanded */}
         {!effectiveCollapsed && isExpanded && (
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 bg-black/20">
             {item.children.map((child) => {
               const isChildActive = child.id === activeSubMenuId;
               return (
@@ -325,7 +325,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                     "block w-full pl-11 pr-4 py-2 text-sm transition-colors",
                     isChildActive
                       ? "text-emerald-400 font-medium"
-                      : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30"
+                      : "text-muted-foreground/70 hover:text-foreground hover:bg-white/5"
                   )}
                 >
                   {child.label}
