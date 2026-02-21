@@ -313,12 +313,12 @@ class DownloadWorker:
                 downloaded_file.file_size = len(file_bytes)
                 downloaded_file.downloaded_at = datetime.now(timezone.utc)
             else:
-                # Criar novo registro
+                # Criar novo registro - usar relative_path que já foi sanitizado
                 downloaded_file = DownloadedFile(
                     server_guid=server.guid,
                     share_name=job.share_name,
                     file_path=job.file_path,
-                    sanitized_path=str(full_storage_path.relative_to(storage_base)),
+                    sanitized_path=relative_path,
                     sha1_hash=sha1_hash,
                     file_size=len(file_bytes),
                     downloaded_at=datetime.now(timezone.utc)
