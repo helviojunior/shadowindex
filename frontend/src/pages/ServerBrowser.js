@@ -2184,19 +2184,19 @@ const ServerBrowser = () => {
                               <span className="text-xs text-muted-foreground">Aguardando</span>
                             )}
                             {item.status === 'downloading' && (
-                              <>
+                              <div className="flex items-center gap-1">
                                 <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
                                 <span className="text-xs text-blue-500">Baixando...</span>
-                              </>
+                              </div>
                             )}
                             {item.status === 'completed' && (
-                              <>
+                              <div className="flex items-center gap-1">
                                 <CheckCircle className="w-3 h-3 text-green-500" />
                                 <span className="text-xs text-green-500">Concluído</span>
-                              </>
+                              </div>
                             )}
                             {item.status === 'failed' && (
-                              <>
+                              <div className="flex items-center gap-1">
                                 <XCircle className="w-3 h-3 text-red-500" />
                                 <span className="text-xs text-red-500">Falha</span>
                               </>
