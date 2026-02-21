@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Plus, ChevronUp } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trash2, Plus, ChevronUp, Globe, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -12,7 +13,14 @@ const API = `${BACKEND_URL}/api`;
 
 const ProxyServers = () => {
   const [proxies, setProxies] = useState([]);
-  const [formData, setFormData] = useState({ name: '', ip: '', port: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    ip: '', 
+    port: '', 
+    proxy_type: 'http',
+    username: '',
+    password: ''
+  });
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -35,12 +43,19 @@ const ProxyServers = () => {
     setLoading(true);
 
     try {
-      await axios.post(`${API}/proxy-servers`, {
-        ...formData,
-        port: parseInt(formData.port)
-      });
+      const payload = {
+        name: formData.name,
+        ip: formData.ip,
+        port: parseInt(formData.port),
+        proxy_type: formData.proxy_type,
+        username: formData.username || null,
+        password: formData.password || null
+      };
+      
+      await axios.post(`${API}/proxy-servers`, payload);
       toast.success('Proxy server cadastrado com sucesso');
-      setFormData({ name: '', ip: '', port: '' });
+      setFormData({ name: '', ip: '', port: '', proxy_type: 'http', username: '', password: '' });
+      setShowAddForm(false);
       loadProxies();
     } catch (error) {
       console.error('Error creating proxy:', error);
@@ -61,12 +76,20 @@ const ProxyServers = () => {
     }
   };
 
+  const getProxyTypeLabel = (type) => {
+    return type === 'socks5' ? 'SOCKS5' : 'HTTP';
+  };
+
+  const getProxyTypeIcon = (type) => {
+    return type === 'socks5' ? <Shield className="w-4 h-4" /> : <Globe className="w-4 h-4" />;
+  };
+
   return (
     <div className="space-y-6" data-testid="proxy-servers-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Proxy Servers</h1>
-          <p className="text-muted-foreground mt-2">Gerencie os servidores proxy</p>
+          <p className="text-muted-foreground mt-2">Gerencie os servidores proxy (HTTP e SOCKS5)</p>
         </div>
         <Button 
           onClick={() => setShowAddForm(!showAddForm)} 
@@ -92,11 +115,11 @@ const ProxyServers = () => {
         <Card>
           <CardHeader>
             <CardTitle>Novo Proxy Server</CardTitle>
-            <CardDescription>Adicione um novo servidor proxy</CardDescription>
+            <CardDescription>Adicione um novo servidor proxy HTTP ou SOCKS5</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome</Label>
                   <Input
@@ -107,6 +130,31 @@ const ProxyServers = () => {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="proxy_type">Tipo</Label>
+                  <Select 
+                    value={formData.proxy_type} 
+                    onValueChange={(value) => setFormData({ ...formData, proxy_type: value })}
+                  >
+                    <SelectTrigger data-testid="proxy-type-select">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="http">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          HTTP
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="socks5">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          SOCKS5
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ip">IP</Label>
@@ -132,6 +180,34 @@ const ProxyServers = () => {
                   />
                 </div>
               </div>
+              
+              {/* SOCKS credentials - optional */}
+              {formData.proxy_type === 'socks5' && (
+                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-border">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Usuário (opcional)</Label>
+                    <Input
+                      id="username"
+                      data-testid="proxy-username-input"
+                      placeholder="username"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Senha (opcional)</Label>
+                    <Input
+                      id="password"
+                      data-testid="proxy-password-input"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+              
               <Button type="submit" disabled={loading} data-testid="add-proxy-btn">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Proxy
@@ -158,18 +234,31 @@ const ProxyServers = () => {
                   data-testid={`proxy-item-${proxy.id}`}
                   className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex-1 grid grid-cols-3 gap-4">
+                  <div className="flex-1 grid grid-cols-4 gap-4">
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Nome</div>
                       <div className="font-medium">{proxy.name}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">IP</div>
-                      <div className="font-medium">{proxy.ip}</div>
+                      <div className="text-xs text-muted-foreground mb-1">Tipo</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {getProxyTypeIcon(proxy.proxy_type || 'http')}
+                        {getProxyTypeLabel(proxy.proxy_type || 'http')}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">Porta</div>
-                      <div className="font-medium">{proxy.port}</div>
+                      <div className="text-xs text-muted-foreground mb-1">Endereço</div>
+                      <div className="font-medium">{proxy.ip}:{proxy.port}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
+                      <div className="font-medium">
+                        {proxy.username ? (
+                          <span className="text-green-500">Configurada</span>
+                        ) : (
+                          <span className="text-muted-foreground">Sem autenticação</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <Button
