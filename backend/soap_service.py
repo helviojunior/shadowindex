@@ -4,6 +4,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 import hashlib
 import json
+import os
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import SoapCache, AppConfig, SoapApiUrl, ProxyServer
@@ -16,12 +18,18 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
+# Diretório de cache
+CACHE_DIR = Path(__file__).parent / "storage" / ".cache"
+
 class SoapService:
     def __init__(self, soap_url: str, proxy_url: str = None):
         # Remover ?WSDL se houver
         self.soap_url = soap_url.replace('?WSDL', '').replace('?wsdl', '')
         self.base_url = self.soap_url.split('/dna')[0] if '/dna' in self.soap_url else self.soap_url.rsplit('/', 1)[0]
         self.proxy_url = proxy_url  # Ex: "http://192.168.1.1:8080"
+        
+        # Criar diretório de cache se não existir
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
         
         # Log SSL info
         if proxy_url:
@@ -35,45 +43,56 @@ class SoapService:
         return hashlib.sha256(key_str.encode()).hexdigest()
     
     @staticmethod
+    def _get_cache_file_path(cache_key: str) -> Path:
+        """Get the file path for a cache key"""
+        return CACHE_DIR / f"{cache_key}.json"
+    
+    @staticmethod
     async def _get_cached_response(db: AsyncSession, cache_key: str, max_age_hours: int = 24) -> str | None:
-        """Get cached response if it exists and is not expired"""
-        result = await db.execute(
-            select(SoapCache).where(SoapCache.query_hash == cache_key)
-        )
-        cache_entry = result.scalar_one_or_none()
+        """Get cached response from file if it exists and is not expired"""
+        cache_file = SoapService._get_cache_file_path(cache_key)
         
-        if cache_entry:
-            age = datetime.now(timezone.utc) - cache_entry.timestamp.replace(tzinfo=timezone.utc)
-            if age < timedelta(hours=max_age_hours):
-                logger.info(f"Cache hit for key: {cache_key}")
-                return cache_entry.response_data
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+                
+                # Verificar expiração
+                timestamp = datetime.fromisoformat(cache_data.get('timestamp', '1970-01-01T00:00:00+00:00'))
+                age = datetime.now(timezone.utc) - timestamp
+                
+                if age < timedelta(hours=max_age_hours):
+                    logger.info(f"Cache hit for key: {cache_key}")
+                    return cache_data.get('response_data')
+                else:
+                    logger.info(f"Cache expired for key: {cache_key}")
+            except Exception as e:
+                logger.warning(f"Error reading cache file: {e}")
         
         return None
     
     @staticmethod
     async def _save_to_cache(db: AsyncSession, cache_key: str, operation: str, request_data: str, response_data: str):
-        """Save response to cache"""
-        # Check if cache entry exists
-        result = await db.execute(
-            select(SoapCache).where(SoapCache.query_hash == cache_key)
-        )
-        cache_entry = result.scalar_one_or_none()
+        """Save response to cache file"""
+        cache_file = SoapService._get_cache_file_path(cache_key)
         
-        if cache_entry:
-            cache_entry.request_data = request_data
-            cache_entry.response_data = response_data
-            cache_entry.timestamp = datetime.now(timezone.utc)
-        else:
-            cache_entry = SoapCache(
-                query_hash=cache_key,
-                operation=operation,
-                request_data=request_data,
-                response_data=response_data
-            )
-            db.add(cache_entry)
+        # Criar diretório se não existir
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
         
-        await db.commit()
-        logger.info(f"Cached response for key: {cache_key}")
+        cache_data = {
+            'query_hash': cache_key,
+            'operation': operation,
+            'request_data': request_data,
+            'response_data': response_data,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+        
+        try:
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, ensure_ascii=False)
+            logger.info(f"Cached response to file: {cache_file.name}")
+        except Exception as e:
+            logger.error(f"Error saving cache file: {e}")
     
     @staticmethod
     async def is_offline_mode(db: AsyncSession) -> bool:
