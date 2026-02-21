@@ -3248,6 +3248,11 @@ async def startup_event():
     from download_worker import start_download_worker
     await start_download_worker()
     logging.info("Download worker started")
+    
+    # Iniciar scanner de diretórios em background
+    from directory_scanner import start_directory_scanner
+    await start_directory_scanner()
+    logging.info("Directory scanner started")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -3255,6 +3260,11 @@ async def shutdown_event():
     from download_worker import stop_download_worker
     await stop_download_worker()
     logging.info("Download worker stopped")
+    
+    # Parar scanner de diretórios
+    from directory_scanner import stop_directory_scanner
+    await stop_directory_scanner()
+    logging.info("Directory scanner stopped")
 
 if __name__ == "__main__":
     import uvicorn
