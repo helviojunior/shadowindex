@@ -1229,9 +1229,9 @@ const ServerBrowser = () => {
     if (currentDepth > maxDepth || bulkDownloadCancelledRef.current) return;
     
     try {
-      // Buscar conteúdo do diretório
+      // Buscar conteúdo do diretório usando API V2
       const response = await axios.post(
-        `${API}/servers/${serverId}/browse`,
+        `${API_V2}/servers/${serverId}/browse`,
         null,
         { params: { path, ignore_cache: false, share_name: shareName } }
       );
