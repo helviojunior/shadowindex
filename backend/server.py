@@ -313,6 +313,8 @@ class SetActiveProxyRequest(BaseModel):
 class ServerCreate(BaseModel):
     name: str
     ip: str
+    plugin_type: Optional[str] = "soap_api"
+    plugin_config: Optional[dict] = None
 
 class ServerResponse(BaseModel):
     id: int
@@ -324,6 +326,8 @@ class ServerResponse(BaseModel):
     downloaded_files_count: int
     last_verified_at: Optional[datetime]
     created_at: datetime
+    plugin_type: Optional[str] = "soap_api"
+    plugin_config: Optional[dict] = None
 
 class ServerShareResponse(BaseModel):
     id: int
