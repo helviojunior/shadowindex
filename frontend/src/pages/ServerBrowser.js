@@ -791,19 +791,79 @@ const ServerBrowser = () => {
     if (!selectedItem || selectedItem.itemType !== 'File') return;
     
     setLoading(true);
+    setSingleDownloadProgress(0);
+    
     try {
       const fileSize = parseInt(selectedItem.size) || 0;
-      const response = await axios.post(
-        `${API}/servers/${serverId}/download`,
-        null,
-        {
-          params: {
-            file_path: selectedItem.fullPath || selectedItem.serverPath,
-            share_name: selectedItem.shareName,
-            expected_size: fileSize
+      const filePath = selectedItem.fullPath || selectedItem.serverPath;
+      const shareName = selectedItem.shareName;
+      const CHUNK_SIZE = 512000; // 512KB
+      const useChunks = fileSize > CHUNK_SIZE;
+      
+      let response;
+      
+      if (useChunks) {
+        // Download em chunks para arquivos grandes
+        let offset = 0;
+        let allChunks = [];
+        
+        while (true) {
+          const chunkResponse = await axios.post(
+            `${API}/servers/${serverId}/download-chunk`,
+            null,
+            {
+              params: {
+                file_path: filePath,
+                share_name: shareName,
+                offset: offset,
+                chunk_size: CHUNK_SIZE
+              }
+            }
+          );
+          
+          if (chunkResponse.data.content_base64) {
+            allChunks.push(chunkResponse.data.content_base64);
+          }
+          
+          offset += chunkResponse.data.chunk_size;
+          const progress = Math.min(100, Math.round((offset / fileSize) * 100));
+          setSingleDownloadProgress(progress);
+          
+          if (chunkResponse.data.is_last_chunk || chunkResponse.data.chunk_size === 0) {
+            break;
           }
         }
-      );
+        
+        // Enviar para salvar no servidor
+        const combinedBase64 = allChunks.join('');
+        response = await axios.post(
+          `${API}/servers/${serverId}/download`,
+          null,
+          {
+            params: {
+              file_path: filePath,
+              share_name: shareName,
+              expected_size: fileSize,
+              content_base64: combinedBase64
+            }
+          }
+        );
+      } else {
+        // Download normal para arquivos pequenos
+        response = await axios.post(
+          `${API}/servers/${serverId}/download`,
+          null,
+          {
+            params: {
+              file_path: filePath,
+              share_name: shareName,
+              expected_size: fileSize
+            }
+          }
+        );
+      }
+      
+      setSingleDownloadProgress(100);
       
       // Mostrar mensagem baseada no status
       const { status, message, sha1_hash, version } = response.data;
@@ -817,7 +877,6 @@ const ServerBrowser = () => {
       }
       
       // Atualizar lista de downloads
-      const filePath = selectedItem.fullPath || selectedItem.serverPath;
       if (!downloadedFiles.includes(filePath)) {
         setDownloadedFiles(prev => [...prev, filePath]);
       }
@@ -841,6 +900,7 @@ const ServerBrowser = () => {
       toast.error('Erro ao baixar arquivo');
     } finally {
       setLoading(false);
+      setTimeout(() => setSingleDownloadProgress(null), 1000);
     }
   };
 
