@@ -127,6 +127,9 @@ class Server(Base):
     downloaded_files_count = Column(Integer, default=0)
     last_verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # Plugin configuration
+    plugin_type = Column(String, default="soap_api")  # Type of plugin to use
+    plugin_config = Column(JSON, nullable=True)  # Plugin-specific configuration
 
 class ServerShare(Base):
     __tablename__ = "server_shares"
