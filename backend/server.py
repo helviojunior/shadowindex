@@ -3512,6 +3512,17 @@ async def startup_event():
     await init_db()
     print("=== STARTUP: Database initialized ===", flush=True)
     
+    # Inicializar serviço OCR/Tika
+    try:
+        from ocr_service import initialize_tika
+        tika_available = await initialize_tika()
+        if tika_available:
+            print("=== STARTUP: Tika OCR service initialized ===", flush=True)
+        else:
+            print("=== STARTUP: Tika OCR service not available (will retry on demand) ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP WARNING: Tika OCR service error: {e} ===", flush=True)
+    
     # Iniciar worker de downloads em background
     try:
         from download_worker import start_download_worker
