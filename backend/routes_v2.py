@@ -478,6 +478,97 @@ async def get_item_by_path(
     return {"found": True, "item_id": item.id, "item": item}
 
 
+@router.post("/servers/{server_id}/browse")
+async def browse_path(
+    server_id: int,
+    path: str,
+    share_name: str,
+    ignore_cache: bool = False,
+    db: AsyncSession = Depends(get_db)
+):
+    """Navega em um path via SOAP e atualiza cache - endpoint genérico"""
+    from soap_service import get_default_soap_service
+    from server import parse_exec4_directory_listing
+    
+    server = await get_server_or_404(db, server_id)
+    
+    # Chamar SOAP Exec4
+    soap_service = await get_default_soap_service(db)
+    params = {"s1": path, "s2": ""}
+    
+    try:
+        result_str = await soap_service.call_soap_operation(db, "Exec4", params, ignore_cache)
+        
+        # Verificar erros de acesso
+        if result_str:
+            result_lower = result_str.lower()
+            if "access" in result_lower and "denied" in result_lower:
+                return {
+                    "success": False,
+                    "accessDenied": True,
+                    "errorMessage": "Acesso negado",
+                    "items": []
+                }
+        
+        # Parsear resultado
+        parsed_items = parse_exec4_directory_listing(result_str)
+        
+        # Remover itens antigos deste path
+        await db.execute(
+            delete(ServerItem).where(
+                ServerItem.server_guid == server.guid,
+                ServerItem.parent_path == path
+            )
+        )
+        
+        # Adicionar novos itens
+        items = []
+        for item_data in parsed_items:
+            db_item = ServerItem(
+                server_guid=server.guid,
+                share_name=share_name,
+                parent_path=path,
+                item_type=item_data["type"],
+                name=item_data["name"],
+                full_path=item_data["fullPath"],
+                size=str(item_data["size"]) if item_data["size"] else None,
+                modified=item_data["modified"]
+            )
+            db.add(db_item)
+            items.append(db_item)
+        
+        await db.commit()
+        
+        # Refresh para obter IDs
+        for item in items:
+            await db.refresh(item)
+        
+        return {
+            "success": True,
+            "accessDenied": False,
+            "items": [
+                {
+                    "id": item.id,
+                    "type": item.item_type,
+                    "itemType": item.item_type,
+                    "name": item.name,
+                    "fullPath": item.full_path,
+                    "full_path": item.full_path,
+                    "size": item.size,
+                    "modified": item.modified,
+                    "hasChildren": item.item_type == "Directory",
+                    "childrenFetched": False
+                }
+                for item in items
+            ],
+            "count": len(items)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error browsing path {path}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/servers/{server_id}/items/{item_id}", response_model=ItemResponse)
 async def get_item(server_id: int, item_id: int, db: AsyncSession = Depends(get_db)):
     """Obtém informações de um item"""
