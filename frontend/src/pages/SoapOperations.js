@@ -8,9 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PlayCircle, Loader2, Copy, Check } from 'lucide-react';
+import { PlayCircle, Loader2, Copy, Check, Plug, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -21,6 +22,11 @@ const SoapOperations = () => {
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(false);
   const { ignoreCache } = useApp();
+
+  // SOAP API selection
+  const [soapApis, setSoapApis] = useState([]);
+  const [selectedSoapApi, setSelectedSoapApi] = useState('');
+  const [loadingApis, setLoadingApis] = useState(true);
 
   // Form states for each operation
   const [resolveForm, setResolveForm] = useState({ s1: '' });
@@ -34,7 +40,24 @@ const SoapOperations = () => {
 
   useEffect(() => {
     loadDbConnections();
+    loadSoapApis();
   }, []);
+
+  const loadSoapApis = async () => {
+    setLoadingApis(true);
+    try {
+      const response = await axios.get(`${API}/soap-apis`);
+      setSoapApis(response.data);
+      // Select first API by default
+      if (response.data.length > 0) {
+        setSelectedSoapApi(response.data[0].id.toString());
+      }
+    } catch (error) {
+      console.error('Error loading SOAP APIs:', error);
+    } finally {
+      setLoadingApis(false);
+    }
+  };
 
   const loadDbConnections = async () => {
     try {
@@ -46,13 +69,19 @@ const SoapOperations = () => {
   };
 
   const handleOperation = async (operation, data) => {
+    if (!selectedSoapApi) {
+      toast.error('Selecione uma SOAP API primeiro');
+      return;
+    }
+
     setLoading(true);
     setResult(null);
 
     try {
       const response = await axios.post(`${API}/soap/${operation}`, {
         ...data,
-        ignore_cache: ignoreCache
+        ignore_cache: ignoreCache,
+        soap_api_id: parseInt(selectedSoapApi)
       });
       
       setResult({
