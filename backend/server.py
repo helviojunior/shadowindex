@@ -1711,6 +1711,9 @@ async def download_server_file(
                     1
                 )
             
+            # Calcular mimetype
+            mimetype = get_file_mimetype(full_path)
+            
             # Criar primeira versão
             new_file_version = FileVersion(
                 server_guid=server.guid,
@@ -1719,6 +1722,7 @@ async def download_server_file(
                 version_number=1,
                 sha1_hash=sha1_hash,
                 file_size=file_size,
+                mimetype=mimetype,
                 local_path=sanitized_path,
                 is_current=True
             )
@@ -1731,7 +1735,8 @@ async def download_server_file(
                 file_path=file_path,
                 sanitized_path=sanitized_path,
                 file_size=file_size,
-                sha1_hash=sha1_hash
+                sha1_hash=sha1_hash,
+                mimetype=mimetype
             )
             db.add(downloaded_file)
             
