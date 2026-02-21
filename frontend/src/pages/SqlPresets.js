@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Trash2, Plus, Pencil, Check, X, Code, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { getDatabaseIcon, GenericDbIcon } from '@/components/DatabaseIcons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
