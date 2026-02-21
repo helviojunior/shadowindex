@@ -3065,6 +3065,97 @@ async def clear_finished_jobs(db: AsyncSession = Depends(get_db)):
     return {"success": True}
 
 
+# =====================
+# App Settings Endpoints
+# =====================
+
+@api_router.get("/settings")
+async def get_all_settings(db: AsyncSession = Depends(get_db)):
+    """Obtém todas as configurações"""
+    result = await db.execute(select(AppSettings))
+    settings = result.scalars().all()
+    
+    return {
+        setting.key: {
+            "value": setting.value,
+            "description": setting.description,
+            "updated_at": setting.updated_at.isoformat() if setting.updated_at else None
+        }
+        for setting in settings
+    }
+
+
+@api_router.get("/settings/{key}")
+async def get_setting(key: str, db: AsyncSession = Depends(get_db)):
+    """Obtém uma configuração específica"""
+    result = await db.execute(select(AppSettings).where(AppSettings.key == key))
+    setting = result.scalar_one_or_none()
+    
+    if not setting:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    
+    return {
+        "key": setting.key,
+        "value": setting.value,
+        "description": setting.description,
+        "updated_at": setting.updated_at.isoformat() if setting.updated_at else None
+    }
+
+
+class UpdateSettingRequest(BaseModel):
+    value: str
+
+
+@api_router.put("/settings/{key}")
+async def update_setting(key: str, request: UpdateSettingRequest, db: AsyncSession = Depends(get_db)):
+    """Atualiza uma configuração"""
+    result = await db.execute(select(AppSettings).where(AppSettings.key == key))
+    setting = result.scalar_one_or_none()
+    
+    if not setting:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    
+    setting.value = request.value
+    setting.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    
+    # Se for configuração de downloads simultâneos, atualizar o worker
+    if key == 'max_simultaneous_downloads':
+        from download_worker import get_worker
+        import asyncio
+        worker = get_worker()
+        worker.semaphore = asyncio.Semaphore(int(request.value))
+    
+    return {"success": True, "key": key, "value": request.value}
+
+
+class UpdateMultipleSettingsRequest(BaseModel):
+    settings: dict
+
+
+@api_router.put("/settings")
+async def update_multiple_settings(request: UpdateMultipleSettingsRequest, db: AsyncSession = Depends(get_db)):
+    """Atualiza múltiplas configurações"""
+    for key, value in request.settings.items():
+        result = await db.execute(select(AppSettings).where(AppSettings.key == key))
+        setting = result.scalar_one_or_none()
+        
+        if setting:
+            setting.value = str(value)
+            setting.updated_at = datetime.now(timezone.utc)
+    
+    await db.commit()
+    
+    # Atualizar worker se necessário
+    if 'max_simultaneous_downloads' in request.settings:
+        from download_worker import get_worker
+        import asyncio
+        worker = get_worker()
+        worker.semaphore = asyncio.Semaphore(int(request.settings['max_simultaneous_downloads']))
+    
+    return {"success": True}
+
+
 # Include router
 app.include_router(api_router)
 
