@@ -1429,7 +1429,7 @@ const ServerBrowser = () => {
     };
     
     return (
-      <div key={nodeId}>
+      <div key={`${nodeId}-${isAccessDenied ? 'denied' : 'ok'}`}>
         <div
           className={`flex items-center cursor-pointer hover:bg-muted/50 rounded transition-colors ${
             isSelected ? 'bg-primary/10 text-primary' : ''
