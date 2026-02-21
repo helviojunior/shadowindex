@@ -3583,20 +3583,6 @@ const ServerBrowser = () => {
                 Arquivos
               </h3>
               <div className="flex items-center gap-1">
-                {/* Botão de exportar resultados da busca */}
-                {searchResults && searchResults.total > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={exportSearchResultsToJson}
-                    data-testid="export-search-btn"
-                    title="Exportar resultados para JSON"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                )}
-                
                 {/* Botão de foco - mostra apenas item selecionado */}
                 {selectedItem && (
                   <Button 
