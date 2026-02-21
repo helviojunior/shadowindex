@@ -2205,13 +2205,19 @@ async def get_certificate_info(
             
             cert_infos.append(cert_info)
         
-        return {
+        result = {
             "type": ext,
             "file_path": file_path,
             "total_certificates": len(cert_infos),
             "private_key": private_key_info,
             "certificates": cert_infos
         }
+        
+        # Incluir senha usada se for PFX
+        if used_password is not None:
+            result["password_used"] = used_password
+        
+        return result
         
     except Exception as e:
         return {
