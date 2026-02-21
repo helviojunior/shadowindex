@@ -133,6 +133,15 @@ class DirectoryScanner:
             
             return False
     
+    async def clear_finished_scans(self) -> int:
+        """Limpa scans finalizados (completed, cancelled, failed)"""
+        async with self._lock:
+            count = len(self.completed_scans)
+            self.completed_scans.clear()
+            self.cancelled_ids.clear()
+            print(f"=== SCANNER: Cleared {count} finished scans ===", flush=True)
+            return count
+    
     async def cancel_all_scans(self) -> int:
         """Cancela todos os scan jobs pendentes"""
         async with self._lock:
