@@ -152,7 +152,7 @@ const PluginDirectConfig = () => {
                   <SelectValue placeholder="Selecione uma credencial" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {credentials.map((cred) => (
                     <SelectItem key={cred.id} value={cred.id.toString()}>
                       {cred.domain}\\{cred.username}
