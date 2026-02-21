@@ -924,7 +924,18 @@ const ServerBrowser = () => {
       loadServer();
     } catch (error) {
       console.error('Error downloading file:', error);
-      toast.error('Erro ao baixar arquivo');
+      // Extrair mensagem de erro do response do backend
+      const errorDetail = error.response?.data?.detail;
+      const errorMessage = errorDetail || error.message || 'Erro ao baixar arquivo';
+      
+      // Mostrar mensagem específica baseada no código de status
+      if (error.response?.status === 403) {
+        toast.error(`Acesso Negado: ${errorMessage}`);
+      } else if (error.response?.status === 404) {
+        toast.error(`Arquivo não encontrado: ${errorMessage}`);
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
       setTimeout(() => setSingleDownloadProgress(null), 1000);
@@ -1123,10 +1134,21 @@ const ServerBrowser = () => {
             setDownloadedFiles(prev => [...prev, file.fullPath]);
           }
         } catch (error) {
-          // Atualizar para failed
-          setBulkDownloadItems(prev => prev.map((it, idx) => 
+          // Extrair mensagem de erro do response do backend
+          const errorDetail = error.response?.data?.detail;
+          let errorMessage = errorDetail || error.message || 'Erro desconhecido';
+          
+          // Mensagem amigável para erros comuns
+          if (error.response?.status === 403) {
+            errorMessage = 'Acesso Negado';
+          } else if (error.response?.status === 404) {
+            errorMessage = 'Não encontrado';
+          }
+          
+          // Atualizar para failed com mensagem de erro adequada
+          setBulkDownloadItems(prev => prev.map((it) => 
             it.fullPath === file.fullPath && it.status === 'downloading'
-              ? { ...it, status: 'failed', error: error.message } 
+              ? { ...it, status: 'failed', error: errorMessage } 
               : it
           ));
           setBulkDownloadStats(prev => ({ ...prev, failed: prev.failed + 1 }));
