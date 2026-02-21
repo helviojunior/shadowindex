@@ -953,9 +953,8 @@ const ServerBrowser = () => {
       for (const file of files) {
         if (bulkDownloadCancelledRef.current) break;
         
-        // O size pode vir como string do SOAP, converter para número
+        // O size vem como número do SOAP (campo length)
         const fileSize = parseInt(file.size) || 0;
-        console.log(`Download file: ${file.name}, size from SOAP: ${file.size}, parsed: ${fileSize}`);
         
         if (fileSize > maxSizeBytes) {
           // Arquivo muito grande - adicionar como skipped
