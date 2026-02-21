@@ -1634,12 +1634,14 @@ async def download_server_file(
         try:
             result_str = await soap_service.call_soap_operation(db, "Exec5", params, False)
             
-            # Função para verificar se é mensagem de erro
-            def check_download_error(text):
+            # Função para verificar se é mensagem de erro e atualizar o DB
+            async def check_download_error_and_update(text):
                 if not text:
                     return
                 text_lower = text.lower()
                 if 'is denied' in text_lower or ('access' in text_lower and 'denied' in text_lower):
+                    # Atualizar status no banco antes de lançar exceção
+                    await update_access_denied_status(db, server.guid, share_name, file_path, "Acesso negado ao arquivo")
                     raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
                 elif 'could not find' in text_lower or ('not found' in text_lower and 'file' in text_lower):
                     raise HTTPException(status_code=404, detail="Arquivo não encontrado")
@@ -1649,7 +1651,7 @@ async def download_server_file(
                     raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
             
             # Verificar erro no texto bruto primeiro
-            check_download_error(result_str)
+            await check_download_error_and_update(result_str)
             
             # Extrair conteúdo base64 do XML
             import xml.etree.ElementTree as ET
@@ -1676,12 +1678,12 @@ async def download_server_file(
                     result_text = exec5_result.text.strip()
                     
                     # Verificar se é mensagem de erro
-                    check_download_error(result_text)
+                    await check_download_error_and_update(result_text)
                     
                     content_base64 = result_text
                 else:
                     fallback_text = root.text.strip() if root.text else ""
-                    check_download_error(fallback_text)
+                    await check_download_error_and_update(fallback_text)
                     content_base64 = fallback_text
                     
             except HTTPException:
