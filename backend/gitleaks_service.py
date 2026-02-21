@@ -119,8 +119,7 @@ class GitleaksService:
                 job.target_path,
                 "--report-format", "json",
                 "--report-path", report_path,
-                "--config", GITLEAKS_CONFIG_PATH,
-                "--no-git"  # Não requer que seja um repositório git
+                "--config", GITLEAKS_CONFIG_PATH
             ]
             
             logger.info(f"Executando GitLeaks: {' '.join(cmd)}")
