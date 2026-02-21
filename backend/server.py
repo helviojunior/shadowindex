@@ -2921,8 +2921,13 @@ async def create_download_job(
             DownloadJob.status.in_(['pending', 'downloading'])
         )
     )
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Job já existe para este arquivo")
+    existing_job = existing.scalar_one_or_none()
+    if existing_job:
+        status_msg = "pendente" if existing_job.status == 'pending' else "em download"
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Este arquivo já está na fila de downloads ({status_msg})"
+        )
     
     # Extrair nome do arquivo do path
     file_name = request.file_name or request.file_path.split('\\')[-1]
