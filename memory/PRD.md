@@ -27,6 +27,13 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 15 - Database Migration Fix)
+- [x] **P0 Bug Fix: OperationalError: no such column: server_shares.server_id**
+  - Verified the `server_id` column already exists in the database
+  - Added migration for `server_id` column in `database.py` init_db() to ensure persistence
+  - Endpoint `/api/v2/servers/{server_id}/shares?refresh=true` now works correctly
+- [x] **Backend restart successful** - Confirmed hot reload picked up database.py changes
+
 ### 2026-02-22 (Session 14 - Search Feature)
 - [x] **Campo de busca na página do servidor**
   - Busca rápida por nome (com debounce de 300ms)
