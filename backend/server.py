@@ -2352,15 +2352,35 @@ async def get_file_content(
         raise HTTPException(status_code=404, detail="Arquivo não sincronizado")
     
     # Verificar se sanitized_path existe
-    if not downloaded.sanitized_path:
-        raise HTTPException(status_code=500, detail=f"Arquivo sem caminho sanitizado. file_path={file_path}")
+    sanitized_path = downloaded.sanitized_path
+    if not sanitized_path:
+        # Gerar sanitized_path dinamicamente se não existir no registro
+        # Isso pode acontecer com registros antigos
+        from storage_utils import sanitize_path_component
+        
+        # Sanitizar o file_path
+        path_to_sanitize = file_path
+        # Remover prefixo UNC se existir
+        if path_to_sanitize.startswith('\\\\'):
+            parts = path_to_sanitize.split('\\')
+            if len(parts) > 4:
+                path_to_sanitize = '\\'.join(parts[4:])
+            else:
+                path_to_sanitize = parts[-1] if parts else 'unknown_file'
+        
+        # Converter barras e sanitizar
+        sanitized_path = path_to_sanitize.replace('\\', '/').lstrip('/')
+        sanitized_path = sanitized_path.replace('$', '_').replace(':', '_')
+        
+        import logging
+        logging.warning(f"Generated sanitized_path for file_path={file_path}: {sanitized_path}")
     
     # Ler o conteúdo do arquivo
     from storage_utils import get_file_path
-    full_path = get_file_path(server.guid, share_name, downloaded.sanitized_path)
+    full_path = get_file_path(server.guid, share_name, sanitized_path)
     
     import logging
-    logging.info(f"get_file_content: file_path={file_path}, sanitized_path={downloaded.sanitized_path}, full_path={full_path}")
+    logging.info(f"get_file_content: file_path={file_path}, sanitized_path={sanitized_path}, full_path={full_path}")
     
     try:
         import os
