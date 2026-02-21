@@ -1561,20 +1561,54 @@ async def browse_server_directory(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def update_access_denied_status(db: AsyncSession, server_guid: str, share_name: str, file_path: str, error_message: str = None):
+async def update_file_access_denied_status(db: AsyncSession, server_guid: str, share_name: str, file_path: str, error_message: str = None):
     """
-    Atualiza o status de acesso negado para a pasta pai ou share do arquivo.
-    Extrai o caminho do pai a partir do file_path e atualiza o item correspondente.
+    Atualiza o status de acesso negado para um ARQUIVO específico.
+    Cria ou atualiza o item no banco de dados.
     """
     # Extrair o caminho do diretório pai
-    # file_path: \\SERVER\Share\Folder\file.txt -> parent: \\SERVER\Share\Folder
     parent_path = '\\'.join(file_path.rstrip('\\').split('\\')[:-1])
+    file_name = file_path.rstrip('\\').split('\\')[-1]
     
-    if not parent_path:
+    if not parent_path or not file_name:
         return
     
-    # Verificar se é o nível raiz do share (parent_path termina com share_name)
-    is_share_root = parent_path.rstrip('\\').endswith(share_name)
+    # Verificar se o item já existe no banco
+    result = await db.execute(
+        select(ServerItem).where(
+            ServerItem.server_guid == server_guid,
+            ServerItem.full_path == file_path
+        )
+    )
+    item = result.scalar_one_or_none()
+    
+    if item:
+        # Atualizar item existente
+        item.access_denied = True
+        item.error_message = error_message or "Acesso negado"
+    else:
+        # Criar novo item para representar o arquivo com erro
+        new_item = ServerItem(
+            server_guid=server_guid,
+            share_name=share_name,
+            parent_path=parent_path,
+            item_type="File",
+            name=file_name,
+            full_path=file_path,
+            access_denied=True,
+            error_message=error_message or "Acesso negado"
+        )
+        db.add(new_item)
+    
+    await db.commit()
+
+
+async def update_directory_access_denied_status(db: AsyncSession, server_guid: str, share_name: str, dir_path: str, error_message: str = None):
+    """
+    Atualiza o status de acesso negado para uma PASTA ou SHARE.
+    """
+    # Verificar se é o nível raiz do share
+    is_share_root = dir_path.rstrip('\\').endswith(share_name)
     
     if is_share_root:
         # Atualizar o share
@@ -1590,18 +1624,68 @@ async def update_access_denied_status(db: AsyncSession, server_guid: str, share_
             share.error_message = error_message or "Acesso negado"
             await db.commit()
     else:
-        # Atualizar o item do diretório pai
+        # Atualizar o item do diretório
         result = await db.execute(
             select(ServerItem).where(
                 ServerItem.server_guid == server_guid,
-                ServerItem.full_path == parent_path
+                ServerItem.full_path == dir_path
             )
         )
-        parent_item = result.scalar_one_or_none()
-        if parent_item:
-            parent_item.access_denied = True
-            parent_item.error_message = error_message or "Acesso negado"
+        dir_item = result.scalar_one_or_none()
+        if dir_item:
+            dir_item.access_denied = True
+            dir_item.error_message = error_message or "Acesso negado"
             await db.commit()
+
+
+@api_router.post("/servers/{server_id}/clear-access-denied")
+async def clear_access_denied_status(
+    server_id: int,
+    item_path: str,
+    item_type: str,  # "file", "directory", "share"
+    share_name: str = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Limpa o status de acesso negado de um item (arquivo, pasta ou share).
+    Permite re-testar o acesso.
+    """
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    if item_type == "share":
+        # Limpar status do share
+        result = await db.execute(
+            select(ServerShare).where(
+                ServerShare.server_guid == server.guid,
+                ServerShare.share_name == share_name or item_path.split('\\')[-1]
+            )
+        )
+        share = result.scalar_one_or_none()
+        if share:
+            share.access_denied = False
+            share.error_message = None
+            await db.commit()
+            return {"success": True, "message": "Status de acesso do share limpo"}
+    else:
+        # Limpar status de arquivo ou diretório
+        result = await db.execute(
+            select(ServerItem).where(
+                ServerItem.server_guid == server.guid,
+                ServerItem.full_path == item_path
+            )
+        )
+        item = result.scalar_one_or_none()
+        if item:
+            item.access_denied = False
+            item.error_message = None
+            await db.commit()
+            return {"success": True, "message": "Status de acesso do item limpo"}
+    
+    return {"success": False, "message": "Item não encontrado"}
 
 
 @api_router.post("/servers/{server_id}/download")
