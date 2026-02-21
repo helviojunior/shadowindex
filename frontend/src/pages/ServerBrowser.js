@@ -1327,7 +1327,88 @@ const ServerBrowser = () => {
     }
   };
 
-  // Iniciar download em massa (versão incremental)
+  // Iniciar download em massa usando a fila (backend-driven)
+  const startBulkDownloadQueue = async () => {
+    if (!selectedItem) return;
+    
+    const isShare = selectedItem.itemType === 'share';
+    const shareName = isShare ? selectedItem.share_name : selectedItem.shareName;
+    const path = selectedItem.serverPath;
+    const maxSizeBytes = bulkDownloadConfig.maxSize * 1024 * 1024;
+    const maxDepth = bulkDownloadConfig.depth;
+    
+    setLoading(true);
+    
+    try {
+      // Coletar todos os arquivos recursivamente
+      const allFiles = [];
+      
+      const collectFiles = async (dirPath, currentDepth) => {
+        if (currentDepth > maxDepth) return;
+        
+        const response = await axios.post(
+          `${API}/servers/${serverId}/browse`,
+          null,
+          { params: { path: dirPath, ignore_cache: false, share_name: shareName } }
+        );
+        
+        if (response.data.accessDenied) return;
+        
+        const items = response.data.items || [];
+        const files = items.filter(i => i.type === 'File');
+        const directories = items.filter(i => i.type === 'Directory');
+        
+        // Adicionar arquivos (exceto os já baixados)
+        for (const file of files) {
+          if (!downloadedFiles.includes(file.fullPath)) {
+            allFiles.push({
+              file_path: file.fullPath,
+              file_name: file.name,
+              file_size: parseInt(file.size) || 0
+            });
+          }
+        }
+        
+        // Recursivamente processar subdiretórios
+        for (const dir of directories) {
+          await collectFiles(dir.fullPath, currentDepth + 1);
+        }
+      };
+      
+      toast.info('Coletando lista de arquivos...');
+      await collectFiles(path, 1);
+      
+      if (allFiles.length === 0) {
+        toast.info('Nenhum arquivo novo para baixar');
+        return;
+      }
+      
+      // Enviar para a fila de downloads em lote
+      const response = await axios.post(`${API}/downloads/batch`, {
+        server_id: parseInt(serverId),
+        share_name: shareName,
+        files: allFiles,
+        max_file_size_bytes: maxSizeBytes,
+        max_depth: maxDepth
+      });
+      
+      const { created, skipped } = response.data;
+      toast.success(`${created} arquivos adicionados à fila de downloads`);
+      if (skipped > 0) {
+        toast.info(`${skipped} arquivos já estavam na fila`);
+      }
+      toast.info('Acompanhe o progresso em Arquivos > Downloads');
+      
+    } catch (error) {
+      console.error('Error starting bulk download:', error);
+      const errorMsg = error.response?.data?.detail || 'Erro ao iniciar download em massa';
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Iniciar download em massa (versão incremental - LEGADO)
   const startBulkDownload = async () => {
     if (!selectedItem) return;
     
