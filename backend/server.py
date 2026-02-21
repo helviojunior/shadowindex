@@ -1905,7 +1905,7 @@ async def get_certificate_info(
 ):
     """Retorna informações detalhadas de um certificado digital"""
     from cryptography import x509
-    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives import serialization, hashes
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives.serialization import pkcs12
     import os
