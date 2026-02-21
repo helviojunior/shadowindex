@@ -1434,26 +1434,11 @@ async def browse_server_directory(
                     access_denied = True
                     error_message = message_elem.text
                     
-                    # Só marcar o share como acesso negado se estivermos no nível raiz do share
-                    # (path termina com o share_name, sem subdiretórios)
+                    # Atualizar status de acesso negado no banco
                     if share_name:
-                        # Verificar se é o nível raiz do share
-                        is_share_root = path.rstrip('\\').endswith(share_name)
-                        
-                        if is_share_root:
-                            share_result = await db.execute(
-                                select(ServerShare).where(
-                                    ServerShare.server_guid == server.guid,
-                                    ServerShare.share_name == share_name
-                                )
-                            )
-                            share = share_result.scalar_one_or_none()
-                            if share:
-                                share.access_denied = True
-                                share.error_message = message_elem.text
-                                share.children_fetched = True
-                                share.has_children = False
-                                await db.commit()
+                        await update_directory_access_denied_status(
+                            db, server.guid, share_name, path, message_elem.text
+                        )
                     
                     continue
             
