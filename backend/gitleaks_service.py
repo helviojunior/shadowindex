@@ -98,6 +98,7 @@ class GitleaksService:
     
     async def _run_gitleaks(self, job: GitleaksJob):
         """Executa o GitLeaks em um processo separado"""
+        import shutil
         
         job.status = "running"
         job.started_at = datetime.now(timezone.utc)
@@ -107,10 +108,13 @@ class GitleaksService:
         report_path = os.path.join(GITLEAKS_OUTPUT_DIR, report_filename)
         job.report_path = report_path
         
+        # Encontrar o binário do gitleaks
+        gitleaks_bin = shutil.which("gitleaks") or "/usr/sbin/gitleaks"
+        
         try:
             # Construir comando
             cmd = [
-                "/usr/sbin/gitleaks",
+                gitleaks_bin,
                 "dir",
                 job.target_path,
                 "--report-format", "json",
