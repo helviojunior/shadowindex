@@ -1754,11 +1754,17 @@ const ServerBrowser = () => {
                           <span className="text-sm text-muted-foreground">
                             {fileContent.total_certificates} certificado(s)
                           </span>
-                          {fileContent.private_key?.has_private_key && (
-                            <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500">
-                              🔑 Contém Chave Privada
-                            </Badge>
-                          )}
+                          {(() => {
+                            const privateKeyCount = fileContent.certificates?.filter(c => c.has_private_key).length || 0;
+                            if (privateKeyCount > 0) {
+                              return (
+                                <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500">
+                                  🔑 {privateKeyCount === 1 ? 'Contém Chave Privada' : `${privateKeyCount} Chaves Privadas`}
+                                </Badge>
+                              );
+                            }
+                            return null;
+                          })()}
                           {fileContent.password_used && (
                             <Badge variant="secondary" className="text-xs">
                               Senha: {fileContent.password_used}
