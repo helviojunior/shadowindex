@@ -30,7 +30,7 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 // Status colors and icons
 const statusConfig = {
   pending: { label: 'Pendente', color: 'bg-yellow-500', icon: Clock, textColor: 'text-yellow-500' },
-  downloading: { label: 'Baixando', color: 'bg-blue-500', icon: Loader2, textColor: 'text-blue-500', animate: true },
+  downloading: { label: 'Baixando', color: 'bg-blue-500', icon: Download, textColor: 'text-blue-500' },
   completed: { label: 'Concluído', color: 'bg-green-500', icon: CheckCircle, textColor: 'text-green-500' },
   failed: { label: 'Falhou', color: 'bg-red-500', icon: XCircle, textColor: 'text-red-500' },
   cancelled: { label: 'Cancelado', color: 'bg-gray-500', icon: X, textColor: 'text-gray-500' },
