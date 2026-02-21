@@ -608,11 +608,6 @@ const Leaks = () => {
                                 <p className="text-xs text-muted-foreground truncate max-w-[280px]">
                                   {originalFile}
                                 </p>
-                                {detectionSource && (
-                                  <Badge variant="outline" className="text-[10px] mt-1 px-1.5 py-0">
-                                    {detectionSource === 'ocr' ? 'via OCR' : 'via Metadata'}
-                                  </Badge>
-                                )}
                               </div>
                             </div>
                           </TableCell>
@@ -634,11 +629,25 @@ const Leaks = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge 
-                              className={`text-xs ${
-                                finding.job_id ? 'bg-purple-600' : 'bg-green-600'
-                              }`}
-                            >
+                            <div className="flex flex-wrap gap-1">
+                              <Badge 
+                                className={`text-xs ${
+                                  finding.job_id ? 'bg-purple-600' : 'bg-green-600'
+                                }`}
+                              >
+                                {finding.job_id ? 'Scan' : 'Manual'}
+                              </Badge>
+                              {detectionSource && (
+                                <Badge 
+                                  className={`text-xs ${
+                                    detectionSource === 'ocr' ? 'bg-blue-600' : 'bg-violet-600'
+                                  }`}
+                                >
+                                  {detectionSource === 'ocr' ? 'OCR' : 'META'}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
                               {finding.job_id ? 'Scan' : 'Manual'}
                             </Badge>
                           </TableCell>
