@@ -1141,8 +1141,12 @@ async def download_file_by_path(
     )
     existing = existing_result.scalar_one_or_none()
     
+    # Converter conteúdo para bytes
+    content_bytes = content.encode('utf-8')
+    
     # Calcular hash do novo conteúdo
-    new_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+    new_hash = hashlib.sha1(content_bytes).hexdigest()
+    file_size = len(content_bytes)
     
     # Verificar se arquivo já existe com mesmo hash
     if existing and existing.sha1_hash == new_hash:
@@ -1170,17 +1174,36 @@ async def download_file_by_path(
         last_version = version_result.scalar_one_or_none()
         if last_version:
             version = last_version.version_number + 1
+        
+        file_id = existing.id
+    else:
+        # Criar novo registro primeiro para obter o ID
+        downloaded_file = DownloadedFile(
+            server_guid=server.guid,
+            share_name=share_name,
+            file_path=file_path,
+            sanitized_path="",  # Será atualizado após salvar
+            file_size=file_size,
+            sha1_hash=new_hash,
+            mimetype=None
+        )
+        db.add(downloaded_file)
+        await db.flush()  # Obtém o ID sem commitar
+        file_id = downloaded_file.id
     
-    # Salvar arquivo
-    full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
-        server.guid,
-        share_name,
-        file_path,
-        content,
+    # Salvar arquivo usando estrutura baseada em IDs
+    from storage_utils import save_file_by_id, get_file_path_by_id
+    local_path, sha1_hash, file_size = save_file_by_id(
+        server.id,
+        file_id,
+        content_bytes,
         version
     )
     
-    mimetype = get_file_mimetype(full_path)
+    mimetype = get_file_mimetype(local_path)
+    
+    # Caminho relativo usando IDs
+    sanitized_path = f"{server.id}/{file_id}/{version}"
     
     if existing:
         # Criar nova versão
@@ -1192,7 +1215,7 @@ async def download_file_by_path(
             sha1_hash=sha1_hash,
             file_size=file_size,
             mimetype=mimetype,
-            local_path=str(full_path),
+            local_path=local_path,
             is_current=True
         )
         db.add(new_version)
