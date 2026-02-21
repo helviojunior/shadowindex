@@ -2165,6 +2165,35 @@ async def get_certificate_info(
         
         # Extrair informações dos certificados
         cert_infos = []
+        private_key_cert_index = None  # Índice do certificado que possui a chave privada
+        
+        # Se temos uma chave privada, identificar qual certificado corresponde
+        if private_key:
+            try:
+                # Obter a chave pública da chave privada
+                private_key_public = private_key.public_key()
+                private_key_public_bytes = private_key_public.public_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo
+                )
+                
+                # Comparar com cada certificado
+                for i, cert in enumerate(certificates):
+                    try:
+                        cert_public_bytes = cert.public_key().public_bytes(
+                            encoding=serialization.Encoding.PEM,
+                            format=serialization.PublicFormat.SubjectPublicKeyInfo
+                        )
+                        if cert_public_bytes == private_key_public_bytes:
+                            private_key_cert_index = i
+                            print(f"DEBUG: Private key matches certificate index {i}")
+                            break
+                    except Exception as e:
+                        print(f"DEBUG: Error comparing cert {i}: {e}")
+                        continue
+            except Exception as e:
+                print(f"DEBUG: Error getting private key public: {e}")
+        
         for i, cert in enumerate(certificates):
             # Extrair Subject
             subject_parts = {}
