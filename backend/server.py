@@ -864,8 +864,18 @@ async def get_cache_stats(db: AsyncSession = Depends(get_db)):
 
 @api_router.delete("/cache/clear")
 async def clear_cache(db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(SoapCache))
-    await db.commit()
+    """Limpa o cache de arquivos"""
+    import shutil
+    cache_dir = Path(__file__).parent / "storage" / ".cache"
+    
+    if cache_dir.exists():
+        # Remover todos os arquivos de cache
+        for cache_file in cache_dir.glob("*.json"):
+            try:
+                cache_file.unlink()
+            except Exception as e:
+                logging.warning(f"Erro ao remover arquivo de cache {cache_file}: {e}")
+    
     return {"message": "Cache cleared"}
 
 
