@@ -1194,20 +1194,27 @@ const ServerBrowser = () => {
       // Definir os shares
       setShares(loadedShares);
       
-      // Carregar filhos salvos no banco para cada share
+      // Carregar filhos salvos no banco para cada share e subdiretório
       // Isso permite que diretórios previamente visitados apareçam em azul
       if (items_by_path && Object.keys(items_by_path).length > 0) {
         const newNodeChildren = {};
         
+        // Criar um mapa de full_path -> item para busca rápida
+        const allItemsMap = {};
+        Object.values(items_by_path).flat().forEach(item => {
+          allItemsMap[item.full_path] = item;
+        });
+        
         // Para cada share que tem filhos no banco
         loadedShares.forEach(share => {
           const shareNodeId = `share-${share.share_name}`;
-          const sharePath = items_by_path[`\\\\${server?.ip}\\${share.share_name}`] || 
-                           items_by_path[Object.keys(items_by_path).find(k => k.includes(share.share_name))];
+          // Tentar encontrar o path do share no items_by_path
+          const sharePath = `\\\\${server?.ip}\\${share.share_name}`;
+          const shareItems = items_by_path[sharePath];
           
-          if (sharePath && Array.isArray(sharePath)) {
+          if (shareItems && Array.isArray(shareItems)) {
             // Mapear itens para o formato usado no frontend
-            newNodeChildren[shareNodeId] = sharePath.map(item => ({
+            newNodeChildren[shareNodeId] = shareItems.map(item => ({
               ...item,
               id: item.id,
               type: item.type,
@@ -1216,33 +1223,43 @@ const ServerBrowser = () => {
               fullPath: item.full_path,
               shareName: share.share_name,
               childrenFetched: item.children_fetched || false,
-              hasChildren: item.has_children
+              hasChildren: item.has_children,
+              accessDenied: item.access_denied || false
             }));
           }
         });
         
-        // Também processar itens de subdiretórios
-        Object.entries(items_by_path).forEach(([path, items]) => {
-          if (Array.isArray(items)) {
-            // Encontrar o item pai que corresponde a este path
-            const parentItem = Object.values(newNodeChildren)
-              .flat()
-              .find(i => i.fullPath === path || i.full_path === path);
+        // Processar todos os itens de subdiretórios (qualquer profundidade)
+        // O items_by_path já vem organizado por parent_path do backend
+        Object.entries(items_by_path).forEach(([parentPath, items]) => {
+          if (!Array.isArray(items) || items.length === 0) return;
+          
+          // Encontrar o item pai que corresponde a este parentPath
+          const parentItem = allItemsMap[parentPath];
+          
+          if (parentItem && parentItem.id) {
+            const parentNodeId = String(parentItem.id);
             
-            if (parentItem && parentItem.id) {
-              const parentNodeId = String(parentItem.id);
-              newNodeChildren[parentNodeId] = items.map(item => ({
-                ...item,
-                id: item.id,
-                type: item.type,
-                itemType: item.type,
-                name: item.name,
-                fullPath: item.full_path,
-                shareName: parentItem.shareName,
-                childrenFetched: item.children_fetched || false,
-                hasChildren: item.has_children
-              }));
+            // Encontrar o shareName do pai
+            // Extrair share_name do path (formato: \\ip\share\...)
+            let shareName = '';
+            const pathParts = parentPath.split('\\').filter(p => p);
+            if (pathParts.length >= 2) {
+              shareName = pathParts[1]; // Segundo elemento é o share_name
             }
+            
+            newNodeChildren[parentNodeId] = items.map(item => ({
+              ...item,
+              id: item.id,
+              type: item.type,
+              itemType: item.type,
+              name: item.name,
+              fullPath: item.full_path,
+              shareName: shareName,
+              childrenFetched: item.children_fetched || false,
+              hasChildren: item.has_children,
+              accessDenied: item.access_denied || false
+            }));
           }
         });
         
