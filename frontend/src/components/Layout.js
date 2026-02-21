@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -14,7 +14,14 @@ import {
   Wifi,
   WifiOff,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  FolderTree,
+  Download,
+  Settings,
+  Wrench,
+  FileCode,
+  Network
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -36,24 +43,90 @@ import {
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 
-const menuItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/servers', icon: HardDrive, label: 'Servidores' },
-  { path: '/sql', icon: Database, label: 'SQL' },
-  { path: '/soap-operations', icon: PlayCircle, label: 'Operações SOAP' },
-  { path: '/credentials', icon: Key, label: 'Credenciais' },
-  { path: '/soap-apis', icon: Globe, label: 'SOAP APIs' },
-  { path: '/proxy-servers', icon: Server, label: 'Proxy Servers' },
+// Menu structure with multi-level support
+const menuStructure = [
+  { 
+    id: 'dashboard',
+    path: '/', 
+    icon: LayoutDashboard, 
+    label: 'Dashboard',
+    children: null
+  },
+  { 
+    id: 'arquivos',
+    icon: FolderTree, 
+    label: 'Arquivos',
+    children: [
+      { id: 'servers', path: '/servers', label: 'Servidores' },
+      { id: 'downloads', path: '/downloads', label: 'Downloads' },
+    ]
+  },
+  { 
+    id: 'sql',
+    icon: Database, 
+    label: 'SQL',
+    children: [
+      { id: 'connections', path: '/sql', label: 'Conexões' },
+      { id: 'presets', path: '/sql/presets', label: 'Presets' },
+    ]
+  },
+  { 
+    id: 'config',
+    icon: Settings, 
+    label: 'Configuração',
+    children: [
+      { id: 'proxy', path: '/proxy-servers', label: 'Proxy Servers' },
+      { id: 'soap-apis', path: '/soap-apis', label: 'SOAP APIs' },
+      { id: 'credentials', path: '/credentials', label: 'Credenciais' },
+    ]
+  },
+  { 
+    id: 'tools',
+    icon: Wrench, 
+    label: 'Tools',
+    children: [
+      { id: 'soap-ops', path: '/soap-operations', label: 'Operações SOAP' },
+    ]
+  },
 ];
+
+// Helper to find active menu and submenu
+const findActiveMenu = (pathname) => {
+  for (const menu of menuStructure) {
+    if (menu.path === pathname) {
+      return { menuId: menu.id, subMenuId: null };
+    }
+    if (menu.children) {
+      for (const child of menu.children) {
+        if (pathname === child.path || pathname.startsWith(child.path + '/')) {
+          return { menuId: menu.id, subMenuId: child.id };
+        }
+      }
+    }
+  }
+  return { menuId: 'dashboard', subMenuId: null };
+};
 
 const Layout = ({ children, darkMode, setDarkMode }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
   });
+  const [expandedMenus, setExpandedMenus] = useState({});
+  const [hoveredMenu, setHoveredMenu] = useState(null);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const hoverTimeoutRef = useRef(null);
   const location = useLocation();
   const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
+
+  const { menuId: activeMenuId, subMenuId: activeSubMenuId } = findActiveMenu(location.pathname);
+
+  // Auto-expand active menu when sidebar is expanded
+  useEffect(() => {
+    if (!sidebarCollapsed && activeMenuId) {
+      setExpandedMenus(prev => ({ ...prev, [activeMenuId]: true }));
+    }
+  }, [activeMenuId, sidebarCollapsed]);
 
   // Detect small screen
   useEffect(() => {
@@ -71,7 +144,13 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
     localStorage.setItem('sidebarCollapsed', sidebarCollapsed);
   }, [sidebarCollapsed]);
 
-  // Em telas pequenas, sempre mostra como colapsado
+  // Clear hover state when collapsing
+  useEffect(() => {
+    if (!sidebarCollapsed) {
+      setHoveredMenu(null);
+    }
+  }, [sidebarCollapsed]);
+
   const effectiveCollapsed = isSmallScreen || sidebarCollapsed;
 
   const handleProxyChange = async (value) => {
@@ -83,19 +162,209 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
     await setOfflineMode(!offlineMode);
   };
 
+  const toggleMenu = (menuId) => {
+    if (!effectiveCollapsed) {
+      setExpandedMenus(prev => ({ ...prev, [menuId]: !prev[menuId] }));
+    }
+  };
+
+  const handleMenuHover = (menuId) => {
+    if (effectiveCollapsed) {
+      clearTimeout(hoverTimeoutRef.current);
+      setHoveredMenu(menuId);
+    }
+  };
+
+  const handleMenuLeave = () => {
+    if (effectiveCollapsed) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setHoveredMenu(null);
+      }, 150);
+    }
+  };
+
+  const renderMenuItem = (item) => {
+    const Icon = item.icon;
+    const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expandedMenus[item.id];
+    const isActive = item.id === activeMenuId;
+    const isHovered = hoveredMenu === item.id;
+
+    // For items without children (like Dashboard)
+    if (!hasChildren) {
+      const linkContent = (
+        <Link
+          to={item.path}
+          data-testid={`nav-${item.id}`}
+          className={cn(
+            "flex items-center rounded-md transition-all text-sm relative",
+            effectiveCollapsed 
+              ? "justify-center p-2.5" 
+              : "justify-start gap-2.5 px-3 py-2.5",
+            isActive
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <Icon size={18} />
+          {!effectiveCollapsed && (
+            <span className="font-medium text-sm">
+              {item.label}
+            </span>
+          )}
+        </Link>
+      );
+
+      if (effectiveCollapsed) {
+        return (
+          <Tooltip key={item.id}>
+            <TooltipTrigger asChild>
+              {linkContent}
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+
+      return <div key={item.id}>{linkContent}</div>;
+    }
+
+    // For items with children
+    return (
+      <div 
+        key={item.id} 
+        className="relative"
+        onMouseEnter={() => handleMenuHover(item.id)}
+        onMouseLeave={handleMenuLeave}
+      >
+        {/* Parent menu item */}
+        <button
+          onClick={() => toggleMenu(item.id)}
+          data-testid={`nav-${item.id}`}
+          className={cn(
+            "w-full flex items-center rounded-md transition-all text-sm",
+            effectiveCollapsed 
+              ? "justify-center p-2.5" 
+              : "justify-between px-3 py-2.5",
+            isActive
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <div className="flex items-center gap-2.5">
+            <Icon size={18} />
+            {!effectiveCollapsed && (
+              <span className="font-medium text-sm">
+                {item.label}
+              </span>
+            )}
+          </div>
+          {!effectiveCollapsed && (
+            <ChevronDown 
+              size={16} 
+              className={cn(
+                "transition-transform duration-200",
+                isExpanded ? "rotate-180" : ""
+              )}
+            />
+          )}
+        </button>
+
+        {/* Flyout menu when collapsed */}
+        {effectiveCollapsed && isHovered && (
+          <div 
+            className="absolute left-full top-0 ml-2 z-50 min-w-[180px]"
+            onMouseEnter={() => handleMenuHover(item.id)}
+            onMouseLeave={handleMenuLeave}
+          >
+            {/* Arrow indicator */}
+            <div className="absolute left-0 top-3 -ml-1.5 w-3 h-3 bg-card border-l border-t border-border rotate-[-45deg]" />
+            
+            <div className="bg-card border border-border rounded-lg shadow-lg py-2 ml-1">
+              {/* Header */}
+              <div className="px-3 py-2 border-b border-border">
+                <span className="font-semibold text-sm">{item.label}</span>
+              </div>
+              
+              {/* Submenu items */}
+              {item.children.map((child) => {
+                const isChildActive = child.id === activeSubMenuId;
+                return (
+                  <Link
+                    key={child.id}
+                    to={child.path}
+                    data-testid={`nav-${child.id}`}
+                    className={cn(
+                      "block px-4 py-2 text-sm transition-colors",
+                      isChildActive
+                        ? "text-primary bg-primary/5 font-medium"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {child.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Inline submenu when expanded */}
+        {!effectiveCollapsed && isExpanded && (
+          <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
+            {item.children.map((child) => {
+              const isChildActive = child.id === activeSubMenuId;
+              return (
+                <Link
+                  key={child.id}
+                  to={child.path}
+                  data-testid={`nav-${child.id}`}
+                  className={cn(
+                    "block px-3 py-2 text-sm rounded-md transition-colors",
+                    isChildActive
+                      ? "text-primary font-medium bg-primary/5"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {child.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col h-screen overflow-hidden bg-background">
         {/* Top Header - Fixed, spans full width */}
         <header className="flex items-center justify-between bg-card border-b border-border z-50">
           {/* Left side - Logo area (fixed width, centered logo) */}
-          <div className="flex items-center justify-center w-52 px-4 py-3 border-r border-border">
+          <div className={cn(
+            "flex items-center justify-center px-4 py-3 border-r border-border transition-all duration-300",
+            effectiveCollapsed ? "w-16" : "w-52"
+          )}>
             {/* Logo - Always visible in header, centered */}
-            <img 
-              src="/assets/stratasec_light.png" 
-              alt="Stratasec" 
-              className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-            />
+            {effectiveCollapsed ? (
+              <img 
+                src="/assets/stratasec_icon.png" 
+                alt="Stratasec" 
+                className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+            ) : (
+              <img 
+                src="/assets/stratasec_light.png" 
+                alt="Stratasec" 
+                className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
+              />
+            )}
           </div>
           
           {/* Right side - Controls */}
@@ -234,50 +503,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 "flex-1 space-y-1 overflow-y-auto scrollbar-thin",
                 effectiveCollapsed ? "p-2 pt-3" : "p-3"
               )}>
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname === item.path;
-                  
-                  const linkContent = (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                      className={cn(
-                        "flex items-center rounded-md transition-all text-sm",
-                        effectiveCollapsed 
-                          ? "justify-center p-2.5" 
-                          : "justify-start gap-2.5 px-3 py-2.5",
-                        isActive
-                          ? "bg-primary text-primary-foreground shadow-md"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <Icon size={18} />
-                      {!effectiveCollapsed && (
-                        <span className="font-medium text-sm">
-                          {item.label}
-                        </span>
-                      )}
-                    </Link>
-                  );
-
-                  // Tooltip when collapsed
-                  if (effectiveCollapsed) {
-                    return (
-                      <Tooltip key={item.path}>
-                        <TooltipTrigger asChild>
-                          {linkContent}
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="font-medium">
-                          {item.label}
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  }
-
-                  return linkContent;
-                })}
+                {menuStructure.map(renderMenuItem)}
               </nav>
 
               {/* Footer with collapse toggle - only visible on large screens */}
