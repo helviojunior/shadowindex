@@ -39,7 +39,8 @@ import {
   Clock,
   Ban,
   Focus,
-  X
+  X,
+  FileJson
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
