@@ -87,6 +87,7 @@ const ServerBrowser = () => {
   const [rawFileContent, setRawFileContent] = useState(null); // Conteúdo original sem formatação
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
+  const [contentLoadError, setContentLoadError] = useState(false); // Flag para evitar loop em caso de erro
   const [beautified, setBeautified] = useState(false);
   const [base64Decoded, setBase64Decoded] = useState(false); // Flag para conteúdo decodificado de base64
   const [itemsSortConfig, setItemsSortConfig] = useState({ key: 'name', direction: 'asc' });
