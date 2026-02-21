@@ -22,7 +22,7 @@ const PluginDirectConfig = () => {
 
   // Test config form
   const [testConfig, setTestConfig] = useState({
-    credential_id: '',
+    credential_id: 'none',
     dns_mode: 'system',
     dns_servers: '',
     test_hostname: 'google.com'
