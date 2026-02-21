@@ -39,9 +39,16 @@ Portuguese (pt-BR)
   - Alterado container de `space-y-6` para `flex flex-col gap-6`
   - Corrigido renderização condicional do filtro ativo (usando `? : null`)
   - Removido gap visual estranho entre cards de status e lista de downloads
-- [x] **Verificação de espaçamento vertical consistente**
-  - Confirmado: Todas as 8 páginas principais usam espaçamento consistente
-  - Testing agent confirmou 100% de consistência
+- [x] **UI Fix: Ícones dos cards de status**
+  - Removido background circular dos ícones
+  - Ícones reposicionados para canto superior direito (top-3 right-3)
+- [x] **Verificação de fila de downloads**
+  - Novo endpoint: `POST /api/downloads/check-queue` - Verifica se arquivo está na fila
+  - Frontend mostra "Em fila de download" ao invés do botão Sync quando arquivo já está na fila
+  - Mensagem de erro clara quando tenta adicionar arquivo duplicado na fila
+- [x] **Botão "Forçar" para arquivos ignorados**
+  - Na listagem de download em massa, arquivos ignorados agora têm botão "Forçar"
+  - Permite forçar o download de arquivos que foram ignorados por tamanho/extensão
 
 ### 2026-02-22 (Session 10 - Sistema de Downloads Backend-Driven v2)
 - [x] **Resolve separado para IPv4**
