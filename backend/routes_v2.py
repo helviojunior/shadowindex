@@ -216,16 +216,14 @@ async def browse_share(
         if not parsed_items and result_str:
             result_lower = result_str.lower()
             if "access" in result_lower and "denied" in result_lower:
-                access_denied = True
-                error_message = "Acesso negado"
                 share.access_denied = True
-                share.error_message = error_message
+                share.error_message = "Acesso negado"
                 await db.commit()
                 return {
                     "success": False,
                     "share_id": share_id,
                     "access_denied": True,
-                    "error_message": error_message,
+                    "error_message": "Acesso negado",
                     "items": []
                 }
         
