@@ -2013,3 +2013,4 @@ async def queue_directory_scan_v2(
         "message": "Scan adicionado à fila"
     }
 
+
