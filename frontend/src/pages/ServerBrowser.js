@@ -824,42 +824,48 @@ const ServerBrowser = () => {
       return;
     }
     
-    // Construir os paths intermediários
-    let currentPath = `\\\\${pathParts[0]}\\${pathParts[1]}`; // \\IP\ShareName
+    toast.info('Navegando para o item...');
+    
+    // Construir o path do share
+    const serverIp = pathParts[0];
+    const shareNameFromPath = pathParts[1];
+    let currentPath = `\\\\${serverIp}\\${shareNameFromPath}`;
     const shareNodeId = `share-${shareName}`;
     
-    // Coletar todos os nodeIds que precisam ser expandidos
-    const nodesToExpand = {};
-    const loadPromises = [];
+    // 1. Primeiro expandir o share
+    setExpandedNodes(prev => ({ ...prev, [shareNodeId]: true }));
     
-    // Expandir share
-    nodesToExpand[shareNodeId] = true;
-    if (!nodeChildren[shareNodeId] || nodeChildren[shareNodeId].length === 0) {
-      loadPromises.push(loadDirectory(shareNodeId, currentPath, shareName));
+    // Carregar filhos do share se necessário
+    try {
+      await loadDirectory(shareNodeId, currentPath, shareName);
+    } catch (e) {
+      console.error('Erro ao carregar share:', e);
     }
     
-    // Aguardar carregamento do share antes de continuar
-    if (loadPromises.length > 0) {
-      await Promise.all(loadPromises);
-    }
+    // Aguardar um pouco para o estado atualizar
+    await new Promise(resolve => setTimeout(resolve, 200));
     
-    // Expandir diretórios intermediários sequencialmente
+    // 2. Expandir cada diretório intermediário sequencialmente
     for (let i = 2; i < pathParts.length - 1; i++) {
       currentPath += `\\${pathParts[i]}`;
-      const nodeId = `${shareNodeId}-${currentPath.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const safeNodeId = currentPath.replace(/[^a-zA-Z0-9]/g, '_');
+      const nodeId = `${shareNodeId}-${safeNodeId}`;
       
-      nodesToExpand[nodeId] = true;
+      // Expandir este nó
+      setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
       
-      // Verificar se precisa carregar os filhos
-      if (!nodeChildren[nodeId] || nodeChildren[nodeId].length === 0) {
+      // Carregar filhos deste diretório
+      try {
         await loadDirectory(nodeId, currentPath, shareName);
+      } catch (e) {
+        console.error(`Erro ao carregar diretório ${currentPath}:`, e);
       }
+      
+      // Pequeno delay entre cada nível
+      await new Promise(resolve => setTimeout(resolve, 150));
     }
     
-    // Expandir todos os nós de uma vez
-    setExpandedNodes(prev => ({ ...prev, ...nodesToExpand }));
-    
-    // Selecionar o item (abre as abas de detalhes)
+    // 3. Selecionar o item (abre as abas de detalhes)
     const selectedItemData = {
       id: result.id,
       name: result.name,
@@ -886,24 +892,29 @@ const ServerBrowser = () => {
       }
     }
     
-    // Fazer scroll para o item na árvore após um pequeno delay
+    // 4. Fazer scroll para o item na árvore após um delay maior
     setTimeout(() => {
-      // Tentar encontrar o elemento na árvore pelo data-testid ou pelo texto
-      const itemElement = document.querySelector(`[data-item-path="${CSS.escape(result.full_path)}"]`) ||
-                          document.querySelector(`[data-node-id="${shareNodeId}"]`);
+      // Tentar encontrar o elemento na árvore
+      const itemElement = document.querySelector(`[data-item-path="${CSS.escape(result.full_path)}"]`);
+      const shareElement = document.querySelector(`[data-node-id="${shareNodeId}"]`);
+      const targetElement = itemElement || shareElement;
       
-      if (itemElement) {
-        itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Adicionar um destaque temporário
-        itemElement.classList.add('ring-2', 'ring-primary');
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Adicionar destaque temporário estilo highlight amarelo
+        targetElement.style.backgroundColor = 'rgba(234, 179, 8, 0.3)';
+        targetElement.style.boxShadow = '0 0 0 2px rgba(234, 179, 8, 0.5)';
+        targetElement.style.borderRadius = '4px';
+        targetElement.style.transition = 'all 0.3s ease';
+        
         setTimeout(() => {
-          itemElement.classList.remove('ring-2', 'ring-primary');
-        }, 2000);
+          targetElement.style.backgroundColor = '';
+          targetElement.style.boxShadow = '';
+          targetElement.style.borderRadius = '';
+        }, 2500);
       }
-    }, 300);
-    
-    // NÃO limpar a busca - manter os resultados visíveis
-    // O usuário pode continuar navegando pelos resultados
+    }, 500);
     
     toast.success(`Selecionado: ${result.name}`);
   };
