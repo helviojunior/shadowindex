@@ -115,8 +115,10 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   });
   const [expandedMenus, setExpandedMenus] = useState({});
   const [hoveredMenu, setHoveredMenu] = useState(null);
+  const [flyoutPosition, setFlyoutPosition] = useState({ top: 0 });
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const hoverTimeoutRef = useRef(null);
+  const menuRefs = useRef({});
   const location = useLocation();
   const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
 
