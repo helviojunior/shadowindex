@@ -457,7 +457,7 @@ async def list_shares(
 
 @router.get("/servers/{server_id}/shares-tree")
 async def get_shares_tree(server_id: int, db: AsyncSession = Depends(get_db)):
-    """Retorna shares com seus itens filhos do banco"""
+    """Retorna shares com todos os itens já visitados (children_fetched=True)"""
     server = await get_server_or_404(db, server_id)
     
     # Buscar shares
@@ -466,32 +466,31 @@ async def get_shares_tree(server_id: int, db: AsyncSession = Depends(get_db)):
     )
     shares = shares_result.scalars().all()
     
-    # Buscar itens de cada share
-    items_by_path = {}
-    for share in shares:
-        share_path = f"\\\\{server.ip}\\{share.share_name}"
-        items_result = await db.execute(
-            select(ServerItem).where(
-                ServerItem.server_guid == server.guid,
-                ServerItem.parent_path == share_path
-            )
+    # Buscar TODOS os itens do servidor que têm filhos já carregados
+    all_items_result = await db.execute(
+        select(ServerItem).where(
+            ServerItem.server_guid == server.guid
         )
-        items = items_result.scalars().all()
-        if items:
-            items_by_path[share_path] = [
-                {
-                    "id": item.id,
-                    "type": item.item_type,
-                    "name": item.name,
-                    "full_path": item.full_path,
-                    "size": item.size,
-                    "modified": item.modified,
-                    "has_children": item.has_children,
-                    "children_fetched": item.children_fetched,
-                    "access_denied": item.access_denied
-                }
-                for item in items
-            ]
+    )
+    all_items = all_items_result.scalars().all()
+    
+    # Organizar itens por parent_path
+    items_by_path = {}
+    for item in all_items:
+        parent_path = item.parent_path
+        if parent_path not in items_by_path:
+            items_by_path[parent_path] = []
+        items_by_path[parent_path].append({
+            "id": item.id,
+            "type": item.item_type,
+            "name": item.name,
+            "full_path": item.full_path,
+            "size": item.size,
+            "modified": item.modified,
+            "has_children": item.has_children,
+            "children_fetched": item.children_fetched,
+            "access_denied": item.access_denied
+        })
     
     return {
         "shares": [
