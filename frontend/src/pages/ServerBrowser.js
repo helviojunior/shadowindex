@@ -1346,22 +1346,22 @@ const ServerBrowser = () => {
             return;
           }
           
-          if (chunkResponse.data.content_base64) {
-            allChunks.push(chunkResponse.data.content_base64);
+          if (chunkResponse.data.data) {
+            allChunks.push(chunkResponse.data.data);
           }
           
-          const chunkSize = chunkResponse.data.chunk_size || 0;
+          const chunkSize = chunkResponse.data.bytes_read || 0;
           totalBytesReceived += chunkSize;
           offset += chunkSize;
           
           // Calcular progresso - usar o maior valor entre fileSize informado e bytes recebidos
           const estimatedTotal = Math.max(fileSize, totalBytesReceived);
-          const progress = chunkResponse.data.is_last_chunk 
+          const progress = chunkResponse.data.is_last 
             ? 100 
             : Math.min(99, Math.round((totalBytesReceived / estimatedTotal) * 100));
           setSingleDownloadProgress(progress);
           
-          if (chunkResponse.data.is_last_chunk || chunkSize === 0) {
+          if (chunkResponse.data.is_last || chunkSize === 0) {
             break;
           }
         }
