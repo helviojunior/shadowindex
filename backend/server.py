@@ -1646,6 +1646,9 @@ async def download_server_file(
                         new_version_number
                     )
                 
+                # Calcular mimetype
+                mimetype = get_file_mimetype(full_path)
+                
                 # Criar nova versão no banco
                 new_file_version = FileVersion(
                     server_guid=server.guid,
@@ -1654,6 +1657,7 @@ async def download_server_file(
                     version_number=new_version_number,
                     sha1_hash=sha1_hash,
                     file_size=file_size,
+                    mimetype=mimetype,
                     local_path=sanitized_path,
                     is_current=True
                 )
@@ -1671,6 +1675,7 @@ async def download_server_file(
                     downloaded_file.sha1_hash = sha1_hash
                     downloaded_file.file_size = file_size
                     downloaded_file.sanitized_path = sanitized_path
+                    downloaded_file.mimetype = mimetype
                     downloaded_file.downloaded_at = datetime.now(timezone.utc)
                 
                 await db.commit()
