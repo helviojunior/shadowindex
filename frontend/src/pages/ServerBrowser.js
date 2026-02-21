@@ -806,6 +806,7 @@ const ServerBrowser = () => {
         // Download em chunks para arquivos grandes
         let offset = 0;
         let allChunks = [];
+        let totalBytesReceived = 0;
         
         while (true) {
           const chunkResponse = await axios.post(
@@ -825,11 +826,18 @@ const ServerBrowser = () => {
             allChunks.push(chunkResponse.data.content_base64);
           }
           
-          offset += chunkResponse.data.chunk_size;
-          const progress = Math.min(100, Math.round((offset / fileSize) * 100));
+          const chunkSize = chunkResponse.data.chunk_size || 0;
+          totalBytesReceived += chunkSize;
+          offset += chunkSize;
+          
+          // Calcular progresso - usar o maior valor entre fileSize informado e bytes recebidos
+          const estimatedTotal = Math.max(fileSize, totalBytesReceived);
+          const progress = chunkResponse.data.is_last_chunk 
+            ? 100 
+            : Math.min(99, Math.round((totalBytesReceived / estimatedTotal) * 100));
           setSingleDownloadProgress(progress);
           
-          if (chunkResponse.data.is_last_chunk || chunkResponse.data.chunk_size === 0) {
+          if (chunkResponse.data.is_last_chunk || chunkSize === 0) {
             break;
           }
         }
@@ -843,7 +851,7 @@ const ServerBrowser = () => {
             params: {
               file_path: filePath,
               share_name: shareName,
-              expected_size: fileSize,
+              expected_size: totalBytesReceived,
               content_base64: combinedBase64
             }
           }
