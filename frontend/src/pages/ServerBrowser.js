@@ -148,6 +148,7 @@ const ServerBrowser = () => {
     if (isShare || isDirectory) {
       setBulkDownloadItems([]);
       setBulkDownloadStats({ total: 0, completed: 0, failed: 0, skipped: 0 });
+      setFileInQueue(null);
     }
     
     setFileContent(null);
@@ -159,12 +160,17 @@ const ServerBrowser = () => {
     // Se acesso negado, mostrar apenas Info
     if (isAccessDenied) {
       setActiveTab('info');
+      setFileInQueue(null);
     } else if (isShare || isDirectory) {
       setActiveTab('objetos');
     } else if (isFile) {
       const filePath = selectedItem.fullPath || selectedItem.serverPath;
+      const shareName = selectedItem.shareName;
       const isDownloaded = downloadedFiles.includes(filePath);
       const canView = canPreviewFile(selectedItem.name);
+      
+      // Verificar se arquivo está na fila de downloads
+      checkFileInQueue(filePath, shareName);
       
       // Se arquivo já baixado e pode ser visualizado, abrir na aba View
       if (isDownloaded && canView) {
@@ -179,6 +185,7 @@ const ServerBrowser = () => {
       }
     } else {
       setActiveTab('info');
+      setFileInQueue(null);
     }
   }, [selectedItem?.id, downloadedFiles, bulkDownloadActive]);
 
