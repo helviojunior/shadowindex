@@ -98,6 +98,9 @@ backend/data/cache/plugins/
 # Storage (downloaded files)
 backend/data/storage/
 
+# GitLeaks output
+backend/data/gitleaks/
+
 # Mobile development
 android-sdk/
 
