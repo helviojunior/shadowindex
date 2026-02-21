@@ -104,12 +104,12 @@ class TestCredentialTypes:
     # ============== token type tests ==============
     def test_create_token_credential_full(self):
         """Create token credential with all fields"""
-        response = requests.post(f"{BASE_URL}/api/credentials", json={
+        response = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials", json={
             "name": "TEST_api_token",
             "credential_type": "token",
             "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token",
             "token_type": "bearer"
-        })
+        }))
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["credential_type"] == "token"
@@ -121,10 +121,10 @@ class TestCredentialTypes:
     
     def test_create_token_without_name(self):
         """Create token credential without optional name"""
-        response = requests.post(f"{BASE_URL}/api/credentials", json={
+        response = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials", json={
             "credential_type": "token",
             "token": "api_key_12345678"
-        })
+        }))
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["name"] is None
