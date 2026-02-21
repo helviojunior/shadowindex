@@ -254,6 +254,16 @@ const ServerBrowser = () => {
     }
   }, [downloadedFiles, selectedItem?.id]);
 
+  // Resetar estados quando o arquivo selecionado muda
+  useEffect(() => {
+    // Limpar conteúdo e estados de formatação quando muda de arquivo
+    setFileContent(null);
+    setRawFileContent(null);
+    setFilePreviewUrl(null);
+    setBeautified(false);
+    setBase64Decoded(false);
+  }, [selectedItem?.id, selectedItem?.fullPath]);
+
   // Carregar conteúdo automaticamente quando aba View for selecionada
   useEffect(() => {
     // Só executar se estiver na aba view e for um arquivo
