@@ -583,17 +583,18 @@ const Leaks = () => {
                   {filteredFiles.map((file) => 
                     file.findings.map((finding, fIndex) => {
                       const risk = getRiskIndicators(finding.RuleID);
-                      const originalFile = getOriginalFileName(file.file);
-                      const fileSource = getFileSource(file.file);
+                      // Usar dados já normalizados pelo backend
+                      const originalFile = finding.original_file || finding.File;
+                      const detectionSource = finding.detection_source; // "ocr", "metadata" ou null
                       const fileName = originalFile.split('/').pop();
                       
                       return (
                         <TableRow key={`${file.file}-${fIndex}`} className="hover:bg-muted/30">
                           <TableCell>
                             <div className="flex items-start gap-2">
-                              {fileSource && (
+                              {detectionSource && (
                                 <div className="flex-shrink-0 mt-0.5">
-                                  {fileSource === 'ocr' ? (
+                                  {detectionSource === 'ocr' ? (
                                     <FileSearch className="w-4 h-4 text-blue-400" title="Detectado via OCR" />
                                   ) : (
                                     <FileText className="w-4 h-4 text-purple-400" title="Detectado via Metadata" />
@@ -607,9 +608,9 @@ const Leaks = () => {
                                 <p className="text-xs text-muted-foreground truncate max-w-[280px]">
                                   {originalFile}
                                 </p>
-                                {fileSource && (
+                                {detectionSource && (
                                   <Badge variant="outline" className="text-[10px] mt-1 px-1.5 py-0">
-                                    {fileSource === 'ocr' ? 'via OCR' : 'via Metadata'}
+                                    {detectionSource === 'ocr' ? 'via OCR' : 'via Metadata'}
                                   </Badge>
                                 )}
                               </div>
