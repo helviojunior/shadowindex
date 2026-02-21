@@ -1831,17 +1831,17 @@ const ServerBrowser = () => {
                 onClick={() => setActiveTab('info')}
                 className={`pb-3 text-sm font-medium transition-colors relative ${
                   activeTab === 'info' 
-                    ? 'text-green-500' 
+                    ? (isAccessDenied ? 'text-red-500' : 'text-green-500')
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 Info
                 {activeTab === 'info' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                  <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${isAccessDenied ? 'bg-red-500' : 'bg-green-500'}`} />
                 )}
               </button>
               
-              {isFile && downloaded && canViewContent && (
+              {isFile && downloaded && canViewContent && !isAccessDenied && (
                 <button
                   onClick={() => {
                     setActiveTab('view');
