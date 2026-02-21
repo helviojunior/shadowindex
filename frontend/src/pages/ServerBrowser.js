@@ -1910,14 +1910,7 @@ const ServerBrowser = () => {
                         )}
                         Copiar
                       </Button>
-                      
-                      {/* Indicador de encoding/BOM */}
-                      {fileContent.encoding && (
-                        <Badge variant="outline" className="text-xs">
-                          {fileContent.encoding}
-                        </Badge>
-                      )}
-                      {fileContent.has_bom && (
+                    </div>
                         <Badge variant="secondary" className="text-xs bg-yellow-500/20 text-yellow-500">
                           BOM Detectado
                         </Badge>
