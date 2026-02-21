@@ -1416,9 +1416,11 @@ async def get_server_shares_soap(server_id: int, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@api_router.get("/servers/{server_id}/shares-tree")
+@api_router.get("/servers/{server_id}/shares-tree", deprecated=True)
 async def get_server_shares_with_children(server_id: int, db: AsyncSession = Depends(get_db)):
     """
+    [DEPRECATED] Use GET /api/v2/servers/{server_id}/shares-tree
+    
     Retorna os shares do servidor com seus filhos já carregados do banco.
     Útil para reconstruir a árvore ao abrir a página.
     """
