@@ -1535,7 +1535,7 @@ async def get_server_items_by_path(
     }
 
 
-@api_router.post("/servers/{server_id}/browse")
+@api_router.post("/servers/{server_id}/browse", deprecated=True)
 async def browse_server_directory(
     server_id: int,
     path: str,
@@ -1543,7 +1543,9 @@ async def browse_server_directory(
     share_name: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Lista arquivos e diretórios de um caminho no servidor"""
+    """[DEPRECATED] Use POST /api/v2/servers/{server_id}/browse
+    
+    Lista arquivos e diretórios de um caminho no servidor"""
     # Obter servidor
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
