@@ -37,7 +37,7 @@ const PluginDirectConfig = () => {
     try {
       const [pluginRes, credRes] = await Promise.all([
         axios.get(`${API}/plugins/direct_interaction`),
-        axios.get(`${API}/credentials`)
+        axios.get(`${API}/credentials/by-type/user_password`)  // Only user_password type
       ]);
       setPluginInfo(pluginRes.data);
       setCredentials(credRes.data);
