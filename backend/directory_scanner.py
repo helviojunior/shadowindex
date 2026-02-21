@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +32,35 @@ _scanner_instance: Optional['DirectoryScanner'] = None
 
 class ScanJob:
     """Representa um job de scan de diretório"""
-    def __init__(self, server_id: int, share_name: str, path: str, depth: int, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True):
+    def __init__(self, server_id: int, share_name: str, path: str, depth: int, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True, parent_id: str = None):
+        self.id = str(uuid.uuid4())[:8]  # ID curto único
+        self.parent_id = parent_id  # ID do scan pai (para subdiretórios)
         self.server_id = server_id
         self.share_name = share_name
         self.path = path
         self.depth = depth
         self.max_depth = max_depth
         self.max_file_size_bytes = max_file_size_bytes
-        self.apply_filters = apply_filters  # Se False, ignora filtros de tamanho e extensão
+        self.apply_filters = apply_filters
+        self.status = 'pending'  # pending, scanning, completed, cancelled
+        self.created_at = datetime.now(timezone.utc)
+        self.files_found = 0
+        self.dirs_found = 0
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'parent_id': self.parent_id,
+            'server_id': self.server_id,
+            'share_name': self.share_name,
+            'path': self.path,
+            'depth': self.depth,
+            'max_depth': self.max_depth,
+            'status': self.status,
+            'files_found': self.files_found,
+            'dirs_found': self.dirs_found,
+            'created_at': self.created_at.isoformat()
+        }
 
 
 class DirectoryScanner:
@@ -48,6 +70,8 @@ class DirectoryScanner:
         self.running = False
         self._task: Optional[asyncio.Task] = None
         self.scan_queue: List[ScanJob] = []
+        self.completed_scans: List[ScanJob] = []  # Últimos scans completados
+        self.cancelled_ids: set = set()  # IDs de scans cancelados
         self._lock = asyncio.Lock()
     
     async def start(self):
