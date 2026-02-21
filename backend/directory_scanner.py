@@ -265,7 +265,7 @@ class DirectoryScanner:
             logger.error(f"Error scanning {full_path}: {e}")
     
     def _parse_directory_listing(self, result: str) -> List[dict]:
-        """Parseia o resultado da listagem de diretório"""
+        """Parseia o resultado da listagem de diretório (formato SOAP Exec4)"""
         items = []
         
         if not result or not result.strip():
@@ -273,70 +273,50 @@ class DirectoryScanner:
         
         result = result.strip()
         
-        # Log para debug - mostrar amostra do resultado
-        print(f"=== SCANNER PARSE: Result starts with: {result[:500]}... ===", flush=True)
-        print(f"=== SCANNER PARSE: Result ends with: ...{result[-200:]} ===", flush=True)
-        
-        # Se for XML
+        # Se for XML (SOAP response)
         if result.startswith('<'):
             try:
                 import xml.etree.ElementTree as ET
-                root = ET.fromstring(result)
                 
-                # Tentar diferentes estruturas XML
-                # Estrutura 1: .//Item
-                for item in root.findall('.//Item') or root.findall('.//item'):
-                    item_dict = {
-                        'name': item.findtext('Name') or item.findtext('name') or '',
-                        'type': item.findtext('Type') or item.findtext('type') or 'File',
-                        'size': item.findtext('Size') or item.findtext('size') or '0'
-                    }
-                    if item_dict['name']:
-                        items.append(item_dict)
+                # Remover namespaces para facilitar o parsing
+                # O XML tem namespaces como soap:, diffgr:, etc
+                import re
+                # Remove namespace prefixes
+                clean_xml = re.sub(r'<(/?)(\w+):', r'<\1', result)
+                # Remove xmlns declarations
+                clean_xml = re.sub(r'\s+xmlns[^=]*="[^"]*"', '', clean_xml)
                 
-                # Se não encontrou, tentar estrutura alternativa
-                if not items:
-                    # Tentar .//File e .//Directory
-                    for file_elem in root.findall('.//File'):
-                        item_dict = {
-                            'name': file_elem.findtext('Name') or file_elem.findtext('name') or file_elem.get('name', ''),
-                            'type': 'File',
-                            'size': file_elem.findtext('Size') or file_elem.findtext('size') or file_elem.get('size', '0')
-                        }
-                        if item_dict['name']:
-                            items.append(item_dict)
+                root = ET.fromstring(clean_xml)
+                
+                # Procurar por elementos Result (formato Exec4)
+                for result_elem in root.findall('.//Result'):
+                    item_type = result_elem.findtext('type') or 'File'
+                    item_name = result_elem.findtext('name') or ''
+                    item_size = result_elem.findtext('length') or '0'
+                    item_fullname = result_elem.findtext('fullname') or ''
                     
-                    for dir_elem in root.findall('.//Directory'):
-                        item_dict = {
-                            'name': dir_elem.findtext('Name') or dir_elem.findtext('name') or dir_elem.get('name', ''),
-                            'type': 'Directory',
-                            'size': '0'
-                        }
-                        if item_dict['name']:
-                            items.append(item_dict)
+                    if item_name and item_name not in ['.', '..']:
+                        items.append({
+                            'name': item_name,
+                            'type': item_type,
+                            'size': item_size,
+                            'fullname': item_fullname
+                        })
                 
-                # Se ainda não encontrou, listar todos os elementos filhos para debug
-                if not items:
-                    print(f"=== SCANNER PARSE: XML root tag: {root.tag} ===", flush=True)
-                    print(f"=== SCANNER PARSE: XML children: {[child.tag for child in root]} ===", flush=True)
-                    
+                print(f"=== SCANNER PARSE: Found {len(items)} Result elements ===", flush=True)
+                
             except Exception as e:
                 print(f"=== SCANNER PARSE ERROR (XML): {e} ===", flush=True)
                 logger.warning(f"Error parsing XML directory listing: {e}")
         
-        # Se for CSV ou texto separado por linha
+        # Se for CSV ou texto separado por linha (fallback)
         else:
             lines = result.split('\n')
-            print(f"=== SCANNER PARSE: Found {len(lines)} lines (CSV/text mode) ===", flush=True)
-            if lines:
-                print(f"=== SCANNER PARSE: First line: {lines[0][:200]} ===", flush=True)
-            
             for line in lines:
                 line = line.strip()
                 if not line:
                     continue
                 
-                # Formato esperado: "name|type|size" ou "name,type,size"
                 parts = line.split('|') if '|' in line else line.split(',')
                 if len(parts) >= 2:
                     item_dict = {
@@ -347,7 +327,6 @@ class DirectoryScanner:
                     if item_dict['name'] and item_dict['name'] not in ['.', '..']:
                         items.append(item_dict)
         
-        print(f"=== SCANNER PARSE: Returning {len(items)} items ===", flush=True)
         return items
 
 
