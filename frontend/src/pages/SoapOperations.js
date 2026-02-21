@@ -140,6 +140,57 @@ const SoapOperations = () => {
         <p className="text-muted-foreground mt-2">Execute operações no WebService SOAP</p>
       </div>
 
+      {/* SOAP API Selector */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Plug className="w-5 h-5" />
+            Selecionar SOAP API
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingApis ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Carregando APIs...
+            </div>
+          ) : soapApis.length === 0 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Nenhuma SOAP API configurada. Configure uma em <a href="/plugins/soap" className="underline font-medium">Plugins → SOAP Plugin</a>.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="flex items-center gap-4">
+              <Select
+                value={selectedSoapApi}
+                onValueChange={setSelectedSoapApi}
+              >
+                <SelectTrigger className="w-[350px]" data-testid="soap-api-selector">
+                  <SelectValue placeholder="Selecione uma SOAP API" />
+                </SelectTrigger>
+                <SelectContent>
+                  {soapApis.map((api) => (
+                    <SelectItem key={api.id} value={api.id.toString()}>
+                      <span className="flex items-center gap-2">
+                        <Plug className="w-3 h-3" />
+                        {api.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedSoapApi && (
+                <span className="text-sm text-muted-foreground font-mono">
+                  {soapApis.find(a => a.id.toString() === selectedSoapApi)?.uri}
+                </span>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Operations Tabs */}
       <Card>
         <CardHeader>
