@@ -416,11 +416,7 @@ async def list_shares(
                     root = ET.fromstring(xml_content)
                     
                     # Procurar elementos Result dentro do diffgram
-                    # Namespace handling
-                    namespaces = {
-                        'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1',
-                        'msdata': 'urn:schemas-microsoft-com:xml-msdata'
-                    }
+                    # Os elementos Result estão dentro de DocumentElement sem namespace
                     
                     # Procurar todos os elementos Result (podem estar em DocumentElement ou diretamente)
                     results = root.findall('.//Result') or root.findall('.//{urn:schemas-microsoft-com:xml-diffgram-v1}Result')
@@ -432,7 +428,7 @@ async def list_shares(
                             results = doc_elem.findall('Result')
                     
                     for result in results:
-                        host = result.findtext('host', '').strip()
+                        # host = result.findtext('host', '').strip()  # Não usado, já sabemos o IP do servidor
                         name = result.findtext('name', '').strip()
                         share_type = result.findtext('type', 'Disk').strip()
                         remark = result.findtext('remark', '').strip()
