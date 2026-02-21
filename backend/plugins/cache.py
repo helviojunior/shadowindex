@@ -123,8 +123,8 @@ class PluginCache:
             cache_data = await asyncio.to_thread(read_cache)
             entry = CacheEntry.from_dict(cache_data)
             
-            # Check TTL
-            effective_ttl = ttl_hours or entry.ttl_hours
+            # Check TTL (note: effective_ttl could be used for future TTL override logic)
+            _ = ttl_hours or entry.ttl_hours  # Reserved for future use
             if entry.is_expired():
                 logger.debug(f"Cache expired for {operation}: {cache_key[:16]}...")
                 return None
