@@ -1330,10 +1330,6 @@ const ServerBrowser = () => {
     
     // Handler para clique no item - seleciona e expande se for diretório
     const handleNodeClick = async () => {
-      if (item.type === 'AccessDenied') {
-        return;
-      }
-      
       // Selecionar o item
       if (isShare) {
         handleSelectItem(item, 'share', path, item.share_name);
