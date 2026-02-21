@@ -138,7 +138,15 @@ class DownloadWorker:
                 soap_service = await get_default_soap_service(db)
                 
                 # Preparar path para download
-                full_path = f"\\\\{server.ip}\\{job.share_name}\\{job.file_path}"
+                # O file_path já deve ser relativo ao share, não incluir o caminho UNC completo
+                file_path = job.file_path
+                
+                # Se o file_path já contém o caminho UNC completo, usar diretamente
+                if file_path.startswith('\\\\'):
+                    full_path = file_path
+                else:
+                    # Caso contrário, construir o caminho completo
+                    full_path = f"\\\\{server.ip}\\{job.share_name}\\{file_path}"
                 
                 # Fazer download
                 if job.file_size and job.file_size > CHUNK_SIZE:
