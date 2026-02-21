@@ -196,12 +196,18 @@ const ServerBrowser = () => {
         const response = await axios.get(`${API}/servers/${serverId}/certificate-info`, {
           params: {
             file_path: selectedItem.fullPath || selectedItem.serverPath,
-            share_name: selectedItem.shareName
+            share_name: selectedItem.shareName,
+            password: pfxPassword || undefined
           }
         });
         setFileContent(response.data);
         setRawFileContent(JSON.stringify(response.data, null, 2));
         setFilePreviewUrl(null);
+        
+        // Se obteve sucesso com senha, limpar o campo
+        if (response.data.password_used) {
+          setPfxPassword('');
+        }
       } catch (error) {
         console.error('Error loading certificate:', error);
         toast.error('Erro ao carregar informações do certificado');
