@@ -150,6 +150,19 @@ const ServerBrowser = () => {
     }
   }, [selectedItem?.id, downloadedFiles]);
 
+  // Carregar conteúdo automaticamente quando aba View for selecionada
+  useEffect(() => {
+    if (activeTab === 'view' && selectedItem?.itemType === 'File' && !fileContent && !filePreviewUrl && !loadingContent) {
+      const filePath = selectedItem.fullPath || selectedItem.serverPath;
+      const isDownloaded = downloadedFiles.includes(filePath);
+      const canView = canPreviewFile(selectedItem.name);
+      
+      if (isDownloaded && canView) {
+        loadFileContent();
+      }
+    }
+  }, [activeTab, selectedItem?.id]);
+
   const loadServer = async () => {
     try {
       const response = await axios.get(`${API}/servers/${serverId}`);
