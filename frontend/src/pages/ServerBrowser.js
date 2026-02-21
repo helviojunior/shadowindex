@@ -1547,10 +1547,10 @@ const ServerBrowser = () => {
     ));
   };
 
-  // Forçar download de item ignorado
+  // Forçar download de item ignorado - usar API V2
   const forceDownloadItem = async (item, index) => {
     try {
-      const response = await axios.post(`${API}/downloads`, {
+      const response = await axios.post(`${API_V2}/downloads`, {
         server_id: parseInt(serverId),
         share_name: item.shareName || selectedItem?.shareName,
         file_path: item.path || item.fullPath,
