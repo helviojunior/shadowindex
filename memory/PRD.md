@@ -27,6 +27,26 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 15 - Plugin Architecture)
+- [x] **Plugin System Architecture** - Complete implementation:
+  - Base plugin class with abstract methods: `list_shares`, `list_directory`, `download_file`, `resolve_address`, `sql_request`
+  - Standard exceptions: `ItemNotFoundException`, `AccessDeniedException`, `ConnectionException`, `TimeoutException`
+  - Global caching layer Core → Plugin with JSON storage on disk
+  - Plugin factory for registration and instantiation
+- [x] **SOAP API Plugin** - First plugin implementation:
+  - All current SOAP logic abstracted into plugin
+  - Config: only `soap_url` required
+  - Automatic cache with 24h TTL
+- [x] **Server Model Updated**:
+  - Added `plugin_type` field (default: "soap_api")
+  - Added `plugin_config` JSON field for plugin-specific settings
+- [x] **Pytest Tests** - 30 tests for plugin system:
+  - Exception tests
+  - Cache tests (set, get, invalidate, stats)
+  - Factory tests
+  - SOAP plugin tests
+  - Data class tests
+
 ### 2026-02-21 (Session 15 - P1/P2 Fixes & Alembic Migration)
 - [x] **P2 Fix: libmagic workaround cleanup**
   - Updated `server.py` to use libmagic with fallback to mimetypes by extension
