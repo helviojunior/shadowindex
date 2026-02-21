@@ -1,0 +1,42 @@
+[
+ {
+  "RuleID": "stripe-access-token",
+  "Description": "Found a Stripe Access Token, posing a risk to payment processing services and sensitive financial data.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 19,
+  "EndColumn": 51,
+  "Match": "sk_live_abcdefghijklmnop123456789",
+  "Secret": "sk_live_abcdefghijklmnop123456789",
+  "File": "/tmp/test_leaks/secrets.env",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.741364,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/tmp/test_leaks/secrets.env:stripe-access-token:1"
+ },
+ {
+  "RuleID": "slack-webhook-url",
+  "Description": "Discovered a Slack Webhook, which could lead to unauthorized message posting and data leakage in Slack channels.",
+  "StartLine": 2,
+  "EndLine": 2,
+  "StartColumn": 16,
+  "EndColumn": 92,
+  "Match": "https://hooks.slack.com/services/T00000000/B00000000/ABCDEFGHIJKLMNOPQRSTUVWX",
+  "Secret": "https://hooks.slack.com/services/T00000000/B00000000/ABCDEFGHIJKLMNOPQRSTUVWX",
+  "File": "/tmp/test_leaks/secrets.env",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.7780957,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/tmp/test_leaks/secrets.env:slack-webhook-url:2"
+ }
+]
