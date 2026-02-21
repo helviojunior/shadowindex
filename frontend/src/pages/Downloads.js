@@ -438,7 +438,7 @@ const Downloads = () => {
                         >
                           {scanStatusConfig[scan.status]?.label}
                         </Badge>
-                        {isActive && !scan.parent_id && (
+                        {isActive && (
                           <Button
                             size="sm"
                             variant="ghost"
