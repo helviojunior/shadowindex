@@ -1352,9 +1352,10 @@ const ServerBrowser = () => {
       
       const items = response.data.items.map((item, idx) => ({
         ...item,
-        id: `${nodeId}-${idx}`,
+        id: item.id || `${nodeId}-${idx}`,  // Preservar ID do banco se existir
         parentPath: path,
-        shareName: shareName
+        shareName: shareName,
+        childrenFetched: item.children_fetched || false  // Flag do banco para diretórios visitados
       }));
       
       setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
