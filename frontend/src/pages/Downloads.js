@@ -245,7 +245,7 @@ const Downloads = () => {
       </div>
 
       {/* Stats Cards - Clickable for filtering */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {Object.entries(statusConfig).map(([status, config]) => {
           const count = stats[status] || 0;
           const isActive = activeFilter === status;
@@ -255,8 +255,8 @@ const Downloads = () => {
             <Card 
               key={status}
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md",
-                isActive && "ring-2 ring-primary"
+                "cursor-pointer transition-all hover:shadow-md border-2",
+                isActive ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
               )}
               onClick={() => setActiveFilter(isActive ? null : status)}
               data-testid={`filter-${status}`}
@@ -265,9 +265,14 @@ const Downloads = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-2xl font-bold">{count}</p>
-                    <p className={cn("text-sm", config.textColor)}>{config.label}</p>
+                    <p className={cn("text-sm font-medium", config.textColor)}>{config.label}</p>
                   </div>
-                  <Icon className={cn("w-6 h-6", config.textColor, config.animate && "animate-spin")} />
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center",
+                    status === 'downloading' ? 'bg-blue-500/20' : 'bg-muted/50'
+                  )}>
+                    <Icon className={cn("w-5 h-5", config.textColor)} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -277,8 +282,8 @@ const Downloads = () => {
         {/* Total card */}
         <Card 
           className={cn(
-            "cursor-pointer transition-all hover:shadow-md",
-            activeFilter === null && "ring-2 ring-primary"
+            "cursor-pointer transition-all hover:shadow-md border-2",
+            activeFilter === null ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
           )}
           onClick={() => setActiveFilter(null)}
           data-testid="filter-all"
@@ -287,9 +292,11 @@ const Downloads = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-sm text-muted-foreground font-medium">Total</p>
               </div>
-              <Download className="w-6 h-6 text-muted-foreground" />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-muted/50">
+                <Download className="w-5 h-5 text-muted-foreground" />
+              </div>
             </div>
           </CardContent>
         </Card>
