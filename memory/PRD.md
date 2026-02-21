@@ -350,13 +350,7 @@ Portuguese (pt-BR)
 
 ## Pending Issues
 
-### P1 - In Progress
-- **Visited directory highlight after page refresh** - Directories that have been visited should show blue icon/text after page refresh. The `children_fetched` flag is stored in DB but frontend doesn't always load it correctly.
-- **Downloaded file metadata not updated** - `download_worker.py` doesn't update `sha1_hash` and `mimetype` in `DownloadedFile` after successful download.
-- **File tree doesn't auto-update after background download** - No real-time UI updates when background downloads complete.
-
-### P2 - Known Issues  
-- **libmagic workaround cleanup** - `try-except` block for libmagic import can be removed since `apt install libmagic1` was added to Dockerfile.
+*No pending issues at this time.*
 
 ### 2026-02-22 (Session 10 - Sidebar Bug Fixes & UI Improvements)
 - [x] **P0 Bug Fix: Destaque de menu ativo incorreto** - Corrigida função `findActiveMenu` em `Layout.js`
