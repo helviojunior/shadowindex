@@ -372,7 +372,7 @@ Portuguese (pt-BR)
 - **Mock SOAP Service for Testing:** Create mock service for robustly testing XML parsing without relying on unreliable live API
 
 ### P3
-- **Refactor DB Schema Migration:** Replace custom migration script with Alembic for robust schema management
+- **WebSocket for Real-time Updates:** Replace polling with WebSocket for more efficient real-time UI updates
 
 ### P4
 - **Complete File Download Tracking:** Store `downloaded` flag in ServerFile model after successful sync
