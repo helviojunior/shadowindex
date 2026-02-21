@@ -117,6 +117,10 @@ const ServerBrowser = () => {
   });
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const searchTimeoutRef = useRef(null);
+  
+  // Estados para polling de downloads em background
+  const [activeDownloads, setActiveDownloads] = useState(0);
+  const downloadPollingRef = useRef(null);
 
   // Carregar configurações gerais para os valores default dos combos
   useEffect(() => {
