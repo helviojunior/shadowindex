@@ -2996,6 +2996,47 @@ async def create_batch_download_jobs(
     return {"success": True, "created": created, "skipped": skipped}
 
 
+class ScanDirectoryRequest(BaseModel):
+    server_id: int
+    share_name: str
+    path: str
+    max_depth: Optional[int] = 5
+    max_file_size_bytes: Optional[int] = None
+
+
+@api_router.post("/downloads/scan")
+async def scan_directory_for_download(
+    request: ScanDirectoryRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Inicia um scan de diretório para download em massa.
+    O scanner irá listar recursivamente os arquivos e adicionar à fila de downloads.
+    """
+    from directory_scanner import queue_directory_scan
+    
+    # Verificar se o servidor existe
+    result = await db.execute(select(Server).where(Server.id == request.server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Adicionar à fila de scan
+    await queue_directory_scan(
+        server_id=request.server_id,
+        share_name=request.share_name,
+        path=request.path,
+        max_depth=request.max_depth,
+        max_file_size_bytes=request.max_file_size_bytes
+    )
+    
+    return {
+        "success": True,
+        "message": f"Scan iniciado para {request.path}",
+        "max_depth": request.max_depth
+    }
+
+
 @api_router.post("/downloads/{job_id}/cancel")
 async def cancel_download_job(
     job_id: int,
