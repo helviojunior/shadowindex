@@ -707,42 +707,61 @@ const ServerBrowser = () => {
           [nodeId]: []  // Sem filhos - diretório marcado como acesso negado
         }));
         
+        const updatedItemData = {
+          access_denied: true, 
+          accessDenied: true,
+          error_message: response.data.errorMessage, 
+          children_fetched: true, 
+          has_children: false
+        };
+        
         // Atualizar o share na lista local se for um share
         if (nodeId.startsWith('share-')) {
-          const updatedShare = {
-            access_denied: true, 
-            error_message: response.data.errorMessage, 
-            children_fetched: true, 
-            has_children: false
-          };
-          
           setShares(prev => prev.map(s => 
             s.share_name === shareName 
-              ? { ...s, ...updatedShare }
+              ? { ...s, ...updatedItemData }
               : s
           ));
-          
-          // Atualizar o selectedItem se for este share
-          setSelectedItem(prev => {
-            if (prev && prev.itemType === 'share' && prev.share_name === shareName) {
-              return { ...prev, ...updatedShare };
-            }
-            return prev;
-          });
         } else {
-          // É um diretório - atualizar o selectedItem se for este diretório
-          setSelectedItem(prev => {
-            if (prev && prev.fullPath === path) {
-              return { 
-                ...prev, 
-                access_denied: true, 
-                accessDenied: true,
-                error_message: response.data.errorMessage 
+          // É um diretório - atualizar o item dentro do nodeChildren do pai
+          // O nodeId tem formato "share-ShareName-0-1-2" onde os números são índices
+          const parts = nodeId.split('-');
+          if (parts.length > 2) {
+            // Encontrar o nodeId do pai
+            const parentNodeId = parts.slice(0, -1).join('-');
+            
+            setNodeChildren(prev => {
+              const parentChildren = prev[parentNodeId];
+              if (!parentChildren) return prev;
+              
+              // Atualizar o item específico dentro dos filhos do pai
+              const updatedChildren = parentChildren.map(child => 
+                child.id === nodeId 
+                  ? { ...child, ...updatedItemData }
+                  : child
+              );
+              
+              return {
+                ...prev,
+                [parentNodeId]: updatedChildren
               };
-            }
-            return prev;
-          });
+            });
+          }
         }
+        
+        // Atualizar o selectedItem
+        setSelectedItem(prev => {
+          if (!prev) return prev;
+          
+          // Verificar se é o item selecionado (share ou diretório)
+          const isSelectedShare = prev.itemType === 'share' && prev.share_name === shareName && nodeId.startsWith('share-');
+          const isSelectedDir = prev.fullPath === path || prev.id === nodeId;
+          
+          if (isSelectedShare || isSelectedDir) {
+            return { ...prev, ...updatedItemData };
+          }
+          return prev;
+        });
         
         // Mudar para aba Info quando acesso negado
         setActiveTab('info');
