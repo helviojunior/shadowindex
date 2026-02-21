@@ -224,6 +224,11 @@ class DownloadJob(Base):
     error_message = Column(String, nullable=True)
     skip_reason = Column(String, nullable=True)  # Motivo se foi ignorado (ex: tamanho)
     priority = Column(Integer, default=0)  # Prioridade na fila
+    # Parâmetros de configuração do job
+    max_file_size_bytes = Column(Integer, nullable=True)  # Limite de tamanho para ignorar (null = sem limite)
+    max_depth = Column(Integer, nullable=True)  # Limite de profundidade para diretórios
+    is_directory = Column(Boolean, default=False)  # Se é um diretório (download recursivo)
+    parent_job_id = Column(Integer, nullable=True)  # Job pai (para downloads recursivos)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
