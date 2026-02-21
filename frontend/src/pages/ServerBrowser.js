@@ -709,12 +709,43 @@ const ServerBrowser = () => {
         
         // Atualizar o share na lista local se for um share
         if (nodeId.startsWith('share-')) {
+          const updatedShare = {
+            access_denied: true, 
+            error_message: response.data.errorMessage, 
+            children_fetched: true, 
+            has_children: false
+          };
+          
           setShares(prev => prev.map(s => 
             s.share_name === shareName 
-              ? { ...s, access_denied: true, error_message: response.data.errorMessage, children_fetched: true, has_children: false }
+              ? { ...s, ...updatedShare }
               : s
           ));
+          
+          // Atualizar o selectedItem se for este share
+          setSelectedItem(prev => {
+            if (prev && prev.itemType === 'share' && prev.share_name === shareName) {
+              return { ...prev, ...updatedShare };
+            }
+            return prev;
+          });
+        } else {
+          // É um diretório - atualizar o selectedItem se for este diretório
+          setSelectedItem(prev => {
+            if (prev && prev.fullPath === path) {
+              return { 
+                ...prev, 
+                access_denied: true, 
+                accessDenied: true,
+                error_message: response.data.errorMessage 
+              };
+            }
+            return prev;
+          });
         }
+        
+        // Mudar para aba Info quando acesso negado
+        setActiveTab('info');
         
         toast.error(`Acesso negado: ${path.split('\\').pop() || shareName}`);
         return;
