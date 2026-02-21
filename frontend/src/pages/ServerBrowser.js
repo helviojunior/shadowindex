@@ -210,6 +210,7 @@ const ServerBrowser = () => {
 
   // Verifica se o arquivo pode ser visualizado (texto, imagem ou PDF)
   const canPreviewFile = (filename) => {
+    if (!filename) return false;
     return isTextFile(filename) || isImageFile(filename) || isPdfFile(filename) || isCertificateFile(filename);
   };
   
