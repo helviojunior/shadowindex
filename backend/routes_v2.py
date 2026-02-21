@@ -1239,6 +1239,7 @@ async def download_file_by_path(
         # Criar primeira versão
         first_version = FileVersion(
             server_guid=server.guid,
+            share_name=share_name,
             file_path=file_path,
             version_number=1,
             sha1_hash=sha1_hash,
