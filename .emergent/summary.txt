@@ -9,164 +9,151 @@ The user initially requested a web dashboard to manage credentials, database con
 - Data tables should be enhanced with features like scrolling, sorting, and searching.
 - The UI should provide feedback on queued downloads and prevent re-queueing of the same file.
 - Users should be able to manage the lifecycle of directory scans (view, cancel, clear).
+- The Server Browser page should have a robust search functionality (by name, SHA1, extension, date) with keyboard shortcuts.
 
 **User's preferred language**: Portuguese. The next agent MUST respond in Portuguese.
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and a React frontend, using a persistent SQLite database for metadata.
-- **Backend:** Features a two-worker system for downloads: a  that parses SOAP XML responses to find files and a  that downloads them. It includes endpoints for managing download jobs and directory scan jobs (). The backend now has a centralized utility function for parsing the specific SOAP XML format.
-- **Frontend:** The UI features a Downloads page that displays status cards for download jobs, a list of individual download jobs, and a new section for managing . The  page allows navigation of a remote file system, shows which files are already downloaded or queued, and provides options to Sync (download) or Force Download ignored files.
-- **Database:** The schema includes tables for  and , with a manager class in  to handle  state transitions (pending, scanning, completed, cancelled, failed).
+A full-stack application with a FastAPI backend and a React frontend, using a persistent SQLite database.
+- **Backend:** A significant refactoring was completed, introducing a new set of v2 API endpoints in . These endpoints use integer IDs instead of fragile URL-encoded paths for fetching and managing server files, improving robustness and security. The old v1 API in  has been marked with . A new search endpoint () was added to support advanced file and directory searching.
+- **Frontend:** The  page has been almost completely migrated to use the new v2 API. It features a new search component with an advanced search modal, keyboard shortcuts (Ctrl/Cmd+F), search term highlighting, and an Export to JSON feature for search results. Clicking a search result now correctly expands the file tree, scrolls to the item, and highlights it. Several UI/UX bugs related to icons and spacing have been fixed on the  page.
+- **Database:** The existing SQLite schema supports the new ID-based lookups for servers, shares, and files.
 
 **Last working item**:
-- **Last item agent was working:** Implementing a user request to add a button to the Downloads page to clear finished and cancelled scan jobs from the list. The agent had already created the backend endpoint () and the database logic. The next step was to add the corresponding button and its handler to the frontend.
+- **Last item agent was working:** The user requested that the Objetos tab within the SQL Runner page be sorted to display directories first, then files, similar to Windows Explorer. The agent correctly identified the target file () and the section of code responsible for rendering the table.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** Frontend testing agent. The test should involve:
-    1. Initiating a new directory scan.
-    2. Cancelling the scan or letting it finish/fail.
-    3. Verifying that a Limpar Scans Finalizados button appears.
-    4. Clicking the button and confirming that only , , or  scans are removed from the list, while  or  scans remain.
+- **Which testing method agent to use?** Frontend testing agent. The test should navigate to the SQL Runner, select a connection, go to the Objetos tab, and verify that the items in the data grid are sorted with all directories appearing before all files, and that each group (directories and files) is sorted alphabetically.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0): Complete the Clear Finished Scans feature.**
-- **Issue 2 (P1): Limpar concluídos button for download jobs deletes all jobs.**
-- **Issue 3 (P2): Downloaded file metadata is not updated after download.**
-- **Issue 4 (P3): File tree in  doesn't auto-update after a download.**
+- **Issue 1 (P0): Sort Objects tab to show directories first.**
+- **Issue 2 (P1): Downloaded file metadata is not updated after download.**
+- **Issue 3 (P2): File tree in  doesn't auto-update after a background download.**
 
 **Issues Detail:**
-- **Issue 1: Complete the Clear Finished Scans feature.**
-    - **Attempted fixes:** The backend endpoint () and the corresponding database method () have been implemented in  and .
+- **Issue 1: Sort Objects tab to show directories first.**
+    - **Attempted fixes:** The agent located the file () and the  component that renders the objects. The next step is to implement the sorting logic on the data source before it's passed to the grid.
     - **Next debug checklist:**
-        1. In , add a Limpar Scans Finalizados button.
-        2. This button should only be visible if there is at least one scan job with a status of 'completed', 'failed', or 'cancelled'.
-        3. Create a handler function that calls the  endpoint.
-        4. On success, refresh the list of scan jobs by calling .
-    - **Why fix this issue and what will be achieved with the fix?** This is a direct user request to improve the usability of the new Scan Jobs UI.
+        1. In , locate the  prop being passed to the  in the Objetos tab.
+        2. Before passing the data to the grid, apply a  function.
+        3. The sort comparator should prioritize items where  over .
+        4. Within each type, sort alphabetically by name.
+        5. Verify the change visually or with the testing agent.
+    - **Why fix this issue and what will be achieved with the fix?** This is a user-requested UI/UX improvement for better usability and consistency with standard file explorers.
     - **Status:** IN PROGRESS
-    - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** Both.
-    - **Blocked on other issue:** None.
-
-- **Issue 2: Limpar concluídos button for download jobs deletes all jobs.**
-    - **Attempted fixes:** The agent reviewed the backend code for the  endpoint in  and confirmed the logic correctly targets only jobs with status 'completed', 'failed', or 'cancelled'. The agent added logging to trace which jobs are being deleted but did not find the root cause.
-    - **Next debug checklist:**
-        1. Add several download jobs with different statuses (, , , ).
-        2. Click the Limpar Concluídos button on the Downloads page.
-        3. Check the backend logs for the output of the  statement to see exactly which jobs are being targeted.
-        4. Verify if the jobs remaining in the UI and database match the expected outcome. If not, investigate potential state management issues in the frontend or unintended side effects in the backend transaction.
-    - **Why fix this issue and what will be achieved with the fix?** This is a critical bug that causes data loss and makes download management unreliable.
-    - **Status:** IN PROGRESS
-    - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** Both.
-    - **Blocked on other issue:** None.
-
-- **Issue 3: Downloaded file metadata is not updated after download.**
-    - **Attempted fixes:** The user reported that after a file is downloaded, its metadata (SHA1, status, etc.) is not updated in the database. The agent added extensive logging to the  function and the main loop in  to trace the execution flow.
-    - **Next debug checklist:**
-        1. Perform a file download and monitor the backend logs.
-        2. Look for the logs added by the previous agent, such as SAVING/UPDATING DownloadedFile and DOWNLOAD JOB COMPLETED.
-        3. If the logs appear, verify the data being saved to the  record is correct.
-        4. If logs do not appear, trace why the  function is not being reached or is exiting prematurely. Check for unhandled exceptions around the file I/O operations.
-    - **Why fix this issue and what will be achieved with the fix?** Without this fix, the application cannot correctly track which files have been successfully downloaded, defeating a core purpose of the server browser.
-    - **Status:** IN PROGRESS
-    - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** Backend.
-    - **Blocked on other issue:** None.
-
-- **Issue 4: File tree in  doesn't auto-update after a download.**
-    - **Attempted fixes:** The user reported that the file tree doesn't reflect a new download without a manual page refresh. The agent implemented a fix in  by adding  to the  hook that runs when a file is selected.
-    - **Next debug checklist:**
-        1. Test the user flow: browse to a directory, download a file (especially one that gets queued to the worker), and then navigate back to that directory or re-select the file.
-        2. Confirm if the file's status icon updates automatically without a full page reload.
-        3. If it doesn't, the current fix is insufficient. A more robust solution like periodic polling (while on the  page) or a WebSocket connection might be needed to get real-time updates from the backend workers.
-    - **Why fix this issue and what will be achieved with the fix?** To provide a seamless user experience and immediate feedback on download status within the file browser.
-    - **Status:** USER VERIFICATION PENDING
     - **Is recurring issue?** N
     - **Should Test frontend/backend/both after fix?** Frontend.
     - **Blocked on other issue:** None.
 
+- **Issue 2: Downloaded file metadata is not updated after download.**
+    - **Attempted fixes:** This issue was carried over from a previous session. The agent in this session did not work on it, focusing instead on the API refactoring and new search features. The  is the likely location for the bug.
+    - **Next debug checklist:**
+        1. Trigger a file download.
+        2. Monitor the logs for .
+        3. Trace the execution path after the file download is complete.
+        4. Verify that the code responsible for updating the  record in the database (with SHA1, status, etc.) is being executed correctly.
+        5. Check for any silent exceptions or incorrect logic in the database update call.
+    - **Why fix this issue and what will be achieved with the fix?** This is a critical bug. Without correct metadata, the application cannot reliably know which files have been downloaded, which undermines the core functionality of the file browser.
+    - **Status:** NOT STARTED
+    - **Is recurring issue?** Y
+    - **Should Test frontend/backend/both after fix?** Backend.
+    - **Blocked on other issue:** None.
+
+- **Issue 3: File tree in  doesn't auto-update after a background download.**
+    - **Attempted fixes:** This is another carry-over issue. No new fixes were attempted in this session.
+    - **Next debug checklist:**
+        1. A robust solution is needed. The current -based re-fetching is insufficient for background updates.
+        2. Consider implementing a polling mechanism on the  page that periodically checks the status of files visible in the tree.
+        3. Alternatively, a WebSocket connection could be established to push real-time status updates from the backend to the frontend. This is a more complex but efficient solution.
+    - **Why fix this issue and what will be achieved with the fix?** Provides a seamless user experience by giving immediate feedback on download completions without requiring a manual page refresh.
+    - **Status:** NOT STARTED
+    - **Is recurring issue?** Y
+    - **Should Test frontend/backend/both after fix?** Frontend.
+    - **Blocked on other issue:** None.
+
 **In progress Task List**:
-- **Task 1: Add UI for Clear Finished Scans (P0).**
+- **Task 1: Implement sorting in  Objects tab (P0).**
     - **Where to resume:** .
-    - **What will be achieved with this?** Complete the user-requested feature for managing the Scan Jobs list.
+    - **What will be achieved with this?** Fulfill the user's latest request for UI improvement.
     - **Status:** IN PROGRESS
-    - **Should Test frontend/backend/both after fix?** Both.
+    - **Should Test frontend/backend/both after fix?** Frontend.
     - **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
   - **(P1) Downloads UI Enhancements:** Add advanced filtering options to the Downloads page (e.g., filter by status, server).
 - **Future Tasks:**
-  - **(P2) Mock SOAP Service for Testing:** Create a mock service to allow for reliable testing of the server browser functionality without depending on the live external API.
-  - **(P3) Refactor DB Schema Migration:** Adopt a standard migration tool like  to manage database schema changes more robustly.
-  - **(P4) Address  Dependency:** The root cause of the  import error (handled by a  block) should be fixed by ensuring the library is properly installed in the application's environment.
+  - **(P2) Mock SOAP Service for Testing:** Create a mock service to allow for reliable testing of the server browser functionality.
+  - **(P3) Refactor DB Schema Migration:** Adopt a standard migration tool like .
+  - **(P4) Address  Dependency:** Properly install the  library in the environment to remove the  workaround.
 
 **Completed work in this session**
-- **Fixed Critical Worker Bugs:**
-  - **Directory Scanner:** Resolved a critical XML parsing bug that prevented the scanner from finding any files. The agent refactored the parsing logic into a reusable utility function () in  and applied it in .
-  - **Download Worker:** Fixed a crash caused by incorrect path handling between Windows UNC paths from the SOAP service and the Linux storage path.
-- **Implemented Full Scan Job Management:**
-  - Created backend models (), manager class, and API endpoints (, ) to create, list, and cancel directory scanning jobs.
-  - Built a new UI section on the Downloads page to display the status of scan jobs, with options to cancel them.
-- **Enhanced  Functionality:**
-  - Implemented backend and frontend logic to check if a file is already in the download queue, preventing duplicate downloads.
-  - The UI now displays Em fila de download instead of the Sync button for queued files.
-  - Added a Forçar download button for files in the batch download list that are normally ignored by filters.
-- **UI/UX Improvements:**
-  - Redesigned the status cards on the  page, removing icon backgrounds and aligning them to the top-right as requested.
-  - Fixed inconsistent padding on cards on the  and  pages.
+- **API v2 Refactoring:** Created a new set of robust, ID-based API endpoints () in  and migrated the  frontend to use them. The old v1 API was marked as deprecated.
+- **Server Browser Search:** Implemented a full-featured search functionality in , including a backend endpoint, a UI with advanced search options, search term highlighting, and a navigate to result feature that expands the tree and scrolls to the selected item.
+- **Keyboard Shortcuts:** Added Ctrl/Cmd+F shortcut to focus the search bar and ESC to clear the search.
+- **UI/UX Fixes:**
+  - Fixed an issue where database type icons were not showing correctly in a ComboBox on the  page.
+  - Fixed a layout issue by adding proper spacing between preset cards.
+  - Changed the title Compartilhamentos to Arquivos and rearranged header buttons for better UX.
+  - Added a feature to export search results to a JSON file.
+- **Removed Redundant Toasts:** Cleaned up the  page by removing several unnecessary toast notifications to improve the user experience.
+- **Bug Fix (Clear Finished Downloads):** Verified via  and the testing agent that the  endpoint works correctly and does not delete active jobs.
 
 **Earlier issues found/mentioned but not fixed**
-- ** environment dependency:** The application uses a  block in  to handle a missing  library. The root cause (library not being installed) has not been fixed.
-- **Limpar concluídos for downloads:** As detailed in the pending issues, the button for clearing finished download jobs is reportedly deleting all jobs, including active ones. This is a critical unresolved bug.
-- **Download metadata updates:** As detailed, the download worker is not correctly updating the  record with SHA1 and other metadata upon completion.
+- ** environment dependency:** The application still relies on a  block to handle the missing library.
+- **Download metadata updates:** A critical bug where the download worker fails to update the  record after a download is complete remains unfixed.
+- **Server Browser UI auto-refresh:** The file tree does not update in real-time after a background task (like a download) finishes.
 
 **Known issue recurrence from previous fork**
-- **UI Spacing/Layout:** The initial task was to fix inconsistent vertical spacing. The agent found existing  classes and assumed the task was done. The user then provided a screenshot showing a different, specific spacing bug on the Downloads page. This indicates that UI polish issues are subtle and require careful visual verification, as the user has a keen eye for them.
+- **UI Spacing/Layout:** A user-reported spacing issue required a second, more robust fix ( instead of ), highlighting that the user has a keen eye for UI details and that simple fixes may not always be sufficient.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Background Worker State Management:** Introduction of a  class in  to handle the lifecycle (pending, scanning, completed, cancelled) of long-running background tasks. The worker () now checks the job status in the database to allow for cancellation.
-- **Code Consolidation:** A fragile SOAP XML parsing logic, which was a recurring source of bugs, was refactored into a single utility function ( in ) and reused by both the interactive endpoint and the background worker to ensure consistency.
-- **Frontend State Synchronization:** Attempting to keep the frontend UI (file tree in ) synchronized with backend state changes by re-fetching data on user interactions ( on file selection).
+- **RESTful API Refactoring:** A major shift from fragile path-based endpoints to a robust, secure, and predictable ID-based v2 API. This involved creating a new FastAPI router ().
+- **Frontend State Management:** Extensive use of  and  in  to manage complex UI state for search queries, results, modals, and asynchronous data fetching.
+- **Direct DOM Manipulation in React:** Implementation of scroll-to-item and keyboard shortcuts required using , , and event listeners, demonstrating a controlled way to break out of the React declarative paradigm for specific UX needs.
 
 **key DB schema**
 - **ScanJob**: 
+- **DownloadJob**: 
+- **DownloadedFile**:  (Core model for file tracking)
 
 **All files of reference**
-- **Current Task (Clear Scans):** , , .
-- **Pending Bug (Clear Downloads):** , .
-- **Pending Bug (Metadata Update):** .
-- **Pending Bug (UI Refresh):** .
-- **Core Logic:**  (for scanning),  (for downloading).
+- **Current Task:** 
+- **Recent Major Changes:**
+    -  (New file for all v2 API logic)
+    -  (Primary file for new search features and v2 API integration)
+- **Pending Bug Locations:**
+    -  (For metadata update bug)
+    -  (For real-time UI refresh)
 
 **Critical Info for New Agent**
-- **Prioritize User-Reported Bugs:** There are several critical bugs reported by the user (clearing all downloads, metadata not updating) that degrade core functionality. These should be fixed before implementing new features.
-- **SOAP XML Parsing is Fragile:** The logic to parse the SOAP response for directory listings ( in ) was fixed after many attempts. Be extremely cautious when modifying it. The remote SOAP service is not available in the preview environment (it returns 403), so logic must be tested carefully. The user provided a real XML response that can be used for creating test cases.
-- **Worker Management:** The application now has two types of background jobs: Download Jobs and Scan Jobs. Be mindful of their distinct states and management endpoints.
+- The application is in a transitional state with a new  and a deprecated v1 API. While  is mostly migrated, ensure any new frontend work uses the v2 endpoints.
+- The user is highly attentive to UI/UX details. Verify all visual changes carefully.
+- Two critical bugs from the original problem statement remain: the failure to update file metadata after download and the lack of real-time UI updates. These should be prioritized after the current task.
+- The navigate to search result feature in  is complex, using  and sequential async calls to manage the tree expansion. Modify this logic with extreme care.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **(request)** Add button to clear finished/cancelled scans. (In Progress)
-2.  **(feedback)** Scan list shows all jobs as awaiting and is not ordered. (Fixed)
-3.  **(feedback)** The list of scans becomes empty after the page polls for updates. (Fixed)
-4.  **(request)** Ability to see Scan Jobs and cancel them. (Completed)
-5.  **(bug)** The directory scanner is not running and nothing appears on the downloads screen after a scan is initiated. (Fixed - was a critical XML parsing bug).
-6.  **(bug)** The file tree does not automatically show a file as synchronized after download; a manual refresh is needed. (Attempted Fix, needs verification).
-7.  **(bug)** The Clear completed button on the downloads page is clearing ALL jobs, including active ones. (In Progress).
-8.  **(bug)** After a file is downloaded, its metadata (SHA1, status, etc.) is not being updated correctly. (In Progress).
-9.  **(bug)** A crash occurred when saving a downloaded file due to a path incompatibility issue. (Fixed).
-10. **(request)** Add padding to the top of cards on the Downloads and General Settings pages. (Completed).
+1.  **Request (Done):** Fix incorrect database icons in the SQL Presets form.
+2.  **Request (Done):** Fix missing margins between preset cards.
+3.  **Feedback (Done):** The margin fix didn't work; agent re-implemented it successfully.
+4.  **Request (Done):** When clicking a search result: don't clear the search, expand the tree automatically, and scroll to the item.
+5.  **Request (Done):** Highlight the search term within the search results.
+6.  **Feedback/Bug (Done):** The scroll-to-item highlight is blue (should be yellow), and the tree expansion is not working. Agent fixed both.
+7.  **Request (Done):** Add a Ctrl+F keyboard shortcut for search and fix the Sync button, which was still using the old API.
+8.  **Request (Done):** On the Server Browser, change the title Compartilhamentos to Arquivos, move action buttons to the right, and add a button to export search results to JSON.
+9.  **Request (Done):** Remove informational toasts like item selected and navigating to item from the Server Browser page.
+10. **Request (In Progress):** In the SQL Runner's Objects tab, sort the table to show directories first, then files.
 
 **Project Health Check:**
 - **Broken:**
-    - The Clear finished functionality for **download jobs** is critically broken, as it reportedly deletes all jobs.
-    - The core loop of the **download worker** is not correctly updating file metadata in the database upon completion.
-    - The **Server Browser UI** does not provide reliable real-time feedback on the status of worker-completed downloads.
-- **Mocked:** The external SOAP API for listing files is not available in the development environment; the workers receive a 403 Forbidden error, which is handled gracefully. Development of the scanner relies on logs and the sample XML provided by the user.
+    - The download worker does not update file metadata (e.g., SHA1) in the database after a successful download.
+    - The Server Browser UI does not automatically reflect changes from background workers (e.g., a completed download) without a manual refresh.
+- **Mocked:**
+    - The external SOAP API for listing remote files is unavailable in the preview environment.
 
 **3rd Party Integrations**
 - **Custom SOAP Web Service:** For browsing and downloading files.
@@ -175,7 +162,11 @@ A full-stack application with a FastAPI backend and a React frontend, using a pe
 - **Backend:** ,  (with a  workaround), , .
 
 **Testing status**
-- **Testing agent used after significant changes:** NO (not in the latest cycle of bug fixes)
+- **Testing agent used after significant changes:** YES, once early in the session to validate a bug fix for the clear downloads button. It passed successfully.
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None
-- **Known regressions:** None identified, but several critical bugs have been reported by the user.</analysis>
+- **Test files created:** None.
+- **Known regressions:** None identified.
+
+**What agent forgot to execute**
+- The agent did not address two long-standing critical bugs carried over from the previous session: the failure of the  to update file metadata post-download, and the lack of real-time UI updates in the  for background events.
+- The  dependency issue remains unresolved, still relying on a  block.</analysis>
