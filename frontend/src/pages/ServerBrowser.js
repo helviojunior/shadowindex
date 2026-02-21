@@ -1572,6 +1572,20 @@ const ServerBrowser = () => {
                   Abrir
                 </Button>
               )}
+              
+              {/* Barra de progresso à esquerda do botão Sync */}
+              {singleDownloadProgress !== null && (
+                <div className="flex items-center gap-2">
+                  <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${singleDownloadProgress}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-8">{singleDownloadProgress}%</span>
+                </div>
+              )}
+              
               <Button 
                 size="sm" 
                 className="h-7"
@@ -1585,18 +1599,21 @@ const ServerBrowser = () => {
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
-                {singleDownloadProgress !== null && singleDownloadProgress < 100 
-                  ? `${singleDownloadProgress}%` 
-                  : 'Sync'}
+                Sync
               </Button>
-              {/* Barra de progresso do download */}
-              {singleDownloadProgress !== null && (
-                <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${singleDownloadProgress}%` }}
-                  />
-                </div>
+              
+              {/* Botão Cancelar Sync */}
+              {loading && singleDownloadProgress !== null && (
+                <Button 
+                  size="sm" 
+                  variant="destructive"
+                  className="h-7"
+                  onClick={cancelSingleDownload}
+                  data-testid="cancel-sync-button"
+                >
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Cancelar
+                </Button>
               )}
             </div>
           )}
