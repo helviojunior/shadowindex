@@ -389,6 +389,7 @@ async def list_shares(
 ):
     """Lista todos os compartilhamentos do servidor"""
     from soap_service import get_default_soap_service
+    import xml.etree.ElementTree as ET
     
     server = await get_server_or_404(db, server_id)
     
@@ -400,27 +401,78 @@ async def list_shares(
             result_str = await soap_service.call_soap_operation(db, "Shares", params, ignore_cache=True)
             
             if result_str:
-                # Parsear resultado
-                import re
                 shares_data = []
-                for line in result_str.strip().split('\n'):
-                    if not line.strip():
-                        continue
-                    parts = line.split('|')
-                    if len(parts) >= 3:
-                        share_name = parts[0].strip()
-                        share_type = parts[1].strip()
-                        remark = parts[2].strip() if len(parts) > 2 else ''
+                
+                # Tentar parsear como XML (formato diffgram)
+                try:
+                    # O result_str pode ser o XML completo ou apenas o conteúdo interno
+                    # Adicionar root tag se necessário
+                    xml_content = result_str
+                    if not xml_content.strip().startswith('<'):
+                        # Não é XML, tentar formato linha por linha
+                        raise ValueError("Not XML format")
+                    
+                    # Parsear XML
+                    root = ET.fromstring(xml_content)
+                    
+                    # Procurar elementos Result dentro do diffgram
+                    # Namespace handling
+                    namespaces = {
+                        'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1',
+                        'msdata': 'urn:schemas-microsoft-com:xml-msdata'
+                    }
+                    
+                    # Procurar todos os elementos Result (podem estar em DocumentElement ou diretamente)
+                    results = root.findall('.//Result') or root.findall('.//{urn:schemas-microsoft-com:xml-diffgram-v1}Result')
+                    
+                    if not results:
+                        # Tentar encontrar dentro de DocumentElement
+                        doc_elem = root.find('.//DocumentElement')
+                        if doc_elem is not None:
+                            results = doc_elem.findall('Result')
+                    
+                    for result in results:
+                        host = result.findtext('host', '').strip()
+                        name = result.findtext('name', '').strip()
+                        share_type = result.findtext('type', 'Disk').strip()
+                        remark = result.findtext('remark', '').strip()
                         
-                        # Ignorar shares especiais
-                        if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
+                        if not name:
                             continue
-                            
+                        
+                        # Ignorar shares especiais (exceto C$, D$, E$)
+                        if name.endswith('$') and name not in ['C$', 'D$', 'E$']:
+                            continue
+                        
                         shares_data.append({
-                            'share_name': share_name,
+                            'share_name': name,
                             'share_type': share_type,
                             'remark': remark
                         })
+                    
+                    logger.info(f"Parsed {len(shares_data)} shares from XML for server {server.ip}")
+                    
+                except (ET.ParseError, ValueError) as parse_error:
+                    logger.debug(f"XML parsing failed, trying line format: {parse_error}")
+                    # Fallback: tentar formato linha por linha (nome|tipo|remark)
+                    for line in result_str.strip().split('\n'):
+                        if not line.strip():
+                            continue
+                        parts = line.split('|')
+                        if len(parts) >= 2:
+                            share_name = parts[0].strip()
+                            share_type = parts[1].strip() if len(parts) > 1 else 'Disk'
+                            remark = parts[2].strip() if len(parts) > 2 else ''
+                            
+                            # Ignorar shares especiais
+                            if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
+                                continue
+                                
+                            shares_data.append({
+                                'share_name': share_name,
+                                'share_type': share_type,
+                                'remark': remark
+                            })
                 
                 # Atualizar banco
                 for share_data in shares_data:
@@ -438,6 +490,7 @@ async def list_shares(
                     else:
                         share = ServerShare(
                             server_guid=server.guid,
+                            server_id=server.id,
                             share_name=share_data['share_name'],
                             share_type=share_data['share_type'],
                             remark=share_data['remark']
@@ -445,8 +498,12 @@ async def list_shares(
                         db.add(share)
                 
                 await db.commit()
+                logger.info(f"Updated {len(shares_data)} shares in database for server {server.ip}")
+                
         except Exception as e:
             logger.error(f"Error refreshing shares: {e}")
+            import traceback
+            traceback.print_exc()
     
     # Retornar shares do banco
     result = await db.execute(
