@@ -1980,7 +1980,7 @@ async def get_certificate_info(
             
             # 2. Se não funcionou e uma senha foi fornecida, tentar essa
             if not certificate and password and len(str(password)) > 0:
-                logger.info(f"Trying provided password: '{password}' for {file_path}")
+                logger.info(f"Trying provided password for {file_path}")
                 private_key, certificate, additional_certs, used_password = try_open_pfx(password)
                 
                 # Se funcionou, salvar a senha
