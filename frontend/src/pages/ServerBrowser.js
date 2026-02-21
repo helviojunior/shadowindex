@@ -1543,8 +1543,19 @@ const ServerBrowser = () => {
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
-                Sync
+                {singleDownloadProgress !== null && singleDownloadProgress < 100 
+                  ? `${singleDownloadProgress}%` 
+                  : 'Sync'}
               </Button>
+              {/* Barra de progresso do download */}
+              {singleDownloadProgress !== null && (
+                <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${singleDownloadProgress}%` }}
+                  />
+                </div>
+              )}
             </div>
           )}
           
