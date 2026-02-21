@@ -2120,7 +2120,7 @@ async def download_server_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@api_router.post("/servers/{server_id}/download-chunk")
+@api_router.post("/servers/{server_id}/download-chunk", deprecated=True)
 async def download_server_file_chunk(
     server_id: int,
     file_path: str,
@@ -2129,7 +2129,9 @@ async def download_server_file_chunk(
     chunk_size: int = 512000,  # 512KB default
     db: AsyncSession = Depends(get_db)
 ):
-    """Baixa um chunk de arquivo do servidor via SOAP Exec5 com offset e tamanho"""
+    """[DEPRECATED] Use POST /api/v2/servers/{server_id}/download-chunk
+    
+    Baixa um chunk de arquivo do servidor via SOAP Exec5 com offset e tamanho"""
     # Obter servidor
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
