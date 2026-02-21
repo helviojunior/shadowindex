@@ -741,9 +741,72 @@ async def clear_sql_history(connection_id: Optional[int] = None, db: AsyncSessio
 # Plugins API
 @api_router.get("/plugins")
 async def get_available_plugins():
-    """Get list of available plugins"""
+    """Get list of available plugins with their configuration schema"""
+    from plugins.factory import PluginFactory, PLUGIN_REGISTRY
+    
+    plugins = {}
+    for plugin_type, plugin_class in PLUGIN_REGISTRY.items():
+        plugins[plugin_type] = {
+            **plugin_class.get_plugin_info(),
+            "config_schema": plugin_class.get_config_schema()
+        }
+    
+    return plugins
+
+
+@api_router.get("/plugins/{plugin_type}")
+async def get_plugin_info(plugin_type: str):
+    """Get detailed info about a specific plugin"""
+    from plugins.factory import PLUGIN_REGISTRY
+    
+    if plugin_type not in PLUGIN_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Plugin '{plugin_type}' not found")
+    
+    plugin_class = PLUGIN_REGISTRY[plugin_type]
+    return {
+        **plugin_class.get_plugin_info(),
+        "config_schema": plugin_class.get_config_schema()
+    }
+
+
+@api_router.post("/plugins/{plugin_type}/health")
+async def check_plugin_health(
+    plugin_type: str,
+    config: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """Check plugin health with provided configuration"""
+    from plugins.factory import PluginFactory, get_active_proxy_url
+    
+    try:
+        proxy_url = await get_active_proxy_url(db)
+        plugin = PluginFactory.create_plugin(plugin_type, config, proxy_url)
+        health = await plugin.health_check()
+        return health
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {
+            "healthy": False,
+            "message": str(e),
+            "details": {}
+        }
+
+
+@api_router.post("/plugins/{plugin_type}/validate")
+async def validate_plugin_config(plugin_type: str, config: dict):
+    """Validate plugin configuration"""
     from plugins.factory import PluginFactory
-    return PluginFactory.get_available_plugins()
+    
+    try:
+        plugin = PluginFactory.create_plugin(plugin_type, config, None)
+        return plugin.validate_config()
+    except ValueError as e:
+        return {
+            "valid": False,
+            "missing_keys": [],
+            "errors": [str(e)]
+        }
 
 
 # Proxy Servers CRUD
