@@ -375,19 +375,13 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
       <div className="flex flex-col h-screen overflow-hidden bg-background">
         {/* Top Header - Fixed, spans full width */}
         <header className="flex items-center justify-between bg-card border-b border-border z-50">
-          {/* Left side - Logo area (fixed width, centered logo) */}
-          <div className={cn(
-            "flex items-center justify-center px-4 py-3 border-r border-border transition-all duration-300",
-            effectiveCollapsed ? "w-16" : "w-52"
-          )}>
-            {/* Logo - Always show full logo regardless of sidebar state */}
+          {/* Left side - Logo area (fixed width, independent of sidebar) */}
+          <div className="flex items-center justify-center px-4 py-3 border-r border-border w-52">
+            {/* Logo - Always the same regardless of sidebar state */}
             <img 
               src="/assets/stratasec_light.png" 
               alt="StrataSec" 
-              className={cn(
-                "w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] transition-all duration-300",
-                effectiveCollapsed ? "h-5" : "h-7"
-              )}
+              className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
             />
           </div>
           
