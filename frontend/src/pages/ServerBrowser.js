@@ -287,7 +287,11 @@ const ServerBrowser = () => {
   const isTextFile = (filename) => {
     if (!filename) return false;
     const lowerName = filename.toLowerCase();
-    return TEXT_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+    // Verificar extensões de texto
+    if (TEXT_EXTENSIONS.some(ext => lowerName.endsWith(ext))) return true;
+    // Verificar arquivos especiais (sem extensão ou começando com .)
+    if (SPECIAL_TEXT_FILES.some(name => lowerName === name.toLowerCase() || lowerName.endsWith('/' + name.toLowerCase()))) return true;
+    return false;
   };
 
   // Verifica se é um arquivo de imagem
