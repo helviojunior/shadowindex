@@ -3025,7 +3025,12 @@ async def create_batch_download_jobs(
     
     await db.commit()
     
-    return {"success": True, "created": created, "skipped": skipped}
+    return {
+        "success": True, 
+        "created": created, 
+        "skipped": skipped,
+        "skipped_by_extension": skipped_by_extension
+    }
 
 
 class ScanDirectoryRequest(BaseModel):
