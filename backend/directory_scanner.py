@@ -71,7 +71,7 @@ class DirectoryScanner:
                 pass
         logger.info("Directory scanner stopped")
     
-    async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int]):
+    async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True):
         """Adiciona um diretório para ser escaneado"""
         async with self._lock:
             job = ScanJob(
@@ -80,7 +80,8 @@ class DirectoryScanner:
                 path=path,
                 depth=1,
                 max_depth=max_depth,
-                max_file_size_bytes=max_file_size_bytes
+                max_file_size_bytes=max_file_size_bytes,
+                apply_filters=apply_filters
             )
             self.scan_queue.append(job)
             logger.info(f"Added scan job: {path}")
