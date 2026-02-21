@@ -27,6 +27,32 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 15 - OCR/Tika Integration)
+- [x] **Docker Compose Updated:**
+  - Added Apache Tika server container (`apache/tika:latest-full`)
+  - Internal communication only (no port exposure)
+  - Backend depends on Tika service
+- [x] **OCR Service (`ocr_service.py`):**
+  - TikaService class for text/metadata extraction
+  - Support for PDFs, images, Office documents, etc.
+  - Configurable OCR language (default: eng+por)
+  - Automatic initialization on application startup
+- [x] **Database Schema:**
+  - Added OCR fields to `FileVersion`: `ocr_content`, `ocr_metadata`, `ocr_processed`, `ocr_processed_at`, `ocr_error`
+  - Alembic migration created
+- [x] **API Endpoints:**
+  - `GET /api/v2/ocr/status` - Check Tika availability
+  - `POST /api/v2/servers/{id}/files/{id}/process-ocr` - Process OCR on a file
+  - `GET /api/v2/servers/{id}/files/{id}/ocr` - Get OCR data for a file
+  - `POST /api/v2/servers/{id}/search-ocr` - Search in OCR content
+  - Updated main search to include OCR content
+- [x] **Frontend (ServerBrowser.js):**
+  - New "OCR" tab for downloaded files
+  - Shows OCR status in Info tab
+  - Metadata viewer with extracted fields
+  - OCR content viewer with copy button
+  - Process/Reprocess OCR button
+
 ### 2026-02-21 (Session 15 - SQL Connections Plugin Selection)
 - [x] **Plugin Selection for SQL Connections:**
   - Added `plugin_type` and `plugin_config` fields to DatabaseConnection model
