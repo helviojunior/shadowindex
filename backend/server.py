@@ -1442,10 +1442,18 @@ async def browse_server_directory(
             fullname = result_elem.find("fullname")
             
             if name is not None:
+                # Parsear o size como número (length vem como long do SOAP)
+                size_value = 0
+                if length is not None and length.text:
+                    try:
+                        size_value = int(length.text)
+                    except (ValueError, TypeError):
+                        size_value = 0
+                
                 item = {
                     "type": item_type.text if item_type is not None and item_type.text else "Unknown",
                     "name": name.text if name.text else "",
-                    "size": length.text if length is not None and length.text else "---",
+                    "size": size_value,
                     "modified": lastwritetime.text if lastwritetime is not None and lastwritetime.text else "",
                     "fullPath": fullname.text if fullname is not None and fullname.text else "",
                     "accessDenied": False
