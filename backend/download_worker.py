@@ -305,6 +305,7 @@ class DownloadWorker:
             job.total_bytes = len(file_bytes)
             
             # Registrar no banco (DownloadedFile)
+            logger.info(f"Looking for existing DownloadedFile: server_guid={server.guid}, share={job.share_name}, path={job.file_path}")
             existing = await db.execute(
                 select(DownloadedFile).where(
                     DownloadedFile.server_guid == server.guid,
@@ -316,11 +317,14 @@ class DownloadWorker:
             
             if downloaded_file:
                 # Atualizar existente
+                logger.info(f"Updating existing DownloadedFile id={downloaded_file.id}")
                 downloaded_file.sha1_hash = sha1_hash
                 downloaded_file.file_size = len(file_bytes)
                 downloaded_file.downloaded_at = datetime.now(timezone.utc)
+                downloaded_file.sanitized_path = relative_path
             else:
                 # Criar novo registro - usar relative_path que já foi sanitizado
+                logger.info(f"Creating new DownloadedFile record")
                 downloaded_file = DownloadedFile(
                     server_guid=server.guid,
                     share_name=job.share_name,
@@ -336,6 +340,7 @@ class DownloadWorker:
                 server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
             
             await db.commit()
+            logger.info(f"DownloadedFile record saved successfully for {job.file_path}")
             
         except Exception as e:
             logger.error(f"Error saving file content: {e}")
