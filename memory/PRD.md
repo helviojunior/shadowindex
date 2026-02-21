@@ -411,16 +411,26 @@ Portuguese (pt-BR)
 │   │   ├── env.py            # Migration environment config
 │   │   └── versions/         # Migration scripts
 │   ├── alembic.ini           # Alembic configuration
+│   ├── plugins/              # Plugin system
+│   │   ├── __init__.py       # Plugin exports
+│   │   ├── base.py           # BasePlugin abstract class
+│   │   ├── exceptions.py     # Standard exceptions
+│   │   ├── cache.py          # Global cache system
+│   │   ├── factory.py        # Plugin factory & registration
+│   │   └── soap_api.py       # SOAP API Plugin implementation
 │   ├── data/
 │   │   ├── ops_integration.db   # SQLite database
-│   │   └── storage/             # Downloaded files
+│   │   ├── storage/             # Downloaded files
+│   │   └── cache/plugins/       # Plugin cache (JSON)
+│   ├── tests/
+│   │   └── test_plugins.py      # Plugin system tests (30 tests)
 │   ├── requirements.txt
 │   ├── database.py              # SQLAlchemy models & init (with Alembic)
 │   ├── server.py                # Main FastAPI app, all endpoints
 │   ├── routes_v2.py             # API V2 endpoints (ID-based)
 │   ├── download_worker.py       # Background download processor
 │   ├── directory_scanner.py     # Recursive directory scanner
-│   ├── soap_service.py          # SOAP client with caching
+│   ├── soap_service.py          # DEPRECATED - use plugins/soap_api.py
 │   └── storage_utils.py         # File storage utilities
 ├── frontend/
 │   ├── package.json
@@ -442,6 +452,21 @@ Portuguese (pt-BR)
 ├── docker-compose.yml           # Production (no volumes, no reload)
 ├── docker-compose.dev.yml       # Development (volumes, hot reload)
 └── ...
+```
+
+### Plugin Architecture
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────────┐
+│   Core      │ ──► │   Cache     │ ──► │   BasePlugin    │
+│  (Routes)   │     │  (JSON)     │     │   (Abstract)    │
+└─────────────┘     └─────────────┘     └─────────────────┘
+                                                 │
+                         ┌───────────────────────┼───────────────────────┐
+                         ▼                       ▼                       ▼
+                 ┌───────────────┐       ┌───────────────┐       ┌───────────────┐
+                 │ SoapApiPlugin │       │  SMB Plugin   │       │   DB Plugin   │
+                 │  (SOAP URL)   │       │   (Future)    │       │   (Future)    │
+                 └───────────────┘       └───────────────┘       └───────────────┘
 ```
 
 ## Key DB Schema
