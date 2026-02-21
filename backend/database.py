@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, inspect
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, inspect, JSON
 from datetime import datetime, timezone
 import os
 import logging
