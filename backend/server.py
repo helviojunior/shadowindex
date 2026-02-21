@@ -2351,9 +2351,16 @@ async def get_file_content(
     if not downloaded:
         raise HTTPException(status_code=404, detail="Arquivo não sincronizado")
     
+    # Verificar se sanitized_path existe
+    if not downloaded.sanitized_path:
+        raise HTTPException(status_code=500, detail=f"Arquivo sem caminho sanitizado. file_path={file_path}")
+    
     # Ler o conteúdo do arquivo
     from storage_utils import get_file_path
     full_path = get_file_path(server.guid, share_name, downloaded.sanitized_path)
+    
+    import logging
+    logging.info(f"get_file_content: file_path={file_path}, sanitized_path={downloaded.sanitized_path}, full_path={full_path}")
     
     try:
         import os
