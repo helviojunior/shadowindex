@@ -27,6 +27,28 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 9 - Multi-level Menu & Download System)
+- [x] **Side Panel Multi-nível estilo JFrog**
+  - Menu com suporte a multi-nível (Dashboard, Arquivos, SQL, Configuração, Tools)
+  - Comportamento expandido: submenus inline
+  - Comportamento colapsado: flyout menu ao hover
+  - Indicador visual de menu/submenu ativo
+  - Persistência do estado de colapso no localStorage
+- [x] **Nova estrutura de menus:**
+  - Dashboard (/)
+  - Arquivos → Servidores (/servers), Downloads (/downloads)
+  - SQL → Conexões (/sql), Presets (/sql/presets)
+  - Configuração → Proxy Servers, SOAP APIs, Credenciais
+  - Tools → Operações SOAP
+- [x] **Página de Downloads (frontend)**
+  - Cards de status clicáveis para filtro (Pendente, Baixando, Concluído, Falhou, Cancelado, Ignorado)
+  - Lista agrupada por servidor
+  - Ações: cancelar, forçar download, retry
+- [x] **Backend de Downloads**
+  - Modelo DownloadJob no banco de dados
+  - Endpoints: GET /downloads, POST /downloads, POST /downloads/batch
+  - Endpoints: cancel, cancel-all, force, retry, clear-finished
+
 ### 2026-02-21 (Session 8 - Access Denied Error Handling)
 - [x] **P0 Bug Fix: Tratamento de erro "Access Denied" no download** 
   - Backend: Nova função `update_file_access_denied_status()` marca o ARQUIVO específico (não a pasta pai)
