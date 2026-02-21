@@ -1710,6 +1710,64 @@ async def get_certificate_info(
                 if "password" in str(e).lower() or "mac" in str(e).lower():
                     raise HTTPException(status_code=401, detail="Senha incorreta ou não fornecida")
                 raise
+            
+            # Salvar senha se funcionou
+            if request.password:
+                existing_pwd = await db.execute(
+                    select(PfxPassword).where(
+                        PfxPassword.server_guid == server.guid,
+                        PfxPassword.file_path == file.file_path
+                    )
+                )
+                if not existing_pwd.scalar_one_or_none():
+                    new_pwd = PfxPassword(
+                        server_guid=server.guid,
+                        file_path=file.file_path,
+                        password=request.password
+                    )
+                    db.add(new_pwd)
+                    await db.commit()
+                    
+        elif file_ext in ['.cer', '.crt', '.pem']:
+            try:
+                cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+            except Exception:
+                cert = x509.load_der_x509_certificate(cert_data, default_backend())
+        else:
+            raise HTTPException(status_code=400, detail=f"Tipo de arquivo não suportado: {file_ext}")
+        
+        if not cert:
+            raise HTTPException(status_code=500, detail="Não foi possível extrair o certificado")
+        
+        # Extrair informações
+        subject_parts = {}
+        for attr in cert.subject:
+            subject_parts[attr.oid._name] = attr.value
+        
+        issuer_parts = {}
+        for attr in cert.issuer:
+            issuer_parts[attr.oid._name] = attr.value
+        
+        thumbprint = cert.fingerprint(hashes.SHA1()).hex().upper()
+        
+        return {
+            "success": True,
+            "file_id": file_id,
+            "subject": subject_parts,
+            "issuer": issuer_parts,
+            "serial_number": str(cert.serial_number),
+            "not_before": cert.not_valid_before_utc.isoformat(),
+            "not_after": cert.not_valid_after_utc.isoformat(),
+            "thumbprint": thumbprint,
+            "has_private_key": private_key is not None,
+            "version": cert.version.value
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reading certificate {file_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==========================================
