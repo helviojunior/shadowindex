@@ -234,6 +234,25 @@ class DownloadJob(Base):
     completed_at = Column(DateTime, nullable=True)
 
 
+class AppSettings(Base):
+    """Configurações gerais da aplicação"""
+    __tablename__ = "app_settings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, nullable=False, index=True)
+    value = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+# Configurações padrão
+DEFAULT_SETTINGS = {
+    'max_simultaneous_downloads': ('3', 'Número máximo de downloads simultâneos'),
+    'default_depth_levels': ('5', 'Quantidade padrão de níveis de profundidade'),
+    'default_max_file_size_mb': ('100', 'Tamanho máximo padrão de arquivo (MB)'),
+}
+
+
 async def init_db():
     """Initialize database and apply schema migrations"""
     import sqlite3
