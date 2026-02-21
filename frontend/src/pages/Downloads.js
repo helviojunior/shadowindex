@@ -101,7 +101,7 @@ const Downloads = () => {
   const clearFinishedScans = async () => {
     try {
       const response = await axios.post(`${API}/scans/clear-finished`);
-      toast.success(`${response.data.count} scans removidos`);
+      toast.success(`${response.data.cleared} scans removidos`);
       loadScanJobs();
     } catch (error) {
       toast.error('Erro ao limpar scans');
