@@ -1,4 +1,5 @@
 import os
+import re
 import base64
 import hashlib
 from pathlib import Path
@@ -7,6 +8,18 @@ from typing import Optional, Tuple
 # Usar diretório local (pwd) para armazenamento
 # O caminho base será ./data (relativo ao diretório do backend)
 STORAGE_BASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "storage")
+
+def sanitize_path_component(name: str) -> str:
+    """Sanitiza um componente de caminho removendo caracteres inválidos"""
+    # Remove caracteres especiais mas mantém . _ -
+    sanitized = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', name)
+    # Remove espaços extras e substitui por underscore
+    sanitized = re.sub(r'\s+', '_', sanitized)
+    # Remove underscores duplicados
+    sanitized = re.sub(r'_+', '_', sanitized)
+    # Remove underscore no início e fim
+    sanitized = sanitized.strip('_')
+    return sanitized if sanitized else 'unnamed'
 
 def get_server_storage_path(server_id: int) -> Path:
     """Retorna o caminho base do servidor usando ID"""
