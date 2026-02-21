@@ -381,7 +381,7 @@ async def init_db():
         if not result.scalar_one_or_none():
             default_soap = SoapApiUrl(
                 name="Default SOAP API",
-                uri="https://sdweb.suzanonet.com.br/dna/upload/api_tst.asmx?WSDL"
+                uri="https://meudominio.local/api_tst.asmx"
             )
             session.add(default_soap)
         
