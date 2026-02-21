@@ -83,7 +83,7 @@ const ServerBrowser = () => {
   const [loadingContent, setLoadingContent] = useState(false);
   const [beautified, setBeautified] = useState(false);
   const [itemsSortConfig, setItemsSortConfig] = useState({ key: 'name', direction: 'asc' });
-  const [focusedShare, setFocusedShare] = useState(null); // Share focado (oculta os demais)
+  const [focusedItem, setFocusedItem] = useState(null); // Item focado (oculta os demais) - {nodeId, shareName, path}
   const [pfxPassword, setPfxPassword] = useState(''); // Senha para arquivos PFX
   
   // Estados para download recursivo
