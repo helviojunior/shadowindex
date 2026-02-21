@@ -14,6 +14,7 @@ import BeautifyTest from "@/pages/BeautifyTest";
 import SqlExecutor from "@/pages/SqlExecutor";
 import SqlPresets from "@/pages/SqlPresets";
 import Downloads from "@/pages/Downloads";
+import GeneralSettings from "@/pages/GeneralSettings";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 
@@ -47,6 +48,7 @@ function App() {
               <Route path="/proxy-servers" element={<ProxyServers />} />
               <Route path="/soap-apis" element={<SoapApis />} />
               <Route path="/soap-operations" element={<SoapOperations />} />
+              <Route path="/settings" element={<GeneralSettings />} />
               <Route path="/beautify-test" element={<BeautifyTest />} />
             </Routes>
           </Layout>
