@@ -2934,6 +2934,27 @@ class CreateBatchDownloadRequest(BaseModel):
     files: List[dict]  # Lista de {file_path, file_name, file_size}
     max_file_size_bytes: Optional[int] = None  # Limite de tamanho por arquivo
     max_depth: Optional[int] = None  # Limite de profundidade
+    apply_filters: bool = True  # Se False, ignora filtros de tamanho e extensão
+
+
+async def get_ignored_extensions(db: AsyncSession) -> List[str]:
+    """Obtém a lista de extensões ignoradas das configurações"""
+    result = await db.execute(select(AppSettings).where(AppSettings.key == 'ignored_extensions'))
+    setting = result.scalar_one_or_none()
+    if setting and setting.value:
+        return [ext.strip().lower() for ext in setting.value.split(',') if ext.strip()]
+    return []
+
+
+def should_skip_by_extension(file_name: str, ignored_extensions: List[str]) -> bool:
+    """Verifica se o arquivo deve ser ignorado pela extensão"""
+    if not ignored_extensions:
+        return False
+    file_lower = file_name.lower()
+    for ext in ignored_extensions:
+        if file_lower.endswith(ext):
+            return True
+    return False
 
 
 @api_router.post("/downloads/batch")
@@ -2948,8 +2969,14 @@ async def create_batch_download_jobs(
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
+    # Obter extensões ignoradas (apenas se aplicar filtros)
+    ignored_extensions = []
+    if request.apply_filters:
+        ignored_extensions = await get_ignored_extensions(db)
+    
     created = 0
     skipped = 0
+    skipped_by_extension = 0
     
     for file_info in request.files:
         file_path = file_info.get('file_path') or file_info.get('fullPath')
@@ -2968,10 +2995,15 @@ async def create_batch_download_jobs(
             skipped += 1
             continue
         
-        # Verificar tamanho máximo
+        # Verificar extensão ignorada (apenas se aplicar filtros)
+        if request.apply_filters and should_skip_by_extension(file_name, ignored_extensions):
+            skipped_by_extension += 1
+            continue
+        
+        # Verificar tamanho máximo (apenas se aplicar filtros)
         status = 'pending'
         skip_reason = None
-        if request.max_file_size_bytes and file_size and file_size > request.max_file_size_bytes:
+        if request.apply_filters and request.max_file_size_bytes and file_size and file_size > request.max_file_size_bytes:
             status = 'skipped'
             skip_reason = f"Arquivo excede limite de {request.max_file_size_bytes / (1024*1024):.1f}MB"
         
