@@ -3200,10 +3200,10 @@ async def retry_download_job(
 
 @api_router.post("/downloads/clear-finished")
 async def clear_finished_jobs(db: AsyncSession = Depends(get_db)):
-    """Remove jobs concluídos, falhos e cancelados"""
+    """Remove jobs concluídos, falhos, cancelados e ignorados"""
     await db.execute(
         delete(DownloadJob).where(
-            DownloadJob.status.in_(['completed', 'failed', 'cancelled'])
+            DownloadJob.status.in_(['completed', 'failed', 'cancelled', 'skipped'])
         )
     )
     await db.commit()
