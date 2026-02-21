@@ -2006,8 +2006,7 @@ async def get_certificate_info(
             
             # 2. Se não funcionou e uma senha foi fornecida, tentar essa
             if not certificate and password and len(str(password)) > 0:
-                print(f"Trying provided password for {file_path}")
-                private_key, certificate, additional_certs, used_password = try_open_pfx(password)
+                private_key, certificate, additional_certs, used_password = try_open_pfx(password, "user-provided")
                 
                 # Se funcionou, salvar a senha
                 if certificate:
@@ -2039,8 +2038,9 @@ async def get_certificate_info(
                 )
                 known_passwords = [p[0] for p in known_passwords.fetchall()]
                 
-                for known_pwd in known_passwords:
-                    private_key, certificate, additional_certs, used_password = try_open_pfx(known_pwd)
+                print(f"PFX BRUTEFORCE: trying {len(known_passwords)} known passwords")
+                for idx, known_pwd in enumerate(known_passwords):
+                    private_key, certificate, additional_certs, used_password = try_open_pfx(known_pwd, f"bruteforce-{idx+1}")
                     if certificate:
                         # Salvar a senha que funcionou
                         subject_cn = None
