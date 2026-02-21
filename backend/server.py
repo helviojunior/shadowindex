@@ -433,7 +433,7 @@ class FileVersionResponse(BaseModel):
 # Routes
 @api_router.get("/")
 async def root():
-    return {"message": "Ops Integration Desk API", "version": "1.0.0"}
+    return {"message": "ShadowIndex API", "version": "1.0.0"}
 
 # Credentials CRUD
 @api_router.post("/credentials", response_model=CredentialResponse)
