@@ -768,7 +768,7 @@ const ServerBrowser = () => {
                     ...child, 
                     access_denied: true,
                     accessDenied: true,
-                    error_message: response.data.errorMessage || 'Acesso negado',
+                    error_message: errorMsg,
                     children_fetched: true,
                     has_children: false
                   };
