@@ -3783,6 +3783,120 @@ const ServerBrowser = () => {
               </div>
             </div>
           )}
+          
+          {/* OCR Tab Content */}
+          {activeTab === 'ocr' && isFile && downloaded && !isAccessDenied && (
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-4">
+                {/* OCR Status & Actions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ScanText className="w-5 h-5 text-muted-foreground" />
+                    <span className="font-medium">OCR / Extração de Texto</span>
+                    {ocrLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={processOcr}
+                    disabled={processingOcr}
+                    variant={ocrData?.ocr_processed ? "secondary" : "default"}
+                  >
+                    {processingOcr ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <ScanText className="w-4 h-4 mr-2" />
+                    )}
+                    {ocrData?.ocr_processed ? "Reprocessar OCR" : "Processar OCR"}
+                  </Button>
+                </div>
+
+                {/* OCR Error */}
+                {ocrData?.ocr_error && (
+                  <div className="p-3 bg-destructive/10 border border-destructive rounded-lg">
+                    <div className="flex items-center gap-2 text-destructive">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="font-medium">Erro no OCR</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{ocrData.ocr_error}</p>
+                  </div>
+                )}
+
+                {/* OCR Not Processed */}
+                {!ocrData?.ocr_processed && !ocrData?.ocr_error && (
+                  <div className="p-6 text-center border border-dashed border-border rounded-lg">
+                    <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-muted-foreground">
+                      Clique em "Processar OCR" para extrair texto e metadados deste arquivo.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Suporta PDFs, imagens, documentos Office e mais.
+                    </p>
+                  </div>
+                )}
+
+                {/* OCR Metadata */}
+                {ocrData?.ocr_processed && ocrData?.ocr_metadata && Object.keys(ocrData.ocr_metadata).length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileJson className="w-4 h-4" />
+                      <span>Metadados Extraídos</span>
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                        {Object.keys(ocrData.ocr_metadata).length} campos
+                      </span>
+                    </div>
+                    <div className="border border-border rounded-lg divide-y divide-border max-h-64 overflow-auto">
+                      {Object.entries(ocrData.ocr_metadata)
+                        .filter(([key]) => !key.startsWith('X-TIKA'))
+                        .slice(0, 30)
+                        .map(([key, value]) => (
+                          <div key={key} className="px-3 py-2 flex justify-between gap-4">
+                            <span className="text-xs font-mono text-muted-foreground">{key}</span>
+                            <span className="text-xs text-right truncate max-w-[200px]">
+                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* OCR Content */}
+                {ocrData?.ocr_processed && ocrData?.ocr_content && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="w-4 h-4" />
+                        <span>Conteúdo Extraído</span>
+                        <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                          {ocrData.ocr_content.length.toLocaleString()} caracteres
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard(ocrData.ocr_content, 'ocr_content')}
+                      >
+                        <Copy className="w-3 h-3 mr-1" />
+                        Copiar
+                      </Button>
+                    </div>
+                    <div className="relative">
+                      <pre className="p-4 bg-muted rounded-lg text-xs font-mono whitespace-pre-wrap break-words max-h-96 overflow-auto">
+                        {ocrData.ocr_content}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* OCR Processing Info */}
+                {ocrData?.ocr_processed_at && (
+                  <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border">
+                    Processado em: {new Date(ocrData.ocr_processed_at).toLocaleString('pt-BR')}
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
         </div>
       </div>
     );
