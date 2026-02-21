@@ -2276,3 +2276,272 @@ async def queue_directory_scan_v2(
     }
 
 
+
+
+# ==========================================
+# Nmap XML Import Endpoint
+# ==========================================
+
+class NmapHostData(BaseModel):
+    ip: str
+    name: str
+    hasSMB: bool
+    hasDB: bool
+    dbTypes: List[str]
+
+class NmapImportRequest(BaseModel):
+    hosts: List[NmapHostData]
+
+class NmapImportResponse(BaseModel):
+    success: bool
+    imported: int
+    failed: int
+    skipped: int
+    details: List[dict]
+
+@router.post("/servers/import/nmap", response_model=NmapImportResponse)
+async def import_servers_from_nmap(
+    request: NmapImportRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Importa servidores a partir de dados parseados de um XML do Nmap.
+    O parsing do XML é feito no frontend, e este endpoint recebe os hosts já processados.
+    
+    Para cada host:
+    - Verifica se já existe um servidor com o mesmo IP
+    - Se não existir, cria um novo servidor com plugin_type='direct_interaction'
+    - Se já existir, pula (não atualiza)
+    """
+    import uuid
+    
+    results = {
+        "imported": [],
+        "failed": [],
+        "skipped": []
+    }
+    
+    for host in request.hosts:
+        try:
+            # Verificar se servidor já existe pelo IP
+            existing = await db.execute(
+                select(Server).where(Server.ip == host.ip)
+            )
+            existing_server = existing.scalar_one_or_none()
+            
+            if existing_server:
+                results["skipped"].append({
+                    "ip": host.ip,
+                    "name": host.name,
+                    "reason": f"Servidor já existe (ID: {existing_server.id})"
+                })
+                continue
+            
+            # Criar novo servidor
+            new_server = Server(
+                guid=str(uuid.uuid4()),
+                name=host.name,
+                ip=host.ip,
+                plugin_type="direct_interaction",  # Plugin padrão para servidores importados
+                plugin_config={
+                    "imported_from": "nmap",
+                    "has_smb": host.hasSMB,
+                    "has_db": host.hasDB,
+                    "db_types": host.dbTypes
+                }
+            )
+            db.add(new_server)
+            await db.flush()  # Para obter o ID
+            
+            results["imported"].append({
+                "id": new_server.id,
+                "ip": host.ip,
+                "name": host.name,
+                "has_smb": host.hasSMB,
+                "db_types": host.dbTypes
+            })
+            
+        except Exception as e:
+            logger.error(f"Error importing server {host.ip}: {e}")
+            results["failed"].append({
+                "ip": host.ip,
+                "name": host.name,
+                "error": str(e)
+            })
+    
+    await db.commit()
+    
+    return NmapImportResponse(
+        success=True,
+        imported=len(results["imported"]),
+        failed=len(results["failed"]),
+        skipped=len(results["skipped"]),
+        details=results["imported"] + results["failed"] + results["skipped"]
+    )
+
+
+@router.post("/servers/import/nmap-xml")
+async def import_servers_from_nmap_xml_file(
+    file_content: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Endpoint alternativo que recebe o conteúdo XML do Nmap diretamente
+    e faz o parsing no backend.
+    
+    Identifica hosts com:
+    - Porta 445 (SMB)
+    - Portas de banco de dados: 1433 (MSSQL), 3306 (MySQL), 5432 (PostgreSQL),
+      1521 (Oracle), 27017 (MongoDB), 6379 (Redis), 5984 (CouchDB), 9200 (Elasticsearch)
+    """
+    import xml.etree.ElementTree as ET
+    import uuid
+    
+    # Portas de banco de dados conhecidas
+    DB_PORTS = {
+        1433: 'MSSQL',
+        3306: 'MySQL',
+        5432: 'PostgreSQL',
+        1521: 'Oracle',
+        27017: 'MongoDB',
+        6379: 'Redis',
+        5984: 'CouchDB',
+        9200: 'Elasticsearch'
+    }
+    SMB_PORT = 445
+    
+    try:
+        root = ET.fromstring(file_content)
+    except ET.ParseError as e:
+        raise HTTPException(status_code=400, detail=f"XML inválido: {str(e)}")
+    
+    hosts_to_import = []
+    
+    # Parsear hosts do XML
+    for host_elem in root.findall('.//host'):
+        status = host_elem.find('status')
+        if status is None or status.get('state') != 'up':
+            continue
+        
+        # Obter IP
+        address = host_elem.find("address[@addrtype='ipv4']")
+        if address is None:
+            continue
+        ip = address.get('addr')
+        if not ip:
+            continue
+        
+        # Obter hostname
+        hostname_elem = host_elem.find('.//hostnames/hostname')
+        name = hostname_elem.get('name') if hostname_elem is not None else ip
+        
+        # Verificar portas abertas
+        has_smb = False
+        has_db = False
+        db_types = []
+        
+        for port_elem in host_elem.findall('.//ports/port'):
+            state = port_elem.find('state')
+            if state is None or state.get('state') != 'open':
+                continue
+            
+            port_id = int(port_elem.get('portid', 0))
+            
+            if port_id == SMB_PORT:
+                has_smb = True
+            
+            if port_id in DB_PORTS:
+                has_db = True
+                db_types.append(DB_PORTS[port_id])
+        
+        # Apenas incluir hosts com SMB ou DB
+        if has_smb or has_db:
+            hosts_to_import.append({
+                "ip": ip,
+                "name": name,
+                "has_smb": has_smb,
+                "has_db": has_db,
+                "db_types": db_types
+            })
+    
+    if not hosts_to_import:
+        return {
+            "success": True,
+            "message": "Nenhum servidor com porta SMB (445) ou banco de dados encontrado",
+            "imported": 0,
+            "failed": 0,
+            "skipped": 0,
+            "hosts_found": 0
+        }
+    
+    # Importar hosts
+    results = {
+        "imported": [],
+        "failed": [],
+        "skipped": []
+    }
+    
+    for host in hosts_to_import:
+        try:
+            # Verificar se servidor já existe pelo IP
+            existing = await db.execute(
+                select(Server).where(Server.ip == host["ip"])
+            )
+            existing_server = existing.scalar_one_or_none()
+            
+            if existing_server:
+                results["skipped"].append({
+                    "ip": host["ip"],
+                    "name": host["name"],
+                    "reason": f"Servidor já existe (ID: {existing_server.id})"
+                })
+                continue
+            
+            # Criar novo servidor
+            new_server = Server(
+                guid=str(uuid.uuid4()),
+                name=host["name"],
+                ip=host["ip"],
+                plugin_type="direct_interaction",
+                plugin_config={
+                    "imported_from": "nmap",
+                    "has_smb": host["has_smb"],
+                    "has_db": host["has_db"],
+                    "db_types": host["db_types"]
+                }
+            )
+            db.add(new_server)
+            await db.flush()
+            
+            results["imported"].append({
+                "id": new_server.id,
+                "ip": host["ip"],
+                "name": host["name"],
+                "has_smb": host["has_smb"],
+                "db_types": host["db_types"]
+            })
+            
+        except Exception as e:
+            logger.error(f"Error importing server {host['ip']}: {e}")
+            results["failed"].append({
+                "ip": host["ip"],
+                "name": host["name"],
+                "error": str(e)
+            })
+    
+    await db.commit()
+    
+    return {
+        "success": True,
+        "message": f"{len(results['imported'])} servidores importados com sucesso",
+        "hosts_found": len(hosts_to_import),
+        "imported": len(results["imported"]),
+        "failed": len(results["failed"]),
+        "skipped": len(results["skipped"]),
+        "details": {
+            "imported": results["imported"],
+            "failed": results["failed"],
+            "skipped": results["skipped"]
+        }
+    }
+
