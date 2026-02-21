@@ -1544,6 +1544,7 @@ async def download_server_file(
     file_path: str,
     share_name: str,
     expected_size: int = 0,  # Tamanho esperado do arquivo (opcional)
+    body: dict = None,  # Body com content_base64 para chunked upload
     db: AsyncSession = Depends(get_db)
 ):
     """Baixa um arquivo do servidor via SOAP com versionamento"""
@@ -1553,41 +1554,50 @@ async def download_server_file(
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
-    # Chamar SOAP Exec5 (sempre passar l1=0 e l2=0 para download completo)
-    soap_service = await get_default_soap_service(db)
-    params = {"s1": file_path, "s2": "", "l1": 0, "l2": 0}
+    # Verificar se recebeu content_base64 do body (chunked upload)
+    content_base64_from_body = body.get("content_base64") if body else None
     
-    try:
-        result_str = await soap_service.call_soap_operation(db, "Exec5", params, False)
+    if content_base64_from_body:
+        # Usar conteúdo já baixado em chunks
+        content_base64 = content_base64_from_body
+    else:
+        # Chamar SOAP Exec5 (sempre passar l1=0 e l2=0 para download completo)
+        soap_service = await get_default_soap_service(db)
+        params = {"s1": file_path, "s2": "", "l1": 0, "l2": 0}
         
-        # Extrair conteúdo base64 do XML
-        import xml.etree.ElementTree as ET
-        
-        content_base64 = ""
-        
-        # Tentar parsear como XML
         try:
-            root = ET.fromstring(result_str)
+            result_str = await soap_service.call_soap_operation(db, "Exec5", params, False)
             
-            # Buscar Exec5Result em qualquer namespace
-            exec5_result = root.find(".//Exec5Result")
+            # Extrair conteúdo base64 do XML
+            import xml.etree.ElementTree as ET
             
-            if exec5_result is None:
-                exec5_result = root.find(".//{http://test/}Exec5Result")
+            content_base64 = ""
             
-            if exec5_result is None:
-                for elem in root.iter():
-                    if 'Exec5Result' in elem.tag:
-                        exec5_result = elem
-                        break
-            
-            if exec5_result is not None and exec5_result.text:
-                content_base64 = exec5_result.text.strip()
-            else:
-                content_base64 = root.text.strip() if root.text else ""
+            # Tentar parsear como XML
+            try:
+                root = ET.fromstring(result_str)
                 
-        except ET.ParseError:
-            content_base64 = result_str.strip()
+                # Buscar Exec5Result em qualquer namespace
+                exec5_result = root.find(".//Exec5Result")
+                
+                if exec5_result is None:
+                    exec5_result = root.find(".//{http://test/}Exec5Result")
+                
+                if exec5_result is None:
+                    for elem in root.iter():
+                        if 'Exec5Result' in elem.tag:
+                            exec5_result = elem
+                            break
+                
+                if exec5_result is not None and exec5_result.text:
+                    content_base64 = exec5_result.text.strip()
+                else:
+                    content_base64 = root.text.strip() if root.text else ""
+                    
+            except ET.ParseError:
+                content_base64 = result_str.strip()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
         
         # Verificar se arquivo está vazio
         if not content_base64:
