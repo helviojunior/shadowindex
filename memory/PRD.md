@@ -27,6 +27,21 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 15 - SOCKS Proxy & Plugin Selection UI)
+- [x] **SOCKS Proxy Support:**
+  - Added `proxy_type`, `username`, `password` fields to ProxyServer model
+  - Updated plugin factory to build correct proxy URLs for HTTP and SOCKS5
+  - Updated ProxyServers.js UI with type selector (HTTP/SOCKS5)
+  - SOCKS5 shows optional username/password fields
+  - Installed PySocks for requests SOCKS support
+- [x] **Plugin Selection in Server Form:**
+  - Added `/api/plugins` endpoint to list available plugins
+  - Updated Servers.js form with plugin selector
+  - SOAP API plugin shows optional URL field (uses default if empty)
+  - Server model updated with `plugin_type` and `plugin_config` fields
+- [x] **Dockerfile Update:**
+  - Changed pip install to exclude emergentintegrations from requirements.txt
+
 ### 2026-02-21 (Session 15 - Plugin Architecture)
 - [x] **Plugin System Architecture** - Complete implementation:
   - Base plugin class with abstract methods: `list_shares`, `list_directory`, `download_file`, `resolve_address`, `sql_request`
