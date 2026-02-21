@@ -187,6 +187,8 @@ class DatabaseConnectionCreate(BaseModel):
     name: str
     db_type_id: Optional[int] = None
     connection_string: str
+    plugin_type: Optional[str] = "soap_api"
+    plugin_config: Optional[dict] = None
 
 class DatabaseConnectionResponse(BaseModel):
     id: int
@@ -199,6 +201,8 @@ class DatabaseConnectionResponse(BaseModel):
     verified: bool = False
     last_verified_at: Optional[datetime] = None
     created_at: datetime
+    plugin_type: Optional[str] = "soap_api"
+    plugin_config: Optional[dict] = None
 
 
 # SQL Presets Models
