@@ -6,13 +6,14 @@ Build a web dashboard to manage credentials, database connections, proxy servers
 ## Tech Stack
 - **Frontend:** React, Tailwind CSS, Shadcn/UI
 - **Backend:** FastAPI, SQLAlchemy
-- **Database:** SQLite with custom auto-migration
+- **Database:** SQLite with Alembic migrations
 
 ## Core Requirements
 - Web panel with dark mode layout and collapsible left sidebar
-- SQLite3 for data storage with automatic schema migration
-- "Cadastro" (Registration) sections for Credentials, DB Connections, Proxy Servers, SOAP API URLs
-- Global option to select active proxy for all SOAP requests
+- SQLite3 for data storage with Alembic schema migration
+- "Cadastro" (Registration) sections for Credentials, DB Connections, Proxy Servers
+- **Plugin-based architecture** for server communication (SOAP, future: SMB, etc.)
+- Global option to select active proxy for all requests
 - Global option to ignore cache for all operations
 - 24-hour caching mechanism for SOAP responses
 - Global "Offline Mode" relying solely on cache
@@ -26,6 +27,34 @@ Portuguese (pt-BR)
 ---
 
 ## Completed Features
+
+### 2026-02-22 (Session 16 - Plugin Architecture Evolution & SOAP Refactoring)
+- [x] **Plugin Architecture Evolution:**
+  - Enhanced `BasePlugin` class with new methods: `health_check()`, `validate_config()`, `get_config_schema()`
+  - Added `PluginConfig.require()` and `validate()` methods for configuration management
+  - Added class attributes: `PLUGIN_DESCRIPTION`, `REQUIRED_CONFIG`
+  - Better documentation and type hints in base class
+- [x] **SOAP Plugin Improvements:**
+  - Added `get_config_schema()` returning JSON schema for configuration
+  - Implemented `health_check()` to verify SOAP service connectivity
+  - Added configurable `timeout` and `namespace` options
+- [x] **Plugin Management Endpoints:**
+  - `GET /api/plugins` - List all plugins with config_schema
+  - `GET /api/plugins/{plugin_type}` - Get detailed plugin info
+  - `POST /api/plugins/{plugin_type}/health` - Health check with config
+  - `POST /api/plugins/{plugin_type}/validate` - Validate plugin config
+- [x] **SOAP Configuration Refactoring:**
+  - New page: `PluginSoapConfig.js` at `/plugins/soap`
+  - New "Plugins" menu section in sidebar with "SOAP Plugin" submenu
+  - Removed "SOAP APIs" from "Configuração" section
+  - Added SOAP API selector in `SoapOperations.js`
+- [x] **UI Improvements:**
+  - Plugin info card showing name, type, version, description
+  - Config schema visualization with required/optional fields
+  - Test connectivity button for each SOAP URL
+- [x] **Tests:**
+  - Created `/app/backend/tests/test_plugins_api.py` with 19 tests
+  - All tests passing (100% backend, 100% frontend)
 
 ### 2026-02-21 (Session 15 - OCR/Tika Integration)
 - [x] **Docker Compose Updated:**
