@@ -1625,18 +1625,53 @@ const ServerBrowser = () => {
                   <div className="space-y-4">
                     {/* Certificate Info */}
                     {fileContent.error ? (
-                      <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                        <p className="text-red-400">{fileContent.error}</p>
+                      <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg space-y-4">
+                        <div className="flex items-center gap-2 text-yellow-500">
+                          <AlertTriangle className="w-5 h-5" />
+                          <span className="font-medium">{fileContent.error}</span>
+                        </div>
                         {fileContent.requires_password && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {fileContent.message}
-                          </p>
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              {fileContent.message}
+                              {fileContent.known_passwords > 0 && (
+                                <span className="ml-2 text-xs">
+                                  ({fileContent.known_passwords} senha(s) conhecida(s) testada(s))
+                                </span>
+                              )}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="password"
+                                value={pfxPassword}
+                                onChange={(e) => setPfxPassword(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && pfxPassword) {
+                                    loadFileContent();
+                                  }
+                                }}
+                                placeholder="Digite a senha do certificado"
+                                className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              />
+                              <Button 
+                                size="sm"
+                                onClick={loadFileContent}
+                                disabled={!pfxPassword || loadingContent}
+                              >
+                                {loadingContent ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  'Desbloquear'
+                                )}
+                              </Button>
+                            </div>
+                          </>
                         )}
                       </div>
                     ) : (
                       <>
                         {/* Header */}
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-green-500 border-green-500">
                               {fileContent.type?.toUpperCase()}
@@ -1644,12 +1679,20 @@ const ServerBrowser = () => {
                             <span className="text-sm text-muted-foreground">
                               {fileContent.total_certificates} certificado(s)
                             </span>
+                            {fileContent.password_used && (
+                              <Badge variant="secondary" className="text-xs">
+                                Senha: {fileContent.password_used}
+                              </Badge>
+                            )}
                           </div>
-                          {fileContent.private_key?.has_private_key && (
-                            <Badge variant="destructive">
-                              Contém Chave Privada
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {fileContent.private_key?.has_private_key && (
+                              <Badge variant="destructive">
+                                Contém Chave Privada
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                         </div>
                         
                         {/* Certificates */}
