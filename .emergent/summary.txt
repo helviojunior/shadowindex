@@ -1,172 +1,166 @@
 <analysis>**original_problem_statement:**
-The user initially requested a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. The project has since evolved into a comprehensive SQL management and execution tool with an advanced server file browser and a backend-driven download management system.
+O usuário solicitou inicialmente um painel web para gerenciar credenciais, conexões de banco de dados, servidores proxy e URLs de API SOAP. O projeto evoluiu para uma ferramenta abrangente de gerenciamento e execução de SQL com um navegador de arquivos de servidor avançado, um sistema de download orientado pelo backend, uma arquitetura de plugins para abstrair a comunicação (ex: SOAP) e, mais recentemente, integração com OCR via Apache Tika para extrair texto e metadados de arquivos.
 
 **PRODUCT REQUIREMENTS:**
-- A web panel with a modern dark mode layout and a collapsible, multi-level left sidebar.
-- A dedicated Downloads page to view and manage the status of all historical and in-progress downloads, including directory scanning jobs.
-- A robust, backend-driven download system where background workers handle file listing () and downloading (), allowing the process to continue even if the user closes the browser.
-- A General Settings page to configure application-wide parameters.
-- Data tables should be enhanced with features like scrolling, sorting, and searching.
-- The UI should provide feedback on queued downloads and prevent re-queueing of the same file.
-- Users should be able to manage the lifecycle of directory scans (view, cancel, clear).
-- The Server Browser page should have a robust search functionality (by name, SHA1, extension, date) with keyboard shortcuts.
+- Um painel web com um layout moderno em modo escuro e uma barra lateral esquerda recolhível com múltiplos níveis.
+- Uma página dedicada de Downloads para visualizar e gerenciar o status de todos os downloads.
+- Um sistema de download robusto orientado pelo backend, onde workers em segundo plano lidam com o download.
+- Uma arquitetura de plugins para abstrair a comunicação com serviços externos (ex: SOAP), permitindo configurações por servidor.
+- Suporte para proxy SOCKS5 (com autenticação opcional) para todas as comunicações externas.
+- Integração com OCR para extrair texto e metadados de arquivos baixados, com busca no conteúdo extraído e visualização na UI.
+- Uma UI que permite selecionar o plugin a ser usado ao configurar servidores e conexões de banco de dados.
+- Tabelas de dados com funcionalidades como rolagem, ordenação e pesquisa.
+- O sistema de armazenamento de arquivos deve ser baseado em IDs não adivinháveis.
 
-**User's preferred language**: Portuguese. The next agent MUST respond in Portuguese.
+**User's preferred language**: Portuguese. O próximo agente DEVE responder em português.
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and a React frontend, using a persistent SQLite database.
-- **Backend:** A significant refactoring was completed, introducing a new set of v2 API endpoints in . These endpoints use integer IDs instead of fragile URL-encoded paths for fetching and managing server files, improving robustness and security. The old v1 API in  has been marked with . A new search endpoint () was added to support advanced file and directory searching.
-- **Frontend:** The  page has been almost completely migrated to use the new v2 API. It features a new search component with an advanced search modal, keyboard shortcuts (Ctrl/Cmd+F), search term highlighting, and an Export to JSON feature for search results. Clicking a search result now correctly expands the file tree, scrolls to the item, and highlights it. Several UI/UX bugs related to icons and spacing have been fixed on the  page.
-- **Database:** The existing SQLite schema supports the new ID-based lookups for servers, shares, and files.
+Uma aplicação full-stack com backend FastAPI e frontend React. A arquitetura foi significativamente refatorada para um sistema de plugins, com gerenciamento de migrações de banco de dados via Alembic.
+- **Backend:** Usa FastAPI com uma arquitetura de plugins para funcionalidades core. Atualmente, existe um SOAP API Plugin. O sistema de migração manual foi substituído pelo Alembic. Foi adicionado um serviço de OCR que se integra a um container Apache Tika para processar arquivos, extrair texto e metadados, e salvar essas informações em arquivos  e  no storage. O proxy SOCKS5 é suportado.
+- **Frontend:** A interface React permite aos usuários gerenciar servidores, proxies e conexões de banco de dados. Os formulários de criação/edição de Servidores e Conexões de Banco de Dados foram atualizados para incluir um seletor de plugins. A página  foi atualizada para exibir uma aba OCR para arquivos processados.
+- **Database:** SQLite, com o esquema gerenciado por Alembic. As tabelas  e  agora têm colunas  e  (JSON). A tabela  possui colunas para armazenar o conteúdo e metadados do OCR (, , ).
 
 **Last working item**:
-- **Last item agent was working:** The user requested that the Objetos tab within the SQL Runner page be sorted to display directories first, then files, similar to Windows Explorer. The agent correctly identified the target file () and the section of code responsible for rendering the table.
-- **Status:** IN PROGRESS
+- **Last item agent was working:** O agente estava começando a implementar uma refatoração na configuração das APIs SOAP. O objetivo é remover o menu de configuração global de SOAP e, em vez disso, permitir a configuração individual de cada SOAP Plugin através de um novo menu () e adicionar um seletor de plugin na página de Operações SOAP.
+- **Status:** NOT STARTED
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** Frontend testing agent. The test should navigate to the SQL Runner, select a connection, go to the Objetos tab, and verify that the items in the data grid are sorted with all directories appearing before all files, and that each group (directories and files) is sorted alphabetically.
+- **Which testing method agent to use?** Ambos (frontend e backend). O agente de frontend para verificar as novas páginas de menu, a remoção do menu antigo e o novo seletor na página de operações SOAP. O agente de backend para testar os novos endpoints de configuração de plugins.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0): Sort Objects tab to show directories first.**
-- **Issue 2 (P1): Downloaded file metadata is not updated after download.**
-- **Issue 3 (P2): File tree in  doesn't auto-update after a background download.**
+- **Issue 1 (P0): Refatoração da configuração SOAP para ser baseada em plugins.**
+- **Issue 2 (P1): Verificação da funcionalidade Sync (Download).**
+- **Issue 3 (P1): Destaque de diretórios visitados não persiste após atualização da página.**
+- **Issue 4 (P2): Validação completa da funcionalidade de proxy SOCKS5.**
+- **Issue 5 (P2): Validação completa do fluxo de OCR.**
 
 **Issues Detail:**
-- **Issue 1: Sort Objects tab to show directories first.**
-    - **Attempted fixes:** The agent located the file () and the  component that renders the objects. The next step is to implement the sorting logic on the data source before it's passed to the grid.
+- **Issue 1: Refatoração da configuração SOAP para ser baseada em plugins.**
+    - **Attempted fixes:** O agente apenas visualizou os arquivos relevantes (, , , ). Nenhuma implementação foi iniciada.
     - **Next debug checklist:**
-        1. In , locate the  prop being passed to the  in the Objetos tab.
-        2. Before passing the data to the grid, apply a  function.
-        3. The sort comparator should prioritize items where  over .
-        4. Within each type, sort alphabetically by name.
-        5. Verify the change visually or with the testing agent.
-    - **Why fix this issue and what will be achieved with the fix?** This is a user-requested UI/UX improvement for better usability and consistency with standard file explorers.
-    - **Status:** IN PROGRESS
+        1. Remover o item de menu SOAP APIs de .
+        2. Criar uma nova rota e página para configurar os plugins SOAP.
+        3. Adicionar um seletor de plugin na página  para permitir que o usuário escolha qual configuração de plugin usar.
+        4. Criar os endpoints de backend necessários para gerenciar as configurações dos plugins SOAP.
+    - **Why fix this issue and what will be achieved with the fix?** Alinha a configuração SOAP com a nova arquitetura de plugins, permitindo maior flexibilidade e removendo configurações globais legadas.
+    - **Status:** NOT STARTED
     - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** Frontend.
+    - **Should Test frontend/backend/both after fix?** Both.
     - **Blocked on other issue:** None.
 
-- **Issue 2: Downloaded file metadata is not updated after download.**
-    - **Attempted fixes:** This issue was carried over from a previous session. The agent in this session did not work on it, focusing instead on the API refactoring and new search features. The  is the likely location for the bug.
-    - **Next debug checklist:**
-        1. Trigger a file download.
-        2. Monitor the logs for .
-        3. Trace the execution path after the file download is complete.
-        4. Verify that the code responsible for updating the  record in the database (with SHA1, status, etc.) is being executed correctly.
-        5. Check for any silent exceptions or incorrect logic in the database update call.
-    - **Why fix this issue and what will be achieved with the fix?** This is a critical bug. Without correct metadata, the application cannot reliably know which files have been downloaded, which undermines the core functionality of the file browser.
-    - **Status:** NOT STARTED
+- **Issue 2: Verificação da funcionalidade Sync (Download).**
+    - **Attempted fixes:** A migração para a API v2 e a introdução da arquitetura de plugins alteraram fundamentalmente essa funcionalidade.
+    - **Next debug checklist:** Realizar um teste de ponta a ponta da funcionalidade de download através do botão Sync para garantir que ela funcione corretamente com a nova arquitetura de plugins.
+    - **Why fix this issue and what will be achieved with the fix?** O download é uma funcionalidade central da aplicação.
+    - **Status:** USER VERIFICATION PENDING
     - **Is recurring issue?** Y
-    - **Should Test frontend/backend/both after fix?** Backend.
+    - **Should Test frontend/backend/both after fix?** Both.
     - **Blocked on other issue:** None.
 
-- **Issue 3: File tree in  doesn't auto-update after a background download.**
-    - **Attempted fixes:** This is another carry-over issue. No new fixes were attempted in this session.
-    - **Next debug checklist:**
-        1. A robust solution is needed. The current -based re-fetching is insufficient for background updates.
-        2. Consider implementing a polling mechanism on the  page that periodically checks the status of files visible in the tree.
-        3. Alternatively, a WebSocket connection could be established to push real-time status updates from the backend to the frontend. This is a more complex but efficient solution.
-    - **Why fix this issue and what will be achieved with the fix?** Provides a seamless user experience by giving immediate feedback on download completions without requiring a manual page refresh.
-    - **Status:** NOT STARTED
+- **Issue 3: Destaque de diretórios visitados não persiste após atualização da página.**
+    - **Attempted fixes:** O agente reescreveu a função  em  para processar corretamente estruturas de diretórios aninhadas retornadas pelo backend.
+    - **Next debug checklist:** Verificar manualmente no frontend se, após navegar em um diretório e atualizar a página (F5), o diretório continua com o destaque azul.
+    - **Why fix this issue and what will be achieved with the fix?** É uma melhoria de UX importante solicitada repetidamente pelo usuário.
+    - **Status:** USER VERIFICATION PENDING
     - **Is recurring issue?** Y
     - **Should Test frontend/backend/both after fix?** Frontend.
     - **Blocked on other issue:** None.
+
+- **Issue 4 & 5 (P2):** As funcionalidades de SOCKS5 e OCR foram implementadas, mas não foram testadas de ponta a ponta, pois dependem de serviços externos (servidor SOCKS, arquivos para OCR). Elas precisam de verificação completa.
 
 **In progress Task List**:
-- **Task 1: Implement sorting in  Objects tab (P0).**
-    - **Where to resume:** .
-    - **What will be achieved with this?** Fulfill the user's latest request for UI improvement.
-    - **Status:** IN PROGRESS
-    - **Should Test frontend/backend/both after fix?** Frontend.
-    - **Blocked on something:** None.
+- O único item em progresso é o Issue 1, detalhado acima.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-  - **(P1) Downloads UI Enhancements:** Add advanced filtering options to the Downloads page (e.g., filter by status, server).
+  - (P0) Concluir a refatoração da configuração SOAP (Issue 1).
 - **Future Tasks:**
-  - **(P2) Mock SOAP Service for Testing:** Create a mock service to allow for reliable testing of the server browser functionality.
-  - **(P3) Refactor DB Schema Migration:** Adopt a standard migration tool like .
-  - **(P4) Address  Dependency:** Properly install the  library in the environment to remove the  workaround.
+  - (P2) Evoluir a arquitetura de plugins para um sistema mais robusto, conforme a visão do usuário (exceptions padronizadas, funções base obrigatórias, etc.).
+  - (P2) Implementar novos tipos de plugins, como SMB Plugin para acesso direto a compartilhamentos de rede.
+  - (P3) Criar um serviço SOAP mock para permitir testes mais confiáveis do .
 
 **Completed work in this session**
-- **API v2 Refactoring:** Created a new set of robust, ID-based API endpoints () in  and migrated the  frontend to use them. The old v1 API was marked as deprecated.
-- **Server Browser Search:** Implemented a full-featured search functionality in , including a backend endpoint, a UI with advanced search options, search term highlighting, and a navigate to result feature that expands the tree and scrolls to the selected item.
-- **Keyboard Shortcuts:** Added Ctrl/Cmd+F shortcut to focus the search bar and ESC to clear the search.
-- **UI/UX Fixes:**
-  - Fixed an issue where database type icons were not showing correctly in a ComboBox on the  page.
-  - Fixed a layout issue by adding proper spacing between preset cards.
-  - Changed the title Compartilhamentos to Arquivos and rearranged header buttons for better UX.
-  - Added a feature to export search results to a JSON file.
-- **Removed Redundant Toasts:** Cleaned up the  page by removing several unnecessary toast notifications to improve the user experience.
-- **Bug Fix (Clear Finished Downloads):** Verified via  and the testing agent that the  endpoint works correctly and does not delete active jobs.
+- **Arquitetura de Plugins:** Implementada a base de uma arquitetura de plugins no backend, incluindo uma factory e um plugin SOAP inicial. Os modelos  e  foram atualizados para suportar a seleção de plugins.
+- **Migração para Alembic:** O sistema de migração de banco de dados foi completamente migrado de scripts manuais para Alembic.
+- **Suporte a Proxy SOCKS:** Adicionado suporte para proxies SOCKS5, incluindo campos de tipo, usuário e senha na UI e no backend.
+- **Integração de OCR com Tika:**
+    - Adicionado um serviço Tika ao .
+    - Backend foi atualizado para processar arquivos com Tika, extrair texto/metadados e salvar os resultados em arquivos  e .
+    - A busca de arquivos foi estendida para incluir o conteúdo OCR.
+    - O frontend () agora exibe uma aba OCR com o conteúdo extraído para arquivos processados.
+- **Correção de :** O problema de  foi resolvido permanentemente com a adição de uma migração via Alembic.
+- **Melhorias na UI:** Formulários de Servidores e Conexões de Banco de Dados foram atualizados para incluir um seletor de plugins.
 
 **Earlier issues found/mentioned but not fixed**
-- ** environment dependency:** The application still relies on a  block to handle the missing library.
-- **Download metadata updates:** A critical bug where the download worker fails to update the  record after a download is complete remains unfixed.
-- **Server Browser UI auto-refresh:** The file tree does not update in real-time after a background task (like a download) finishes.
+- A dependência  ainda requer um  no código porque o pacote  não estava disponível no ambiente de execução. A solução ideal seria garantir a instalação do pacote no ambiente final.
 
 **Known issue recurrence from previous fork**
-- **UI Spacing/Layout:** A user-reported spacing issue required a second, more robust fix ( instead of ), highlighting that the user has a keen eye for UI details and that simple fixes may not always be sufficient.
+- **Falha no botão Sync:** Esta é uma queixa recorrente do usuário. A funcionalidade precisa de verificação completa após as recentes refatorações.
+- **Estado do diretório visitado:** O usuário relatou que a correção anterior não foi eficaz. A nova implementação precisa ser verificada pelo usuário.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **RESTful API Refactoring:** A major shift from fragile path-based endpoints to a robust, secure, and predictable ID-based v2 API. This involved creating a new FastAPI router ().
-- **Frontend State Management:** Extensive use of  and  in  to manage complex UI state for search queries, results, modals, and asynchronous data fetching.
-- **Direct DOM Manipulation in React:** Implementation of scroll-to-item and keyboard shortcuts required using , , and event listeners, demonstrating a controlled way to break out of the React declarative paradigm for specific UX needs.
+- **Plugin-Based Architecture:** Abstração de funcionalidades de comunicação (como SOAP) em classes de plugins independentes.
+- **Alembic Database Migrations:** Uso do Alembic para gerenciar de forma robusta as alterações no esquema do banco de dados.
+- **OCR via Apache Tika:** Integração com um serviço Tika em um container Docker para processamento de conteúdo de arquivos.
+- **Backend-Driven Plugin Selection:** A lista de plugins disponíveis na UI do frontend é obtida através de um endpoint no backend.
 
 **key DB schema**
-- **ScanJob**: 
-- **DownloadJob**: 
-- **DownloadedFile**:  (Core model for file tracking)
+- **servers**:  (Campos adicionados).
+- **database_connections**:  (Campos adicionados).
+- **proxies**:  (Campos adicionados).
+- **file_versions**:  (Campos adicionados).
 
 **All files of reference**
-- **Current Task:** 
-- **Recent Major Changes:**
-    -  (New file for all v2 API logic)
-    -  (Primary file for new search features and v2 API integration)
-- **Pending Bug Locations:**
-    -  (For metadata update bug)
-    -  (For real-time UI refresh)
+- **Próxima Tarefa:** , , e criação de uma nova página de configuração de plugin.
+- **Arquitetura Principal:** , , .
+- **Funcionalidade OCR:** , , .
+- **Configuração de Ambiente:** .
 
 **Critical Info for New Agent**
-- The application is in a transitional state with a new  and a deprecated v1 API. While  is mostly migrated, ensure any new frontend work uses the v2 endpoints.
-- The user is highly attentive to UI/UX details. Verify all visual changes carefully.
-- Two critical bugs from the original problem statement remain: the failure to update file metadata after download and the lack of real-time UI updates. These should be prioritized after the current task.
-- The navigate to search result feature in  is complex, using  and sequential async calls to manage the tree expansion. Modify this logic with extreme care.
+- **Alembic é mandatório:** Todas as futuras alterações de esquema de banco de dados devem ser feitas através de novas migrações do Alembic. Não modifique o  para isso.
+- **Arquitetura de Plugins:** O foco do desenvolvimento está em migrar a lógica de negócios para dentro de plugins. A próxima tarefa é um passo nessa direção para a configuração SOAP.
+- **Dependência do Tika:** O backend agora depende do serviço Tika, que é definido no . O ambiente de desenvolvimento deve ser iniciado com o compose para que a aplicação funcione.
+- **Verificação é Crucial:** Muitas funcionalidades foram implementadas ou corrigidas (destaque de diretórios, SOCKS, OCR, auto-atualização da árvore), mas não foram testadas de ponta a ponta. Verifique essas funcionalidades antes de avançar para novas tarefas, se possível.
+
+**documents and test reports created in this job**
+- : Arquivo de teste Pytest para a arquitetura de plugins.
+- Múltiplos arquivos de migração foram criados em .
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **Request (Done):** Fix incorrect database icons in the SQL Presets form.
-2.  **Request (Done):** Fix missing margins between preset cards.
-3.  **Feedback (Done):** The margin fix didn't work; agent re-implemented it successfully.
-4.  **Request (Done):** When clicking a search result: don't clear the search, expand the tree automatically, and scroll to the item.
-5.  **Request (Done):** Highlight the search term within the search results.
-6.  **Feedback/Bug (Done):** The scroll-to-item highlight is blue (should be yellow), and the tree expansion is not working. Agent fixed both.
-7.  **Request (Done):** Add a Ctrl+F keyboard shortcut for search and fix the Sync button, which was still using the old API.
-8.  **Request (Done):** On the Server Browser, change the title Compartilhamentos to Arquivos, move action buttons to the right, and add a button to export search results to JSON.
-9.  **Request (Done):** Remove informational toasts like item selected and navigating to item from the Server Browser page.
-10. **Request (In Progress):** In the SQL Runner's Objects tab, sort the table to show directories first, then files.
+1. **Request (Done):** Adicionar suporte a OCR com Apache Tika, incluindo busca no conteúdo e UI para visualização.
+2. **Request (Done):** Adicionar o serviço Tika ao .
+3. **Request (Done):** Após o OCR, salvar arquivos  e  no storage.
+4. **Request (Pending):** Refatorar a configuração SOAP: combo de seleção de plugin em SOAP Operations.
+5. **Request (Pending):** Refatorar a configuração SOAP: criar um novo menu .
+6. **Request (Pending):** Refatorar a configuração SOAP: remover o menu geral SOAP APIs.
+7. **User Input:** Acknowledged the start of the SOAP refactoring.
+8.  ... (Previous messages related to implementing OCR, SOCKS proxy, and plugin architecture).
 
 **Project Health Check:**
-- **Broken:**
-    - The download worker does not update file metadata (e.g., SHA1) in the database after a successful download.
-    - The Server Browser UI does not automatically reflect changes from background workers (e.g., a completed download) without a manual refresh.
+- **Broken:** Nenhuma funcionalidade principal está quebrada. O  do banco de dados foi corrigido.
+- **Needs Verification:**
+  - **Fluxo de OCR:** O processamento e visualização de OCR precisam ser testados com arquivos reais.
+  - **Proxy SOCKS5:** A integração com o proxy SOCKS5 precisa ser testada com um servidor proxy real.
+  - **Destaque de Diretórios:** A correção para o bug de destaque do diretório visitado precisa de confirmação do usuário.
+  - **Auto-atualização da Árvore de Arquivos:** O polling implementado para atualizar a UI após downloads precisa ser verificado.
 - **Mocked:**
-    - The external SOAP API for listing remote files is unavailable in the preview environment.
+  - O serviço SOAP externo continua sendo mockado/indisponível no ambiente de preview. Isso impede o teste real da funcionalidade de Sync.
 
 **3rd Party Integrations**
-- **Custom SOAP Web Service:** For browsing and downloading files.
+- **Custom SOAP Web Service:** Acessado através de um plugin customizado.
+- **Apache Tika:** Para OCR, executado como um serviço separado no Docker.
 - **UI Libraries:** , , , .
 - **Data Handling:** , .
-- **Backend:** ,  (with a  workaround), , .
+- **Backend:** , , , , , , .
 
 **Testing status**
-- **Testing agent used after significant changes:** YES, once early in the session to validate a bug fix for the clear downloads button. It passed successfully.
+- **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None.
-- **Known regressions:** None identified.
+- **Test files created:** []
+- **Known regressions:** Nenhuma regressão conhecida introduzida nesta sessão, mas as regressões anteriores (botão Sync, destaque de diretório) precisam de verificação.
 
 **What agent forgot to execute**
-- The agent did not address two long-standing critical bugs carried over from the previous session: the failure of the  to update file metadata post-download, and the lack of real-time UI updates in the  for background events.
-- The  dependency issue remains unresolved, still relying on a  block.</analysis>
+- O agente estava prestes a iniciar a última solicitação do usuário para refatorar a configuração SOAP, então a tarefa está pendente, não esquecida.</analysis>
