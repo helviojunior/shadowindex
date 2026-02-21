@@ -2857,6 +2857,37 @@ async def get_download_jobs(db: AsyncSession = Depends(get_db)):
     ]
 
 
+class CheckQueueRequest(BaseModel):
+    server_id: int
+    share_name: str
+    file_path: str
+
+
+@api_router.post("/downloads/check-queue")
+async def check_file_in_queue(
+    request: CheckQueueRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Verifica se um arquivo já está na fila de downloads"""
+    result = await db.execute(
+        select(DownloadJob).where(
+            DownloadJob.server_id == request.server_id,
+            DownloadJob.file_path == request.file_path,
+            DownloadJob.status.in_(['pending', 'downloading'])
+        )
+    )
+    existing_job = result.scalar_one_or_none()
+    
+    if existing_job:
+        return {
+            "in_queue": True,
+            "job_id": existing_job.id,
+            "status": existing_job.status
+        }
+    
+    return {"in_queue": False}
+
+
 class CreateDownloadJobRequest(BaseModel):
     server_id: int
     share_name: str
