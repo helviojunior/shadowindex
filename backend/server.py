@@ -2979,9 +2979,14 @@ async def create_batch_download_jobs(
     skipped_by_extension = 0
     
     for file_info in request.files:
-        file_path = file_info.get('file_path') or file_info.get('fullPath')
-        file_name = file_info.get('file_name') or file_info.get('name') or file_path.split('\\')[-1]
+        file_path = file_info.get('file_path') or file_info.get('fullPath') or file_info.get('path')
+        file_name = file_info.get('file_name') or file_info.get('name') or (file_path.split('\\')[-1] if file_path else None)
         file_size = file_info.get('file_size') or file_info.get('size')
+        
+        # Validar que file_path existe
+        if not file_path:
+            skipped += 1
+            continue
         
         # Verificar se já existe
         existing = await db.execute(
