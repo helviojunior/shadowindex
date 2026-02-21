@@ -39,8 +39,7 @@ import {
   Clock,
   Ban,
   Focus,
-  X,
-  Download
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
