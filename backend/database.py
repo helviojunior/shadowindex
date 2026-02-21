@@ -152,6 +152,7 @@ class DownloadedFile(Base):
     sanitized_path = Column(String, nullable=False)
     file_size = Column(Integer, nullable=True)
     sha1_hash = Column(String(40), nullable=True)  # SHA1 hash do arquivo
+    mimetype = Column(String, nullable=True)  # MIME type do arquivo (calculado via libmagic)
     downloaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
