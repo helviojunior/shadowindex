@@ -1,5 +1,4 @@
 import os
-import re
 import base64
 import hashlib
 from pathlib import Path
@@ -9,97 +8,124 @@ from typing import Optional, Tuple
 # O caminho base será ./data (relativo ao diretório do backend)
 STORAGE_BASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "storage")
 
-def sanitize_path_component(name: str) -> str:
-    """Sanitiza um componente de caminho removendo caracteres inválidos"""
-    # Remove caracteres especiais mas mantém . _ -
-    sanitized = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', name)
-    # Remove espaços extras e substitui por underscore
-    sanitized = re.sub(r'\s+', '_', sanitized)
-    # Remove underscores duplicados
-    sanitized = re.sub(r'_+', '_', sanitized)
-    # Remove underscore no início e fim
-    sanitized = sanitized.strip('_')
-    return sanitized if sanitized else 'unnamed'
+def get_server_storage_path(server_id: int) -> Path:
+    """Retorna o caminho base do servidor usando ID"""
+    return Path(STORAGE_BASE_PATH) / str(server_id)
 
-def get_server_storage_path(server_guid: str) -> Path:
-    """Retorna o caminho base do servidor"""
-    return Path(STORAGE_BASE_PATH) / server_guid
-
-def get_share_storage_path(server_guid: str, share_name: str) -> Path:
-    """Retorna o caminho do compartilhamento"""
-    sanitized_share = sanitize_path_component(share_name)
-    return get_server_storage_path(server_guid) / sanitized_share
-
-def get_file_storage_path(server_guid: str, share_name: str, file_path: str) -> Path:
-    """Retorna o caminho completo do arquivo"""
-    sanitized_share = sanitize_path_component(share_name)
-    
-    # Dividir o caminho em componentes e sanitizar cada um
-    path_parts = file_path.replace('\\\\', '/').split('/')
-    sanitized_parts = [sanitize_path_component(part) for part in path_parts if part]
-    
-    # Construir caminho final
-    base_path = get_server_storage_path(server_guid) / sanitized_share
-    for part in sanitized_parts[:-1]:  # Diretórios
-        base_path = base_path / part
-    
-    return base_path
+def get_file_storage_path_by_id(server_id: int, file_id: int, version: int = 1) -> Path:
+    """
+    Retorna o caminho do arquivo usando estrutura baseada em IDs
+    Estrutura: {storage_base}/{server_id}/{file_id}/{version}
+    """
+    base_path = Path(STORAGE_BASE_PATH) / str(server_id) / str(file_id)
+    return base_path / str(version)
 
 def ensure_storage_path(path: Path) -> None:
     """Garante que o diretório existe"""
-    path.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+def save_file_by_id(
+    server_id: int,
+    file_id: int,
+    content: bytes,
+    version: int = 1
+) -> Tuple[str, str, int]:
+    """
+    Salva um arquivo usando estrutura baseada em IDs
+    
+    Args:
+        server_id: ID do servidor
+        file_id: ID do arquivo no banco
+        content: Conteúdo do arquivo em bytes
+        version: Número da versão
+    
+    Returns:
+        tuple[str, str, int]: (caminho completo, sha1_hash, tamanho)
+    """
+    # Calcular SHA1 hash
+    sha1_hash = hashlib.sha1(content).hexdigest()
+    file_size = len(content)
+    
+    # Caminho: {storage}/{server_id}/{file_id}/{version}
+    file_path = get_file_storage_path_by_id(server_id, file_id, version)
+    
+    # Garantir que o diretório existe
+    ensure_storage_path(file_path)
+    
+    # Salvar arquivo
+    try:
+        with open(file_path, 'wb') as f:
+            f.write(content)
+    except Exception as e:
+        raise Exception(f"Erro ao salvar arquivo: {str(e)}")
+    
+    return str(file_path), sha1_hash, file_size
 
 def save_downloaded_file(
     server_guid: str,
     share_name: str,
     file_path: str,
-    content_base64: str,
-    version: int = None
+    content_base64_or_str: str,
+    version: int = None,
+    server_id: int = None,
+    file_id: int = None
 ) -> Tuple[Path, str, str, int]:
     """
     Salva um arquivo baixado na estrutura de diretórios
     
+    Se server_id e file_id são fornecidos, usa nova estrutura baseada em IDs.
+    Caso contrário, usa estrutura legada baseada em GUID/path.
+    
     Args:
-        server_guid: GUID do servidor
-        share_name: Nome do compartilhamento
-        file_path: Caminho do arquivo
-        content_base64: Conteúdo em base64
+        server_guid: GUID do servidor (legado)
+        share_name: Nome do compartilhamento (legado)
+        file_path: Caminho do arquivo (legado)
+        content_base64_or_str: Conteúdo em base64 ou string
         version: Número da versão (None para auto)
+        server_id: ID do servidor (nova estrutura)
+        file_id: ID do arquivo (nova estrutura)
     
     Returns:
         tuple[Path, str, str, int]: (caminho completo, caminho sanitizado, sha1_hash, tamanho)
     """
-    # Obter caminho do arquivo
-    file_storage_path = get_file_storage_path(server_guid, share_name, file_path)
-    
-    # Garantir que o diretório existe
-    ensure_storage_path(file_storage_path)
-    
-    # Extrair nome do arquivo do caminho
-    file_name = Path(file_path).name
-    sanitized_file_name = sanitize_path_component(file_name)
-    
-    # Decodificar base64
-    try:
-        file_content = base64.b64decode(content_base64)
-    except Exception as e:
-        raise Exception(f"Erro ao decodificar arquivo: {str(e)}")
+    # Decodificar conteúdo
+    if isinstance(content_base64_or_str, str):
+        try:
+            # Tentar decodificar como base64
+            file_content = base64.b64decode(content_base64_or_str)
+        except Exception:
+            # Se falhar, tratar como string UTF-8
+            file_content = content_base64_or_str.encode('utf-8')
+    else:
+        file_content = content_base64_or_str
     
     # Calcular SHA1 hash
     sha1_hash = hashlib.sha1(file_content).hexdigest()
     file_size = len(file_content)
     
-    # Se versão especificada, adicionar ao nome do arquivo
+    # Nova estrutura baseada em IDs
+    if server_id is not None and file_id is not None:
+        ver = version if version else 1
+        full_file_path = get_file_storage_path_by_id(server_id, file_id, ver)
+        ensure_storage_path(full_file_path)
+        
+        with open(full_file_path, 'wb') as f:
+            f.write(file_content)
+        
+        # Caminho relativo usando IDs
+        relative_path = f"{server_id}/{file_id}/{ver}"
+        return full_file_path, relative_path, sha1_hash, file_size
+    
+    # Estrutura legada baseada em GUID/path
+    # Caminho: {storage}/{server_guid}/{sha1_hash[:2]}/{sha1_hash}
+    base_path = Path(STORAGE_BASE_PATH) / server_guid / sha1_hash[:2]
+    base_path.mkdir(parents=True, exist_ok=True)
+    
+    # Nome do arquivo é o hash completo (sem extensão)
     if version and version > 1:
-        # Nome com versão: arquivo_v2.txt
-        name_parts = sanitized_file_name.rsplit('.', 1)
-        if len(name_parts) == 2:
-            versioned_name = f"{name_parts[0]}_v{version}.{name_parts[1]}"
-        else:
-            versioned_name = f"{sanitized_file_name}_v{version}"
-        full_file_path = file_storage_path / versioned_name
+        full_file_path = base_path / f"{sha1_hash}_v{version}"
     else:
-        full_file_path = file_storage_path / sanitized_file_name
+        full_file_path = base_path / sha1_hash
     
     # Salvar arquivo
     try:
@@ -114,68 +140,57 @@ def save_downloaded_file(
     return full_file_path, relative_path, sha1_hash, file_size
 
 
-def calculate_sha1_from_base64(content_base64: str) -> str:
-    """Calcula SHA1 hash de conteúdo em base64"""
-    if not content_base64:
-        # Hash de arquivo vazio
-        return hashlib.sha1(b'').hexdigest()
-    file_content = base64.b64decode(content_base64)
-    return hashlib.sha1(file_content).hexdigest()
-
-
 def save_empty_file(
     server_guid: str,
     share_name: str,
     file_path: str,
-    version: int = None
+    version: int = None,
+    server_id: int = None,
+    file_id: int = None
 ) -> Tuple[Path, str, str, int]:
     """
     Salva um arquivo vazio na estrutura de diretórios
-    
-    Args:
-        server_guid: GUID do servidor
-        share_name: Nome do compartilhamento
-        file_path: Caminho do arquivo
-        version: Número da versão (None para auto)
-    
-    Returns:
-        tuple[Path, str, str, int]: (caminho completo, caminho sanitizado, sha1_hash, tamanho=0)
     """
-    # Obter caminho do arquivo
-    file_storage_path = get_file_storage_path(server_guid, share_name, file_path)
-    
-    # Garantir que o diretório existe
-    ensure_storage_path(file_storage_path)
-    
-    # Extrair nome do arquivo do caminho
-    file_name = Path(file_path).name
-    sanitized_file_name = sanitize_path_component(file_name)
-    
     # SHA1 de arquivo vazio
     sha1_hash = hashlib.sha1(b'').hexdigest()
     
-    # Se versão especificada, adicionar ao nome do arquivo
-    if version and version > 1:
-        name_parts = sanitized_file_name.rsplit('.', 1)
-        if len(name_parts) == 2:
-            versioned_name = f"{name_parts[0]}_v{version}.{name_parts[1]}"
-        else:
-            versioned_name = f"{sanitized_file_name}_v{version}"
-        full_file_path = file_storage_path / versioned_name
-    else:
-        full_file_path = file_storage_path / sanitized_file_name
-    
-    # Criar arquivo vazio
-    try:
+    # Nova estrutura baseada em IDs
+    if server_id is not None and file_id is not None:
+        ver = version if version else 1
+        full_file_path = get_file_storage_path_by_id(server_id, file_id, ver)
+        ensure_storage_path(full_file_path)
+        
         with open(full_file_path, 'wb'):
             pass  # Arquivo vazio
+        
+        relative_path = f"{server_id}/{file_id}/{ver}"
+        return full_file_path, relative_path, sha1_hash, 0
+    
+    # Estrutura legada
+    base_path = Path(STORAGE_BASE_PATH) / server_guid / sha1_hash[:2]
+    base_path.mkdir(parents=True, exist_ok=True)
+    
+    if version and version > 1:
+        full_file_path = base_path / f"{sha1_hash}_v{version}"
+    else:
+        full_file_path = base_path / sha1_hash
+    
+    try:
+        with open(full_file_path, 'wb'):
+            pass
     except Exception as e:
         raise Exception(f"Erro ao criar arquivo vazio: {str(e)}")
     
-    # Retornar caminho completo, caminho sanitizado relativo, hash e tamanho
     relative_path = str(full_file_path.relative_to(STORAGE_BASE_PATH))
-    
     return full_file_path, relative_path, sha1_hash, 0
+
+
+def calculate_sha1_from_base64(content_base64: str) -> str:
+    """Calcula SHA1 hash de conteúdo em base64"""
+    if not content_base64:
+        return hashlib.sha1(b'').hexdigest()
+    file_content = base64.b64decode(content_base64)
+    return hashlib.sha1(file_content).hexdigest()
 
 
 def calculate_sha1_from_file(file_path: str) -> Optional[str]:
@@ -189,7 +204,7 @@ def calculate_sha1_from_file(file_path: str) -> Optional[str]:
 
 def get_server_storage_stats(server_guid: str) -> dict:
     """Retorna estatísticas de armazenamento do servidor"""
-    server_path = get_server_storage_path(server_guid)
+    server_path = Path(STORAGE_BASE_PATH) / server_guid
     
     if not server_path.exists():
         return {
@@ -204,28 +219,13 @@ def get_server_storage_stats(server_guid: str) -> dict:
         "shares": []
     }
     
-    # Iterar por compartilhamentos
-    for share_dir in server_path.iterdir():
-        if share_dir.is_dir():
-            share_files = 0
-            share_size = 0
-            
-            # Contar arquivos e tamanho
-            for root, dirs, files in os.walk(share_dir):
-                for file in files:
-                    file_path = Path(root) / file
-                    if file_path.exists():
-                        share_files += 1
-                        share_size += file_path.stat().st_size
-            
-            stats["shares"].append({
-                "name": share_dir.name,
-                "files": share_files,
-                "size": share_size
-            })
-            
-            stats["total_files"] += share_files
-            stats["total_size"] += share_size
+    # Contar todos os arquivos no diretório do servidor
+    for root, dirs, files in os.walk(server_path):
+        for file in files:
+            file_path_obj = Path(root) / file
+            if file_path_obj.exists():
+                stats["total_files"] += 1
+                stats["total_size"] += file_path_obj.stat().st_size
     
     return stats
 
@@ -244,8 +244,26 @@ def get_file_path(server_guid: str, share_name: str, sanitized_path: str) -> str
     """
     return str(Path(STORAGE_BASE_PATH) / sanitized_path)
 
+
+def get_file_path_by_id(server_id: int, file_id: int, version: int = 1) -> str:
+    """
+    Retorna o caminho completo de um arquivo usando IDs
+    
+    Args:
+        server_id: ID do servidor
+        file_id: ID do arquivo
+        version: Versão do arquivo
+    
+    Returns:
+        str: Caminho completo do arquivo
+    """
+    return str(get_file_storage_path_by_id(server_id, file_id, version))
+
+
 def format_size(size_bytes: int) -> str:
     """Formata tamanho em bytes para formato legível"""
+    if size_bytes is None:
+        return "0 B"
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if size_bytes < 1024.0:
             return f"{size_bytes:.2f} {unit}"
