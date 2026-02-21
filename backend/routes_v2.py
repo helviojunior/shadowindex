@@ -206,8 +206,6 @@ async def browse_share(
         result_str = await soap_service.call_soap_operation(db, "Exec4", params, refresh)
         
         items = []
-        access_denied = False
-        error_message = None
         
         # Parsear resultado
         parsed_items = parse_exec4_directory_listing(result_str)
