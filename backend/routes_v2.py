@@ -871,7 +871,6 @@ async def download_file_by_path(
     from soap_service import get_default_soap_service
     from storage_utils import save_downloaded_file, format_size
     from server import get_file_mimetype
-    import base64
     
     server = await get_server_or_404(db, server_id)
     
@@ -916,7 +915,6 @@ async def download_file_by_path(
     existing = existing_result.scalar_one_or_none()
     
     # Calcular hash do novo conteúdo
-    import hashlib
     new_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
     
     # Verificar se arquivo já existe com mesmo hash
@@ -1049,7 +1047,6 @@ async def download_chunk(
 ):
     """Download de um chunk de arquivo via SOAP"""
     from soap_service import get_default_soap_service
-    import base64
     
     server = await get_server_or_404(db, server_id)
     
