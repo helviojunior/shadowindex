@@ -827,7 +827,7 @@ const ServerBrowser = () => {
         // Mudar para aba Info quando acesso negado
         setActiveTab('info');
         
-        toast.error(`Acesso negado: ${path.split('\\').pop() || shareName}`);
+        // Toast removido - o status de acesso negado é exibido na UI
         return;
       }
       
