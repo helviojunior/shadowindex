@@ -10,6 +10,9 @@ import SoapApis from "@/pages/SoapApis";
 import SoapOperations from "@/pages/SoapOperations";
 import Servers from "@/pages/Servers";
 import ServerBrowser from "@/pages/ServerBrowser";
+import ImportServers from "@/pages/ImportServers";
+import FileNavigation from "@/pages/FileNavigation";
+import Leaks from "@/pages/Leaks";
 import BeautifyTest from "@/pages/BeautifyTest";
 import SqlExecutor from "@/pages/SqlExecutor";
 import SqlPresets from "@/pages/SqlPresets";
@@ -39,9 +42,12 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/servers" element={<Servers />} />
+              <Route path="/servers/import" element={<ImportServers />} />
               <Route path="/servers/:serverId" element={<ServerBrowser />} />
               <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
+              <Route path="/files/browse" element={<FileNavigation />} />
               <Route path="/downloads" element={<Downloads />} />
+              <Route path="/leaks" element={<Leaks />} />
               <Route path="/credentials" element={<Credentials />} />
               <Route path="/sql" element={<DatabaseConnections />} />
               <Route path="/sql/presets" element={<SqlPresets />} />
