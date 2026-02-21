@@ -1762,6 +1762,74 @@ async def download_server_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.post("/servers/{server_id}/download-chunk")
+async def download_server_file_chunk(
+    server_id: int,
+    file_path: str,
+    share_name: str,
+    offset: int = 0,
+    chunk_size: int = 512000,  # 512KB default
+    db: AsyncSession = Depends(get_db)
+):
+    """Baixa um chunk de arquivo do servidor via SOAP Exec4"""
+    # Obter servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Chamar SOAP Exec4 com offset e tamanho
+    soap_service = await get_default_soap_service(db)
+    params = {"s1": file_path, "s2": "", "l1": offset, "l2": chunk_size}
+    
+    try:
+        result_str = await soap_service.call_soap_operation(db, "Exec4", params, False)
+        
+        # Extrair conteúdo base64 do XML
+        import xml.etree.ElementTree as ET
+        
+        content_base64 = ""
+        
+        # Tentar parsear como XML
+        try:
+            root = ET.fromstring(result_str)
+            
+            # Buscar Exec4Result em qualquer namespace
+            exec4_result = root.find(".//Exec4Result")
+            
+            if exec4_result is None:
+                exec4_result = root.find(".//{http://test/}Exec4Result")
+            
+            if exec4_result is None:
+                for elem in root.iter():
+                    if 'Exec4Result' in elem.tag:
+                        exec4_result = elem
+                        break
+            
+            if exec4_result is not None and exec4_result.text:
+                content_base64 = exec4_result.text.strip()
+            else:
+                content_base64 = root.text.strip() if root.text else ""
+                
+        except ET.ParseError:
+            content_base64 = result_str.strip()
+        
+        # Calcular tamanho do chunk recebido
+        import base64
+        chunk_data = base64.b64decode(content_base64) if content_base64 else b""
+        
+        return {
+            "success": True,
+            "offset": offset,
+            "chunk_size": len(chunk_data),
+            "content_base64": content_base64,
+            "is_last_chunk": len(chunk_data) < chunk_size
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/servers/{server_id}/file-versions")
 async def get_file_versions(
     server_id: int,
