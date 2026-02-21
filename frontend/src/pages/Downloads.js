@@ -302,8 +302,8 @@ const Downloads = () => {
         </Card>
       </div>
 
-      {/* Active filter indicator */}
-      {activeFilter && (
+      {/* Active filter indicator - only render when filter is active */}
+      {activeFilter ? (
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="flex items-center gap-1">
             <Filter className="w-3 h-3" />
@@ -316,7 +316,7 @@ const Downloads = () => {
             </button>
           </Badge>
         </div>
-      )}
+      ) : null}
 
       {/* Download list grouped by server */}
       {Object.keys(jobsByServer).length === 0 ? (
