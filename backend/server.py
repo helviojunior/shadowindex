@@ -9,6 +9,7 @@ import logging
 import os
 import json
 import time
+import magic
 from pathlib import Path
 from dotenv import load_dotenv
 
