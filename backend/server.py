@@ -12,7 +12,13 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 
-import magic
+# Importar magic com fallback se não disponível
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    MAGIC_AVAILABLE = False
+    logging.info("libmagic não instalado - mimetype será detectado por extensão")
 
 from database import (
     init_db, get_db, 
