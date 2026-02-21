@@ -30,12 +30,14 @@ const Servers = () => {
   const navigate = useNavigate();
   const { ignoreCache } = useApp();
   const [servers, setServers] = useState([]);
-  const [formData, setFormData] = useState({ name: '', ip: '' });
+  const [formData, setFormData] = useState({ name: '', ip: '', plugin_type: 'soap_api', plugin_config: {} });
   const [loading, setLoading] = useState(false);
   const [resolvingIp, setResolvingIp] = useState(false);
   const [editingServer, setEditingServer] = useState(null);
   const [editIp, setEditIp] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [availablePlugins, setAvailablePlugins] = useState({});
+  const [soapApiUrl, setSoapApiUrl] = useState('');
   
   // Estados para busca e ordenação
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,6 +45,8 @@ const Servers = () => {
 
   useEffect(() => {
     loadServers();
+    loadAvailablePlugins();
+    loadSoapApiUrls();
   }, []);
 
   // Filtrar e ordenar servidores
