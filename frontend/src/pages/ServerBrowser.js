@@ -630,6 +630,92 @@ const ServerBrowser = () => {
     }
   };
 
+  // Decodifica conteúdo de Base64
+  const decodeBase64Content = () => {
+    const content = rawFileContent || (typeof fileContent === 'object' ? fileContent.content : fileContent);
+    if (!content) return;
+    
+    try {
+      // Limpar o conteúdo (remover espaços e quebras de linha extras)
+      const cleanContent = content.trim();
+      
+      // Tentar decodificar
+      const decoded = atob(cleanContent);
+      
+      // Verificar se o resultado é texto válido
+      // Contar caracteres printáveis (incluindo UTF-8/acentos)
+      let printableCount = 0;
+      let nullCount = 0;
+      const bytes = new Uint8Array(decoded.length);
+      
+      for (let i = 0; i < decoded.length; i++) {
+        const byte = decoded.charCodeAt(i);
+        bytes[i] = byte;
+        
+        // Caracteres printáveis: tab, newline, carriage return, e 32-126, ou bytes UTF-8 (128-255)
+        if (byte === 9 || byte === 10 || byte === 13 || (byte >= 32 && byte <= 126) || byte >= 128) {
+          printableCount++;
+        }
+        if (byte === 0) {
+          nullCount++;
+        }
+      }
+      
+      // Calcular proporção de caracteres printáveis
+      const printableRatio = decoded.length > 0 ? printableCount / decoded.length : 0;
+      
+      // Considera texto se:
+      // - Mais de 85% dos caracteres são printáveis
+      // - E não tem muitos bytes nulos (< 5%)
+      const nullRatio = decoded.length > 0 ? nullCount / decoded.length : 0;
+      const isText = printableRatio > 0.85 && nullRatio < 0.05;
+      
+      if (!isText && decoded.length > 0) {
+        // Conteúdo binário - mostrar no formato hexdump -C
+        let hexdump = '';
+        const bytesPerLine = 16;
+        
+        for (let offset = 0; offset < bytes.length; offset += bytesPerLine) {
+          const offsetHex = offset.toString(16).padStart(8, '0');
+          let hexPart = '';
+          let asciiPart = '';
+          
+          for (let i = 0; i < bytesPerLine; i++) {
+            if (offset + i < bytes.length) {
+              const byte = bytes[offset + i];
+              hexPart += byte.toString(16).padStart(2, '0') + ' ';
+              asciiPart += (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
+            } else {
+              hexPart += '   ';
+              asciiPart += ' ';
+            }
+            if (i === 7) hexPart += ' ';
+          }
+          
+          hexdump += `${offsetHex}  ${hexPart} |${asciiPart}|\n`;
+        }
+        
+        setFileContent(`[Conteúdo binário - ${decoded.length} bytes]\n\n${hexdump}`);
+      } else {
+        setFileContent(decoded);
+      }
+      
+      setBase64Decoded(true);
+      setBeautified(false);
+    } catch (error) {
+      console.error('Base64 decode error:', error);
+      toast.error('Erro ao decodificar Base64 - conteúdo inválido');
+    }
+  };
+
+  // Restaura conteúdo original (antes da decodificação base64)
+  const restoreOriginalContent = () => {
+    if (!rawFileContent) return;
+    setFileContent(rawFileContent);
+    setBase64Decoded(false);
+    setBeautified(false);
+  };
+
   // Download do arquivo para a máquina do usuário
   const openFile = async () => {
     if (!selectedItem) return;
