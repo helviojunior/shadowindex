@@ -313,7 +313,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
 
         {/* Inline submenu when expanded */}
         {!effectiveCollapsed && isExpanded && (
-          <div className="mt-1 space-y-0.5">
+          <div className="space-y-0.5">
             {item.children.map((child) => {
               const isChildActive = child.id === activeSubMenuId;
               return (
@@ -322,10 +322,10 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                   to={child.path}
                   data-testid={`nav-${child.id}`}
                   className={cn(
-                    "block pl-10 pr-3 py-2 text-sm rounded-md transition-colors",
+                    "block w-full pl-11 pr-4 py-2 text-sm transition-colors",
                     isChildActive
-                      ? "text-primary font-medium bg-primary/10"
-                      : "text-muted-foreground/80 hover:bg-muted/50 hover:text-foreground"
+                      ? "text-emerald-400 font-medium"
+                      : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30"
                   )}
                 >
                   {child.label}
