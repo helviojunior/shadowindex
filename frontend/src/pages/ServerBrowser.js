@@ -151,6 +151,51 @@ const ServerBrowser = () => {
     loadDownloadedFiles();
   }, [serverId]);
 
+  // Polling para verificar downloads em background e atualizar a árvore
+  useEffect(() => {
+    const checkActiveDownloads = async () => {
+      try {
+        const response = await axios.get(`${API}/downloads`, {
+          params: { server_id: serverId }
+        });
+        
+        const downloads = response.data || [];
+        const active = downloads.filter(d => 
+          d.status === 'pending' || d.status === 'downloading'
+        ).length;
+        
+        // Se havia downloads ativos e agora não há, atualizar listas
+        if (activeDownloads > 0 && active === 0) {
+          console.log('[Polling] Downloads completed, refreshing file list...');
+          await loadDownloadedFiles();
+          // Também recarregar a árvore de itens para atualizar ícones verdes
+          if (server) {
+            await loadShares();
+          }
+        }
+        
+        setActiveDownloads(active);
+        
+        // Se ainda há downloads ativos, continuar polling
+        if (active > 0) {
+          downloadPollingRef.current = setTimeout(checkActiveDownloads, 3000);
+        }
+      } catch (error) {
+        console.error('Error checking downloads:', error);
+      }
+    };
+
+    // Iniciar polling
+    checkActiveDownloads();
+
+    // Cleanup
+    return () => {
+      if (downloadPollingRef.current) {
+        clearTimeout(downloadPollingRef.current);
+      }
+    };
+  }, [serverId, activeDownloads, server]);
+
   // Atalho de teclado Ctrl+F (Windows) ou Cmd+F (Mac) para focar na busca
   useEffect(() => {
     const handleKeyDown = (e) => {
