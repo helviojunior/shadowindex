@@ -3335,18 +3335,29 @@ logging.basicConfig(
 
 @app.on_event("startup")
 async def startup_event():
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    logger.info("Starting application...")
     await init_db()
-    logging.info("Database initialized")
+    logger.info("Database initialized")
     
     # Iniciar worker de downloads em background
-    from download_worker import start_download_worker
-    await start_download_worker()
-    logging.info("Download worker started")
+    try:
+        from download_worker import start_download_worker
+        await start_download_worker()
+        logger.info("Download worker started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start download worker: {e}")
     
     # Iniciar scanner de diretórios em background
-    from directory_scanner import start_directory_scanner
-    await start_directory_scanner()
-    logging.info("Directory scanner started")
+    try:
+        from directory_scanner import start_directory_scanner
+        await start_directory_scanner()
+        logger.info("Directory scanner started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start directory scanner: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
