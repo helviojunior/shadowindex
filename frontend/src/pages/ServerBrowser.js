@@ -1838,21 +1838,29 @@ const ServerBrowser = () => {
                 </div>
               )}
               
-              <Button 
-                size="sm" 
-                className="h-7"
-                onClick={handleDownload}
-                disabled={loading}
-                variant={downloaded ? "outline" : "default"}
-                data-testid="sync-button"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                )}
-                Sync
-              </Button>
+              {/* Mostrar "Em fila" se arquivo está na fila, senão mostrar botão Sync */}
+              {fileInQueue?.in_queue ? (
+                <Badge variant="secondary" className="h-7 px-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  {fileInQueue.status === 'downloading' ? 'Baixando...' : 'Em fila de download'}
+                </Badge>
+              ) : (
+                <Button 
+                  size="sm" 
+                  className="h-7"
+                  onClick={handleDownload}
+                  disabled={loading}
+                  variant={downloaded ? "outline" : "default"}
+                  data-testid="sync-button"
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Sync
+                </Button>
+              )}
               
               {/* Botão Cancelar Sync */}
               {loading && singleDownloadProgress !== null && (
