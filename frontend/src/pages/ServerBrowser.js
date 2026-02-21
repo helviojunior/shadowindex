@@ -194,19 +194,18 @@ const ServerBrowser = () => {
     if (isCertificateFile(filename)) {
       setLoadingContent(true);
       try {
-        const params = {
+        const requestBody = {
           file_path: selectedItem.fullPath || selectedItem.serverPath,
-          share_name: selectedItem.shareName,
-          _t: Date.now() // Evitar cache
+          share_name: selectedItem.shareName
         };
         
         // Só adicionar password se tiver valor
         if (pfxPassword && pfxPassword.trim()) {
-          params.password = pfxPassword.trim();
+          requestBody.password = pfxPassword.trim();
         }
         
-        console.log('Loading certificate with params:', params);
-        const response = await axios.get(`${API}/servers/${serverId}/certificate-info`, { params });
+        console.log('Loading certificate with body:', requestBody);
+        const response = await axios.post(`${API}/servers/${serverId}/certificate-info`, requestBody);
         console.log('Certificate response:', response.data);
         setFileContent(response.data);
         setRawFileContent(JSON.stringify(response.data, null, 2));
