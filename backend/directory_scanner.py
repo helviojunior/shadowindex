@@ -31,13 +31,14 @@ _scanner_instance: Optional['DirectoryScanner'] = None
 
 class ScanJob:
     """Representa um job de scan de diretório"""
-    def __init__(self, server_id: int, share_name: str, path: str, depth: int, max_depth: int, max_file_size_bytes: Optional[int]):
+    def __init__(self, server_id: int, share_name: str, path: str, depth: int, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True):
         self.server_id = server_id
         self.share_name = share_name
         self.path = path
         self.depth = depth
         self.max_depth = max_depth
         self.max_file_size_bytes = max_file_size_bytes
+        self.apply_filters = apply_filters  # Se False, ignora filtros de tamanho e extensão
 
 
 class DirectoryScanner:
