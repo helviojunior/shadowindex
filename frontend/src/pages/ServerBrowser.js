@@ -573,6 +573,23 @@ const ServerBrowser = () => {
     }
   };
 
+  // Verificar se arquivo está na fila de downloads
+  const checkFileInQueue = async (filePath, shareName) => {
+    try {
+      const response = await axios.post(`${API}/downloads/check-queue`, {
+        server_id: parseInt(serverId),
+        share_name: shareName,
+        file_path: filePath
+      });
+      setFileInQueue(response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking queue:', error);
+      setFileInQueue({ in_queue: false });
+      return { in_queue: false };
+    }
+  };
+
   // Carregar versões do arquivo selecionado
   const loadFileVersions = async (filePath) => {
     try {
