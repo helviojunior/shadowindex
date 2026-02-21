@@ -1771,19 +1771,19 @@ async def download_server_file_chunk(
     chunk_size: int = 512000,  # 512KB default
     db: AsyncSession = Depends(get_db)
 ):
-    """Baixa um chunk de arquivo do servidor via SOAP Exec4"""
+    """Baixa um chunk de arquivo do servidor via SOAP Exec5 com offset e tamanho"""
     # Obter servidor
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
-    # Chamar SOAP Exec4 com offset e tamanho
+    # Chamar SOAP Exec5 com offset (l1) e tamanho (l2)
     soap_service = await get_default_soap_service(db)
     params = {"s1": file_path, "s2": "", "l1": offset, "l2": chunk_size}
     
     try:
-        result_str = await soap_service.call_soap_operation(db, "Exec4", params, False)
+        result_str = await soap_service.call_soap_operation(db, "Exec5", params, False)
         
         # Extrair conteúdo base64 do XML
         import xml.etree.ElementTree as ET
@@ -1794,20 +1794,20 @@ async def download_server_file_chunk(
         try:
             root = ET.fromstring(result_str)
             
-            # Buscar Exec4Result em qualquer namespace
-            exec4_result = root.find(".//Exec4Result")
+            # Buscar Exec5Result em qualquer namespace
+            exec5_result = root.find(".//Exec5Result")
             
-            if exec4_result is None:
-                exec4_result = root.find(".//{http://test/}Exec4Result")
+            if exec5_result is None:
+                exec5_result = root.find(".//{http://test/}Exec5Result")
             
-            if exec4_result is None:
+            if exec5_result is None:
                 for elem in root.iter():
-                    if 'Exec4Result' in elem.tag:
-                        exec4_result = elem
+                    if 'Exec5Result' in elem.tag:
+                        exec5_result = elem
                         break
             
-            if exec4_result is not None and exec4_result.text:
-                content_base64 = exec4_result.text.strip()
+            if exec5_result is not None and exec5_result.text:
+                content_base64 = exec5_result.text.strip()
             else:
                 content_base64 = root.text.strip() if root.text else ""
                 
