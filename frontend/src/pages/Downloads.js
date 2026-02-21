@@ -381,17 +381,31 @@ const Downloads = () => {
                   {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length} ativos
                 </Badge>
               </div>
-              {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={cancelAllScans}
-                  className="h-7"
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  Cancelar Todos
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {scanJobs.filter(s => s.status === 'completed' || s.status === 'cancelled' || s.status === 'failed').length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={clearFinishedScans}
+                    className="h-7"
+                    data-testid="clear-finished-scans"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Limpar Finalizados
+                  </Button>
+                )}
+                {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={cancelAllScans}
+                    className="h-7"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Cancelar Todos
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           
