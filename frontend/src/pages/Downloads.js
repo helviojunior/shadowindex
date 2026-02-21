@@ -255,24 +255,17 @@ const Downloads = () => {
             <Card 
               key={status}
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md border-2",
+                "cursor-pointer transition-all hover:shadow-md border-2 relative",
                 isActive ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
               )}
               onClick={() => setActiveFilter(isActive ? null : status)}
               data-testid={`filter-${status}`}
             >
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{count}</p>
-                    <p className={cn("text-sm font-medium", config.textColor)}>{config.label}</p>
-                  </div>
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center",
-                    status === 'downloading' ? 'bg-blue-500/20' : 'bg-muted/50'
-                  )}>
-                    <Icon className={cn("w-5 h-5", config.textColor)} />
-                  </div>
+                <Icon className={cn("w-5 h-5 absolute top-3 right-3", config.textColor)} />
+                <div>
+                  <p className="text-2xl font-bold">{count}</p>
+                  <p className={cn("text-sm font-medium", config.textColor)}>{config.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -282,21 +275,17 @@ const Downloads = () => {
         {/* Total card */}
         <Card 
           className={cn(
-            "cursor-pointer transition-all hover:shadow-md border-2",
+            "cursor-pointer transition-all hover:shadow-md border-2 relative",
             activeFilter === null ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
           )}
           onClick={() => setActiveFilter(null)}
           data-testid="filter-all"
         >
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground font-medium">Total</p>
-              </div>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-muted/50">
-                <Download className="w-5 h-5 text-muted-foreground" />
-              </div>
+            <Download className="w-5 h-5 absolute top-3 right-3 text-muted-foreground" />
+            <div>
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-sm text-muted-foreground font-medium">Total</p>
             </div>
           </CardContent>
         </Card>
