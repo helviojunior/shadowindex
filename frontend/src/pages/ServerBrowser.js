@@ -722,16 +722,25 @@ const ServerBrowser = () => {
           
           console.log('[AccessDenied] Atualizando share:', shareNameFromNodeId, updatedItemData);
           
+          // Forçar nova referência do array para garantir re-render
           setShares(prev => {
-            const updated = prev.map(s => {
+            const newShares = prev.map(s => {
               if (s.share_name === shareNameFromNodeId) {
                 console.log('[AccessDenied] Match encontrado, atualizando:', s.share_name);
-                return { ...s, ...updatedItemData };
+                // Criar novo objeto com todas as propriedades atualizadas
+                return { 
+                  ...s, 
+                  access_denied: true,
+                  accessDenied: true,
+                  error_message: response.data.errorMessage || 'Acesso negado',
+                  children_fetched: true,
+                  has_children: false
+                };
               }
               return s;
             });
-            console.log('[AccessDenied] Shares atualizados:', updated);
-            return updated;
+            // Forçar nova referência do array
+            return [...newShares];
           });
         } else {
           // É um diretório - atualizar o item dentro do nodeChildren do pai
@@ -753,13 +762,20 @@ const ServerBrowser = () => {
               // Atualizar o item específico dentro dos filhos do pai
               const updatedChildren = parentChildren.map(child => 
                 child.id === nodeId 
-                  ? { ...child, ...updatedItemData }
+                  ? { 
+                      ...child, 
+                      access_denied: true,
+                      accessDenied: true,
+                      error_message: response.data.errorMessage || 'Acesso negado',
+                      children_fetched: true,
+                      has_children: false
+                    }
                   : child
               );
               
               return {
                 ...prev,
-                [parentNodeId]: updatedChildren
+                [parentNodeId]: [...updatedChildren]
               };
             });
           }
