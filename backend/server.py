@@ -405,6 +405,40 @@ async def delete_credential(credential_id: int, db: AsyncSession = Depends(get_d
     await db.commit()
     return {"message": "Credential deleted"}
 
+@api_router.put("/credentials/{credential_id}", response_model=CredentialResponse)
+async def update_credential(credential_id: int, credential: CredentialUpdate, db: AsyncSession = Depends(get_db)):
+    # Verificar se a credencial existe
+    result = await db.execute(select(Credential).where(Credential.id == credential_id))
+    db_credential = result.scalar_one_or_none()
+    
+    if not db_credential:
+        raise HTTPException(status_code=404, detail="Credencial não encontrada")
+    
+    # Atualizar campos
+    update_data = credential.model_dump(exclude_unset=True)
+    
+    # Se estiver limpando tanto password quanto ntlm_hash, validar
+    if update_data:
+        new_password = update_data.get('password', db_credential.password)
+        new_ntlm = update_data.get('ntlm_hash', db_credential.ntlm_hash)
+        
+        # Se ambos estiverem sendo removidos explicitamente
+        if 'password' in update_data and 'ntlm_hash' in update_data:
+            if not new_password and not new_ntlm:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="É obrigatório manter uma senha OU um hash NTLM"
+                )
+        
+        for key, value in update_data.items():
+            setattr(db_credential, key, value)
+        
+        db_credential.updated_at = datetime.now(timezone.utc)
+    
+    await db.commit()
+    await db.refresh(db_credential)
+    return db_credential
+
 
 # Database Types CRUD
 @api_router.get("/db-types", response_model=List[DatabaseTypeResponse])
