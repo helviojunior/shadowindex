@@ -106,7 +106,6 @@ const menuStructure = [
     icon: Wrench, 
     label: 'Tools',
     children: [
-      { id: 'gitleaks', path: '/tools/gitleaks', label: 'GitLeaks' },
       { id: 'soap-ops', path: '/soap-operations', label: 'Operações SOAP' },
     ]
   },
