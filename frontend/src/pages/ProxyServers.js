@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, ChevronUp, Globe, Shield } from 'lucide-react';
+import { Trash2, Plus, ChevronUp, Globe, Shield, Pencil, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -23,6 +23,8 @@ const ProxyServers = () => {
   });
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({});
 
   useEffect(() => {
     loadProxies();
@@ -73,6 +75,50 @@ const ProxyServers = () => {
     } catch (error) {
       console.error('Error deleting proxy:', error);
       toast.error('Erro ao remover proxy server');
+    }
+  };
+
+  const startEdit = (proxy) => {
+    setEditingId(proxy.id);
+    setEditData({
+      name: proxy.name,
+      ip: proxy.ip,
+      port: proxy.port.toString(),
+      proxy_type: proxy.proxy_type || 'http',
+      username: proxy.username || '',
+      password: ''  // Don't prefill password
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData({});
+  };
+
+  const saveEdit = async (id) => {
+    try {
+      const payload = {
+        name: editData.name,
+        ip: editData.ip,
+        port: parseInt(editData.port),
+        proxy_type: editData.proxy_type,
+        username: editData.username || null,
+        password: editData.password || undefined  // Only send if changed
+      };
+      
+      // Don't send password if empty (keep existing)
+      if (!editData.password) {
+        delete payload.password;
+      }
+      
+      await axios.put(`${API}/proxy-servers/${id}`, payload);
+      toast.success('Proxy server atualizado com sucesso');
+      setEditingId(null);
+      setEditData({});
+      loadProxies();
+    } catch (error) {
+      console.error('Error updating proxy:', error);
+      toast.error('Erro ao atualizar proxy server');
     }
   };
 
@@ -234,42 +280,119 @@ const ProxyServers = () => {
                   data-testid={`proxy-item-${proxy.id}`}
                   className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex-1 grid grid-cols-4 gap-4">
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Nome</div>
-                      <div className="font-medium">{proxy.name}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Tipo</div>
-                      <div className="font-medium flex items-center gap-2">
-                        {getProxyTypeIcon(proxy.proxy_type || 'http')}
-                        {getProxyTypeLabel(proxy.proxy_type || 'http')}
+                  {editingId === proxy.id ? (
+                    // Edit mode
+                    <div className="flex-1 space-y-3">
+                      <div className="grid grid-cols-4 gap-3">
+                        <Input
+                          value={editData.name}
+                          onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                          placeholder="Nome"
+                          data-testid={`edit-name-${proxy.id}`}
+                        />
+                        <Select 
+                          value={editData.proxy_type} 
+                          onValueChange={(value) => setEditData({ ...editData, proxy_type: value })}
+                        >
+                          <SelectTrigger data-testid={`edit-type-${proxy.id}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="http">HTTP</SelectItem>
+                            <SelectItem value="socks5">SOCKS5</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={editData.ip}
+                          onChange={(e) => setEditData({ ...editData, ip: e.target.value })}
+                          placeholder="IP"
+                          data-testid={`edit-ip-${proxy.id}`}
+                        />
+                        <Input
+                          type="number"
+                          value={editData.port}
+                          onChange={(e) => setEditData({ ...editData, port: e.target.value })}
+                          placeholder="Porta"
+                          data-testid={`edit-port-${proxy.id}`}
+                        />
+                      </div>
+                      {editData.proxy_type === 'socks5' && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input
+                            value={editData.username}
+                            onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                            placeholder="Usuário (opcional)"
+                            data-testid={`edit-username-${proxy.id}`}
+                          />
+                          <Input
+                            type="password"
+                            value={editData.password}
+                            onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                            placeholder="Nova senha (deixe em branco para manter)"
+                            data-testid={`edit-password-${proxy.id}`}
+                          />
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => saveEdit(proxy.id)} data-testid={`save-edit-${proxy.id}`}>
+                          <Check className="w-4 h-4 mr-1" /> Salvar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={cancelEdit} data-testid={`cancel-edit-${proxy.id}`}>
+                          <X className="w-4 h-4 mr-1" /> Cancelar
+                        </Button>
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Endereço</div>
-                      <div className="font-medium">{proxy.ip}:{proxy.port}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
-                      <div className="font-medium">
-                        {proxy.username ? (
-                          <span className="text-green-500">Configurada</span>
-                        ) : (
-                          <span className="text-muted-foreground">Sem autenticação</span>
-                        )}
+                  ) : (
+                    // View mode
+                    <>
+                      <div className="flex-1 grid grid-cols-4 gap-4">
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Nome</div>
+                          <div className="font-medium">{proxy.name}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Tipo</div>
+                          <div className="font-medium flex items-center gap-2">
+                            {getProxyTypeIcon(proxy.proxy_type || 'http')}
+                            {getProxyTypeLabel(proxy.proxy_type || 'http')}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Endereço</div>
+                          <div className="font-medium">{proxy.ip}:{proxy.port}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
+                          <div className="font-medium">
+                            {proxy.username ? (
+                              <span className="text-green-500">Configurada ({proxy.username})</span>
+                            ) : (
+                              <span className="text-muted-foreground">Sem autenticação</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(proxy.id)}
-                    data-testid={`delete-proxy-${proxy.id}`}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startEdit(proxy)}
+                          data-testid={`edit-proxy-${proxy.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(proxy.id)}
+                          data-testid={`delete-proxy-${proxy.id}`}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
