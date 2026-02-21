@@ -1895,12 +1895,16 @@ async def get_file_content(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@api_router.get("/servers/{server_id}/certificate-info")
+class CertificateInfoRequest(BaseModel):
+    file_path: str
+    share_name: str
+    password: str = None
+
+
+@api_router.post("/servers/{server_id}/certificate-info")
 async def get_certificate_info(
     server_id: int,
-    file_path: str,
-    share_name: str,
-    password: str = None,
+    request: CertificateInfoRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """Retorna informações detalhadas de um certificado digital"""
@@ -1909,6 +1913,10 @@ async def get_certificate_info(
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives.serialization import pkcs12
     import os
+    
+    file_path = request.file_path
+    share_name = request.share_name
+    password = request.password
     
     # Obter servidor
     result = await db.execute(select(Server).where(Server.id == server_id))
