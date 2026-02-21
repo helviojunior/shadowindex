@@ -1967,7 +1967,14 @@ async def get_certificate_info(
                     pk, cert, additional = pkcs12.load_key_and_certificates(
                         cert_data, pwd, default_backend()
                     )
-                    print(f"DEBUG try_open_pfx: load returned cert={cert is not None}")
+                    print(f"DEBUG try_open_pfx: pk={pk is not None}, cert={cert is not None}, additional={additional is not None and len(additional) if additional else 0}")
+                    
+                    # Se não tem cert principal mas tem additional, usar o primeiro
+                    if not cert and additional and len(additional) > 0:
+                        print(f"DEBUG: No main cert but found {len(additional)} additional cert(s), using first one")
+                        cert = additional[0]
+                        additional = additional[1:] if len(additional) > 1 else None
+                    
                     if cert:
                         subject_cn = None
                         for attr in cert.subject:
@@ -1975,7 +1982,10 @@ async def get_certificate_info(
                                 subject_cn = attr.value
                                 break
                         print(f"PFX SUCCESS [{context}]: password={pwd_display}, CN={subject_cn}")
-                    return pk, cert, additional, pwd_str
+                        return pk, cert, additional, pwd_str
+                    else:
+                        print(f"PFX FAILED [{context}]: password={pwd_display}, error=Nenhum certificado encontrado no arquivo")
+                        return None, None, None, None
                 except Exception as e:
                     error_msg = str(e)
                     print(f"DEBUG try_open_pfx: exception caught: {error_msg[:100]}")
