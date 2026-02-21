@@ -386,10 +386,13 @@ const Downloads = () => {
           
           {showScanJobs && (
             <CardContent className="pt-0">
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {scanJobs
-                  .filter(s => s.status === 'pending' || s.status === 'scanning')
-                  .slice(0, 50)
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {[...scanJobs]
+                  .sort((a, b) => {
+                    // Ordem: scanning > pending > completed > cancelled > failed
+                    const statusOrder = { scanning: 0, pending: 1, completed: 2, cancelled: 3, failed: 4 };
+                    return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
+                  })
                   .map((scan) => {
                   const StatusIcon = scanStatusConfig[scan.status]?.icon || Clock;
                   const isActive = scan.status === 'pending' || scan.status === 'scanning';
@@ -401,7 +404,12 @@ const Downloads = () => {
                   return (
                     <div 
                       key={scan.id}
-                      className="flex items-center justify-between p-2 rounded border border-border bg-muted/30"
+                      className={cn(
+                        "flex items-center justify-between p-2 rounded border",
+                        scan.status === 'scanning' ? "border-blue-500/50 bg-blue-500/10" :
+                        scan.status === 'pending' ? "border-yellow-500/30 bg-muted/30" :
+                        "border-border bg-muted/20"
+                      )}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <StatusIcon className={cn(
@@ -421,7 +429,13 @@ const Downloads = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "text-xs",
+                            scan.status === 'scanning' && "border-blue-500 text-blue-500"
+                          )}
+                        >
                           {scanStatusConfig[scan.status]?.label}
                         </Badge>
                         {isActive && !scan.parent_id && (
@@ -439,11 +453,6 @@ const Downloads = () => {
                     </div>
                   );
                 })}
-                {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 50 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">
-                    Mostrando 50 de {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length} scans ativos
-                  </p>
-                )}
               </div>
             </CardContent>
           )}
