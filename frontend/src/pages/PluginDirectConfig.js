@@ -267,22 +267,22 @@ const PluginDirectConfig = () => {
               <Badge variant="default" className="bg-green-500">Implementado</Badge>
             </div>
             
-            <div className="flex items-center justify-between p-3 border border-border rounded-lg opacity-60">
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
               <div className="flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                <Network className="w-5 h-5 text-green-500" />
                 <div>
                   <div className="font-medium">Listagem de Compartilhamentos (SMB)</div>
                   <div className="text-sm text-muted-foreground">
-                    Listar compartilhamentos de rede via protocolo SMB
+                    Listar compartilhamentos de rede via protocolo SMB usando impacket
                   </div>
                 </div>
               </div>
-              <Badge variant="outline">Futuro</Badge>
+              <Badge variant="default" className="bg-green-500">Implementado</Badge>
             </div>
             
-            <div className="flex items-center justify-between p-3 border border-border rounded-lg opacity-60">
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
               <div className="flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                <Network className="w-5 h-5 text-green-500" />
                 <div>
                   <div className="font-medium">Navegação de Diretórios (SMB)</div>
                   <div className="text-sm text-muted-foreground">
@@ -290,12 +290,12 @@ const PluginDirectConfig = () => {
                   </div>
                 </div>
               </div>
-              <Badge variant="outline">Futuro</Badge>
+              <Badge variant="default" className="bg-green-500">Implementado</Badge>
             </div>
             
-            <div className="flex items-center justify-between p-3 border border-border rounded-lg opacity-60">
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
               <div className="flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                <Network className="w-5 h-5 text-green-500" />
                 <div>
                   <div className="font-medium">Download de Arquivos (SMB)</div>
                   <div className="text-sm text-muted-foreground">
@@ -303,7 +303,20 @@ const PluginDirectConfig = () => {
                   </div>
                 </div>
               </div>
-              <Badge variant="outline">Futuro</Badge>
+              <Badge variant="default" className="bg-green-500">Implementado</Badge>
+            </div>
+
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg opacity-60">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <div className="font-medium">Execução SQL Direta</div>
+                  <div className="text-sm text-muted-foreground">
+                    Execução de queries SQL via conexão direta
+                  </div>
+                </div>
+              </div>
+              <Badge variant="outline">Não Implementado</Badge>
             </div>
           </div>
         </CardContent>
