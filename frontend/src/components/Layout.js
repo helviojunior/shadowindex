@@ -244,16 +244,16 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           onClick={() => toggleMenu(item.id)}
           data-testid={`nav-${item.id}`}
           className={cn(
-            "w-full flex items-center rounded-md transition-all text-sm",
+            "w-full flex items-center transition-all text-sm",
             effectiveCollapsed 
               ? "justify-center p-2.5" 
-              : "justify-between px-3 py-2.5",
+              : "justify-between px-4 py-2.5",
             isActive
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              ? "text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
           )}
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <Icon size={18} />
             {!effectiveCollapsed && (
               <span className="font-medium text-sm">
