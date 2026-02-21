@@ -16,7 +16,9 @@ import {
   ChevronRight,
   Play,
   Pause,
-  RotateCcw
+  RotateCcw,
+  FolderSearch,
+  Folder
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,11 +39,22 @@ const statusConfig = {
   skipped: { label: 'Ignorado', color: 'bg-orange-500', icon: AlertTriangle, textColor: 'text-orange-500' },
 };
 
+// Status config para Scan Jobs
+const scanStatusConfig = {
+  pending: { label: 'Aguardando', color: 'text-yellow-500', icon: Clock },
+  scanning: { label: 'Escaneando', color: 'text-blue-500', icon: Loader2 },
+  completed: { label: 'Concluído', color: 'text-green-500', icon: CheckCircle },
+  cancelled: { label: 'Cancelado', color: 'text-gray-500', icon: X },
+  failed: { label: 'Falhou', color: 'text-red-500', icon: XCircle },
+};
+
 const Downloads = () => {
   const [downloadJobs, setDownloadJobs] = useState([]);
+  const [scanJobs, setScanJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState(null);
   const [expandedServers, setExpandedServers] = useState({});
+  const [showScanJobs, setShowScanJobs] = useState(true);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
