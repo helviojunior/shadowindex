@@ -650,10 +650,13 @@ const ServerBrowser = () => {
   // Verificar se arquivo está na fila de downloads
   const checkFileInQueue = async (filePath, shareName) => {
     try {
-      const response = await axios.post(`${API}/downloads/check-queue`, {
-        server_id: parseInt(serverId),
-        share_name: shareName,
-        file_path: filePath
+      // Usar API V2 com query params
+      const response = await axios.post(`${API_V2}/downloads/check-queue`, null, {
+        params: {
+          server_id: parseInt(serverId),
+          share_name: shareName,
+          file_path: filePath
+        }
       });
       setFileInQueue(response.data);
       return response.data;
