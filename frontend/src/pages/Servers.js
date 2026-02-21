@@ -119,7 +119,8 @@ const Servers = () => {
 
     setResolvingIp(true);
     try {
-      const response = await axios.post(`${API}/soap/resolve`, {
+      // Usar endpoint que prioriza IPv4
+      const response = await axios.post(`${API}/soap/resolve-ipv4`, {
         operation: 'Resolve',
         s1: formData.name,
         s2: '',
