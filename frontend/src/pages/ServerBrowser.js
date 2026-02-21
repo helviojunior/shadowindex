@@ -600,6 +600,7 @@ const ServerBrowser = () => {
     if (!rawFileContent) return;
     setFileContent(rawFileContent);
     setBeautified(false);
+    setBase64Decoded(false);
   };
 
   // Mostra o conteúdo Beautified (com formatação)
@@ -626,6 +627,49 @@ const ServerBrowser = () => {
       console.error('Beautify error:', error);
       toast.error('Erro ao formatar conteúdo');
     }
+  };
+
+  // Decodifica conteúdo de Base64
+  const decodeBase64Content = () => {
+    const content = rawFileContent || (typeof fileContent === 'object' ? fileContent.content : fileContent);
+    if (!content) return;
+    
+    try {
+      // Limpar o conteúdo (remover espaços, quebras de linha)
+      const cleanContent = content.replace(/[\s\r\n]/g, '');
+      
+      // Tentar decodificar
+      const decoded = atob(cleanContent);
+      
+      // Verificar se o resultado é texto válido (não binário)
+      const isValidText = /^[\x20-\x7E\t\r\n]*$/.test(decoded) || 
+                          /^[\x00-\x7F]*$/.test(decoded);
+      
+      if (!isValidText && decoded.length > 0) {
+        // Pode ser binário, mostrar como hex
+        const hexView = Array.from(decoded)
+          .map(c => c.charCodeAt(0).toString(16).padStart(2, '0'))
+          .join(' ');
+        setFileContent(`[Conteúdo binário - ${decoded.length} bytes]\n\nHex View:\n${hexView}`);
+      } else {
+        setFileContent(decoded);
+      }
+      
+      setBase64Decoded(true);
+      setBeautified(false);
+      toast.success('Base64 decodificado com sucesso');
+    } catch (error) {
+      console.error('Base64 decode error:', error);
+      toast.error('Erro ao decodificar Base64 - conteúdo inválido');
+    }
+  };
+
+  // Restaura conteúdo original (antes da decodificação base64)
+  const restoreOriginalContent = () => {
+    if (!rawFileContent) return;
+    setFileContent(rawFileContent);
+    setBase64Decoded(false);
+    setBeautified(false);
   };
 
   // Download do arquivo para a máquina do usuário
