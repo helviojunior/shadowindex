@@ -35,10 +35,72 @@ const Servers = () => {
   const [editingServer, setEditingServer] = useState(null);
   const [editIp, setEditIp] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  
+  // Estados para busca e ordenação
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
   useEffect(() => {
     loadServers();
   }, []);
+
+  // Filtrar e ordenar servidores
+  const filteredAndSortedServers = useMemo(() => {
+    let result = [...servers];
+    
+    // Filtrar por nome ou IP
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(server => 
+        server.name.toLowerCase().includes(term) || 
+        server.ip.toLowerCase().includes(term)
+      );
+    }
+    
+    // Ordenar
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        const aValue = a[sortConfig.key] || '';
+        const bValue = b[sortConfig.key] || '';
+        
+        if (sortConfig.key === 'ip') {
+          // Ordenação especial para IP (numérica)
+          const aParts = aValue.split('.').map(Number);
+          const bParts = bValue.split('.').map(Number);
+          for (let i = 0; i < 4; i++) {
+            if (aParts[i] !== bParts[i]) {
+              return sortConfig.direction === 'asc' 
+                ? aParts[i] - bParts[i] 
+                : bParts[i] - aParts[i];
+            }
+          }
+          return 0;
+        }
+        
+        // Ordenação alfabética para outros campos
+        const comparison = aValue.localeCompare(bValue, 'pt-BR', { sensitivity: 'base' });
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+    }
+    
+    return result;
+  }, [servers, searchTerm, sortConfig]);
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 text-muted-foreground/50" />;
+    }
+    return sortConfig.direction === 'asc' 
+      ? <ArrowUp className="w-4 h-4 ml-1 text-primary" />
+      : <ArrowDown className="w-4 h-4 ml-1 text-primary" />;
+  };
 
   const loadServers = async () => {
     try {
