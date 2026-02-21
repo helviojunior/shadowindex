@@ -87,6 +87,7 @@ const ServerBrowser = () => {
   const [pfxPassword, setPfxPassword] = useState(''); // Senha para arquivos PFX
   const [singleDownloadProgress, setSingleDownloadProgress] = useState(null); // Progresso do download individual (0-100)
   const singleDownloadCancelledRef = useRef(false); // Ref para cancelamento do sync individual
+  const [fileInQueue, setFileInQueue] = useState(null); // {inQueue: bool, status: 'pending'|'downloading'}
   
   // Estados para download recursivo
   const [bulkDownloadConfig, setBulkDownloadConfig] = useState({ depth: 5, maxSize: 100 }); // maxSize em MB
