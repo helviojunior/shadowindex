@@ -280,23 +280,37 @@ const ServerBrowser = () => {
     }
 
     const filename = selectedItem.name;
+    const filePath = selectedItem.fullPath || selectedItem.serverPath;
+    
+    // Obter file_id do downloadedFilesInfo
+    const fileInfo = downloadedFilesInfo[filePath];
+    const fileId = fileInfo?.id;
     
     // Para certificados, carregar informações parseadas
     if (isCertificateFile(filename)) {
       setLoadingContent(true);
       try {
-        const requestBody = {
-          file_path: selectedItem.fullPath || selectedItem.serverPath,
-          share_name: selectedItem.shareName
-        };
+        let response;
         
-        // Só adicionar password se tiver valor
-        if (pfxPassword && pfxPassword.trim()) {
-          requestBody.password = pfxPassword.trim();
+        // Usar API V2 se temos o ID
+        if (fileId) {
+          const requestBody = {};
+          if (pfxPassword && pfxPassword.trim()) {
+            requestBody.password = pfxPassword.trim();
+          }
+          response = await axios.post(`${API_V2}/servers/${serverId}/files/${fileId}/certificate-info`, requestBody);
+        } else {
+          // Fallback para API antiga
+          const requestBody = {
+            file_path: filePath,
+            share_name: selectedItem.shareName
+          };
+          if (pfxPassword && pfxPassword.trim()) {
+            requestBody.password = pfxPassword.trim();
+          }
+          response = await axios.post(`${API}/servers/${serverId}/certificate-info`, requestBody);
         }
         
-        console.log('Loading certificate with body:', requestBody);
-        const response = await axios.post(`${API}/servers/${serverId}/certificate-info`, requestBody);
         console.log('Certificate response:', response.data);
         setFileContent(response.data);
         setRawFileContent(JSON.stringify(response.data, null, 2));
@@ -320,13 +334,23 @@ const ServerBrowser = () => {
     if (isImageFile(filename) || isPdfFile(filename)) {
       setLoadingContent(true);
       try {
-        const response = await axios.get(`${API}/servers/${serverId}/file-download`, {
-          params: { 
-            file_path: selectedItem.fullPath || selectedItem.serverPath,
-            share_name: selectedItem.shareName
-          },
-          responseType: 'blob'
-        });
+        let response;
+        
+        // Usar API V2 se temos o ID
+        if (fileId) {
+          response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
+            responseType: 'blob'
+          });
+        } else {
+          // Fallback para API antiga
+          response = await axios.get(`${API}/servers/${serverId}/file-download`, {
+            params: { 
+              file_path: filePath,
+              share_name: selectedItem.shareName
+            },
+            responseType: 'blob'
+          });
+        }
         
         const url = window.URL.createObjectURL(new Blob([response.data]));
         setFilePreviewUrl(url);
@@ -343,12 +367,21 @@ const ServerBrowser = () => {
     // Para arquivos de texto
     setLoadingContent(true);
     try {
-      const response = await axios.get(`${API}/servers/${serverId}/file-content`, {
-        params: { 
-          file_path: selectedItem.fullPath || selectedItem.serverPath,
-          share_name: selectedItem.shareName
-        }
-      });
+      let response;
+      
+      // Usar API V2 se temos o ID
+      if (fileId) {
+        response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/content`);
+      } else {
+        // Fallback para API antiga
+        response = await axios.get(`${API}/servers/${serverId}/file-content`, {
+          params: { 
+            file_path: filePath,
+            share_name: selectedItem.shareName
+          }
+        });
+      }
+      
       const content = response.data.content;
       setRawFileContent(content); // Guardar conteúdo original
       setFilePreviewUrl(null);
@@ -361,15 +394,15 @@ const ServerBrowser = () => {
       };
       
       // Tentar fazer beautify automaticamente
-      const filename = selectedItem?.name?.toLowerCase() || '';
+      const fname = selectedItem?.name?.toLowerCase() || '';
       try {
         let beautifiedContent = content;
         let fileType = 'text';
         
-        if (filename.endsWith('.json')) {
+        if (fname.endsWith('.json')) {
           fileType = 'json';
           beautifiedContent = JSON.stringify(JSON.parse(content), null, 2);
-        } else if (filename.endsWith('.xml') || filename.endsWith('.config')) {
+        } else if (fname.endsWith('.xml') || fname.endsWith('.config')) {
           fileType = 'xml';
           beautifiedContent = formatXml(content);
         }
