@@ -2409,7 +2409,7 @@ const ServerBrowser = () => {
                           )}
                         </td>
                         <td className="px-4 py-2 border-b border-border text-muted-foreground text-xs font-mono">
-                          {formatSize(item.size)}
+                          {formatSize(item.fileSize || item.size)}
                         </td>
                         <td className="px-4 py-2 border-b border-border">
                           <div className="flex items-center gap-2">
