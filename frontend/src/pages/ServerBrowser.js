@@ -2199,19 +2199,19 @@ const ServerBrowser = () => {
                               <div className="flex items-center gap-1">
                                 <XCircle className="w-3 h-3 text-red-500" />
                                 <span className="text-xs text-red-500">Falha</span>
-                              </>
+                              </div>
                             )}
                             {item.status === 'skipped' && (
-                              <>
+                              <div className="flex items-center gap-1">
                                 <Ban className="w-3 h-3 text-yellow-500" />
                                 <span className="text-xs text-yellow-500">Ignorado</span>
-                              </>
+                              </div>
                             )}
                             {item.status === 'cancelled' && (
-                              <>
+                              <div className="flex items-center gap-1">
                                 <Ban className="w-3 h-3 text-muted-foreground" />
                                 <span className="text-xs text-muted-foreground">Cancelado</span>
-                              </>
+                              </div>
                             )}
                           </div>
                         </td>
