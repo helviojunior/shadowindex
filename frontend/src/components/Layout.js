@@ -73,13 +73,20 @@ const menuStructure = [
     ]
   },
   { 
+    id: 'plugins',
+    icon: Plug, 
+    label: 'Plugins',
+    children: [
+      { id: 'soap-plugin', path: '/plugins/soap', label: 'SOAP Plugin' },
+    ]
+  },
+  { 
     id: 'config',
     icon: Settings, 
     label: 'Configuração',
     children: [
       { id: 'general', path: '/settings', label: 'Gerais' },
       { id: 'proxy', path: '/proxy-servers', label: 'Proxy Servers' },
-      { id: 'soap-apis', path: '/soap-apis', label: 'SOAP APIs' },
       { id: 'credentials', path: '/credentials', label: 'Credenciais' },
     ]
   },
