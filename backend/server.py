@@ -2905,7 +2905,8 @@ class CreateBatchDownloadRequest(BaseModel):
     server_id: int
     share_name: str
     files: List[dict]  # Lista de {file_path, file_name, file_size}
-    max_size_bytes: Optional[int] = None  # Limite de tamanho por arquivo
+    max_file_size_bytes: Optional[int] = None  # Limite de tamanho por arquivo
+    max_depth: Optional[int] = None  # Limite de profundidade
 
 
 @api_router.post("/downloads/batch")
@@ -2943,9 +2944,9 @@ async def create_batch_download_jobs(
         # Verificar tamanho máximo
         status = 'pending'
         skip_reason = None
-        if request.max_size_bytes and file_size and file_size > request.max_size_bytes:
+        if request.max_file_size_bytes and file_size and file_size > request.max_file_size_bytes:
             status = 'skipped'
-            skip_reason = f"Arquivo excede limite de tamanho ({file_size} > {request.max_size_bytes})"
+            skip_reason = f"Arquivo excede limite de {request.max_file_size_bytes / (1024*1024):.1f}MB"
         
         job = DownloadJob(
             server_id=request.server_id,
@@ -2956,7 +2957,9 @@ async def create_batch_download_jobs(
             file_name=file_name,
             file_size=file_size,
             status=status,
-            skip_reason=skip_reason
+            skip_reason=skip_reason,
+            max_file_size_bytes=request.max_file_size_bytes,
+            max_depth=request.max_depth
         )
         db.add(job)
         created += 1
