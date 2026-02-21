@@ -339,7 +339,7 @@ class DownloadWorker:
                 downloaded_file.sanitized_path = relative_path
             else:
                 # Criar novo registro - usar relative_path que já foi sanitizado
-                logger.info(f"Creating new DownloadedFile record")
+                logger.info("Creating new DownloadedFile record")
                 downloaded_file = DownloadedFile(
                     server_guid=server.guid,
                     share_name=job.share_name,
