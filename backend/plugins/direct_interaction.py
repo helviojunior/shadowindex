@@ -4,10 +4,10 @@ Direct Interaction Plugin
 Plugin for direct server interaction without SOAP intermediary.
 Supports:
 - DNS resolution with custom DNS servers and SOCKS proxy support
-- Future: SMB access, direct database connections
+- SMB share listing and file operations using impacket
 
 Configuration:
-    - credential_id: ID of the credential to use (from global credentials)
+    - credential_id: ID of the credential to use (must be user_password type)
     - dns_mode: 'system' (use OS DNS) or 'custom' (use specified servers)
     - dns_servers: List of DNS server IPs (when dns_mode is 'custom')
 """
@@ -29,7 +29,9 @@ from .base import (
 from .exceptions import (
     PluginException,
     ConnectionException,
-    NotImplementedException
+    AuthenticationFailureException,
+    NotImplementedException,
+    AccessDeniedException
 )
 from .cache import get_cache
 
@@ -40,30 +42,28 @@ class DirectInteractionPlugin(BasePlugin):
     """
     Plugin for direct server interaction without SOAP intermediary.
     
-    Currently implements:
+    Implements:
     - DNS resolution (with custom DNS servers and SOCKS proxy support)
-    
-    Future:
-    - SMB share access
-    - Direct database connections
+    - SMB share listing and directory browsing using impacket
     
     Configuration:
-        - credential_id: ID of the global credential to use
+        - credential_id: ID of the global credential to use (must be user_password type)
         - dns_mode: 'system' or 'custom'
         - dns_servers: List of DNS server IPs when dns_mode is 'custom'
     """
     
     PLUGIN_TYPE = "direct_interaction"
     PLUGIN_NAME = "Interação Direta"
-    PLUGIN_VERSION = "1.0.0"
-    PLUGIN_DESCRIPTION = "Interação direta com servidores sem intermediário SOAP"
-    REQUIRED_CONFIG = []  # credential_id is optional
+    PLUGIN_VERSION = "1.1.0"
+    PLUGIN_DESCRIPTION = "Interação direta com servidores via SMB/DNS sem intermediário SOAP"
+    REQUIRED_CONFIG = ["credential_id"]
     
     def __init__(self, config: PluginConfig, proxy_url: Optional[str] = None):
         super().__init__(config, proxy_url)
         
-        # Credential configuration
+        # Credential configuration - MUST be user_password type
         self.credential_id = config.get("credential_id")
+        self._credential = None  # Will be loaded lazily
         
         # DNS configuration
         self.dns_mode = config.get("dns_mode", "system")  # 'system' or 'custom'
@@ -86,7 +86,7 @@ class DirectInteractionPlugin(BasePlugin):
                 "credential_id": {
                     "type": "integer",
                     "title": "Credencial",
-                    "description": "ID da credencial global a ser utilizada"
+                    "description": "ID da credencial global (tipo user_password) a ser utilizada"
                 },
                 "dns_mode": {
                     "type": "string",
@@ -106,8 +106,23 @@ class DirectInteractionPlugin(BasePlugin):
                     "default": []
                 }
             },
-            "required": []
+            "required": ["credential_id"]
         }
+    
+    def set_credential(self, credential: Dict[str, Any]):
+        """
+        Set the credential to use for SMB operations.
+        Must be called before SMB operations.
+        
+        Args:
+            credential: Credential dict with domain, username, password/ntlm_hash
+        """
+        if credential.get("credential_type") != "user_password":
+            raise PluginException(
+                "Credencial inválida: apenas credenciais do tipo 'user_password' são suportadas",
+                {"credential_type": credential.get("credential_type")}
+            )
+        self._credential = credential
     
     async def health_check(self) -> Dict[str, Any]:
         """Check plugin connectivity by testing DNS resolution"""
@@ -122,7 +137,8 @@ class DirectInteractionPlugin(BasePlugin):
                 "details": {
                     "dns_mode": self.dns_mode,
                     "dns_servers": self.dns_servers,
-                    "proxy_configured": self.proxy_url is not None
+                    "proxy_configured": self.proxy_url is not None,
+                    "credential_configured": self.credential_id is not None
                 }
             }
         except Exception as e:
@@ -155,16 +171,11 @@ class DirectInteractionPlugin(BasePlugin):
         Raises:
             ConnectionException: If resolution fails
         """
-        # Cache params for consistent lookup
-        cache_params = {
-            "hostname": hostname,
-            "dns_mode": self.dns_mode,
-            "dns_servers": ",".join(self.dns_servers)
-        }
+        cache_key = f"direct_resolve:{hostname}:{self.dns_mode}:{','.join(self.dns_servers)}"
         
         # Check cache first
         if not ignore_cache:
-            cached = await self.cache.get("direct_resolve", cache_params)
+            cached = self.cache.get(cache_key)
             if cached:
                 logger.debug(f"DNS cache hit for {hostname}: {cached}")
                 return cached
@@ -178,7 +189,7 @@ class DirectInteractionPlugin(BasePlugin):
                 ip = await self._resolve_with_system_dns(hostname)
             
             # Cache the result
-            await self.cache.set("direct_resolve", cache_params, ip, ttl_hours=24)
+            self.cache.set(cache_key, ip, ttl_hours=24)
             
             logger.info(f"Resolved {hostname} -> {ip}")
             return ip
@@ -235,11 +246,7 @@ class DirectInteractionPlugin(BasePlugin):
             raise ConnectionException(f"Custom DNS resolution failed for {hostname}: {e}")
     
     async def _resolve_through_socks(self, hostname: str) -> str:
-        """
-        Resolve DNS through SOCKS proxy.
-        
-        SOCKS5 supports remote DNS resolution via the CONNECT command.
-        """
+        """Resolve DNS through SOCKS proxy."""
         try:
             import socks
         except ImportError:
@@ -247,10 +254,8 @@ class DirectInteractionPlugin(BasePlugin):
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, socket.gethostbyname, hostname)
         
-        # Parse proxy URL
-        # Format: socks5://user:pass@host:port or socks5://host:port
+        # Parse proxy URL and resolve
         proxy_url = self.proxy_url
-        
         proxy_type = socks.SOCKS5
         proxy_host = None
         proxy_port = 1080
@@ -263,7 +268,6 @@ class DirectInteractionPlugin(BasePlugin):
             proxy_type = socks.SOCKS4
             proxy_url = proxy_url[9:]
         
-        # Parse auth
         if "@" in proxy_url:
             auth, host_part = proxy_url.rsplit("@", 1)
             if ":" in auth:
@@ -271,7 +275,6 @@ class DirectInteractionPlugin(BasePlugin):
         else:
             host_part = proxy_url
         
-        # Parse host:port
         if ":" in host_part:
             proxy_host, port_str = host_part.rsplit(":", 1)
             proxy_port = int(port_str)
@@ -282,63 +285,311 @@ class DirectInteractionPlugin(BasePlugin):
             loop = asyncio.get_event_loop()
             
             def resolve_via_socks():
-                # Create a SOCKS socket
                 s = socks.socksocket()
-                s.set_proxy(
-                    proxy_type, 
-                    proxy_host, 
-                    proxy_port,
-                    rdns=True,  # Remote DNS resolution
-                    username=proxy_user,
-                    password=proxy_pass
-                )
+                s.set_proxy(proxy_type, proxy_host, proxy_port, rdns=True,
+                           username=proxy_user, password=proxy_pass)
                 s.settimeout(30)
-                
-                # For SOCKS5 with remote DNS, we can use the proxy's DNS
-                # by connecting to port 53 or using the built-in resolution
                 try:
-                    # Try to connect - SOCKS5 will resolve the hostname
                     s.connect((hostname, 80))
                     peer = s.getpeername()
                     s.close()
                     return peer[0]
                 except Exception:
                     s.close()
-                    # Fallback: use regular DNS
                     return socket.gethostbyname(hostname)
             
-            result = await loop.run_in_executor(None, resolve_via_socks)
-            return result
-            
+            return await loop.run_in_executor(None, resolve_via_socks)
         except Exception as e:
             logger.error(f"SOCKS DNS resolution failed: {e}")
-            # Fallback to regular DNS
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, socket.gethostbyname, hostname)
     
+    def _get_smb_connection(self, server_ip: str):
+        """
+        Create an SMB connection using impacket.
+        
+        Returns:
+            SMBConnection object
+            
+        Raises:
+            AuthenticationFailureException: If authentication fails
+            ConnectionException: If connection fails
+        """
+        if not self._credential:
+            raise PluginException("Credencial não configurada. Chame set_credential() primeiro.")
+        
+        try:
+            from impacket.smbconnection import SMBConnection
+            from impacket.nmb import NetBIOSError
+        except ImportError:
+            raise PluginException("impacket não está instalado. Execute: pip install impacket")
+        
+        domain = self._credential.get("domain", "")
+        username = self._credential.get("username", "")
+        password = self._credential.get("password", "")
+        ntlm_hash = self._credential.get("ntlm_hash", "")
+        
+        # Parse NTLM hash (LM:NT or just NT)
+        lmhash = ""
+        nthash = ""
+        if ntlm_hash:
+            if ":" in ntlm_hash:
+                lmhash, nthash = ntlm_hash.split(":", 1)
+            else:
+                nthash = ntlm_hash
+        
+        try:
+            logger.info(f"Connecting to SMB server: {server_ip}")
+            
+            # Create SMB connection
+            smb_conn = SMBConnection(server_ip, server_ip, timeout=30)
+            
+            # Authenticate
+            if nthash:
+                # Use NTLM hash authentication
+                smb_conn.login(username, "", domain, lmhash, nthash)
+            else:
+                # Use password authentication
+                smb_conn.login(username, password, domain)
+            
+            logger.info(f"SMB authentication successful for {domain}\\{username}")
+            return smb_conn
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "status_logon_failure" in error_msg or "logon failure" in error_msg:
+                raise AuthenticationFailureException(
+                    username=username,
+                    domain=domain,
+                    reason="Falha de login - usuário/senha inválidos"
+                )
+            elif "status_account_disabled" in error_msg:
+                raise AuthenticationFailureException(
+                    username=username,
+                    domain=domain,
+                    reason="Conta desabilitada"
+                )
+            elif "status_password_expired" in error_msg:
+                raise AuthenticationFailureException(
+                    username=username,
+                    domain=domain,
+                    reason="Senha expirada"
+                )
+            elif "status_account_locked_out" in error_msg:
+                raise AuthenticationFailureException(
+                    username=username,
+                    domain=domain,
+                    reason="Conta bloqueada"
+                )
+            else:
+                raise ConnectionException(
+                    server=server_ip,
+                    message=f"Falha na conexão SMB: {str(e)}",
+                    original_error=e
+                )
+    
     async def list_shares(self, server_ip: str, ignore_cache: bool = False) -> List[ShareInfo]:
         """
-        List all shares available on a server.
+        List all shares available on a server using SMB.
         
-        NOT IMPLEMENTED - Requires SMB library.
+        Args:
+            server_ip: IP address or hostname of the server
+            ignore_cache: Skip cache lookup if True
+            
+        Returns:
+            List of ShareInfo objects
+            
+        Raises:
+            AuthenticationFailureException: If authentication fails
+            ConnectionException: If connection fails
         """
-        raise NotImplementedException(
-            "list_shares",
-            "Direct Interaction Plugin",
-            "SMB share listing not yet implemented. Use SOAP API Plugin."
-        )
+        cache_key = f"direct_shares:{server_ip}:{self.credential_id}"
+        
+        if not ignore_cache:
+            cached = self.cache.get(cache_key)
+            if cached:
+                logger.debug(f"Shares cache hit for {server_ip}")
+                return [ShareInfo(**s) for s in cached]
+        
+        loop = asyncio.get_event_loop()
+        
+        def do_list_shares():
+            smb_conn = None
+            try:
+                smb_conn = self._get_smb_connection(server_ip)
+                
+                shares = []
+                for share in smb_conn.listShares():
+                    share_name = share['shi1_netname'][:-1]  # Remove null terminator
+                    share_type = share['shi1_type']
+                    remark = share.get('shi1_remark', '') or ''
+                    if remark and remark.endswith('\x00'):
+                        remark = remark[:-1]
+                    
+                    # Determine share type
+                    type_str = "disk"
+                    if share_type & 0x80000000:
+                        type_str = "hidden"
+                    elif share_type == 1:
+                        type_str = "printer"
+                    elif share_type == 2:
+                        type_str = "device"
+                    elif share_type == 3:
+                        type_str = "ipc"
+                    
+                    shares.append(ShareInfo(
+                        name=share_name,
+                        type=type_str,
+                        remark=remark
+                    ))
+                
+                return shares
+                
+            finally:
+                if smb_conn:
+                    try:
+                        smb_conn.close()
+                    except Exception:
+                        pass
+        
+        try:
+            shares = await loop.run_in_executor(None, do_list_shares)
+            
+            # Cache the result
+            self.cache.set(cache_key, [s.__dict__ for s in shares], ttl_hours=24)
+            
+            logger.info(f"Listed {len(shares)} shares on {server_ip}")
+            return shares
+            
+        except (AuthenticationFailureException, ConnectionException):
+            raise
+        except Exception as e:
+            logger.error(f"Failed to list shares on {server_ip}: {e}")
+            raise ConnectionException(
+                server=server_ip,
+                message=f"Erro ao listar compartilhamentos: {str(e)}",
+                original_error=e
+            )
     
     async def list_directory(self, path: str, ignore_cache: bool = False) -> List[DirectoryItem]:
         """
-        List contents of a directory.
+        List contents of a directory using SMB.
         
-        NOT IMPLEMENTED - Requires SMB library.
+        Args:
+            path: Full path (format: \\\\server\\share\\folder or server/share/folder)
+            ignore_cache: Skip cache lookup if True
+            
+        Returns:
+            List of DirectoryItem objects
         """
-        raise NotImplementedException(
-            "list_directory",
-            "Direct Interaction Plugin",
-            "SMB directory listing not yet implemented. Use SOAP API Plugin."
-        )
+        # Parse path to extract server, share, and directory
+        server_ip, share_name, dir_path = self._parse_smb_path(path)
+        
+        cache_key = f"direct_dir:{server_ip}:{share_name}:{dir_path}:{self.credential_id}"
+        
+        if not ignore_cache:
+            cached = self.cache.get(cache_key)
+            if cached:
+                logger.debug(f"Directory cache hit for {path}")
+                return [DirectoryItem(**d) for d in cached]
+        
+        loop = asyncio.get_event_loop()
+        
+        def do_list_directory():
+            smb_conn = None
+            try:
+                smb_conn = self._get_smb_connection(server_ip)
+                
+                # Connect to share
+                tree_id = smb_conn.connectTree(share_name)
+                
+                # List directory
+                search_path = dir_path + "\\*" if dir_path else "*"
+                items = []
+                
+                for item in smb_conn.listPath(share_name, search_path):
+                    name = item.get_longname()
+                    if name in (".", ".."):
+                        continue
+                    
+                    is_dir = item.is_directory()
+                    size = item.get_filesize() if not is_dir else 0
+                    
+                    # Format timestamps
+                    created = None
+                    modified = None
+                    try:
+                        if item.get_ctime_epoch():
+                            created = datetime.fromtimestamp(item.get_ctime_epoch()).isoformat()
+                        if item.get_mtime_epoch():
+                            modified = datetime.fromtimestamp(item.get_mtime_epoch()).isoformat()
+                    except Exception:
+                        pass
+                    
+                    items.append(DirectoryItem(
+                        name=name,
+                        is_directory=is_dir,
+                        size=size,
+                        modified=modified,
+                        created=created
+                    ))
+                
+                smb_conn.disconnectTree(tree_id)
+                return items
+                
+            finally:
+                if smb_conn:
+                    try:
+                        smb_conn.close()
+                    except Exception:
+                        pass
+        
+        try:
+            items = await loop.run_in_executor(None, do_list_directory)
+            
+            # Cache the result
+            self.cache.set(cache_key, [d.__dict__ for d in items], ttl_hours=24)
+            
+            logger.info(f"Listed {len(items)} items in {path}")
+            return items
+            
+        except (AuthenticationFailureException, ConnectionException, AccessDeniedException):
+            raise
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "access_denied" in error_msg or "status_access_denied" in error_msg:
+                raise AccessDeniedException(path=path)
+            logger.error(f"Failed to list directory {path}: {e}")
+            raise ConnectionException(
+                server=server_ip,
+                message=f"Erro ao listar diretório: {str(e)}",
+                original_error=e
+            )
+    
+    def _parse_smb_path(self, path: str) -> tuple:
+        """
+        Parse SMB path into server, share, and directory components.
+        
+        Formats supported:
+        - \\\\server\\share\\folder
+        - //server/share/folder
+        - server/share/folder
+        
+        Returns:
+            Tuple of (server_ip, share_name, directory_path)
+        """
+        # Normalize path
+        path = path.replace("\\", "/").strip("/")
+        
+        parts = path.split("/")
+        if len(parts) < 2:
+            raise PluginException(f"Caminho inválido: {path}. Use formato: server/share/folder")
+        
+        server = parts[0]
+        share = parts[1]
+        dir_path = "\\".join(parts[2:]) if len(parts) > 2 else ""
+        
+        return server, share, dir_path
     
     async def download_file(
         self, 
@@ -348,15 +599,84 @@ class DirectInteractionPlugin(BasePlugin):
         ignore_cache: bool = False
     ) -> FileContent:
         """
-        Download file content.
+        Download file content using SMB.
         
-        NOT IMPLEMENTED - Requires SMB library.
+        Args:
+            path: Full path to the file
+            offset: Starting byte position (default: 0)
+            length: Number of bytes to read (default: entire file)
+            ignore_cache: Skip cache lookup if True
+            
+        Returns:
+            FileContent with the file data
         """
-        raise NotImplementedException(
-            "download_file",
-            "Direct Interaction Plugin",
-            "SMB file download not yet implemented. Use SOAP API Plugin."
-        )
+        server_ip, share_name, file_path = self._parse_smb_path(path)
+        
+        loop = asyncio.get_event_loop()
+        
+        def do_download():
+            smb_conn = None
+            try:
+                smb_conn = self._get_smb_connection(server_ip)
+                
+                # Connect to share
+                tree_id = smb_conn.connectTree(share_name)
+                
+                # Open file
+                from impacket.smb3structs import FILE_READ_DATA, FILE_SHARE_READ
+                
+                file_id = smb_conn.openFile(
+                    tree_id, 
+                    file_path,
+                    FILE_READ_DATA,
+                    FILE_SHARE_READ
+                )
+                
+                # Get file size
+                file_info = smb_conn.queryInfo(tree_id, file_id)
+                total_size = file_info['EndOfFile']
+                
+                # Calculate read parameters
+                read_offset = offset
+                read_length = length if length is not None else (total_size - offset)
+                
+                # Read file content
+                data = smb_conn.readFile(tree_id, file_id, read_offset, read_length)
+                
+                smb_conn.closeFile(tree_id, file_id)
+                smb_conn.disconnectTree(tree_id)
+                
+                return FileContent(
+                    data=data,
+                    size=len(data),
+                    total_size=total_size,
+                    offset=offset
+                )
+                
+            finally:
+                if smb_conn:
+                    try:
+                        smb_conn.close()
+                    except Exception:
+                        pass
+        
+        try:
+            content = await loop.run_in_executor(None, do_download)
+            logger.info(f"Downloaded {len(content.data)} bytes from {path}")
+            return content
+            
+        except (AuthenticationFailureException, ConnectionException, AccessDeniedException):
+            raise
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "access_denied" in error_msg or "status_access_denied" in error_msg:
+                raise AccessDeniedException(path=path)
+            logger.error(f"Failed to download file {path}: {e}")
+            raise ConnectionException(
+                server=server_ip,
+                message=f"Erro ao baixar arquivo: {str(e)}",
+                original_error=e
+            )
     
     async def sql_request(
         self, 
@@ -368,10 +688,10 @@ class DirectInteractionPlugin(BasePlugin):
         """
         Execute a SQL query on a database.
         
-        NOT IMPLEMENTED - Requires direct database connection.
+        NOT IMPLEMENTED - Use SOAP API Plugin or direct database connection.
         """
         raise NotImplementedException(
             "sql_request",
             "Direct Interaction Plugin",
-            "Direct SQL execution not yet implemented. Use SOAP API Plugin."
+            "Execução SQL direta não implementada. Use SOAP API Plugin."
         )
