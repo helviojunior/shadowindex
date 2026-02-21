@@ -27,6 +27,15 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 8 - Access Denied Error Handling)
+- [x] **P0 Bug Fix: Tratamento de erro "Access Denied" no download** 
+  - Backend: Adicionada verificação de erro no texto bruto (`result_str`) ANTES de parsear o XML
+  - Backend: Melhorada função `check_error_message` / `check_download_error` para verificar textos fallback
+  - Backend: Ambos endpoints `/download` e `/download-chunk` agora verificam erros consistentemente
+  - Frontend: `handleDownload` agora extrai `error.response?.data?.detail` para mostrar mensagem de erro específica
+  - Frontend: Bulk download agora mostra "Acesso Negado" ou "Não encontrado" para códigos HTTP específicos
+  - Criados testes unitários em `/app/backend/tests/test_download_error_handling.py`
+
 ### 2026-02-21 (Session 7 - Hydration Bug Fix)
 - [x] **Bug Fix: Hydration Error** - Corrigido erro `<span> cannot be a child of <tbody>` em ServerBrowser.js
   - O erro era causado por fragmentos `<>...</>` sendo usados incorretamente dentro de elementos de tabela
