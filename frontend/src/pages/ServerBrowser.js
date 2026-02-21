@@ -922,11 +922,8 @@ const ServerBrowser = () => {
     const pathParts = result.full_path.split('\\').filter(p => p);
     
     if (pathParts.length < 2) {
-      toast.error('Caminho inválido');
       return;
     }
-    
-    toast.info('Navegando para o item...');
     
     // Construir o path do share
     const serverIp = pathParts[0];
