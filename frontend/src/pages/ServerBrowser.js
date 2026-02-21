@@ -364,26 +364,11 @@ const ServerBrowser = () => {
     if (isCertificateFile(filename)) {
       setLoadingContent(true);
       try {
-        let response;
-        
-        // Usar API V2 se temos o ID
-        if (fileId) {
-          const requestBody = {};
-          if (pfxPassword && pfxPassword.trim()) {
-            requestBody.password = pfxPassword.trim();
-          }
-          response = await axios.post(`${API_V2}/servers/${serverId}/files/${fileId}/certificate-info`, requestBody);
-        } else {
-          // Fallback para API antiga
-          const requestBody = {
-            file_path: filePath,
-            share_name: selectedItem.shareName
-          };
-          if (pfxPassword && pfxPassword.trim()) {
-            requestBody.password = pfxPassword.trim();
-          }
-          response = await axios.post(`${API}/servers/${serverId}/certificate-info`, requestBody);
+        const requestBody = {};
+        if (pfxPassword && pfxPassword.trim()) {
+          requestBody.password = pfxPassword.trim();
         }
+        const response = await axios.post(`${API_V2}/servers/${serverId}/files/${fileId}/certificate-info`, requestBody);
         
         console.log('Certificate response:', response.data);
         setFileContent(response.data);
@@ -408,23 +393,9 @@ const ServerBrowser = () => {
     if (isImageFile(filename) || isPdfFile(filename)) {
       setLoadingContent(true);
       try {
-        let response;
-        
-        // Usar API V2 se temos o ID
-        if (fileId) {
-          response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
-            responseType: 'blob'
-          });
-        } else {
-          // Fallback para API antiga
-          response = await axios.get(`${API}/servers/${serverId}/file-download`, {
-            params: { 
-              file_path: filePath,
-              share_name: selectedItem.shareName
-            },
-            responseType: 'blob'
-          });
-        }
+        const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
+          responseType: 'blob'
+        });
         
         const url = window.URL.createObjectURL(new Blob([response.data]));
         setFilePreviewUrl(url);
