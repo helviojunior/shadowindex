@@ -283,7 +283,7 @@ class DownloadWorker:
                 select(DownloadedFile).where(
                     DownloadedFile.server_guid == server.guid,
                     DownloadedFile.share_name == job.share_name,
-                    DownloadedFile.remote_path == job.file_path
+                    DownloadedFile.file_path == job.file_path
                 )
             )
             downloaded_file = existing.scalar_one_or_none()
@@ -298,8 +298,7 @@ class DownloadWorker:
                 downloaded_file = DownloadedFile(
                     server_guid=server.guid,
                     share_name=job.share_name,
-                    remote_path=job.file_path,
-                    local_path=str(full_storage_path),
+                    file_path=job.file_path,
                     sanitized_path=str(full_storage_path.relative_to(storage_base)),
                     sha1_hash=sha1_hash,
                     file_size=len(file_bytes),
