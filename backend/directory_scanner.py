@@ -290,6 +290,10 @@ class DirectoryScanner:
                 if item_type == 'Directory':
                     # Adicionar subdiretório à fila de scan
                     if scan_job.depth < scan_job.max_depth:
+                        # Verificar se scan foi cancelado
+                        if scan_job.id in self.cancelled_ids:
+                            break
+                        
                         async with self._lock:
                             sub_job = ScanJob(
                                 server_id=scan_job.server_id,
@@ -298,7 +302,8 @@ class DirectoryScanner:
                                 depth=scan_job.depth + 1,
                                 max_depth=scan_job.max_depth,
                                 max_file_size_bytes=scan_job.max_file_size_bytes,
-                                apply_filters=scan_job.apply_filters
+                                apply_filters=scan_job.apply_filters,
+                                parent_id=scan_job.parent_id or scan_job.id  # Herdar parent_id ou usar ID atual
                             )
                             self.scan_queue.append(sub_job)
                             dirs_added += 1
