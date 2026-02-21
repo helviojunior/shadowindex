@@ -625,27 +625,22 @@ const ServerBrowser = () => {
     if (!selectedItem) return;
     
     const filePath = selectedItem.fullPath || selectedItem.serverPath;
-    const fileInfo = downloadedFilesInfo[filePath];
-    const fileId = fileInfo?.id;
+    
+    // Obter file_id do downloadedFilesInfo ou buscar via API
+    let fileId = downloadedFilesInfo[filePath]?.id;
+    if (!fileId) {
+      fileId = await getFileIdByPath(filePath);
+    }
+    
+    if (!fileId) {
+      toast.error('Arquivo não encontrado no banco de dados');
+      return;
+    }
     
     try {
-      let response;
-      
-      // Usar API V2 se temos o ID
-      if (fileId) {
-        response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
-          responseType: 'blob'
-        });
-      } else {
-        // Fallback para API antiga
-        response = await axios.get(`${API}/servers/${serverId}/file-download`, {
-          params: { 
-            file_path: filePath,
-            share_name: selectedItem.shareName
-          },
-          responseType: 'blob'
-        });
-      }
+      const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
+        responseType: 'blob'
+      });
       
       // Criar URL para download
       const url = window.URL.createObjectURL(new Blob([response.data]));
