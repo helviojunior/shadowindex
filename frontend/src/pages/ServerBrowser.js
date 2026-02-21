@@ -378,6 +378,7 @@ const ServerBrowser = () => {
     
     if (!fileId) {
       toast.error('Arquivo não encontrado no banco de dados');
+      setContentLoadError(true);
       return;
     }
     
@@ -404,6 +405,7 @@ const ServerBrowser = () => {
         console.error('Error loading certificate:', error);
         toast.error('Erro ao carregar informações do certificado');
         setFileContent({ error: error.response?.data?.detail || error.message });
+        setContentLoadError(true);
       } finally {
         setLoadingContent(false);
       }
@@ -424,6 +426,7 @@ const ServerBrowser = () => {
       } catch (error) {
         console.error('Error loading file preview:', error);
         toast.error('Erro ao carregar preview do arquivo');
+        setContentLoadError(true);
       } finally {
         setLoadingContent(false);
       }
