@@ -1678,6 +1678,203 @@ async def get_certificate_info(
                 if "password" in str(e).lower() or "mac" in str(e).lower():
                     raise HTTPException(status_code=401, detail="Senha incorreta ou não fornecida")
                 raise
+
+
+# ==========================================
+# OCR Endpoints
+# ==========================================
+
+@router.get("/ocr/status")
+async def get_ocr_status():
+    """Verifica status do serviço OCR/Tika"""
+    from ocr_service import get_tika_service
+    
+    service = get_tika_service()
+    return {
+        "available": service.is_available,
+        "server_url": service.server_url
+    }
+
+
+@router.post("/servers/{server_id}/files/{file_id}/process-ocr")
+async def process_file_ocr_endpoint(
+    server_id: int,
+    file_id: int,
+    ocr_language: str = "eng+por",
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Processa OCR em um arquivo baixado.
+    Extrai texto e metadados usando Apache Tika.
+    """
+    from ocr_service import process_file_ocr, get_tika_service
+    from storage_utils import get_file_path
+    from datetime import datetime, timezone
+    
+    server = await get_server_or_404(db, server_id)
+    
+    # Buscar arquivo
+    file_result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.id == file_id,
+            DownloadedFile.server_guid == server.guid
+        )
+    )
+    file = file_result.scalar_one_or_none()
+    
+    if not file:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    
+    # Verificar se Tika está disponível
+    service = get_tika_service()
+    if not service.is_available:
+        await service.initialize()
+        if not service.is_available:
+            raise HTTPException(status_code=503, detail="Serviço OCR não disponível")
+    
+    # Obter caminho do arquivo
+    full_path = get_file_path(server.guid, file.share_name, file.sanitized_path)
+    
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail=f"Arquivo não encontrado no storage")
+    
+    # Processar OCR
+    content, metadata, error = await process_file_ocr(full_path, ocr_language)
+    
+    # Buscar versão atual do arquivo para atualizar
+    version_result = await db.execute(
+        select(FileVersion).where(
+            FileVersion.server_guid == server.guid,
+            FileVersion.file_path == file.file_path,
+            FileVersion.is_current == True
+        )
+    )
+    version = version_result.scalar_one_or_none()
+    
+    if version:
+        version.ocr_content = content
+        version.ocr_metadata = metadata
+        version.ocr_processed = True
+        version.ocr_processed_at = datetime.now(timezone.utc)
+        version.ocr_error = error
+        await db.commit()
+    
+    return {
+        "success": error is None,
+        "content_length": len(content) if content else 0,
+        "metadata_fields": len(metadata) if metadata else 0,
+        "error": error
+    }
+
+
+@router.get("/servers/{server_id}/files/{file_id}/ocr")
+async def get_file_ocr(
+    server_id: int,
+    file_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Obtém dados de OCR de um arquivo.
+    Retorna conteúdo extraído e metadados.
+    """
+    server = await get_server_or_404(db, server_id)
+    
+    # Buscar arquivo
+    file_result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.id == file_id,
+            DownloadedFile.server_guid == server.guid
+        )
+    )
+    file = file_result.scalar_one_or_none()
+    
+    if not file:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    
+    # Buscar versão atual com dados de OCR
+    version_result = await db.execute(
+        select(FileVersion).where(
+            FileVersion.server_guid == server.guid,
+            FileVersion.file_path == file.file_path,
+            FileVersion.is_current == True
+        )
+    )
+    version = version_result.scalar_one_or_none()
+    
+    if not version:
+        return {
+            "ocr_processed": False,
+            "ocr_content": None,
+            "ocr_metadata": None,
+            "ocr_error": None,
+            "ocr_processed_at": None
+        }
+    
+    return {
+        "ocr_processed": version.ocr_processed or False,
+        "ocr_content": version.ocr_content,
+        "ocr_metadata": version.ocr_metadata,
+        "ocr_error": version.ocr_error,
+        "ocr_processed_at": version.ocr_processed_at.isoformat() if version.ocr_processed_at else None
+    }
+
+
+@router.post("/servers/{server_id}/search-ocr")
+async def search_with_ocr(
+    server_id: int,
+    query: str,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Busca arquivos pelo conteúdo OCR extraído.
+    """
+    from sqlalchemy import or_
+    
+    server = await get_server_or_404(db, server_id)
+    
+    # Buscar em FileVersion pelo conteúdo OCR
+    results = []
+    
+    version_result = await db.execute(
+        select(FileVersion).where(
+            FileVersion.server_guid == server.guid,
+            FileVersion.ocr_processed == True,
+            FileVersion.ocr_content.ilike(f"%{query}%")
+        ).limit(limit)
+    )
+    
+    for version in version_result.scalars().all():
+        # Extrair trecho do conteúdo onde aparece a busca
+        content = version.ocr_content or ""
+        query_lower = query.lower()
+        content_lower = content.lower()
+        
+        # Encontrar posição e extrair trecho
+        pos = content_lower.find(query_lower)
+        snippet = ""
+        if pos >= 0:
+            start = max(0, pos - 50)
+            end = min(len(content), pos + len(query) + 50)
+            snippet = ("..." if start > 0 else "") + content[start:end] + ("..." if end < len(content) else "")
+        
+        # Extrair nome do arquivo do path
+        name = version.file_path.split('\\')[-1] if '\\' in version.file_path else version.file_path.split('/')[-1]
+        
+        results.append({
+            "id": version.id,
+            "file_path": version.file_path,
+            "name": name,
+            "share_name": version.share_name,
+            "sha1_hash": version.sha1_hash,
+            "mimetype": version.mimetype,
+            "ocr_snippet": snippet,
+            "ocr_metadata": version.ocr_metadata,
+            "created_at": version.created_at.isoformat() if version.created_at else None
+        })
+    
+    return results
+
             
             # Salvar senha se funcionou
             if request.password:
