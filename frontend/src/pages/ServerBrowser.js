@@ -412,20 +412,7 @@ const ServerBrowser = () => {
     // Para arquivos de texto
     setLoadingContent(true);
     try {
-      let response;
-      
-      // Usar API V2 se temos o ID
-      if (fileId) {
-        response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/content`);
-      } else {
-        // Fallback para API antiga
-        response = await axios.get(`${API}/servers/${serverId}/file-content`, {
-          params: { 
-            file_path: filePath,
-            share_name: selectedItem.shareName
-          }
-        });
-      }
+      const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/content`);
       
       const content = response.data.content;
       setRawFileContent(content); // Guardar conteúdo original
