@@ -205,6 +205,30 @@ class PfxPassword(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class DownloadJob(Base):
+    """Jobs de download de arquivos - processados pelo backend"""
+    __tablename__ = "download_jobs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    server_id = Column(Integer, nullable=False, index=True)
+    server_name = Column(String, nullable=True)
+    server_ip = Column(String, nullable=True)
+    share_name = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    file_name = Column(String, nullable=True)
+    file_size = Column(Integer, nullable=True)  # Tamanho esperado
+    downloaded_bytes = Column(Integer, default=0)  # Bytes baixados
+    total_bytes = Column(Integer, nullable=True)  # Total a baixar
+    progress = Column(Integer, default=0)  # Porcentagem 0-100
+    status = Column(String, default='pending')  # pending, downloading, completed, failed, cancelled, skipped
+    error_message = Column(String, nullable=True)
+    skip_reason = Column(String, nullable=True)  # Motivo se foi ignorado (ex: tamanho)
+    priority = Column(Integer, default=0)  # Prioridade na fila
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+
 async def init_db():
     """Initialize database and apply schema migrations"""
     import sqlite3
