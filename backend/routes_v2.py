@@ -154,6 +154,174 @@ async def get_downloaded_file_or_404(db: AsyncSession, server: Server, file_id: 
 # Share Endpoints
 # ==========================================
 
+@router.get("/servers/{server_id}/shares", response_model=List[ShareResponse])
+async def list_shares(
+    server_id: int, 
+    refresh: bool = False,
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista todos os compartilhamentos do servidor"""
+    from soap_service import get_default_soap_service
+    
+    server = await get_server_or_404(db, server_id)
+    
+    if refresh:
+        # Buscar shares via SOAP
+        try:
+            soap_service = await get_default_soap_service(db)
+            params = {"s1": server.ip}
+            result_str = await soap_service.call_soap_operation(db, "Shares", params, ignore_cache=True)
+            
+            if result_str:
+                # Parsear resultado
+                import re
+                shares_data = []
+                for line in result_str.strip().split('\n'):
+                    if not line.strip():
+                        continue
+                    parts = line.split('|')
+                    if len(parts) >= 3:
+                        share_name = parts[0].strip()
+                        share_type = parts[1].strip()
+                        remark = parts[2].strip() if len(parts) > 2 else ''
+                        
+                        # Ignorar shares especiais
+                        if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
+                            continue
+                            
+                        shares_data.append({
+                            'share_name': share_name,
+                            'share_type': share_type,
+                            'remark': remark
+                        })
+                
+                # Atualizar banco
+                for share_data in shares_data:
+                    existing = await db.execute(
+                        select(ServerShare).where(
+                            ServerShare.server_guid == server.guid,
+                            ServerShare.share_name == share_data['share_name']
+                        )
+                    )
+                    share = existing.scalar_one_or_none()
+                    
+                    if share:
+                        share.share_type = share_data['share_type']
+                        share.remark = share_data['remark']
+                    else:
+                        share = ServerShare(
+                            server_guid=server.guid,
+                            share_name=share_data['share_name'],
+                            share_type=share_data['share_type'],
+                            remark=share_data['remark']
+                        )
+                        db.add(share)
+                
+                await db.commit()
+        except Exception as e:
+            logger.error(f"Error refreshing shares: {e}")
+    
+    # Retornar shares do banco
+    result = await db.execute(
+        select(ServerShare).where(ServerShare.server_guid == server.guid)
+    )
+    return result.scalars().all()
+
+
+@router.get("/servers/{server_id}/shares-tree")
+async def get_shares_tree(server_id: int, db: AsyncSession = Depends(get_db)):
+    """Retorna shares com seus itens filhos do banco"""
+    server = await get_server_or_404(db, server_id)
+    
+    # Buscar shares
+    shares_result = await db.execute(
+        select(ServerShare).where(ServerShare.server_guid == server.guid)
+    )
+    shares = shares_result.scalars().all()
+    
+    # Buscar itens de cada share
+    items_by_path = {}
+    for share in shares:
+        share_path = f"\\\\{server.ip}\\{share.share_name}"
+        items_result = await db.execute(
+            select(ServerItem).where(
+                ServerItem.server_guid == server.guid,
+                ServerItem.parent_path == share_path
+            )
+        )
+        items = items_result.scalars().all()
+        if items:
+            items_by_path[share_path] = [
+                {
+                    "id": item.id,
+                    "type": item.item_type,
+                    "name": item.name,
+                    "full_path": item.full_path,
+                    "size": item.size,
+                    "modified": item.modified,
+                    "has_children": item.has_children,
+                    "children_fetched": item.children_fetched,
+                    "access_denied": item.access_denied
+                }
+                for item in items
+            ]
+    
+    return {
+        "shares": [
+            {
+                "id": share.id,
+                "share_name": share.share_name,
+                "share_type": share.share_type,
+                "remark": share.remark,
+                "access_denied": share.access_denied,
+                "error_message": share.error_message,
+                "has_children": share.has_children,
+                "children_fetched": share.children_fetched
+            }
+            for share in shares
+        ],
+        "items_by_path": items_by_path
+    }
+
+
+@router.get("/servers/{server_id}/items")
+async def list_items(
+    server_id: int,
+    parent_path: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista itens do servidor, opcionalmente filtrados por parent_path"""
+    server = await get_server_or_404(db, server_id)
+    
+    query = select(ServerItem).where(ServerItem.server_guid == server.guid)
+    
+    if parent_path:
+        query = query.where(ServerItem.parent_path == parent_path)
+    
+    result = await db.execute(query)
+    items = result.scalars().all()
+    
+    return {
+        "items": [
+            {
+                "id": item.id,
+                "type": item.item_type,
+                "itemType": item.item_type,  # Compatibilidade com frontend
+                "name": item.name,
+                "fullPath": item.full_path,
+                "full_path": item.full_path,
+                "size": item.size,
+                "modified": item.modified,
+                "hasChildren": item.has_children,
+                "childrenFetched": item.children_fetched,
+                "access_denied": item.access_denied
+            }
+            for item in items
+        ],
+        "count": len(items)
+    }
+
+
 @router.get("/servers/{server_id}/shares/{share_id}", response_model=ShareResponse)
 async def get_share(server_id: int, share_id: int, db: AsyncSession = Depends(get_db)):
     """Obtém informações de um compartilhamento"""
