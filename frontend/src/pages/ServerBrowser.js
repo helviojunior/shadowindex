@@ -109,16 +109,8 @@ const ServerBrowser = () => {
     // Definir aba padrão baseado no tipo de item
     const isShare = selectedItem?.itemType === 'share';
     const isDirectory = selectedItem?.itemType === 'Directory';
+    const isFile = selectedItem?.itemType === 'File';
     const isAccessDenied = selectedItem?.type === 'AccessDenied' || selectedItem?.accessDenied;
-    
-    // Se acesso negado, mostrar apenas Info
-    if (isAccessDenied) {
-      setActiveTab('info');
-    } else if (isShare || isDirectory) {
-      setActiveTab('objetos');
-    } else {
-      setActiveTab('info');
-    }
     
     // Limpar dados de download ao mudar de diretório/share
     if (isShare || isDirectory) {
@@ -132,14 +124,31 @@ const ServerBrowser = () => {
     setBeautified(false);
     setFileVersions([]);
     
-    // Carregar versões se for arquivo e estiver sincronizado
-    if (selectedItem?.itemType === 'File') {
+    // Se acesso negado, mostrar apenas Info
+    if (isAccessDenied) {
+      setActiveTab('info');
+    } else if (isShare || isDirectory) {
+      setActiveTab('objetos');
+    } else if (isFile) {
       const filePath = selectedItem.fullPath || selectedItem.serverPath;
-      if (downloadedFiles.includes(filePath)) {
+      const isDownloaded = downloadedFiles.includes(filePath);
+      const canView = canPreviewFile(selectedItem.name);
+      
+      // Se arquivo já baixado e pode ser visualizado, abrir na aba View
+      if (isDownloaded && canView) {
+        setActiveTab('view');
+      } else {
+        setActiveTab('info');
+      }
+      
+      // Carregar versões se estiver sincronizado
+      if (isDownloaded) {
         loadFileVersions(filePath);
       }
+    } else {
+      setActiveTab('info');
     }
-  }, [selectedItem?.id]);
+  }, [selectedItem?.id, downloadedFiles]);
 
   const loadServer = async () => {
     try {
