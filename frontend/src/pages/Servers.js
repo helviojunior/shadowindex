@@ -146,9 +146,21 @@ const Servers = () => {
     setLoading(true);
 
     try {
-      await axios.post(`${API}/servers`, formData);
+      // Build plugin config based on plugin type
+      let pluginConfig = {};
+      if (formData.plugin_type === 'soap_api') {
+        pluginConfig = { soap_url: formData.plugin_config.soap_url || soapApiUrl };
+      }
+
+      await axios.post(`${API}/servers`, {
+        name: formData.name,
+        ip: formData.ip,
+        plugin_type: formData.plugin_type,
+        plugin_config: pluginConfig
+      });
       toast.success('Servidor cadastrado com sucesso');
-      setFormData({ name: '', ip: '' });
+      setFormData({ name: '', ip: '', plugin_type: 'soap_api', plugin_config: {} });
+      setShowAddForm(false);
       loadServers();
     } catch (error) {
       console.error('Error creating server:', error);
