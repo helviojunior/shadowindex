@@ -166,11 +166,15 @@ const ServerBrowser = () => {
     } else if (isFile) {
       const filePath = selectedItem.fullPath || selectedItem.serverPath;
       const shareName = selectedItem.shareName;
+      
+      // Recarregar lista de arquivos baixados para ter dados atualizados
+      loadDownloadedFiles().then(() => {
+        // Verificar se arquivo está na fila de downloads
+        checkFileInQueue(filePath, shareName);
+      });
+      
       const isDownloaded = downloadedFiles.includes(filePath);
       const canView = canPreviewFile(selectedItem.name);
-      
-      // Verificar se arquivo está na fila de downloads
-      checkFileInQueue(filePath, shareName);
       
       // Se arquivo já baixado e pode ser visualizado, abrir na aba View
       if (isDownloaded && canView) {
@@ -187,7 +191,7 @@ const ServerBrowser = () => {
       setActiveTab('info');
       setFileInQueue(null);
     }
-  }, [selectedItem?.id, downloadedFiles, bulkDownloadActive]);
+  }, [selectedItem?.id, bulkDownloadActive]);
 
   // Carregar conteúdo automaticamente quando aba View for selecionada
   useEffect(() => {
