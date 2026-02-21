@@ -1612,12 +1612,28 @@ async def download_server_file(
                             break
                 
                 if exec5_result is not None and exec5_result.text:
-                    content_base64 = exec5_result.text.strip()
+                    result_text = exec5_result.text.strip()
+                    
+                    # Verificar se é mensagem de erro
+                    if 'is denied' in result_text.lower() or ('access' in result_text.lower() and 'denied' in result_text.lower()):
+                        raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+                    elif 'could not find' in result_text.lower() or 'not found' in result_text.lower():
+                        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+                    elif 'error' in result_text.lower() and 'at System.' in result_text:
+                        # Erro genérico do .NET
+                        error_line = result_text.split('\n')[0] if '\n' in result_text else result_text[:200]
+                        raise HTTPException(status_code=500, detail=f"Erro no servidor: {error_line}")
+                    
+                    content_base64 = result_text
                 else:
                     content_base64 = root.text.strip() if root.text else ""
                     
+            except HTTPException:
+                raise  # Re-raise HTTPException
             except ET.ParseError:
                 content_base64 = result_str.strip()
+        except HTTPException:
+            raise  # Re-raise HTTPException
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
