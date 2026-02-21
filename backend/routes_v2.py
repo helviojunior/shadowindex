@@ -1831,6 +1831,38 @@ async def process_file_ocr_endpoint(
     # Processar OCR
     content, metadata, error = await process_file_ocr(full_path, ocr_language)
     
+    # Salvar arquivos .ocr e .metadata no storage
+    if content or metadata:
+        import json
+        import asyncio
+        
+        # Caminho base do arquivo (sem extensão para adicionar .ocr e .metadata)
+        base_path = full_path
+        
+        # Salvar arquivo .ocr com o conteúdo extraído
+        if content:
+            ocr_file_path = f"{base_path}.ocr"
+            try:
+                def write_ocr_file():
+                    with open(ocr_file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                await asyncio.to_thread(write_ocr_file)
+                logger.info(f"OCR content saved to: {ocr_file_path}")
+            except Exception as e:
+                logger.error(f"Error saving OCR file: {e}")
+        
+        # Salvar arquivo .metadata com os metadados em JSON
+        if metadata:
+            metadata_file_path = f"{base_path}.metadata"
+            try:
+                def write_metadata_file():
+                    with open(metadata_file_path, 'w', encoding='utf-8') as f:
+                        json.dump(metadata, f, ensure_ascii=False, indent=2, default=str)
+                await asyncio.to_thread(write_metadata_file)
+                logger.info(f"Metadata saved to: {metadata_file_path}")
+            except Exception as e:
+                logger.error(f"Error saving metadata file: {e}")
+    
     # Buscar versão atual do arquivo para atualizar
     version_result = await db.execute(
         select(FileVersion).where(
@@ -1853,6 +1885,8 @@ async def process_file_ocr_endpoint(
         "success": error is None,
         "content_length": len(content) if content else 0,
         "metadata_fields": len(metadata) if metadata else 0,
+        "ocr_file": f"{full_path}.ocr" if content else None,
+        "metadata_file": f"{full_path}.metadata" if metadata else None,
         "error": error
     }
 
