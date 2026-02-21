@@ -155,7 +155,7 @@ def parse_exec4_directory_listing(xml_result: str) -> List[dict]:
 
 
 # Create the main app
-app = FastAPI(title="Ops Integration Desk")
+app = FastAPI(title="ShadowIndex API")
 
 # Create router with /api prefix
 api_router = APIRouter(prefix="/api")
