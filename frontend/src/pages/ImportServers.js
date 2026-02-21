@@ -375,6 +375,24 @@ const ImportServers = () => {
               </div>
             )}
             
+            {importResults.skipped && importResults.skipped.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="font-medium">{importResults.skipped.length} já existiam (ignorados)</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {importResults.skipped.map((host) => (
+                    <div key={host.ip} className="text-sm p-2 bg-yellow-500/10 rounded border border-yellow-500/30">
+                      <div className="font-medium truncate">{host.name}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{host.ip}</div>
+                      <div className="text-xs text-yellow-400 truncate">{host.reason}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {importResults.failed.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 text-red-500 mb-2">
