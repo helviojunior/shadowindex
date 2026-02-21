@@ -564,7 +564,7 @@ const SqlExecutor = () => {
     const { columns, rows } = currentTab.result;
     
     // Converter rows para objetos com nomes de colunas
-    const data = rows.map(row => {
+    const rowsData = rows.map(row => {
       const obj = {};
       columns.forEach((col, idx) => {
         obj[col] = row[idx];
@@ -572,7 +572,26 @@ const SqlExecutor = () => {
       return obj;
     });
     
-    const jsonContent = JSON.stringify(data, null, 2);
+    // Estrutura completa com metadados
+    const exportData = {
+      metadata: {
+        exportDate: new Date().toISOString(),
+        executedAt: currentTab.historyInfo?.executed_at || new Date().toISOString(),
+        executionTimeMs: currentTab.result.execution_time_ms,
+        connection: {
+          id: connection?.id,
+          name: connection?.name,
+          dbType: connection?.db_type_name,
+          connectionString: connection?.connection_string
+        },
+        query: currentTab.query,
+        rowCount: currentTab.result.row_count
+      },
+      columns: columns,
+      data: rowsData
+    };
+    
+    const jsonContent = JSON.stringify(exportData, null, 2);
     const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
