@@ -1178,13 +1178,67 @@ const ServerBrowser = () => {
     try {
       // Usar API V2 que retorna shares com filhos do banco
       const response = await axios.get(`${API_V2}/servers/${serverId}/shares-tree`);
-      const { shares, items_by_path } = response.data;
+      const { shares: loadedShares, items_by_path } = response.data;
       
       // Definir os shares
-      setShares(shares);
+      setShares(loadedShares);
       
-      // NÃO expandir automaticamente - apenas definir os shares
-      // Os filhos serão carregados do banco quando o usuário expandir manualmente
+      // Carregar filhos salvos no banco para cada share
+      // Isso permite que diretórios previamente visitados apareçam em azul
+      if (items_by_path && Object.keys(items_by_path).length > 0) {
+        const newNodeChildren = {};
+        
+        // Para cada share que tem filhos no banco
+        loadedShares.forEach(share => {
+          const shareNodeId = `share-${share.share_name}`;
+          const sharePath = items_by_path[`\\\\${server?.ip}\\${share.share_name}`] || 
+                           items_by_path[Object.keys(items_by_path).find(k => k.includes(share.share_name))];
+          
+          if (sharePath && Array.isArray(sharePath)) {
+            // Mapear itens para o formato usado no frontend
+            newNodeChildren[shareNodeId] = sharePath.map(item => ({
+              ...item,
+              id: item.id,
+              type: item.type,
+              itemType: item.type,
+              name: item.name,
+              fullPath: item.full_path,
+              shareName: share.share_name,
+              childrenFetched: item.children_fetched || false,
+              hasChildren: item.has_children
+            }));
+          }
+        });
+        
+        // Também processar itens de subdiretórios
+        Object.entries(items_by_path).forEach(([path, items]) => {
+          if (Array.isArray(items)) {
+            // Encontrar o item pai que corresponde a este path
+            const parentItem = Object.values(newNodeChildren)
+              .flat()
+              .find(i => i.fullPath === path || i.full_path === path);
+            
+            if (parentItem && parentItem.id) {
+              const parentNodeId = String(parentItem.id);
+              newNodeChildren[parentNodeId] = items.map(item => ({
+                ...item,
+                id: item.id,
+                type: item.type,
+                itemType: item.type,
+                name: item.name,
+                fullPath: item.full_path,
+                shareName: parentItem.shareName,
+                childrenFetched: item.children_fetched || false,
+                hasChildren: item.has_children
+              }));
+            }
+          }
+        });
+        
+        if (Object.keys(newNodeChildren).length > 0) {
+          setNodeChildren(newNodeChildren);
+        }
+      }
       
     } catch (error) {
       console.error('Error loading shares:', error);
