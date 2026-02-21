@@ -181,6 +181,12 @@ class FileVersion(Base):
     local_path = Column(String, nullable=False)  # Caminho local onde está armazenado
     is_current = Column(Boolean, default=True)  # Se é a versão atual
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # OCR fields
+    ocr_content = Column(Text, nullable=True)  # Texto extraído via OCR/Tika
+    ocr_metadata = Column(JSON, nullable=True)  # Metadados do arquivo (autor, título, etc)
+    ocr_processed = Column(Boolean, default=False)  # Se OCR foi processado
+    ocr_processed_at = Column(DateTime, nullable=True)  # Quando OCR foi processado
+    ocr_error = Column(String, nullable=True)  # Erro de OCR se houver
 
 
 class ServerItem(Base):
