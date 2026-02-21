@@ -11,31 +11,14 @@ Características:
 
 import asyncio
 import logging
+import base64
+import hashlib
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy import select, update, MetaData, Table
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
-
-# Configurações do worker
-MAX_CONCURRENT_DOWNLOADS = 3
-CHUNK_SIZE = 1024 * 1024  # 1MB chunks
-WORKER_POLL_INTERVAL = 2  # segundos entre verificações
-
-# Instância global do worker
-_worker_instance: Optional['DownloadWorker'] = None
-
-# Criar engine separado para o worker
-import os
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-DATABASE_PATH = os.path.join(DATA_DIR, "ops_integration.db")
-WORKER_DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
-
-worker_engine = create_async_engine(WORKER_DATABASE_URL, echo=False)
-WorkerSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=worker_engine, class_=AsyncSession)
 
 # Configurações do worker
 MAX_CONCURRENT_DOWNLOADS = 3
@@ -88,7 +71,6 @@ class DownloadWorker:
     
     async def _process_pending_jobs(self):
         """Busca e processa jobs pendentes"""
-        # Importar aqui para evitar imports circulares
         from database import DownloadJob, AsyncSessionLocal
         
         async with AsyncSessionLocal() as db:
@@ -239,21 +221,17 @@ class DownloadWorker:
     
     async def _save_file_content(self, db: AsyncSession, job, content: str, server):
         """Salva o conteúdo do arquivo no storage"""
-        import base64
-        from pathlib import Path
         from database import DownloadedFile
+        from storage_utils import get_server_storage_path
         
         try:
             # Decodificar base64 e salvar
             file_bytes = base64.b64decode(content)
             
             # Calcular hash
-            import hashlib
             sha1_hash = hashlib.sha1(file_bytes).hexdigest()
             
             # Criar estrutura de diretórios
-            from storage_utils import get_server_storage_path
-            
             storage_base = get_server_storage_path(server.guid)
             relative_path = job.file_path.replace('\\', '/')
             full_storage_path = storage_base / relative_path
