@@ -59,3 +59,14 @@ class TimeoutException(PluginException):
         )
         self.operation = operation
         self.timeout_seconds = timeout_seconds
+
+
+class NotImplementedException(PluginException):
+    """Raised when a plugin method is not yet implemented"""
+    def __init__(self, method: str, plugin_name: str, message: str = None):
+        super().__init__(
+            message or f"Method '{method}' is not implemented in plugin '{plugin_name}'",
+            {"method": method, "plugin_name": plugin_name}
+        )
+        self.method = method
+        self.plugin_name = plugin_name
