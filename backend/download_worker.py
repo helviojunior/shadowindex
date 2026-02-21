@@ -271,7 +271,6 @@ class DownloadWorker:
             
             # Sanitizar o file_path removendo prefixo UNC e caracteres especiais
             file_path = job.file_path
-            original_file_path = file_path  # Guardar original para salvar no banco
             
             # Remover prefixo UNC se existir (ex: \\127.0.0.1\D$\...)
             if file_path.startswith('\\\\'):
