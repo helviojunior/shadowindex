@@ -3206,6 +3206,15 @@ async def cancel_all_scan_jobs():
     return {"success": True, "cancelled": count}
 
 
+@api_router.post("/scans/clear-finished")
+async def clear_finished_scan_jobs():
+    """Limpa scans finalizados (completed, cancelled, failed)"""
+    from directory_scanner import get_scanner
+    scanner = get_scanner()
+    count = await scanner.clear_finished_scans()
+    return {"success": True, "cleared": count}
+
+
 @api_router.post("/downloads/{job_id}/cancel")
 async def cancel_download_job(
     job_id: int,
