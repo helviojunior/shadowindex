@@ -912,14 +912,41 @@ const ServerBrowser = () => {
   const handleDownload = async () => {
     if (!selectedItem || selectedItem.itemType !== 'File') return;
     
+    const fileSize = parseInt(selectedItem.size) || 0;
+    const filePath = selectedItem.fullPath || selectedItem.serverPath;
+    const shareName = selectedItem.shareName;
+    const ONE_MB = 1024 * 1024; // 1MB
+    
+    // Se arquivo > 1MB, adicionar na fila de downloads
+    if (fileSize > ONE_MB) {
+      try {
+        const response = await axios.post(`${API}/downloads`, {
+          server_id: parseInt(serverId),
+          share_name: shareName,
+          file_path: filePath,
+          file_name: selectedItem.name,
+          file_size: fileSize,
+          max_file_size_bytes: null, // Sem limite para download direto
+          max_depth: null
+        });
+        
+        if (response.data.success) {
+          toast.success(`Download adicionado à fila (${(fileSize / ONE_MB).toFixed(2)} MB)`);
+          toast.info('Acompanhe o progresso em Arquivos > Downloads');
+        }
+      } catch (error) {
+        const errorMsg = error.response?.data?.detail || 'Erro ao adicionar à fila de downloads';
+        toast.error(errorMsg);
+      }
+      return;
+    }
+    
+    // Download direto para arquivos < 1MB
     setLoading(true);
     setSingleDownloadProgress(0);
     singleDownloadCancelledRef.current = false;
     
     try {
-      const fileSize = parseInt(selectedItem.size) || 0;
-      const filePath = selectedItem.fullPath || selectedItem.serverPath;
-      const shareName = selectedItem.shareName;
       const CHUNK_SIZE = 512000; // 512KB
       const useChunks = fileSize > CHUNK_SIZE;
       
