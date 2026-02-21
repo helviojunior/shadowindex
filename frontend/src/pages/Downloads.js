@@ -136,14 +136,16 @@ const Downloads = () => {
   // Initial load and polling
   useEffect(() => {
     loadDownloadJobs();
+    loadScanJobs();
     
-    // Poll every 2 seconds for active downloads
+    // Poll every 2 seconds for active downloads and scans
     const interval = setInterval(() => {
       loadDownloadJobs();
+      loadScanJobs();
     }, 2000);
     
     return () => clearInterval(interval);
-  }, [loadDownloadJobs]);
+  }, [loadDownloadJobs, loadScanJobs]);
 
   // Cancel single job
   const cancelJob = async (jobId) => {
