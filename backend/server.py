@@ -1959,12 +1959,15 @@ async def get_certificate_info(
             
             # Função auxiliar para tentar abrir PFX com senha
             def try_open_pfx(pwd_str, context=""):
+                print(f"DEBUG try_open_pfx CALLED: context={context}, pwd_str={repr(pwd_str)}")
                 pwd_display = "None" if pwd_str is None else ("empty" if pwd_str == "" else f"***({len(pwd_str)} chars)")
                 try:
                     pwd = pwd_str.encode() if pwd_str else None
+                    print(f"DEBUG try_open_pfx: calling load_key_and_certificates with pwd={'None' if pwd is None else '***'}")
                     pk, cert, additional = pkcs12.load_key_and_certificates(
                         cert_data, pwd, default_backend()
                     )
+                    print(f"DEBUG try_open_pfx: load returned cert={cert is not None}")
                     if cert:
                         subject_cn = None
                         for attr in cert.subject:
@@ -1975,6 +1978,7 @@ async def get_certificate_info(
                     return pk, cert, additional, pwd_str
                 except Exception as e:
                     error_msg = str(e)
+                    print(f"DEBUG try_open_pfx: exception caught: {error_msg[:100]}")
                     # Simplificar mensagem de erro comum
                     if "mac verify failure" in error_msg.lower() or "bad decrypt" in error_msg.lower():
                         print(f"PFX FAILED [{context}]: password={pwd_display}, error=Senha incorreta")
