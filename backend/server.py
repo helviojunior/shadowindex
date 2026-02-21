@@ -2740,6 +2740,255 @@ async def download_file_to_client(
     )
 
 
+# ==================== DOWNLOAD JOBS ENDPOINTS ====================
+
+@api_router.get("/downloads")
+async def get_download_jobs(db: AsyncSession = Depends(get_db)):
+    """Lista todos os jobs de download"""
+    result = await db.execute(
+        select(DownloadJob).order_by(desc(DownloadJob.created_at))
+    )
+    jobs = result.scalars().all()
+    
+    return [
+        {
+            "id": job.id,
+            "server_id": job.server_id,
+            "server_name": job.server_name,
+            "server_ip": job.server_ip,
+            "share_name": job.share_name,
+            "file_path": job.file_path,
+            "file_name": job.file_name,
+            "file_size": job.file_size,
+            "downloaded_bytes": job.downloaded_bytes,
+            "total_bytes": job.total_bytes,
+            "progress": job.progress,
+            "status": job.status,
+            "error_message": job.error_message,
+            "skip_reason": job.skip_reason,
+            "priority": job.priority,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        }
+        for job in jobs
+    ]
+
+
+class CreateDownloadJobRequest(BaseModel):
+    server_id: int
+    share_name: str
+    file_path: str
+    file_name: Optional[str] = None
+    file_size: Optional[int] = None
+    priority: int = 0
+    force: bool = False  # Forçar download mesmo se exceder limite de tamanho
+
+
+@api_router.post("/downloads")
+async def create_download_job(
+    request: CreateDownloadJobRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Cria um novo job de download"""
+    # Obter informações do servidor
+    result = await db.execute(select(Server).where(Server.id == request.server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Verificar se já existe um job para este arquivo
+    existing = await db.execute(
+        select(DownloadJob).where(
+            DownloadJob.server_id == request.server_id,
+            DownloadJob.file_path == request.file_path,
+            DownloadJob.status.in_(['pending', 'downloading'])
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Job já existe para este arquivo")
+    
+    # Extrair nome do arquivo do path
+    file_name = request.file_name or request.file_path.split('\\')[-1]
+    
+    # Criar o job
+    job = DownloadJob(
+        server_id=request.server_id,
+        server_name=server.name,
+        server_ip=server.ip,
+        share_name=request.share_name,
+        file_path=request.file_path,
+        file_name=file_name,
+        file_size=request.file_size,
+        priority=request.priority,
+        status='pending'
+    )
+    
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+    
+    return {"success": True, "job_id": job.id}
+
+
+class CreateBatchDownloadRequest(BaseModel):
+    server_id: int
+    share_name: str
+    files: List[dict]  # Lista de {file_path, file_name, file_size}
+    max_size_bytes: Optional[int] = None  # Limite de tamanho por arquivo
+
+
+@api_router.post("/downloads/batch")
+async def create_batch_download_jobs(
+    request: CreateBatchDownloadRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Cria múltiplos jobs de download em lote"""
+    # Obter informações do servidor
+    result = await db.execute(select(Server).where(Server.id == request.server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    created = 0
+    skipped = 0
+    
+    for file_info in request.files:
+        file_path = file_info.get('file_path') or file_info.get('fullPath')
+        file_name = file_info.get('file_name') or file_info.get('name') or file_path.split('\\')[-1]
+        file_size = file_info.get('file_size') or file_info.get('size')
+        
+        # Verificar se já existe
+        existing = await db.execute(
+            select(DownloadJob).where(
+                DownloadJob.server_id == request.server_id,
+                DownloadJob.file_path == file_path,
+                DownloadJob.status.in_(['pending', 'downloading'])
+            )
+        )
+        if existing.scalar_one_or_none():
+            skipped += 1
+            continue
+        
+        # Verificar tamanho máximo
+        status = 'pending'
+        skip_reason = None
+        if request.max_size_bytes and file_size and file_size > request.max_size_bytes:
+            status = 'skipped'
+            skip_reason = f"Arquivo excede limite de tamanho ({file_size} > {request.max_size_bytes})"
+        
+        job = DownloadJob(
+            server_id=request.server_id,
+            server_name=server.name,
+            server_ip=server.ip,
+            share_name=request.share_name,
+            file_path=file_path,
+            file_name=file_name,
+            file_size=file_size,
+            status=status,
+            skip_reason=skip_reason
+        )
+        db.add(job)
+        created += 1
+    
+    await db.commit()
+    
+    return {"success": True, "created": created, "skipped": skipped}
+
+
+@api_router.post("/downloads/{job_id}/cancel")
+async def cancel_download_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Cancela um job de download"""
+    result = await db.execute(select(DownloadJob).where(DownloadJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job.status in ['completed', 'cancelled']:
+        raise HTTPException(status_code=400, detail="Job já finalizado")
+    
+    job.status = 'cancelled'
+    job.completed_at = datetime.now(timezone.utc)
+    await db.commit()
+    
+    return {"success": True}
+
+
+@api_router.post("/downloads/cancel-all")
+async def cancel_all_download_jobs(db: AsyncSession = Depends(get_db)):
+    """Cancela todos os jobs pendentes/em andamento"""
+    await db.execute(
+        update(DownloadJob)
+        .where(DownloadJob.status.in_(['pending', 'downloading']))
+        .values(status='cancelled', completed_at=datetime.now(timezone.utc))
+    )
+    await db.commit()
+    
+    return {"success": True}
+
+
+@api_router.post("/downloads/{job_id}/force")
+async def force_download_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Força download de um job que foi ignorado"""
+    result = await db.execute(select(DownloadJob).where(DownloadJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job.status != 'skipped':
+        raise HTTPException(status_code=400, detail="Apenas jobs ignorados podem ser forçados")
+    
+    job.status = 'pending'
+    job.skip_reason = None
+    await db.commit()
+    
+    return {"success": True}
+
+
+@api_router.post("/downloads/{job_id}/retry")
+async def retry_download_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Reinicia um job que falhou"""
+    result = await db.execute(select(DownloadJob).where(DownloadJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job.status != 'failed':
+        raise HTTPException(status_code=400, detail="Apenas jobs com falha podem ser reiniciados")
+    
+    job.status = 'pending'
+    job.error_message = None
+    job.downloaded_bytes = 0
+    job.progress = 0
+    job.started_at = None
+    job.completed_at = None
+    await db.commit()
+    
+    return {"success": True}
+
+
+@api_router.post("/downloads/clear-finished")
+async def clear_finished_jobs(db: AsyncSession = Depends(get_db)):
+    """Remove jobs concluídos, falhos e cancelados"""
+    await db.execute(
+        delete(DownloadJob).where(
+            DownloadJob.status.in_(['completed', 'failed', 'cancelled'])
+        )
+    )
+    await db.commit()
+    
+    return {"success": True}
+
+
 # Include router
 app.include_router(api_router)
 
