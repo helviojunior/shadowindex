@@ -196,7 +196,8 @@ const ServerBrowser = () => {
       try {
         const params = {
           file_path: selectedItem.fullPath || selectedItem.serverPath,
-          share_name: selectedItem.shareName
+          share_name: selectedItem.shareName,
+          _t: Date.now() // Evitar cache
         };
         
         // Só adicionar password se tiver valor
@@ -204,7 +205,9 @@ const ServerBrowser = () => {
           params.password = pfxPassword.trim();
         }
         
+        console.log('Loading certificate with params:', params);
         const response = await axios.get(`${API}/servers/${serverId}/certificate-info`, { params });
+        console.log('Certificate response:', response.data);
         setFileContent(response.data);
         setRawFileContent(JSON.stringify(response.data, null, 2));
         setFilePreviewUrl(null);
