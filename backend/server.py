@@ -1970,16 +1970,16 @@ async def get_certificate_info(
             certificate = None
             additional_certs = None
             
-            logger.info(f"PFX: file_path={file_path}, password provided={password is not None and len(str(password)) > 0}, existing_pwd={existing_pwd is not None}")
+            print(f"PFX: file_path={file_path}, password provided={password is not None and len(str(password)) > 0}, existing_pwd={existing_pwd is not None}")
             
             # Tentar senha salva primeiro
             if existing_pwd:
-                logger.info(f"Trying saved password for {file_path}")
+                print(f"Trying saved password for {file_path}")
                 private_key, certificate, additional_certs, used_password = try_open_pfx(existing_pwd.password)
             
             # 2. Se não funcionou e uma senha foi fornecida, tentar essa
             if not certificate and password and len(str(password)) > 0:
-                logger.info(f"Trying provided password for {file_path}")
+                print(f"Trying provided password for {file_path}")
                 private_key, certificate, additional_certs, used_password = try_open_pfx(password)
                 
                 # Se funcionou, salvar a senha
