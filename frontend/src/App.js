@@ -13,6 +13,7 @@ import ServerBrowser from "@/pages/ServerBrowser";
 import ImportServers from "@/pages/ImportServers";
 import FileNavigation from "@/pages/FileNavigation";
 import Leaks from "@/pages/Leaks";
+import Gitleaks from "@/pages/Gitleaks";
 import BeautifyTest from "@/pages/BeautifyTest";
 import SqlExecutor from "@/pages/SqlExecutor";
 import SqlPresets from "@/pages/SqlPresets";
@@ -59,6 +60,7 @@ function App() {
               <Route path="/settings" element={<GeneralSettings />} />
               <Route path="/plugins/soap" element={<PluginSoapConfig />} />
               <Route path="/plugins/direct" element={<PluginDirectConfig />} />
+              <Route path="/tools/gitleaks" element={<Gitleaks />} />
               <Route path="/beautify-test" element={<BeautifyTest />} />
             </Routes>
           </Layout>
