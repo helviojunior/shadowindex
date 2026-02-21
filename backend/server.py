@@ -1034,9 +1034,12 @@ async def get_server(
             params = {"s1": server.name, "s2": ""}
             result_str = await soap_service.call_soap_operation(db, "Resolve", params, refresh)
             
+            # Extrair IPv4 prioritário do resultado
+            ipv4_address = extract_ipv4_from_resolve_result(result_str)
+            
             # Se retornou IP válido, atualiza
-            if result_str and result_str.strip():
-                server.ip = result_str.strip()
+            if ipv4_address:
+                server.ip = ipv4_address
                 server.verified = True
                 server.last_verified_at = datetime.now(timezone.utc)
                 await db.commit()
