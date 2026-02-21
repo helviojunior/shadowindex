@@ -404,7 +404,6 @@ Portuguese (pt-BR)
 ## Backlog / Future Tasks
 
 ### P2
-- **SOCKS Proxy Support:** Add SOCKS as proxy option (in addition to HTTP proxy)
 - **Mock SOAP Service for Testing:** Create mock service for robustly testing XML parsing without relying on unreliable live API
 
 ### P3
