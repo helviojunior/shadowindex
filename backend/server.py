@@ -32,6 +32,16 @@ from storage_utils import (
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Função auxiliar para calcular mimetype
+def get_file_mimetype(file_path: str) -> Optional[str]:
+    """Calcula o mimetype de um arquivo usando libmagic"""
+    try:
+        mime = magic.Magic(mime=True)
+        return mime.from_file(file_path)
+    except Exception as e:
+        logging.warning(f"Erro ao calcular mimetype: {e}")
+        return None
+
 # Create the main app
 app = FastAPI(title="Ops Integration Desk")
 
