@@ -88,6 +88,9 @@ class DownloadWorker:
     
     async def _process_pending_jobs(self):
         """Busca e processa jobs pendentes"""
+        # Importar aqui para evitar imports circulares
+        from database import DownloadJob, AsyncSessionLocal
+        
         async with AsyncSessionLocal() as db:
             # Buscar jobs pendentes ordenados por prioridade
             result = await db.execute(
