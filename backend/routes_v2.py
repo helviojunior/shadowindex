@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 import logging
 import base64
 import hashlib
+import os
 
 from database import (
     get_db, Server, ServerShare, ServerItem, DownloadedFile, FileVersion, 
