@@ -1846,7 +1846,7 @@ async def clear_access_denied_v2(
         result = await db.execute(
             delete(ServerItem).where(
                 ServerItem.share_id == share.id,
-                ServerItem.access_denied == True
+                ServerItem.access_denied.is_(True)
             )
         )
         deleted_count += result.rowcount
