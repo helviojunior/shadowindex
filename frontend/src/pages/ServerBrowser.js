@@ -798,8 +798,9 @@ const ServerBrowser = () => {
       // Passo 1: Se não estiver forçando refresh, tentar carregar do banco primeiro
       if (!forceRefresh && !ignoreCache) {
         try {
+          // Usar API V2 para buscar itens do cache
           const cachedResponse = await axios.get(
-            `${API}/servers/${serverId}/items`,
+            `${API_V2}/servers/${serverId}/items`,
             { params: { parent_path: path } }
           );
           
@@ -824,9 +825,9 @@ const ServerBrowser = () => {
         }
       }
       
-      // Passo 2: Buscar via SOAP (se não encontrou em cache ou forceRefresh)
+      // Passo 2: Buscar via SOAP usando API V2
       const response = await axios.post(
-        `${API}/servers/${serverId}/browse`,
+        `${API_V2}/servers/${serverId}/browse`,
         null,
         { params: { path, ignore_cache: ignoreCache, share_name: shareName } }
       );
