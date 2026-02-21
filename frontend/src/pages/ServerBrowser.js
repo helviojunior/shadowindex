@@ -1316,13 +1316,9 @@ const ServerBrowser = () => {
         });
       }
       
-      if (items.length === 0) {
-        toast.info('Diretório vazio');
-      }
+      // Diretório pode estar vazio, não precisa de toast
     } catch (error) {
       console.error('Error loading directory:', error);
-      const errorMsg = error.response?.data?.detail || 'Erro ao listar diretório';
-      toast.error(errorMsg);
     } finally {
       setLoadingNodes(prev => ({ ...prev, [nodeId]: false }));
     }
