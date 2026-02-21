@@ -28,6 +28,25 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 19 - Nmap XML Import)
+- [x] **Endpoint de Importação de Servidores via Nmap XML:**
+  - `POST /api/v2/servers/import/nmap` - Importa servidores a partir de hosts parseados
+  - Aceita lista de hosts com IP, nome, portas SMB e DB
+  - Detecta servidores duplicados pelo IP (skip automático)
+  - Atribui `plugin_type='direct_interaction'` para servidores importados
+  - `plugin_config` armazena metadados: `imported_from`, `has_smb`, `has_db`, `db_types`
+- [x] **Frontend `/servers/import`:**
+  - Upload de arquivo XML do Nmap
+  - Parsing local do XML no navegador
+  - Seleção de hosts para importar (checkboxes)
+  - Badges indicando portas SMB e tipos de banco de dados
+  - Resultados separados: importados, ignorados (duplicados), falhas
+- [x] **Rodapé do Layout atualizado:**
+  - Agora mostra "ShadowIndex v1.0.0" e "© StrataSec 2026"
+- [x] **Testes:**
+  - 9 testes backend passando (100%)
+  - Todos testes frontend passando
+
 ### 2026-02-22 (Session 18 - Credential Types, SMB with Impacket, Verification)
 - [x] **Credential Types System:**
   - Three types: `user_password`, `token`, `ssh_key`
