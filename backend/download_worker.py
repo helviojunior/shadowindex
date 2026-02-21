@@ -52,7 +52,8 @@ class DownloadWorker:
     def __init__(self):
         self.running = False
         self.active_downloads = 0
-        self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
+        self.max_concurrent = 3  # Será atualizado do banco
+        self.semaphore = asyncio.Semaphore(3)
         self._task: Optional[asyncio.Task] = None
     
     async def start(self):
@@ -60,6 +61,11 @@ class DownloadWorker:
         if self.running:
             logger.info("Download worker already running")
             return
+        
+        # Carregar configurações do banco
+        self.max_concurrent = await get_max_concurrent_downloads()
+        self.semaphore = asyncio.Semaphore(self.max_concurrent)
+        logger.info(f"Download worker starting with {self.max_concurrent} concurrent downloads")
         
         self.running = True
         self._task = asyncio.create_task(self._run_loop())
