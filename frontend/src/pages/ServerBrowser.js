@@ -924,7 +924,7 @@ const ServerBrowser = () => {
     // Construir o path do share
     const serverIp = pathParts[0];
     const shareNameFromPath = pathParts[1];
-    let currentPath = `\\\\${serverIp}\\${shareNameFromPath}`;
+    const sharePath = `\\\\${serverIp}\\${shareNameFromPath}`;
     const shareNodeId = `share-${shareName}`;
     
     // 1. Primeiro expandir o share
@@ -932,32 +932,74 @@ const ServerBrowser = () => {
     
     // Carregar filhos do share se necessário
     try {
-      await loadDirectory(shareNodeId, currentPath, shareName);
+      await loadDirectory(shareNodeId, sharePath, shareName);
     } catch (e) {
       console.error('Erro ao carregar share:', e);
     }
     
-    // Aguardar um pouco para o estado atualizar
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Aguardar o estado atualizar
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     // 2. Expandir cada diretório intermediário sequencialmente
+    // Precisamos construir o path incrementalmente e buscar cada nível
+    let currentPath = sharePath;
+    let parentNodeId = shareNodeId;
+    
     for (let i = 2; i < pathParts.length - 1; i++) {
       currentPath += `\\${pathParts[i]}`;
-      const safeNodeId = currentPath.replace(/[^a-zA-Z0-9]/g, '_');
-      const nodeId = `${shareNodeId}-${safeNodeId}`;
+      const dirName = pathParts[i];
       
-      // Expandir este nó
-      setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
+      // Buscar os filhos do nó pai para encontrar o ID correto deste diretório
+      const currentChildren = nodeChildren[parentNodeId] || [];
       
-      // Carregar filhos deste diretório
-      try {
-        await loadDirectory(nodeId, currentPath, shareName);
-      } catch (e) {
-        console.error(`Erro ao carregar diretório ${currentPath}:`, e);
+      // Encontrar o diretório pelo nome ou fullPath
+      const dirItem = currentChildren.find(child => 
+        child.name === dirName || child.fullPath === currentPath
+      );
+      
+      if (dirItem) {
+        const dirNodeId = String(dirItem.id);
+        
+        // Expandir este nó
+        setExpandedNodes(prev => ({ ...prev, [dirNodeId]: true }));
+        
+        // Carregar filhos deste diretório
+        try {
+          await loadDirectory(dirNodeId, currentPath, shareName);
+        } catch (e) {
+          console.error(`Erro ao carregar diretório ${currentPath}:`, e);
+        }
+        
+        // Atualizar o parentNodeId para o próximo nível
+        parentNodeId = dirNodeId;
+        
+        // Pequeno delay entre cada nível
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } else {
+        console.warn(`Diretório não encontrado: ${dirName} em ${parentNodeId}`);
+        // Tentar carregar o diretório pai novamente
+        try {
+          const prevPath = currentPath.substring(0, currentPath.lastIndexOf('\\'));
+          await loadDirectory(parentNodeId, prevPath, shareName, true);
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Tentar novamente encontrar o diretório
+          const refreshedChildren = nodeChildren[parentNodeId] || [];
+          const refreshedDirItem = refreshedChildren.find(child => 
+            child.name === dirName || child.fullPath === currentPath
+          );
+          
+          if (refreshedDirItem) {
+            const dirNodeId = String(refreshedDirItem.id);
+            setExpandedNodes(prev => ({ ...prev, [dirNodeId]: true }));
+            await loadDirectory(dirNodeId, currentPath, shareName);
+            parentNodeId = dirNodeId;
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        } catch (e) {
+          console.error(`Falha ao recarregar diretório pai:`, e);
+        }
       }
-      
-      // Pequeno delay entre cada nível
-      await new Promise(resolve => setTimeout(resolve, 150));
     }
     
     // 3. Selecionar o item (abre as abas de detalhes)
@@ -1009,7 +1051,7 @@ const ServerBrowser = () => {
           targetElement.style.borderRadius = '';
         }, 2500);
       }
-    }, 500);
+    }, 600);
   };
 
   const loadShares = async () => {
