@@ -2838,6 +2838,9 @@ class CreateDownloadJobRequest(BaseModel):
     file_size: Optional[int] = None
     priority: int = 0
     force: bool = False  # Forçar download mesmo se exceder limite de tamanho
+    max_file_size_bytes: Optional[int] = None  # Limite de tamanho (null = sem limite)
+    max_depth: Optional[int] = None  # Limite de profundidade para diretórios
+    is_directory: bool = False  # Se é um diretório
 
 
 @api_router.post("/downloads")
@@ -2866,6 +2869,14 @@ async def create_download_job(
     # Extrair nome do arquivo do path
     file_name = request.file_name or request.file_path.split('\\')[-1]
     
+    # Verificar se deve ser ignorado por tamanho
+    status = 'pending'
+    skip_reason = None
+    if not request.force and request.max_file_size_bytes and request.file_size:
+        if request.file_size > request.max_file_size_bytes:
+            status = 'skipped'
+            skip_reason = f"Arquivo excede limite de {request.max_file_size_bytes / (1024*1024):.1f}MB"
+    
     # Criar o job
     job = DownloadJob(
         server_id=request.server_id,
@@ -2876,14 +2887,18 @@ async def create_download_job(
         file_name=file_name,
         file_size=request.file_size,
         priority=request.priority,
-        status='pending'
+        status=status,
+        skip_reason=skip_reason,
+        max_file_size_bytes=request.max_file_size_bytes,
+        max_depth=request.max_depth,
+        is_directory=request.is_directory
     )
     
     db.add(job)
     await db.commit()
     await db.refresh(job)
     
-    return {"success": True, "job_id": job.id}
+    return {"success": True, "job_id": job.id, "status": status}
 
 
 class CreateBatchDownloadRequest(BaseModel):
