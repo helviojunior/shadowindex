@@ -14,9 +14,20 @@ Test suite for iteration 5 features:
 import pytest
 import requests
 import os
+import time
 from datetime import datetime
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/')
+
+def retry_request(func, max_retries=3, delay=1):
+    """Retry a request function on 5xx errors"""
+    for attempt in range(max_retries):
+        response = func()
+        if response.status_code < 500:
+            return response
+        if attempt < max_retries - 1:
+            time.sleep(delay)
+    return response
 
 
 class TestCredentialTypes:
