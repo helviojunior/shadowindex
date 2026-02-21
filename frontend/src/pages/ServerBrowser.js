@@ -1324,8 +1324,9 @@ const ServerBrowser = () => {
               const currentItem = currentItems.find(it => it.fullPath === file.fullPath);
               if (currentItem?.status === 'cancelled') break;
               
+              // Usar API V2 para download em chunks
               const chunkResponse = await axios.post(
-                `${API}/servers/${serverId}/download-chunk`,
+                `${API_V2}/servers/${serverId}/download-chunk`,
                 null,
                 {
                   params: {
@@ -1337,17 +1338,17 @@ const ServerBrowser = () => {
                 }
               );
               
-              if (chunkResponse.data.content_base64) {
-                allChunks.push(chunkResponse.data.content_base64);
+              if (chunkResponse.data.data) {
+                allChunks.push(chunkResponse.data.data);
               }
               
-              const chunkSize = chunkResponse.data.chunk_size || 0;
+              const chunkSize = chunkResponse.data.bytes_read || 0;
               totalBytesReceived += chunkSize;
               offset += chunkSize;
               
               // Calcular progresso - usar o maior valor entre fileSize informado e bytes recebidos
               const estimatedTotal = Math.max(fileSize, totalBytesReceived);
-              const progress = chunkResponse.data.is_last_chunk 
+              const progress = chunkResponse.data.is_last 
                 ? 100 
                 : Math.min(99, Math.round((totalBytesReceived / estimatedTotal) * 100));
               
@@ -1358,7 +1359,7 @@ const ServerBrowser = () => {
                   : it
               ));
               
-              if (chunkResponse.data.is_last_chunk || chunkSize === 0) {
+              if (chunkResponse.data.is_last || chunkSize === 0) {
                 break;
               }
             }
@@ -1375,10 +1376,10 @@ const ServerBrowser = () => {
               continue;
             }
             
-            // Combinar chunks e salvar
+            // Combinar chunks e salvar usando API V2
             const combinedBase64 = allChunks.join('');
             await axios.post(
-              `${API}/servers/${serverId}/download`,
+              `${API_V2}/servers/${serverId}/download`,
               { content_base64: combinedBase64 },
               {
                 params: {
@@ -1389,9 +1390,9 @@ const ServerBrowser = () => {
               }
             );
           } else {
-            // Download normal para arquivos pequenos
+            // Download normal para arquivos pequenos usando API V2
             await axios.post(
-              `${API}/servers/${serverId}/download`,
+              `${API_V2}/servers/${serverId}/download`,
               null,
               {
                 params: {
