@@ -28,6 +28,37 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 18 - Credential Types, SMB with Impacket, Verification)
+- [x] **Credential Types System:**
+  - Three types: `user_password`, `token`, `ssh_key`
+  - `user_password`: domain, username, password, ntlm_hash
+  - `token`: token, token_type (bearer, api_key, etc.)
+  - `ssh_key`: ssh_private_key, ssh_passphrase, ssh_public_key
+  - Optional `name` field for all types
+  - UI with tabbed form for each type
+  - Separate cards listing credentials by type
+- [x] **Credential Verification:**
+  - Fields: `verified`, `last_verified_at`, `verification_error`
+  - Endpoint `POST /api/credentials/{id}/verify` marks credential as verified
+  - Status badges in UI (Verificada / Não verificada)
+- [x] **Endpoint Improvements:**
+  - `GET /api/credentials/by-type/{type}` - Filter by credential type
+  - Validation specific to each type
+- [x] **AuthenticationFailureException:**
+  - New exception with username, domain, reason parameters
+  - Used in SMB authentication errors
+- [x] **Direct Interaction Plugin v1.1.0 - SMB with Impacket:**
+  - Uses impacket library for SMB protocol
+  - `list_shares()` - List SMB shares on a server
+  - `list_directory()` - Browse directories in shares
+  - `download_file()` - Download files via SMB
+  - Supports NTLM hash authentication
+  - Only user_password credentials allowed for SMB
+  - credential_id now required in config
+- [x] **Tests:**
+  - 29 backend tests passing (100%)
+  - All frontend UI tests passing
+
 ### 2026-02-22 (Session 17 - Credentials NTLM, Editing, Direct Interaction Plugin)
 - [x] **Credentials Improvements:**
   - Added `ntlm_hash` field to store NTLM hash (format: LM:NT or just NT)
