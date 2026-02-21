@@ -3234,29 +3234,6 @@ const ServerBrowser = () => {
                         )}
                         Copiar
                       </Button>
-                      
-                      {/* Botão Base64 Decode */}
-                      {base64Decoded ? (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={restoreOriginalContent}
-                          title="Restaurar conteúdo original"
-                        >
-                          <Binary className="w-4 h-4 mr-2" />
-                          Original
-                        </Button>
-                      ) : (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={decodeBase64Content}
-                          title="Decodificar Base64"
-                        >
-                          <Binary className="w-4 h-4 mr-2" />
-                          Base64
-                        </Button>
-                      )}
                     </div>
                 
                     {/* Content */}
