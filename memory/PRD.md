@@ -27,6 +27,23 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 14 - Search Feature)
+- [x] **Campo de busca na página do servidor**
+  - Busca rápida por nome (com debounce de 300ms)
+  - Busca avançada com filtros:
+    - Por extensão (.aspx, .config, etc.)
+    - Por hash SHA1
+    - Por data de atualização (de/até)
+    - Por tipo (arquivo/diretório)
+  - Resultados organizados por categoria:
+    - Diretórios
+    - Arquivos
+    - Arquivos baixados (com SHA1)
+  - Navegação automática para resultado selecionado
+- [x] **Novos Endpoints de Busca:**
+  - `GET /api/v2/servers/{server_id}/search/quick?q=...` - Busca rápida
+  - `POST /api/v2/servers/{server_id}/search` - Busca avançada com filtros
+
 ### 2026-02-22 (Session 13 - API V2 Complete Migration)
 - [x] **Nova API V2 baseada em IDs**
   - Criado arquivo `backend/routes_v2.py` com endpoints baseados em IDs
