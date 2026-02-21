@@ -289,6 +289,10 @@ async def init_db():
             cursor.execute('ALTER TABLE server_shares ADD COLUMN children_fetched BOOLEAN DEFAULT 0')
             logger.info("Added column 'children_fetched' to server_shares")
         
+        if 'server_id' not in columns:
+            cursor.execute('ALTER TABLE server_shares ADD COLUMN server_id INTEGER')
+            logger.info("Added column 'server_id' to server_shares")
+        
         conn.commit()
         conn.close()
         logger.info("Database migrations completed")
