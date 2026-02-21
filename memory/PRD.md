@@ -384,12 +384,19 @@ Portuguese (pt-BR)
 ```
 /app/
 ├── backend/
+│   ├── alembic/              # Alembic migrations
+│   │   ├── env.py            # Migration environment config
+│   │   └── versions/         # Migration scripts
+│   ├── alembic.ini           # Alembic configuration
 │   ├── data/
 │   │   ├── ops_integration.db   # SQLite database
 │   │   └── storage/             # Downloaded files
 │   ├── requirements.txt
-│   ├── database.py              # SQLAlchemy models & init (with 59 default presets)
+│   ├── database.py              # SQLAlchemy models & init (with Alembic)
 │   ├── server.py                # Main FastAPI app, all endpoints
+│   ├── routes_v2.py             # API V2 endpoints (ID-based)
+│   ├── download_worker.py       # Background download processor
+│   ├── directory_scanner.py     # Recursive directory scanner
 │   ├── soap_service.py          # SOAP client with caching
 │   └── storage_utils.py         # File storage utilities
 ├── frontend/
@@ -404,7 +411,8 @@ Portuguese (pt-BR)
 │   │       ├── SqlExecutor.js     # SQL editor with Ctrl+Enter shortcut
 │   │       ├── DatabaseConnections.js  # Connections table with Test Connection button
 │   │       ├── SqlPresets.js      # Presets management (59 presets)
-│   │       ├── ServerBrowser.js   # File tree + info panel (with pre-loading)
+│   │       ├── ServerBrowser.js   # File tree + info panel (with polling)
+│   │       ├── Downloads.js       # Download queue management
 │   │       ├── BeautifyTest.js    # Test page for beautify feature
 │   │       └── ...
 │   └── ...
