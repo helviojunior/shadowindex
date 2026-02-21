@@ -102,12 +102,12 @@ class DownloadWorker:
                 select(DownloadJob)
                 .where(DownloadJob.status == 'pending')
                 .order_by(DownloadJob.priority.desc(), DownloadJob.created_at.asc())
-                .limit(MAX_CONCURRENT_DOWNLOADS - self.active_downloads)
+                .limit(self.max_concurrent - self.active_downloads)
             )
             jobs = result.scalars().all()
             
             for job in jobs:
-                if self.active_downloads < MAX_CONCURRENT_DOWNLOADS:
+                if self.active_downloads < self.max_concurrent:
                     # Iniciar download em task separada
                     asyncio.create_task(self._download_file(job.id))
     
