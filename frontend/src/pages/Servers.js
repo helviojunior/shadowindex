@@ -117,6 +117,30 @@ const Servers = () => {
     }
   };
 
+  const loadAvailablePlugins = async () => {
+    try {
+      const response = await axios.get(`${API}/plugins`);
+      setAvailablePlugins(response.data);
+    } catch (error) {
+      console.error('Error loading plugins:', error);
+      // Fallback to known plugins
+      setAvailablePlugins({
+        soap_api: { type: 'soap_api', name: 'SOAP API Plugin', version: '1.0.0' }
+      });
+    }
+  };
+
+  const loadSoapApiUrls = async () => {
+    try {
+      const response = await axios.get(`${API}/soap-apis`);
+      if (response.data && response.data.length > 0) {
+        setSoapApiUrl(response.data[0].uri);
+      }
+    } catch (error) {
+      console.error('Error loading SOAP APIs:', error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
