@@ -5,6 +5,7 @@ GitLeaks Service - Executa GitLeaks em background e processa resultados
 import asyncio
 import json
 import os
+import re
 import subprocess
 import uuid
 import logging
@@ -20,6 +21,46 @@ GITLEAKS_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 
 # Garantir que o diretório existe
 os.makedirs(GITLEAKS_OUTPUT_DIR, exist_ok=True)
+
+
+def normalize_file_path(file_path: str) -> Dict[str, Any]:
+    """
+    Normaliza o caminho do arquivo removendo extensões .ocr e .metadata
+    
+    Arquivos com extensão .ocr indicam que o leak foi encontrado através de OCR do arquivo original.
+    Arquivos com extensão .metadata indicam que o leak foi encontrado nos metadados do arquivo original.
+    
+    Retorna:
+        {
+            "original_file": str - caminho do arquivo original (sem .ocr/.metadata)
+            "scanned_file": str - caminho do arquivo escaneado (original)
+            "source": str|None - "ocr", "metadata" ou None
+        }
+    """
+    if not file_path:
+        return {
+            "original_file": file_path,
+            "scanned_file": file_path,
+            "source": None
+        }
+    
+    source = None
+    original_file = file_path
+    
+    # Verificar e remover extensão .ocr
+    if file_path.lower().endswith('.ocr'):
+        source = "ocr"
+        original_file = file_path[:-4]  # Remove .ocr
+    # Verificar e remover extensão .metadata
+    elif file_path.lower().endswith('.metadata'):
+        source = "metadata"
+        original_file = file_path[:-9]  # Remove .metadata
+    
+    return {
+        "original_file": original_file,
+        "scanned_file": file_path,
+        "source": source
+    }
 
 
 class GitleaksJob:
