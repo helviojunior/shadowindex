@@ -801,12 +801,17 @@ const ServerBrowser = () => {
         setSelectedItem(prev => {
           if (!prev) return prev;
           
+          // Detectar se é share pelo path
+          const pathParts = path.split('\\').filter(p => p !== '');
+          const isSharePath = pathParts.length === 2;
+          const shareNameToFind = isSharePath ? pathParts[1] : (nodeId.startsWith('share-') ? nodeId.substring(6) : shareName);
+          
           // Verificar se é o item selecionado (share ou diretório)
-          const shareNameFromNodeId = nodeId.startsWith('share-') ? nodeId.substring(6) : '';
-          const isSelectedShare = prev.itemType === 'share' && prev.share_name === shareNameFromNodeId;
-          const isSelectedDir = prev.fullPath === path || prev.id === nodeId;
+          const isSelectedShare = prev.itemType === 'share' && (prev.share_name === shareNameToFind || prev.serverPath === path);
+          const isSelectedDir = prev.fullPath === path || prev.serverPath === path || prev.id === nodeId;
           
           if (isSelectedShare || isSelectedDir) {
+            console.log('[AccessDenied] Atualizando selectedItem');
             return { 
               ...prev, 
               access_denied: true,
