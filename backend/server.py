@@ -1945,7 +1945,6 @@ async def get_certificate_info(
     try:
         # PFX/P12 - Certificado com chave privada
         if ext in ['pfx', 'p12']:
-            from database import PfxPassword
             
             # Função auxiliar para tentar abrir PFX com senha
             def try_open_pfx(pwd_str):
