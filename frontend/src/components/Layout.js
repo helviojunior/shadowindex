@@ -92,13 +92,16 @@ const menuStructure = [
 ];
 
 // Helper to find active menu and submenu
+// Sorts children by path length (longest first) to ensure most specific match
 const findActiveMenu = (pathname) => {
   for (const menu of menuStructure) {
     if (menu.path === pathname) {
       return { menuId: menu.id, subMenuId: null };
     }
     if (menu.children) {
-      for (const child of menu.children) {
+      // Sort children by path length descending to match most specific path first
+      const sortedChildren = [...menu.children].sort((a, b) => b.path.length - a.path.length);
+      for (const child of sortedChildren) {
         if (pathname === child.path || pathname.startsWith(child.path + '/')) {
           return { menuId: menu.id, subMenuId: child.id };
         }
