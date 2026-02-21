@@ -175,6 +175,209 @@ async def get_downloaded_file_or_404(db: AsyncSession, server: Server, file_id: 
 
 
 # ==========================================
+# Search Endpoint
+# ==========================================
+
+@router.post("/servers/{server_id}/search", response_model=List[SearchResultItem])
+async def search_items(
+    server_id: int,
+    search: SearchRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Busca arquivos e diretórios no banco de dados.
+    Suporta busca por nome, SHA1, extensão e data.
+    """
+    from sqlalchemy import or_, and_, func
+    
+    server = await get_server_or_404(db, server_id)
+    
+    results = []
+    
+    # 1. Buscar nos itens (ServerItem) - diretórios e arquivos descobertos
+    item_conditions = [ServerItem.server_guid == server.guid]
+    
+    if search.query:
+        item_conditions.append(ServerItem.name.ilike(f"%{search.query}%"))
+    
+    if search.extension:
+        ext = search.extension if search.extension.startswith('.') else f".{search.extension}"
+        item_conditions.append(ServerItem.name.ilike(f"%{ext}"))
+    
+    if search.item_type:
+        item_conditions.append(ServerItem.item_type == search.item_type)
+    
+    items_query = select(ServerItem).where(and_(*item_conditions)).limit(search.limit)
+    items_result = await db.execute(items_query)
+    items = items_result.scalars().all()
+    
+    # Buscar quais desses itens já foram baixados
+    item_paths = [item.full_path for item in items if item.item_type == 'File']
+    downloaded_paths = set()
+    downloaded_info = {}
+    
+    if item_paths:
+        downloaded_result = await db.execute(
+            select(DownloadedFile).where(
+                DownloadedFile.server_guid == server.guid,
+                DownloadedFile.file_path.in_(item_paths)
+            )
+        )
+        for df in downloaded_result.scalars().all():
+            downloaded_paths.add(df.file_path)
+            downloaded_info[df.file_path] = df
+    
+    for item in items:
+        df = downloaded_info.get(item.full_path)
+        results.append(SearchResultItem(
+            id=item.id,
+            type='item',
+            item_type=item.item_type,
+            name=item.name,
+            full_path=item.full_path,
+            share_name=item.share_name,
+            size=item.size,
+            sha1_hash=df.sha1_hash if df else None,
+            modified=item.modified,
+            downloaded_at=df.downloaded_at if df else None,
+            is_downloaded=item.full_path in downloaded_paths
+        ))
+    
+    # 2. Buscar nos arquivos baixados (DownloadedFile) - se busca por SHA1 ou data
+    if search.sha1 or search.date_from or search.date_to:
+        file_conditions = [DownloadedFile.server_guid == server.guid]
+        
+        if search.query:
+            file_conditions.append(DownloadedFile.file_path.ilike(f"%{search.query}%"))
+        
+        if search.sha1:
+            sha1_search = search.sha1.lower()
+            file_conditions.append(DownloadedFile.sha1_hash.ilike(f"%{sha1_search}%"))
+        
+        if search.extension:
+            ext = search.extension if search.extension.startswith('.') else f".{search.extension}"
+            file_conditions.append(DownloadedFile.file_path.ilike(f"%{ext}"))
+        
+        if search.date_from:
+            file_conditions.append(DownloadedFile.downloaded_at >= search.date_from)
+        
+        if search.date_to:
+            file_conditions.append(DownloadedFile.downloaded_at <= search.date_to)
+        
+        files_query = select(DownloadedFile).where(and_(*file_conditions)).limit(search.limit)
+        files_result = await db.execute(files_query)
+        
+        # Adicionar arquivos que não estão já nos resultados
+        existing_paths = {r.full_path for r in results}
+        
+        for df in files_result.scalars().all():
+            if df.file_path not in existing_paths:
+                # Extrair nome do arquivo do path
+                name = df.file_path.split('\\')[-1] if '\\' in df.file_path else df.file_path.split('/')[-1]
+                
+                results.append(SearchResultItem(
+                    id=df.id,
+                    type='file',
+                    item_type='File',
+                    name=name,
+                    full_path=df.file_path,
+                    share_name=df.share_name,
+                    size=str(df.file_size) if df.file_size else None,
+                    sha1_hash=df.sha1_hash,
+                    modified=None,
+                    downloaded_at=df.downloaded_at,
+                    is_downloaded=True
+                ))
+    
+    # Ordenar por nome
+    results.sort(key=lambda x: (x.item_type != 'Directory', x.name.lower()))
+    
+    return results[:search.limit]
+
+
+@router.get("/servers/{server_id}/search/quick")
+async def quick_search(
+    server_id: int,
+    q: str,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Busca rápida por nome de arquivo ou diretório.
+    Retorna resultados agrupados por tipo.
+    """
+    from sqlalchemy import or_, and_
+    
+    server = await get_server_or_404(db, server_id)
+    
+    # Buscar itens
+    items_result = await db.execute(
+        select(ServerItem).where(
+            ServerItem.server_guid == server.guid,
+            ServerItem.name.ilike(f"%{q}%")
+        ).limit(limit)
+    )
+    items = items_result.scalars().all()
+    
+    # Buscar arquivos baixados por path ou sha1
+    files_result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.server_guid == server.guid,
+            or_(
+                DownloadedFile.file_path.ilike(f"%{q}%"),
+                DownloadedFile.sha1_hash.ilike(f"%{q}%")
+            )
+        ).limit(limit)
+    )
+    downloaded_files = files_result.scalars().all()
+    
+    # Organizar resultados
+    directories = []
+    files = []
+    downloaded = []
+    
+    for item in items:
+        item_data = {
+            "id": item.id,
+            "name": item.name,
+            "full_path": item.full_path,
+            "share_name": item.share_name,
+            "size": item.size,
+            "modified": item.modified,
+            "type": "item"
+        }
+        if item.item_type == 'Directory':
+            directories.append(item_data)
+        else:
+            files.append(item_data)
+    
+    # Paths de itens já incluídos
+    item_paths = {item.full_path for item in items}
+    
+    for df in downloaded_files:
+        if df.file_path not in item_paths:
+            name = df.file_path.split('\\')[-1] if '\\' in df.file_path else df.file_path.split('/')[-1]
+            downloaded.append({
+                "id": df.id,
+                "name": name,
+                "full_path": df.file_path,
+                "share_name": df.share_name,
+                "size": str(df.file_size) if df.file_size else None,
+                "sha1_hash": df.sha1_hash,
+                "downloaded_at": df.downloaded_at.isoformat() if df.downloaded_at else None,
+                "type": "downloaded"
+            })
+    
+    return {
+        "query": q,
+        "directories": directories,
+        "files": files,
+        "downloaded": downloaded,
+        "total": len(directories) + len(files) + len(downloaded)
+    }
+
+
+# ==========================================
 # Share Endpoints
 # ==========================================
 
