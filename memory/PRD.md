@@ -27,6 +27,16 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 7 - Hydration Bug Fix)
+- [x] **Bug Fix: Hydration Error** - Corrigido erro `<span> cannot be a child of <tbody>` em ServerBrowser.js
+  - O erro era causado por fragmentos `<>...</>` sendo usados incorretamente dentro de elementos de tabela
+  - Substituídos fragmentos por `<div>` consistentes na aba de Download
+  - Corrigido mismatch de tags (`<div>` abrindo e `</>` fechando)
+- [x] **Feature: Aba View como padrão** - Quando um arquivo já baixado é clicado:
+  - Se o arquivo pode ser visualizado (texto, imagem, PDF, certificado), a aba "View" é selecionada automaticamente
+  - O conteúdo do arquivo é carregado automaticamente quando a aba View é ativada
+  - Arquivos não baixados ou não visualizáveis continuam abrindo na aba "Info"
+
 ### 2026-02-20 (Session 6 - Server Browser Fixes)
 - [x] **Bug Fix: Share fica azul ao expandir** - Share agora fica azul imediatamente após primeiro clique/expansão
 - [x] **Bug Fix: Refresh preserva estado** - Botão "Atualizar Compartilhamentos" agora preserva estado de expansão da árvore
