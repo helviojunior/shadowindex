@@ -1647,7 +1647,7 @@ const ServerBrowser = () => {
                   {/* Remark - apenas para shares */}
                   {isShare && selectedItem.remark && (
                     <InfoRow 
-                      label="Remark" 
+                      label="Observação" 
                       value={selectedItem.remark}
                     />
                   )}
@@ -1655,7 +1655,7 @@ const ServerBrowser = () => {
                   {/* Type - apenas para shares */}
                   {isShare && selectedItem.share_type && (
                     <InfoRow 
-                      label="Share Type" 
+                      label="Tipo de Compartilhamento" 
                       value={selectedItem.share_type}
                     />
                   )}
