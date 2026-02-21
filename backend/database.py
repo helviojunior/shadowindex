@@ -299,10 +299,31 @@ async def init_db():
             cursor.execute('ALTER TABLE downloaded_files ADD COLUMN sha1_hash VARCHAR(40)')
             logger.info("Added column 'sha1_hash' to downloaded_files")
         
+        if 'mimetype' not in columns:
+            cursor.execute('ALTER TABLE downloaded_files ADD COLUMN mimetype VARCHAR')
+            logger.info("Added column 'mimetype' to downloaded_files")
+        
         conn.commit()
         conn.close()
     except Exception as e:
         logger.warning(f"Migration check for downloaded_files failed: {e}")
+    
+    # Migration for file_versions table
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("PRAGMA table_info(file_versions)")
+        columns = {col[1] for col in cursor.fetchall()}
+        
+        if 'mimetype' not in columns:
+            cursor.execute('ALTER TABLE file_versions ADD COLUMN mimetype VARCHAR')
+            logger.info("Added column 'mimetype' to file_versions")
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Migration check for file_versions failed: {e}")
     
     # Create default records
     async with AsyncSessionLocal() as session:
