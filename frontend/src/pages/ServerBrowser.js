@@ -1860,7 +1860,7 @@ const ServerBrowser = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[1, 2, 3, 4, 5, 10].map((n) => (
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20].map((n) => (
                       <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1879,7 +1879,7 @@ const ServerBrowser = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[1, 5, 10, 25, 50, 100, 500].map((n) => (
+                    {[1, 5, 10, 25, 50, 100, 200, 500, 1000].map((n) => (
                       <SelectItem key={n} value={n.toString()}>{n} MB</SelectItem>
                     ))}
                   </SelectContent>
