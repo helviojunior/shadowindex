@@ -27,33 +27,54 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2026-02-22 (Session 13 - API V2 Refactoring)
+### 2026-02-22 (Session 13 - API V2 Complete Migration)
 - [x] **Nova API V2 baseada em IDs**
   - Criado arquivo `backend/routes_v2.py` com endpoints baseados em IDs
   - Resolve problemas de encoding em URLs com caracteres especiais (`\`, `$`, `:`, etc.)
   - Estrutura mais RESTful e segura
 - [x] **Novos Endpoints V2:**
+  - `GET /api/v2/servers/{server_id}/shares` - Lista shares
+  - `GET /api/v2/servers/{server_id}/shares-tree` - Shares com itens
   - `GET /api/v2/servers/{server_id}/shares/{share_id}` - Info do share
   - `GET /api/v2/servers/{server_id}/shares/{share_id}/items` - Itens do share
   - `POST /api/v2/servers/{server_id}/shares/{share_id}/browse` - Navegar no share (SOAP)
+  - `GET /api/v2/servers/{server_id}/items` - Lista itens (com filtro parent_path)
   - `GET /api/v2/servers/{server_id}/items/by-path?full_path=...` - Buscar item por path
   - `GET /api/v2/servers/{server_id}/items/{item_id}` - Info do item
   - `GET /api/v2/servers/{server_id}/items/{item_id}/children` - Filhos do item
   - `POST /api/v2/servers/{server_id}/items/{item_id}/browse` - Navegar no diretório
   - `POST /api/v2/servers/{server_id}/items/{item_id}/download` - Download direto
   - `POST /api/v2/servers/{server_id}/items/{item_id}/queue` - Adicionar à fila
+  - `POST /api/v2/servers/{server_id}/browse` - Browse por path (genérico)
+  - `POST /api/v2/servers/{server_id}/download` - Download por path
+  - `POST /api/v2/servers/{server_id}/download-chunk` - Download em chunks
   - `GET /api/v2/servers/{server_id}/files/by-path?file_path=...` - Buscar arquivo por path
   - `GET /api/v2/servers/{server_id}/files/{file_id}` - Info do arquivo baixado
   - `GET /api/v2/servers/{server_id}/files/{file_id}/content` - Conteúdo do arquivo
   - `GET /api/v2/servers/{server_id}/files/{file_id}/versions` - Versões do arquivo
   - `POST /api/v2/servers/{server_id}/files/{file_id}/certificate-info` - Info certificado
   - `GET /api/v2/servers/{server_id}/files/{file_id}/download` - Download do arquivo
+  - `POST /api/v2/downloads` - Adicionar à fila de downloads
+  - `POST /api/v2/downloads/check-queue` - Verificar se arquivo está na fila
   - `POST /api/v2/servers/{server_id}/batch/queue` - Batch queue
-- [x] **Frontend atualizado para usar API V2:**
+- [x] **Frontend completamente migrado para API V2:**
+  - `loadShares` usa API V2
+  - `refreshShares` usa API V2
+  - `loadDirectory` usa API V2
+  - `handleDownload` usa API V2
+  - `checkFileInQueue` usa API V2
+  - `processDirectoryDownload` usa API V2
+  - `forceDownloadItem` usa API V2
   - `loadFileContent` usa ID quando disponível
   - `loadFileVersions` usa ID quando disponível
   - `openFile` usa ID quando disponível
-  - Fallback para API antiga mantido para compatibilidade
+- [x] **Endpoints antigos marcados como deprecated:**
+  - `GET /api/servers/{server_id}/shares` → deprecated
+  - `GET /api/servers/{server_id}/shares-tree` → deprecated
+  - `GET /api/servers/{server_id}/items` → deprecated
+  - `POST /api/servers/{server_id}/browse` → deprecated
+  - `POST /api/servers/{server_id}/download` → deprecated
+  - `POST /api/servers/{server_id}/download-chunk` → deprecated
 
 ### 2026-02-22 (Session 12 - Scan Jobs & Download Sorting)
 - [x] **Botão "Limpar Finalizados" para Scan Jobs**
