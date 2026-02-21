@@ -663,11 +663,8 @@ const ServerBrowser = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
-      toast.success('Download iniciado');
     } catch (error) {
       console.error('Error downloading file:', error);
-      toast.error('Erro ao baixar arquivo');
     }
   };
 
