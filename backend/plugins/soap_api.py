@@ -8,7 +8,6 @@ import asyncio
 import logging
 import xml.etree.ElementTree as ET
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
 
 import requests
 import urllib3
@@ -295,7 +294,7 @@ class SoapApiPlugin(BasePlugin):
                             ))
                 except ET.ParseError:
                     # If not XML, try other formats
-                    logger.warning(f"Could not parse shares response as XML")
+                    logger.warning("Could not parse shares response as XML")
             
             return shares
             
