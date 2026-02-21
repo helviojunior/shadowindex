@@ -1,0 +1,61 @@
+"""
+Plugin Exceptions
+
+Standard exceptions that all plugins should raise for common error conditions.
+"""
+
+
+class PluginException(Exception):
+    """Base exception for all plugin errors"""
+    def __init__(self, message: str, details: dict = None):
+        super().__init__(message)
+        self.message = message
+        self.details = details or {}
+
+
+class ItemNotFoundException(PluginException):
+    """Raised when a requested item (file, directory, share) is not found"""
+    def __init__(self, path: str, message: str = None):
+        super().__init__(
+            message or f"Item not found: {path}",
+            {"path": path}
+        )
+        self.path = path
+
+
+class AccessDeniedException(PluginException):
+    """Raised when access to an item is denied"""
+    def __init__(self, path: str, message: str = None):
+        super().__init__(
+            message or f"Access denied: {path}",
+            {"path": path}
+        )
+        self.path = path
+
+
+class ConnectionException(PluginException):
+    """Raised when connection to the server fails"""
+    def __init__(self, server: str, message: str = None, original_error: Exception = None):
+        super().__init__(
+            message or f"Connection failed to: {server}",
+            {"server": server, "original_error": str(original_error) if original_error else None}
+        )
+        self.server = server
+        self.original_error = original_error
+
+
+class AuthenticationException(PluginException):
+    """Raised when authentication fails"""
+    def __init__(self, message: str = None):
+        super().__init__(message or "Authentication failed")
+
+
+class TimeoutException(PluginException):
+    """Raised when an operation times out"""
+    def __init__(self, operation: str, timeout_seconds: int, message: str = None):
+        super().__init__(
+            message or f"Operation '{operation}' timed out after {timeout_seconds}s",
+            {"operation": operation, "timeout_seconds": timeout_seconds}
+        )
+        self.operation = operation
+        self.timeout_seconds = timeout_seconds
