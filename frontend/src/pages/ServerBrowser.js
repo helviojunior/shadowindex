@@ -476,6 +476,7 @@ const ServerBrowser = () => {
     } catch (error) {
       console.error('Error loading file content:', error);
       toast.error('Erro ao carregar conteúdo do arquivo');
+      setContentLoadError(true);
     } finally {
       setLoadingContent(false);
     }
