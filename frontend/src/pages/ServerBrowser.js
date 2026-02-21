@@ -2338,6 +2338,15 @@ const ServerBrowser = () => {
                   onClick={() => {
                     if (focusedItem) {
                       setFocusedItem(null);
+                      // Scroll para o objeto selecionado após sair do modo foco
+                      setTimeout(() => {
+                        const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
+                        const safeId = nodeId.replace(/\$/g, '_dollar_');
+                        const element = document.querySelector(`[data-testid="tree-node-${safeId}"]`);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
                     } else {
                       const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
                       const shareName = selectedItem.itemType === 'share' 
