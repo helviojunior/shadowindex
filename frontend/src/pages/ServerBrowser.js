@@ -140,6 +140,31 @@ const ServerBrowser = () => {
     loadDownloadedFiles();
   }, [serverId]);
 
+  // Atalho de teclado Ctrl+F (Windows) ou Cmd+F (Mac) para focar na busca
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+F no Windows/Linux ou Cmd+F no Mac
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault(); // Prevenir busca nativa do navegador
+        
+        // Focar no campo de busca
+        const searchInput = document.querySelector('[data-testid="search-input"]');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select(); // Selecionar texto existente
+        }
+      }
+      
+      // ESC para fechar resultados de busca
+      if (e.key === 'Escape' && searchResults) {
+        clearSearch();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchResults]);
+
   useEffect(() => {
     if (server) {
       loadShares();
