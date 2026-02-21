@@ -1,0 +1,16 @@
+Looking in indexes: https://pypi.org/simple, https://d33sy5i8bnduwe.cloudfront.net/simple/
+Collecting tika
+  Downloading tika-3.1.0-py3-none-any.whl.metadata (15 kB)
+Collecting setuptools (from tika)
+  Downloading setuptools-82.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: requests in /root/.venv/lib/python3.11/site-packages (from tika) (2.32.5)
+Requirement already satisfied: charset_normalizer<4,>=2 in /root/.venv/lib/python3.11/site-packages (from requests->tika) (3.4.4)
+Requirement already satisfied: idna<4,>=2.5 in /root/.venv/lib/python3.11/site-packages (from requests->tika) (3.11)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /root/.venv/lib/python3.11/site-packages (from requests->tika) (2.6.3)
+Requirement already satisfied: certifi>=2017.4.17 in /root/.venv/lib/python3.11/site-packages (from requests->tika) (2026.1.4)
+Downloading tika-3.1.0-py3-none-any.whl (38 kB)
+Downloading setuptools-82.0.0-py3-none-any.whl (1.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.0/1.0 MB 26.1 MB/s  0:00:00
+Installing collected packages: setuptools, tika
+
+Successfully installed setuptools-82.0.0 tika-3.1.0
