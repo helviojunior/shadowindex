@@ -106,13 +106,18 @@ const ServerBrowser = () => {
 
   // Reset tab quando selecionar novo item e carregar versões
   useEffect(() => {
+    // Se download em massa está ativo, NÃO mudar de aba
+    if (bulkDownloadActive) {
+      return;
+    }
+    
     // Definir aba padrão baseado no tipo de item
     const isShare = selectedItem?.itemType === 'share';
     const isDirectory = selectedItem?.itemType === 'Directory';
     const isFile = selectedItem?.itemType === 'File';
     const isAccessDenied = selectedItem?.type === 'AccessDenied' || selectedItem?.accessDenied;
     
-    // Limpar dados de download ao mudar de diretório/share
+    // Limpar dados de download ao mudar de diretório/share (apenas se não estiver baixando)
     if (isShare || isDirectory) {
       setBulkDownloadItems([]);
       setBulkDownloadStats({ total: 0, completed: 0, failed: 0, skipped: 0 });
@@ -148,7 +153,7 @@ const ServerBrowser = () => {
     } else {
       setActiveTab('info');
     }
-  }, [selectedItem?.id, downloadedFiles]);
+  }, [selectedItem?.id, downloadedFiles, bulkDownloadActive]);
 
   // Carregar conteúdo automaticamente quando aba View for selecionada
   useEffect(() => {
