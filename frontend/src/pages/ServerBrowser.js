@@ -1714,14 +1714,64 @@ const ServerBrowser = () => {
         </div>
         
         {/* Access Denied Alert */}
-        {isAccessDenied && selectedItem.error_message && (
+        {isAccessDenied && (
           <div className="mx-4 mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-red-400">
-                <p className="font-medium">Erro de Acesso</p>
-                <p className="text-xs mt-1 text-red-300/80">{selectedItem.error_message}</p>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-red-400">
+                  <p className="font-medium">Erro de Acesso</p>
+                  {selectedItem.error_message && (
+                    <p className="text-xs mt-1 text-red-300/80">{selectedItem.error_message}</p>
+                  )}
+                </div>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-red-500/50 text-red-400 hover:bg-red-500/20"
+                onClick={async () => {
+                  try {
+                    const itemType = isShare ? 'share' : (isDirectory ? 'directory' : 'file');
+                    const itemPath = selectedItem.fullPath || selectedItem.serverPath || '';
+                    const shareName = isShare ? selectedItem.share_name : selectedItem.shareName;
+                    
+                    await axios.post(`${API}/servers/${serverId}/clear-access-denied`, null, {
+                      params: {
+                        item_path: itemPath,
+                        item_type: itemType,
+                        share_name: shareName
+                      }
+                    });
+                    
+                    // Atualizar a UI - remover o status de acesso negado
+                    if (isShare) {
+                      setShares(prev => prev.map(s => 
+                        s.share_name === selectedItem.share_name
+                          ? { ...s, access_denied: false, error_message: null }
+                          : s
+                      ));
+                    }
+                    
+                    // Atualizar o item selecionado
+                    setSelectedItem(prev => ({
+                      ...prev,
+                      access_denied: false,
+                      accessDenied: false,
+                      error_message: null
+                    }));
+                    
+                    toast.success('Status de acesso limpo. Tente acessar novamente.');
+                  } catch (error) {
+                    console.error('Error clearing access denied:', error);
+                    toast.error('Erro ao limpar status de acesso');
+                  }
+                }}
+                data-testid="clear-access-denied-button"
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Limpar e Re-testar
+              </Button>
             </div>
           </div>
         )}
