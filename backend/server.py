@@ -1950,6 +1950,7 @@ async def get_certificate_info(
     
     ext = file_path.lower().split('.')[-1]
     certificates = []
+    private_key = None  # Inicializar para evitar erro em arquivos não-PFX
     private_key_info = None
     used_password = None
     
