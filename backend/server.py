@@ -83,9 +83,7 @@ def extract_ipv4_from_resolve_result(result: str) -> Optional[str]:
 
 # Função auxiliar para calcular mimetype
 def get_file_mimetype(file_path: str) -> Optional[str]:
-    """Calcula o mimetype de um arquivo usando libmagic (se disponível)"""
-    if not MAGIC_AVAILABLE:
-        return None
+    """Calcula o mimetype de um arquivo usando libmagic"""
     try:
         mime = magic.Magic(mime=True)
         return mime.from_file(file_path)
