@@ -211,6 +211,7 @@ class DirectoryScanner:
                                 apply_filters=scan_job.apply_filters
                             )
                             self.scan_queue.append(sub_job)
+                            dirs_added += 1
                 
                 elif item_type == 'File':
                     # Verificar extensão ignorada (apenas se aplicar filtros)
@@ -253,11 +254,14 @@ class DirectoryScanner:
                         max_depth=scan_job.max_depth
                     )
                     db.add(download_job)
+                    files_added += 1
             
             await db.commit()
+            print(f"=== SCANNER: Scanned {full_path}, added {files_added} files, {dirs_added} subdirs ===", flush=True)
             logger.info(f"Scanned directory: {full_path}, found {len(items)} items")
             
         except Exception as e:
+            print(f"=== SCANNER ERROR in _scan_directory: {e} ===", flush=True)
             logger.error(f"Error scanning {full_path}: {e}")
     
     def _parse_directory_listing(self, result: str) -> List[dict]:
