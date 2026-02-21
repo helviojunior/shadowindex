@@ -26,8 +26,10 @@ class Credential(Base):
     id = Column(Integer, primary_key=True, index=True)
     domain = Column(String, nullable=False)
     username = Column(String, nullable=False)
-    password = Column(String, nullable=False)
+    password = Column(String, nullable=True)  # Password or NTLM hash required
+    ntlm_hash = Column(String, nullable=True)  # NTLM hash (format: LM:NT or just NT)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class DatabaseType(Base):
     """Tipos de banco de dados suportados"""
