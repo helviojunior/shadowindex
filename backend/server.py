@@ -801,7 +801,7 @@ async def soap_exec4(
     db: AsyncSession = Depends(get_db)
 ):
     soap_service = await get_default_soap_service(db)
-    params = {"s1": request.s1, "s2": request.s2}
+    params = {"s1": request.s1, "s2": request.s2, "l1": 0, "l2": 0}
     
     try:
         result = await soap_service.call_soap_operation(
@@ -821,7 +821,7 @@ async def soap_exec5(
     db: AsyncSession = Depends(get_db)
 ):
     soap_service = await get_default_soap_service(db)
-    params = {"s1": request.s1, "s2": request.s2}
+    params = {"s1": request.s1, "s2": request.s2, "l1": 0, "l2": 0}
     
     try:
         result = await soap_service.call_soap_operation(
