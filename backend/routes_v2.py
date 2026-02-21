@@ -926,32 +926,10 @@ async def batch_queue(
 
 
 # ==========================================
-# Utility Endpoints
+# Utility Endpoints  
 # ==========================================
 
-@router.get("/servers/{server_id}/files/by-path")
-async def get_file_by_path(
-    server_id: int, 
-    file_path: str,
-    db: AsyncSession = Depends(get_db)
-):
-    """Busca um arquivo baixado pelo path (para compatibilidade)"""
-    server = await get_server_or_404(db, server_id)
-    
-    result = await db.execute(
-        select(DownloadedFile).where(
-            DownloadedFile.server_guid == server.guid,
-            DownloadedFile.file_path == file_path
-        )
-    )
-    file = result.scalar_one_or_none()
-    
-    if not file:
-        return {"found": False, "file_id": None}
-    
-    return {"found": True, "file_id": file.id, "file": file}
-
-
+# IMPORTANTE: Rotas específicas devem vir ANTES das rotas com parâmetros {item_id}
 @router.get("/servers/{server_id}/items/by-path")
 async def get_item_by_path(
     server_id: int, 
