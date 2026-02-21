@@ -113,12 +113,25 @@ class BasePlugin(ABC):
     
     All plugins must implement these methods to provide
     a consistent interface for server operations.
+    
+    Required Methods:
+        - list_shares: List network shares on a server
+        - list_directory: List contents of a directory
+        - download_file: Download file content
+        - resolve_address: Resolve hostname to IP
+        - sql_request: Execute SQL queries
+        - health_check: Verify plugin connectivity
+        - validate_config: Validate plugin configuration
     """
     
-    # Plugin metadata
+    # Plugin metadata - MUST be overridden by subclasses
     PLUGIN_TYPE: str = "base"
     PLUGIN_NAME: str = "Base Plugin"
     PLUGIN_VERSION: str = "1.0.0"
+    PLUGIN_DESCRIPTION: str = "Base plugin class"
+    
+    # Required configuration keys for this plugin
+    REQUIRED_CONFIG: List[str] = []
     
     def __init__(self, config: PluginConfig, proxy_url: Optional[str] = None):
         """
@@ -127,17 +140,27 @@ class BasePlugin(ABC):
         Args:
             config: Plugin-specific configuration
             proxy_url: Optional proxy URL for connections
+            
+        Raises:
+            ValueError: If required configuration is missing
         """
         self.config = config
         self.proxy_url = proxy_url
+        self._initialized = False
+        
+        # Validate configuration
+        missing = config.validate(self.REQUIRED_CONFIG)
+        if missing:
+            logger.warning(f"Plugin {self.PLUGIN_TYPE} missing config keys: {missing}")
     
     @abstractmethod
-    async def list_shares(self, server_ip: str) -> List[ShareInfo]:
+    async def list_shares(self, server_ip: str, ignore_cache: bool = False) -> List[ShareInfo]:
         """
         List all shares available on a server.
         
         Args:
             server_ip: IP address or hostname of the server
+            ignore_cache: Skip cache lookup if True
             
         Returns:
             List of ShareInfo objects
@@ -149,12 +172,13 @@ class BasePlugin(ABC):
         pass
     
     @abstractmethod
-    async def list_directory(self, path: str) -> List[DirectoryItem]:
+    async def list_directory(self, path: str, ignore_cache: bool = False) -> List[DirectoryItem]:
         """
         List contents of a directory.
         
         Args:
             path: Full path to the directory (e.g., \\\\server\\share\\folder)
+            ignore_cache: Skip cache lookup if True
             
         Returns:
             List of DirectoryItem objects
@@ -171,7 +195,8 @@ class BasePlugin(ABC):
         self, 
         path: str, 
         offset: int = 0, 
-        length: Optional[int] = None
+        length: Optional[int] = None,
+        ignore_cache: bool = False
     ) -> FileContent:
         """
         Download file content, optionally in chunks.
@@ -180,6 +205,7 @@ class BasePlugin(ABC):
             path: Full path to the file
             offset: Starting byte position (default: 0)
             length: Number of bytes to read (default: entire file)
+            ignore_cache: Skip cache lookup if True (usually True for downloads)
             
         Returns:
             FileContent with the file data
@@ -192,12 +218,13 @@ class BasePlugin(ABC):
         pass
     
     @abstractmethod
-    async def resolve_address(self, hostname: str) -> str:
+    async def resolve_address(self, hostname: str, ignore_cache: bool = False) -> str:
         """
         Resolve a hostname to an IP address.
         
         Args:
             hostname: Hostname to resolve
+            ignore_cache: Skip cache lookup if True
             
         Returns:
             IP address as string
@@ -212,7 +239,8 @@ class BasePlugin(ABC):
         self, 
         connection_string: str, 
         query: str,
-        timeout: int = 30
+        timeout: int = 30,
+        ignore_cache: bool = False
     ) -> SqlResult:
         """
         Execute a SQL query on a database.
@@ -221,6 +249,7 @@ class BasePlugin(ABC):
             connection_string: Database connection string
             query: SQL query to execute
             timeout: Query timeout in seconds
+            ignore_cache: Skip cache lookup if True
             
         Returns:
             SqlResult with query results
@@ -231,15 +260,73 @@ class BasePlugin(ABC):
         """
         pass
     
+    async def health_check(self) -> Dict[str, Any]:
+        """
+        Verify plugin connectivity and configuration.
+        
+        Returns:
+            Dictionary with health status:
+            {
+                "healthy": bool,
+                "message": str,
+                "details": dict (optional)
+            }
+        """
+        return {
+            "healthy": True,
+            "message": "Plugin is available",
+            "details": {}
+        }
+    
+    def validate_config(self) -> Dict[str, Any]:
+        """
+        Validate plugin configuration.
+        
+        Returns:
+            Dictionary with validation result:
+            {
+                "valid": bool,
+                "missing_keys": List[str],
+                "errors": List[str]
+            }
+        """
+        missing = self.config.validate(self.REQUIRED_CONFIG)
+        return {
+            "valid": len(missing) == 0,
+            "missing_keys": missing,
+            "errors": [f"Missing required config: {key}" for key in missing]
+        }
+    
     def get_config_value(self, key: str, default: Any = None) -> Any:
         """Get a configuration value"""
         return self.config.get(key, default)
     
+    def require_config_value(self, key: str) -> Any:
+        """Get a required configuration value or raise error"""
+        return self.config.require(key)
+    
     @classmethod
-    def get_plugin_info(cls) -> Dict[str, str]:
+    def get_plugin_info(cls) -> Dict[str, Any]:
         """Get plugin metadata"""
         return {
             "type": cls.PLUGIN_TYPE,
             "name": cls.PLUGIN_NAME,
-            "version": cls.PLUGIN_VERSION
+            "version": cls.PLUGIN_VERSION,
+            "description": cls.PLUGIN_DESCRIPTION,
+            "required_config": cls.REQUIRED_CONFIG
+        }
+    
+    @classmethod
+    def get_config_schema(cls) -> Dict[str, Any]:
+        """
+        Get JSON schema for plugin configuration.
+        Override in subclasses to provide detailed schema.
+        
+        Returns:
+            JSON schema dictionary
+        """
+        return {
+            "type": "object",
+            "properties": {},
+            "required": cls.REQUIRED_CONFIG
         }
