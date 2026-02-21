@@ -699,21 +699,19 @@ const ServerBrowser = () => {
   // Carregar versões do arquivo selecionado
   const loadFileVersions = async (filePath) => {
     try {
-      // Obter file_id do downloadedFilesInfo
-      const fileInfo = downloadedFilesInfo[filePath];
-      const fileId = fileInfo?.id;
-      
-      let response;
-      if (fileId) {
-        // Usar API V2 com ID
-        response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/versions`);
-      } else {
-        // Fallback para API antiga
-        response = await axios.get(`${API}/servers/${serverId}/file-versions`, {
-          params: { file_path: filePath }
-        });
+      // Obter file_id do downloadedFilesInfo ou buscar via API
+      let fileId = downloadedFilesInfo[filePath]?.id;
+      if (!fileId) {
+        fileId = await getFileIdByPath(filePath);
       }
-      setFileVersions(response.data);
+      
+      if (fileId) {
+        const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/versions`);
+        setFileVersions(response.data);
+      } else {
+        console.warn('File ID not found for versions:', filePath);
+        setFileVersions([]);
+      }
     } catch (error) {
       console.error('Error loading file versions:', error);
       setFileVersions([]);
