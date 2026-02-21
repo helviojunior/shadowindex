@@ -1448,9 +1448,7 @@ const ServerBrowser = () => {
           
           {/* Icon */}
           <div className="mx-1 flex-shrink-0">
-            {isAccessDenied ? (
-              <AlertTriangle className="w-4 h-4 text-red-500" />
-            ) : isShare ? (
+            {isShare ? (
               <HardDrive className={`w-4 h-4 ${iconColor}`} />
             ) : isDirectory ? (
               isExpanded ? (
