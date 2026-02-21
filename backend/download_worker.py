@@ -120,6 +120,9 @@ class DownloadWorker:
     
     async def _execute_download(self, job_id: int):
         """Executa o download de um arquivo"""
+        from database import DownloadJob, Server, AsyncSessionLocal
+        from soap_service import get_default_soap_service
+        
         async with AsyncSessionLocal() as db:
             # Carregar job
             result = await db.execute(select(DownloadJob).where(DownloadJob.id == job_id))
@@ -158,10 +161,10 @@ class DownloadWorker:
                 # Fazer download
                 if job.file_size and job.file_size > CHUNK_SIZE:
                     # Download em chunks
-                    await self._download_chunked(db, job, soap_service, full_path)
+                    await self._download_chunked(db, job, soap_service, full_path, server)
                 else:
                     # Download direto
-                    await self._download_direct(db, job, soap_service, full_path)
+                    await self._download_direct(db, job, soap_service, full_path, server)
                 
                 # Marcar como concluído
                 job.status = 'completed'
