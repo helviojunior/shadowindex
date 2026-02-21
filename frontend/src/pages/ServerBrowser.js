@@ -3221,6 +3221,179 @@ const ServerBrowser = () => {
         {/* Left Panel - Tree View */}
         <ResizablePanel defaultSize={25} minSize={15} maxSize={50}>
           <div className="h-full border-r border-border bg-card flex flex-col">
+            {/* Search Box */}
+            <div className="p-3 border-b border-border">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar arquivos e diretórios..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="w-full px-3 py-2 pr-20 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  data-testid="search-input"
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {searchLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={clearSearch}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                  <Button
+                    variant={showAdvancedSearch ? "default" : "ghost"}
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+                    title="Busca avançada"
+                  >
+                    <Code className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Advanced Search Filters */}
+              {showAdvancedSearch && (
+                <div className="mt-2 p-2 bg-muted/30 rounded-md space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Extensão (.aspx)"
+                      value={searchFilters.extension}
+                      onChange={(e) => setSearchFilters(prev => ({ ...prev, extension: e.target.value }))}
+                      className="px-2 py-1 text-xs bg-background border border-border rounded"
+                    />
+                    <input
+                      type="text"
+                      placeholder="SHA1 hash"
+                      value={searchFilters.sha1}
+                      onChange={(e) => setSearchFilters(prev => ({ ...prev, sha1: e.target.value }))}
+                      className="px-2 py-1 text-xs bg-background border border-border rounded"
+                    />
+                    <input
+                      type="date"
+                      placeholder="Data inicial"
+                      value={searchFilters.dateFrom}
+                      onChange={(e) => setSearchFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                      className="px-2 py-1 text-xs bg-background border border-border rounded"
+                    />
+                    <input
+                      type="date"
+                      placeholder="Data final"
+                      value={searchFilters.dateTo}
+                      onChange={(e) => setSearchFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                      className="px-2 py-1 text-xs bg-background border border-border rounded"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={searchFilters.itemType}
+                      onChange={(e) => setSearchFilters(prev => ({ ...prev, itemType: e.target.value }))}
+                      className="flex-1 px-2 py-1 text-xs bg-background border border-border rounded"
+                    >
+                      <option value="">Todos os tipos</option>
+                      <option value="File">Arquivos</option>
+                      <option value="Directory">Diretórios</option>
+                    </select>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={performAdvancedSearch}
+                      disabled={searchLoading}
+                    >
+                      Buscar
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Search Results */}
+              {searchResults && (
+                <div className="mt-2 max-h-64 overflow-y-auto border border-border rounded-md bg-background">
+                  {searchResults.total === 0 ? (
+                    <div className="p-3 text-center text-sm text-muted-foreground">
+                      Nenhum resultado encontrado
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {/* Diretórios */}
+                      {searchResults.directories?.length > 0 && (
+                        <div>
+                          <div className="px-3 py-1 bg-muted/50 text-xs font-medium text-muted-foreground">
+                            Diretórios ({searchResults.directories.length})
+                          </div>
+                          {searchResults.directories.map((item, idx) => (
+                            <div
+                              key={`dir-${idx}`}
+                              className="px-3 py-2 hover:bg-muted/50 cursor-pointer flex items-center gap-2"
+                              onClick={() => navigateToSearchResult({ ...item, item_type: 'Directory' })}
+                            >
+                              <Folder className="w-4 h-4 text-yellow-500" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm truncate">{item.name}</div>
+                                <div className="text-xs text-muted-foreground truncate">{item.share_name}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Arquivos */}
+                      {searchResults.files?.length > 0 && (
+                        <div>
+                          <div className="px-3 py-1 bg-muted/50 text-xs font-medium text-muted-foreground">
+                            Arquivos ({searchResults.files.length})
+                          </div>
+                          {searchResults.files.map((item, idx) => (
+                            <div
+                              key={`file-${idx}`}
+                              className="px-3 py-2 hover:bg-muted/50 cursor-pointer flex items-center gap-2"
+                              onClick={() => navigateToSearchResult({ ...item, item_type: 'File' })}
+                            >
+                              <File className="w-4 h-4 text-blue-400" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm truncate">{item.name}</div>
+                                <div className="text-xs text-muted-foreground truncate">{item.share_name}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Arquivos Baixados */}
+                      {searchResults.downloaded?.length > 0 && (
+                        <div>
+                          <div className="px-3 py-1 bg-muted/50 text-xs font-medium text-muted-foreground flex items-center gap-1">
+                            <FileCheck className="w-3 h-3 text-green-500" />
+                            Baixados ({searchResults.downloaded.length})
+                          </div>
+                          {searchResults.downloaded.map((item, idx) => (
+                            <div
+                              key={`dl-${idx}`}
+                              className="px-3 py-2 hover:bg-muted/50 cursor-pointer flex items-center gap-2"
+                              onClick={() => navigateToSearchResult({ ...item, item_type: 'File', is_downloaded: true })}
+                            >
+                              <FileCheck className="w-4 h-4 text-green-500" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm truncate">{item.name}</div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {item.sha1_hash ? `SHA1: ${item.sha1_hash.substring(0, 8)}...` : item.share_name}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
             <div className="p-3 border-b border-border flex items-center justify-between">
               <h3 className="text-sm font-medium text-muted-foreground">
                 Compartilhamentos
