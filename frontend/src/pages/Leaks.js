@@ -657,8 +657,7 @@ const Leaks = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setSelectedFinding({...finding, originalFile})}
-                              >
+                                onClick={() => setSelectedFinding(finding)}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
