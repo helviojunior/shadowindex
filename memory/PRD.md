@@ -1,4 +1,4 @@
-# Ops Integration Desk - Product Requirements Document
+# ShadowIndex - Product Requirements Document
 
 ## Original Problem Statement
 Build a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. The application integrates with an external SOAP web service for various operations (Resolve, Shares, Exec, etc.), implements a 24-hour caching mechanism for SOAP responses, and supports an offline mode. Includes a server management feature with an interactive file browser that dynamically loads data from the SOAP API.
