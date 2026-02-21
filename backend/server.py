@@ -1486,13 +1486,15 @@ async def get_server_shares_with_children(server_id: int, db: AsyncSession = Dep
     }
 
 
-@api_router.get("/servers/{server_id}/items")
+@api_router.get("/servers/{server_id}/items", deprecated=True)
 async def get_server_items_by_path(
     server_id: int, 
     parent_path: str,
     db: AsyncSession = Depends(get_db)
 ):
     """
+    [DEPRECATED] Use GET /api/v2/servers/{server_id}/items
+    
     Retorna os itens filhos de um path específico do banco.
     Não faz chamada SOAP, apenas retorna dados em cache.
     """
