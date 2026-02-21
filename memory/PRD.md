@@ -186,14 +186,17 @@ Portuguese (pt-BR)
 
 *No pending issues at this time.*
 
-### 2026-02-22 (Session 10 - Sidebar Bug Fixes)
+### 2026-02-22 (Session 10 - Sidebar Bug Fixes & UI Improvements)
 - [x] **P0 Bug Fix: Destaque de menu ativo incorreto** - Corrigida função `findActiveMenu` em `Layout.js`
   - Problema: Navegar para `/sql/presets` destacava "Conexões" ao invés de "Presets"
-  - Causa: A função iterava na ordem do array e fazia match com `/sql` antes de `/sql/presets` devido ao `startsWith`
-  - Solução: Ordenar submenus por tamanho de path (descendente) antes de verificar, garantindo que paths mais específicos sejam verificados primeiro
+  - Solução: Ordenar submenus por tamanho de path (descendente) para match mais específico primeiro
 - [x] **P1 Bug Fix: Menu flyout verificado** - Confirmado funcionamento correto do flyout quando sidebar colapsado
-  - O flyout aparece corretamente ao hover sobre ícones do menu
-  - Submenu ativo é destacado corretamente no flyout
+- [x] **UI Improvement: Remover botão "Gerenciar Presets"** - Removido da página de Conexões SQL
+- [x] **UI Improvement: Forms colapsáveis em todas as telas de cadastro**
+  - Form de adição oculto por padrão
+  - Botão "Adicionar ..." no header alinhado à direita
+  - Ao clicar, expande o form de cadastro
+  - Aplicado em: Conexões SQL, Proxy Servers, Credenciais, SOAP APIs, Servidores
 
 ---
 
