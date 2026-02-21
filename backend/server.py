@@ -2263,6 +2263,7 @@ async def get_certificate_info(
             
             cert_info = {
                 "index": i + 1,
+                "has_private_key": i == private_key_cert_index,  # Indica se este certificado possui a chave privada
                 "version": cert.version.name,
                 "serial_number": format(cert.serial_number, 'X'),
                 "serial_number_decimal": str(cert.serial_number),
