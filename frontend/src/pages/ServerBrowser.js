@@ -214,6 +214,7 @@ const ServerBrowser = () => {
   };
   
   const isCertificateFile = (filename) => {
+    if (!filename) return false;
     const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
     return CERTIFICATE_EXTENSIONS.includes(ext);
   };
