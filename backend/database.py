@@ -190,6 +190,19 @@ class ServerItem(Base):
     children_fetched = Column(Boolean, default=False)
     discovered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+
+class PfxPassword(Base):
+    """Armazena senhas de arquivos PFX para reutilização"""
+    __tablename__ = "pfx_passwords"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    server_guid = Column(String, nullable=False, index=True)
+    file_path = Column(String, nullable=False, index=True)
+    password = Column(String, nullable=False)  # Senha em texto (ambiente interno)
+    subject_cn = Column(String, nullable=True)  # CN do certificado para identificação
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 async def init_db():
     """Initialize database and apply schema migrations"""
     import sqlite3
