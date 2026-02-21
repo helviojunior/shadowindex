@@ -84,14 +84,17 @@ class DirectoryScanner:
                 apply_filters=apply_filters
             )
             self.scan_queue.append(job)
+            print(f"=== SCANNER: Added scan job: server={server_id}, share={share_name}, path={path} ===", flush=True)
             logger.info(f"Added scan job: {path}")
     
     async def _run_loop(self):
         """Loop principal do scanner"""
+        print("=== SCANNER: Loop started ===", flush=True)
         while self.running:
             try:
                 await self._process_scan_queue()
             except Exception as e:
+                print(f"=== SCANNER ERROR in loop: {e} ===", flush=True)
                 logger.error(f"Error in directory scanner loop: {e}")
             
             await asyncio.sleep(SCANNER_POLL_INTERVAL)
@@ -100,6 +103,8 @@ class DirectoryScanner:
         """Processa jobs de scan na fila"""
         if not self.scan_queue:
             return
+        
+        print(f"=== SCANNER: Processing queue with {len(self.scan_queue)} jobs ===", flush=True)
         
         from database import Server, DownloadJob, AsyncSessionLocal
         from soap_service import get_default_soap_service
@@ -112,8 +117,10 @@ class DirectoryScanner:
         async with AsyncSessionLocal() as db:
             for scan_job in jobs_to_process:
                 try:
+                    print(f"=== SCANNER: Scanning directory: {scan_job.path} ===", flush=True)
                     await self._scan_directory(db, scan_job)
                 except Exception as e:
+                    print(f"=== SCANNER ERROR scanning {scan_job.path}: {e} ===", flush=True)
                     logger.error(f"Error scanning directory {scan_job.path}: {e}")
     
     async def _scan_directory(self, db: AsyncSession, scan_job: ScanJob):
