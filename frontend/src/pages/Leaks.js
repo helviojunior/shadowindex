@@ -5,12 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -18,9 +28,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { 
   AlertTriangle, 
-  Lock, 
   Search, 
   FileWarning, 
   Trash2,
@@ -30,7 +44,16 @@ import {
   Eye,
   Copy,
   CheckCircle,
-  Filter
+  Play,
+  Square,
+  Loader2,
+  Server,
+  FolderSearch,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  XCircle,
+  Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -38,6 +61,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api/v2`;
 
 const Leaks = () => {
+  // State para findings
   const [findings, setFindings] = useState([]);
   const [files, setFiles] = useState([]);
   const [totalFindings, setTotalFindings] = useState(0);
@@ -45,6 +69,53 @@ const Leaks = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFinding, setSelectedFinding] = useState(null);
   const [copied, setCopied] = useState(false);
+
+  // State para GitLeaks Jobs
+  const [gitleaksStatus, setGitleaksStatus] = useState({ available: false, version: null });
+  const [jobs, setJobs] = useState([]);
+  const [servers, setServers] = useState([]);
+  const [selectedServer, setSelectedServer] = useState('');
+  const [customPath, setCustomPath] = useState('');
+  const [scanMode, setScanMode] = useState('all'); // 'all', 'server', 'custom'
+  const [scanning, setScanning] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const [showScanPanel, setShowScanPanel] = useState(true);
+
+  // Carregar status do GitLeaks
+  const loadGitleaksStatus = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/gitleaks/status`);
+      setGitleaksStatus(response.data);
+    } catch (error) {
+      console.error('Error loading gitleaks status:', error);
+      setGitleaksStatus({ available: false, version: null });
+    }
+  }, []);
+
+  // Carregar servidores
+  const loadServers = useCallback(async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/servers`);
+      setServers(response.data);
+    } catch (error) {
+      console.error('Error loading servers:', error);
+    }
+  }, []);
+
+  // Carregar jobs
+  const loadJobs = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/gitleaks/jobs`);
+      setJobs(response.data.jobs || []);
+      
+      const hasActiveJobs = response.data.jobs?.some(
+        j => j.status === 'pending' || j.status === 'running'
+      );
+      setPolling(hasActiveJobs);
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+    }
+  }, []);
 
   // Carregar findings
   const loadFindings = useCallback(async () => {
@@ -62,19 +133,94 @@ const Leaks = () => {
     }
   }, []);
 
-  // Recarregar do disco
-  const handleReload = async () => {
+  // Polling para jobs ativos
+  useEffect(() => {
+    if (polling) {
+      const interval = setInterval(() => {
+        loadJobs();
+        loadFindings();
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [polling, loadJobs, loadFindings]);
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    loadGitleaksStatus();
+    loadServers();
+    loadJobs();
+    loadFindings();
+  }, [loadGitleaksStatus, loadServers, loadJobs, loadFindings]);
+
+  // Iniciar scan
+  const handleStartScan = async () => {
+    if (scanMode === 'server' && !selectedServer) {
+      toast.error('Selecione um servidor');
+      return;
+    }
+    
+    if (scanMode === 'custom' && !customPath) {
+      toast.error('Informe o caminho do diretório');
+      return;
+    }
+
+    setScanning(true);
+    
     try {
-      await axios.post(`${API}/gitleaks/findings/reload`);
-      toast.success('Findings recarregados do disco');
-      loadFindings();
+      let response;
+      
+      if (scanMode === 'all') {
+        response = await axios.post(`${API}/gitleaks/scan-all-servers`);
+        if (response.data.scans_started > 0) {
+          toast.success(`${response.data.scans_started} scans iniciados em background`);
+        } else {
+          toast.warning('Nenhum servidor com arquivos baixados para escanear');
+        }
+      } else if (scanMode === 'server') {
+        response = await axios.post(`${API}/gitleaks/scan-server/${selectedServer}`);
+        toast.success(`Scan iniciado! Job ID: ${response.data.job_id}`);
+      } else {
+        response = await axios.post(`${API}/gitleaks/scan`, {
+          target_path: customPath
+        });
+        toast.success(`Scan iniciado! Job ID: ${response.data.job_id}`);
+      }
+      
+      setPolling(true);
+      loadJobs();
+      
     } catch (error) {
-      toast.error('Erro ao recarregar');
+      const errorMsg = error.response?.data?.detail || error.message;
+      toast.error(`Erro ao iniciar scan: ${errorMsg}`);
+    } finally {
+      setScanning(false);
     }
   };
 
-  // Limpar todos
-  const handleClear = async () => {
+  // Cancelar job
+  const handleCancelJob = async (jobId) => {
+    try {
+      await axios.post(`${API}/gitleaks/jobs/${jobId}/cancel`);
+      toast.success('Job cancelado');
+      loadJobs();
+    } catch (error) {
+      toast.error('Erro ao cancelar job');
+    }
+  };
+
+  // Limpar jobs finalizados
+  const handleClearFinished = async () => {
+    try {
+      const response = await axios.delete(`${API}/gitleaks/jobs/clear-finished`);
+      toast.success(`${response.data.cleared} jobs removidos`);
+      loadJobs();
+    } catch (error) {
+      toast.error('Erro ao limpar jobs');
+    }
+  };
+
+  // Limpar todos findings
+  const handleClearFindings = async () => {
     if (!confirm('Tem certeza que deseja limpar todos os findings?')) return;
     
     try {
@@ -86,6 +232,17 @@ const Leaks = () => {
     }
   };
 
+  // Recarregar do disco
+  const handleReload = async () => {
+    try {
+      await axios.post(`${API}/gitleaks/findings/reload`);
+      toast.success('Findings recarregados do disco');
+      loadFindings();
+    } catch (error) {
+      toast.error('Erro ao recarregar');
+    }
+  };
+
   // Copiar para clipboard
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
@@ -93,10 +250,6 @@ const Leaks = () => {
     setTimeout(() => setCopied(false), 2000);
     toast.success('Copiado!');
   };
-
-  useEffect(() => {
-    loadFindings();
-  }, [loadFindings]);
 
   // Filtrar arquivos por termo de busca
   const filteredFiles = files.filter(file => {
@@ -112,100 +265,46 @@ const Leaks = () => {
     );
   });
 
-  // Badge de severidade baseado na regra
-  const getSeverityBadge = (ruleId) => {
-    const highSeverity = ['aws-access-key', 'github-pat', 'private-key', 'jwt'];
-    const mediumSeverity = ['generic-api-key', 'password', 'token'];
+  // Risk indicators coloridos (como na imagem do Sn1per)
+  const getRiskIndicators = (ruleId) => {
+    const rule = (ruleId || '').toLowerCase();
+    let critical = 0, high = 0, medium = 0, low = 0;
     
-    if (highSeverity.some(s => ruleId?.toLowerCase().includes(s))) {
-      return <Badge variant="destructive">Alta</Badge>;
+    if (['private-key', 'jwt', 'rsa'].some(s => rule.includes(s))) {
+      critical = 1;
+    } else if (['aws', 'stripe', 'github', 'ssh'].some(s => rule.includes(s))) {
+      high = 1;
+    } else if (['slack', 'webhook', 'password', 'token'].some(s => rule.includes(s))) {
+      medium = 1;
+    } else {
+      low = 1;
     }
-    if (mediumSeverity.some(s => ruleId?.toLowerCase().includes(s))) {
-      return <Badge className="bg-orange-600">Média</Badge>;
-    }
-    return <Badge variant="outline">Baixa</Badge>;
+    
+    const score = critical * 100 + high * 50 + medium * 25 + low * 10;
+    
+    return { critical, high, medium, low, score };
   };
 
-  // Se não há findings, mostrar placeholder
-  if (!loading && totalFindings === 0) {
-    return (
-      <div className="space-y-6" data-testid="leaks-page">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Leaks</h1>
-          <p className="text-muted-foreground mt-2">Resultados de detecção de vazamentos (GitLeaks)</p>
-        </div>
+  // Status badge do job
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />Pendente</Badge>;
+      case 'running':
+        return <Badge className="gap-1 bg-blue-600"><Loader2 className="w-3 h-3 animate-spin" />Executando</Badge>;
+      case 'completed':
+        return <Badge className="gap-1 bg-green-600"><CheckCircle className="w-3 h-3" />Concluído</Badge>;
+      case 'failed':
+        return <Badge className="gap-1 bg-red-600"><XCircle className="w-3 h-3" />Falhou</Badge>;
+      case 'cancelled':
+        return <Badge variant="outline" className="gap-1"><Square className="w-3 h-3" />Cancelado</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
-        <Card className="border-dashed">
-          <CardContent className="py-16 text-center">
-            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
-              <Search className="w-10 h-10 text-muted-foreground" />
-            </div>
-            
-            <h2 className="text-2xl font-bold mb-2">Nenhum Leak Detectado</h2>
-            <p className="text-muted-foreground max-w-md mx-auto mb-6">
-              Execute um scan do GitLeaks em Tools → GitLeaks para detectar secrets e credenciais em arquivos.
-            </p>
-            
-            <div className="flex justify-center gap-4">
-              <Button onClick={() => window.location.href = '/tools/gitleaks'}>
-                <Search className="w-4 h-4 mr-2" />
-                Ir para GitLeaks
-              </Button>
-              <Button variant="outline" onClick={handleReload}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Recarregar do Disco
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Feature Preview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="opacity-80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Key className="w-4 h-4 text-red-500" />
-                Secrets & API Keys
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Detecção de chaves de API, tokens, secrets e credenciais expostas em arquivos.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="opacity-80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileWarning className="w-4 h-4 text-orange-500" />
-                Análise de Arquivos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Varredura de código-fonte, configurações e documentos em busca de dados sensíveis.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="opacity-80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Lock className="w-4 h-4 text-green-500" />
-                Regras Customizadas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Configuração personalizada do GitLeaks para detecção específica do ShadowIndex.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+  const runningJobs = jobs.filter(j => j.status === 'running' || j.status === 'pending');
+  const finishedJobs = jobs.filter(j => ['completed', 'failed', 'cancelled'].includes(j.status));
 
   return (
     <div className="space-y-6" data-testid="leaks-page">
@@ -213,29 +312,158 @@ const Leaks = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Leaks</h1>
           <p className="text-muted-foreground mt-2">
-            {totalFindings} vazamentos detectados em {files.length} arquivos
+            Detecção de secrets e credenciais em arquivos baixados
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={loadFindings}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Atualizar
-          </Button>
-          <Button variant="outline" onClick={handleReload}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Recarregar Disco
-          </Button>
-          {totalFindings > 0 && (
-            <Button variant="destructive" onClick={handleClear}>
-              <Trash2 className="w-4 h-4 mr-2" />
-              Limpar Todos
-            </Button>
+        <div className="flex items-center gap-2">
+          {gitleaksStatus.available && (
+            <Badge variant="outline" className="gap-1">
+              <CheckCircle className="w-3 h-3 text-green-500" />
+              GitLeaks v{gitleaksStatus.version}
+            </Badge>
           )}
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Scan Control Panel */}
+      <Collapsible open={showScanPanel} onOpenChange={setShowScanPanel}>
+        <Card>
+          <CardHeader className="pb-3">
+            <CollapsibleTrigger className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <FolderSearch className="w-5 h-5" />
+                <CardTitle className="text-lg">Iniciar Scan</CardTitle>
+                {runningJobs.length > 0 && (
+                  <Badge className="bg-blue-600 ml-2">{runningJobs.length} em execução</Badge>
+                )}
+              </div>
+              {showScanPanel ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-4 pt-0">
+              {/* Scan Mode Selection */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={scanMode === 'all' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('all')}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Server className="w-4 h-4" />
+                  Todos os Servidores
+                </Button>
+                <Button
+                  variant={scanMode === 'server' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('server')}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Server className="w-4 h-4" />
+                  Servidor Específico
+                </Button>
+                <Button
+                  variant={scanMode === 'custom' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('custom')}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <FolderSearch className="w-4 h-4" />
+                  Caminho Custom
+                </Button>
+              </div>
+
+              {/* Scan Options */}
+              <div className="flex items-end gap-4">
+                {scanMode === 'server' && (
+                  <div className="flex-1 max-w-xs">
+                    <Select value={selectedServer} onValueChange={setSelectedServer}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um servidor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {servers.map((server) => (
+                          <SelectItem key={server.id} value={server.id.toString()}>
+                            {server.name} ({server.ip})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                
+                {scanMode === 'custom' && (
+                  <div className="flex-1 max-w-md">
+                    <Input
+                      placeholder="/caminho/para/diretorio"
+                      value={customPath}
+                      onChange={(e) => setCustomPath(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <Button 
+                  onClick={handleStartScan} 
+                  disabled={scanning || !gitleaksStatus.available}
+                >
+                  {scanning ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-2" />
+                  )}
+                  {scanMode === 'all' ? 'Escanear Todos' : 'Iniciar Scan'}
+                </Button>
+              </div>
+
+              {/* Running Jobs */}
+              {jobs.length > 0 && (
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Jobs Recentes</span>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={loadJobs}>
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                      {finishedJobs.length > 0 && (
+                        <Button variant="ghost" size="sm" onClick={handleClearFinished}>
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Limpar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {jobs.slice(0, 5).map((job) => (
+                      <div key={job.job_id} className="flex items-center justify-between p-2 rounded bg-muted/50 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs">#{job.job_id}</span>
+                          {getStatusBadge(job.status)}
+                          {job.findings_count > 0 && (
+                            <Badge variant="destructive" className="text-xs">
+                              {job.findings_count} leaks
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          {job.target_path}
+                        </span>
+                        {job.status === 'running' && (
+                          <Button size="sm" variant="ghost" onClick={() => handleCancelJob(job.job_id)}>
+                            <Square className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -265,9 +493,7 @@ const Leaks = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Tipos de Secrets</p>
-                <p className="text-2xl font-bold">
-                  {new Set(findings.map(f => f.RuleID)).size}
-                </p>
+                <p className="text-2xl font-bold">{new Set(findings.map(f => f.RuleID)).size}</p>
               </div>
               <Key className="w-8 h-8 text-blue-500 opacity-50" />
             </div>
@@ -281,8 +507,8 @@ const Leaks = () => {
                 <p className="text-sm text-muted-foreground">Alta Severidade</p>
                 <p className="text-2xl font-bold text-red-500">
                   {findings.filter(f => 
-                    ['aws', 'private-key', 'github', 'jwt'].some(s => 
-                      f.RuleID?.toLowerCase().includes(s)
+                    ['aws', 'private-key', 'github', 'jwt', 'stripe'].some(s => 
+                      (f.RuleID || '').toLowerCase().includes(s)
                     )
                   ).length}
                 </p>
@@ -293,132 +519,143 @@ const Leaks = () => {
         </Card>
       </div>
 
-      {/* Search & Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por arquivo, regra ou conteúdo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="search-input"
-              />
-            </div>
-            <Badge variant="outline" className="gap-1">
-              <Filter className="w-3 h-3" />
-              {filteredFiles.length} arquivos
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Findings List */}
+      {/* Main Table - Inspirado no Sn1per */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileWarning className="w-5 h-5 text-orange-500" />
-            Findings por Arquivo
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileWarning className="w-5 h-5 text-orange-500" />
+              Findings
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-64"
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={loadFindings}>
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleReload}>
+                <Download className="w-4 h-4 mr-1" />
+                Disco
+              </Button>
+              {totalFindings > 0 && (
+                <Button variant="destructive" size="sm" onClick={handleClearFindings}>
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Limpar
+                </Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : totalFindings === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
+              <p className="text-lg font-medium">Nenhum Leak Detectado</p>
+              <p className="text-sm mt-2">Execute um scan para detectar secrets nos arquivos baixados</p>
             </div>
           ) : (
-            <ScrollArea className="h-[500px]">
-              <Accordion type="multiple" className="space-y-2">
-                {filteredFiles.map((file, index) => (
-                  <AccordionItem 
-                    key={index} 
-                    value={`file-${index}`}
-                    className="border rounded-lg px-4"
-                  >
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-3 text-left">
-                        <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="font-mono text-sm truncate max-w-lg">
-                            {file.file}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {file.count} finding(s)
-                          </p>
-                        </div>
-                        <Badge variant="destructive" className="ml-auto flex-shrink-0">
-                          {file.count}
-                        </Badge>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-3 pt-2">
-                        {file.findings.map((finding, fIndex) => (
-                          <div 
-                            key={fIndex}
-                            className="p-3 bg-muted/50 rounded-lg border"
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="space-y-2 flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline" className="font-mono text-xs">
-                                    {finding.RuleID}
-                                  </Badge>
-                                  {getSeverityBadge(finding.RuleID)}
-                                  {finding.StartLine && (
-                                    <span className="text-xs text-muted-foreground">
-                                      Linha {finding.StartLine}
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                {finding.Description && (
-                                  <p className="text-sm text-muted-foreground">
-                                    {finding.Description}
-                                  </p>
-                                )}
-                                
-                                {finding.Secret && (
-                                  <div className="flex items-center gap-2">
-                                    <code className="text-xs bg-red-500/10 px-2 py-1 rounded border border-red-500/30 font-mono truncate max-w-md">
-                                      {finding.Secret.length > 60 
-                                        ? finding.Secret.substring(0, 60) + '...' 
-                                        : finding.Secret}
-                                    </code>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleCopy(finding.Secret)}
-                                    >
-                                      {copied ? (
-                                        <CheckCircle className="w-4 h-4 text-green-500" />
-                                      ) : (
-                                        <Copy className="w-4 h-4" />
-                                      )}
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                              
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-semibold">TARGET</TableHead>
+                    <TableHead className="font-semibold">LINE</TableHead>
+                    <TableHead className="font-semibold">RULE</TableHead>
+                    <TableHead className="font-semibold">TAGS</TableHead>
+                    <TableHead className="font-semibold">RISK</TableHead>
+                    <TableHead className="font-semibold text-right">ACTIONS</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredFiles.map((file) => 
+                    file.findings.map((finding, fIndex) => {
+                      const risk = getRiskIndicators(finding.RuleID);
+                      return (
+                        <TableRow key={`${file.file}-${fIndex}`} className="hover:bg-muted/30">
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-sm text-cyan-400 truncate max-w-[300px]">
+                                {file.file.split('/').pop()}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate max-w-[300px]">
+                                {file.file}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono">
+                              {finding.StartLine || '-'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <Badge className="bg-slate-700 text-xs">
+                                {finding.RuleID}
+                              </Badge>
+                              {finding.Description && (
+                                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                  {finding.Description}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              className={`text-xs ${
+                                finding.job_id ? 'bg-purple-600' : 'bg-green-600'
+                              }`}
+                            >
+                              {finding.job_id ? 'Scan' : 'Manual'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {/* Risk indicators coloridos como no Sn1per */}
+                              <span className={`w-3 h-3 rounded-full ${risk.critical ? 'bg-red-500' : 'bg-red-500/20'}`} />
+                              <span className={`w-3 h-3 rounded-full ${risk.high ? 'bg-orange-500' : 'bg-orange-500/20'}`} />
+                              <span className={`w-3 h-3 rounded-full ${risk.medium ? 'bg-yellow-500' : 'bg-yellow-500/20'}`} />
+                              <span className={`w-3 h-3 rounded-full ${risk.low ? 'bg-green-500' : 'bg-green-500/20'}`} />
+                              <span className="ml-2 font-mono text-sm">{risk.score}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => setSelectedFinding(finding)}
                               >
-                                <Eye className="w-4 h-4 mr-1" />
-                                Detalhes
+                                <Eye className="w-4 h-4" />
                               </Button>
+                              {finding.Secret && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCopy(finding.Secret)}
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </ScrollArea>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -440,11 +677,11 @@ const Leaks = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Regra</Label>
-                  <p className="font-mono">{selectedFinding.RuleID}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Regra</p>
+                  <Badge className="font-mono">{selectedFinding.RuleID}</Badge>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Linha</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Linha</p>
                   <p className="font-mono">
                     {selectedFinding.StartLine || 'N/A'}
                     {selectedFinding.EndLine && selectedFinding.EndLine !== selectedFinding.StartLine 
@@ -455,20 +692,22 @@ const Leaks = () => {
               </div>
               
               <div>
-                <Label className="text-xs text-muted-foreground">Arquivo</Label>
-                <p className="font-mono text-sm break-all">{selectedFinding.File}</p>
+                <p className="text-xs text-muted-foreground mb-1">Arquivo</p>
+                <p className="font-mono text-sm break-all bg-muted p-2 rounded">
+                  {selectedFinding.File}
+                </p>
               </div>
               
               {selectedFinding.Description && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Descrição</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Descrição</p>
                   <p className="text-sm">{selectedFinding.Description}</p>
                 </div>
               )}
               
               {selectedFinding.Secret && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Secret Detectado</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Secret Detectado</p>
                   <div className="flex items-start gap-2">
                     <code className="flex-1 text-xs bg-red-500/10 p-3 rounded border border-red-500/30 font-mono break-all">
                       {selectedFinding.Secret}
@@ -478,7 +717,7 @@ const Leaks = () => {
                       size="sm"
                       onClick={() => handleCopy(selectedFinding.Secret)}
                     >
-                      <Copy className="w-4 h-4" />
+                      {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
@@ -486,18 +725,9 @@ const Leaks = () => {
               
               {selectedFinding.Match && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Match</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Match</p>
                   <code className="block text-xs bg-muted p-3 rounded font-mono break-all">
                     {selectedFinding.Match}
-                  </code>
-                </div>
-              )}
-              
-              {selectedFinding.Fingerprint && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Fingerprint</Label>
-                  <code className="block text-xs text-muted-foreground font-mono">
-                    {selectedFinding.Fingerprint}
                   </code>
                 </div>
               )}
@@ -508,10 +738,5 @@ const Leaks = () => {
     </div>
   );
 };
-
-// Componente auxiliar para labels
-const Label = ({ children, className }) => (
-  <p className={`text-xs font-medium mb-1 ${className || ''}`}>{children}</p>
-);
 
 export default Leaks;
