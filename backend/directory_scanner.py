@@ -118,7 +118,7 @@ class DirectoryScanner:
     
     async def _scan_directory(self, db: AsyncSession, scan_job: ScanJob):
         """Escaneia um diretório e adiciona arquivos à fila"""
-        from database import Server, DownloadJob
+        from database import Server, DownloadJob, AppSettings
         from soap_service import get_default_soap_service
         
         # Verificar limite de profundidade
@@ -131,6 +131,14 @@ class DirectoryScanner:
         if not server:
             logger.warning(f"Server {scan_job.server_id} not found")
             return
+        
+        # Obter extensões ignoradas (apenas se aplicar filtros)
+        ignored_extensions = []
+        if scan_job.apply_filters:
+            ext_result = await db.execute(select(AppSettings).where(AppSettings.key == 'ignored_extensions'))
+            ext_setting = ext_result.scalar_one_or_none()
+            if ext_setting and ext_setting.value:
+                ignored_extensions = [ext.strip().lower() for ext in ext_setting.value.split(',') if ext.strip()]
         
         # Obter serviço SOAP
         soap_service = await get_default_soap_service(db)
@@ -173,11 +181,19 @@ class DirectoryScanner:
                                 path=item_path,
                                 depth=scan_job.depth + 1,
                                 max_depth=scan_job.max_depth,
-                                max_file_size_bytes=scan_job.max_file_size_bytes
+                                max_file_size_bytes=scan_job.max_file_size_bytes,
+                                apply_filters=scan_job.apply_filters
                             )
                             self.scan_queue.append(sub_job)
                 
                 elif item_type == 'File':
+                    # Verificar extensão ignorada (apenas se aplicar filtros)
+                    if scan_job.apply_filters and ignored_extensions:
+                        file_lower = item_name.lower()
+                        should_skip = any(file_lower.endswith(ext) for ext in ignored_extensions)
+                        if should_skip:
+                            logger.debug(f"Skipping file by extension: {item_name}")
+                            continue
                     # Verificar se já existe job para este arquivo
                     existing = await db.execute(
                         select(DownloadJob).where(
