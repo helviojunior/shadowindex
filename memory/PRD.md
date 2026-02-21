@@ -448,19 +448,11 @@ Portuguese (pt-BR)
 
 ## Pending Issues
 
-*No pending issues at this time.*
-
-### 2026-02-22 (Session 10 - Sidebar Bug Fixes & UI Improvements)
-- [x] **P0 Bug Fix: Destaque de menu ativo incorreto** - Corrigida função `findActiveMenu` em `Layout.js`
-  - Problema: Navegar para `/sql/presets` destacava "Conexões" ao invés de "Presets"
-  - Solução: Ordenar submenus por tamanho de path (descendente) para match mais específico primeiro
-- [x] **P1 Bug Fix: Menu flyout verificado** - Confirmado funcionamento correto do flyout quando sidebar colapsado
-- [x] **UI Improvement: Remover botão "Gerenciar Presets"** - Removido da página de Conexões SQL
-- [x] **UI Improvement: Forms colapsáveis em todas as telas de cadastro**
-  - Form de adição oculto por padrão
-  - Botão "Adicionar ..." no header alinhado à direita
-  - Ao clicar, expande o form de cadastro
-  - Aplicado em: Conexões SQL, Proxy Servers, Credenciais, SOAP APIs, Servidores
+### User Verification Pending
+- **Sync (Download) button:** Needs end-to-end testing after recent refactorings
+- **Directory highlight persistence:** Needs confirmation that visited directories stay highlighted after page refresh
+- **SOCKS5 Proxy:** Needs testing with real SOCKS5 proxy server
+- **OCR with Tika:** Needs testing with real files when Tika service is running
 
 ---
 
@@ -490,7 +482,7 @@ Portuguese (pt-BR)
 │   ├── alembic.ini           # Alembic configuration
 │   ├── plugins/              # Plugin system
 │   │   ├── __init__.py       # Plugin exports
-│   │   ├── base.py           # BasePlugin abstract class
+│   │   ├── base.py           # BasePlugin abstract class (health_check, validate_config, config_schema)
 │   │   ├── exceptions.py     # Standard exceptions
 │   │   ├── cache.py          # Global cache system
 │   │   ├── factory.py        # Plugin factory & registration
@@ -500,13 +492,15 @@ Portuguese (pt-BR)
 │   │   ├── storage/             # Downloaded files
 │   │   └── cache/plugins/       # Plugin cache (JSON)
 │   ├── tests/
-│   │   └── test_plugins.py      # Plugin system tests (30 tests)
+│   │   ├── test_plugins.py      # Plugin system tests (30 tests)
+│   │   └── test_plugins_api.py  # Plugin API tests (19 tests)
 │   ├── requirements.txt
 │   ├── database.py              # SQLAlchemy models & init (with Alembic)
 │   ├── server.py                # Main FastAPI app, all endpoints
 │   ├── routes_v2.py             # API V2 endpoints (ID-based)
 │   ├── download_worker.py       # Background download processor
 │   ├── directory_scanner.py     # Recursive directory scanner
+│   ├── ocr_service.py           # Apache Tika OCR integration
 │   ├── soap_service.py          # DEPRECATED - use plugins/soap_api.py
 │   └── storage_utils.py         # File storage utilities
 ├── frontend/
@@ -514,20 +508,21 @@ Portuguese (pt-BR)
 │   ├── src/
 │   │   ├── App.js
 │   │   ├── components/
-│   │   │   └── Layout.js          # Sidebar, header, offline toggle
+│   │   │   └── Layout.js          # Sidebar (with Plugins menu), header, offline toggle
 │   │   ├── contexts/
 │   │   │   └── AppContext.js      # Global state (offline mode, cache)
 │   │   └── pages/
-│   │       ├── SqlExecutor.js     # SQL editor with Ctrl+Enter shortcut
+│   │       ├── PluginSoapConfig.js # SOAP Plugin configuration page
+│   │       ├── SoapOperations.js   # SOAP operations with API selector
+│   │       ├── SqlExecutor.js      # SQL editor with Ctrl+Enter shortcut
 │   │       ├── DatabaseConnections.js  # Connections table with Test Connection button
-│   │       ├── SqlPresets.js      # Presets management (59 presets)
-│   │       ├── ServerBrowser.js   # File tree + info panel (with polling)
-│   │       ├── Downloads.js       # Download queue management
-│   │       ├── BeautifyTest.js    # Test page for beautify feature
+│   │       ├── SqlPresets.js       # Presets management (59 presets)
+│   │       ├── ServerBrowser.js    # File tree + info panel (with polling, OCR tab)
+│   │       ├── Downloads.js        # Download queue management
 │   │       └── ...
 │   └── ...
 ├── docker-compose.yml           # Production (no volumes, no reload)
-├── docker-compose.dev.yml       # Development (volumes, hot reload)
+├── docker-compose.dev.yml       # Development (volumes, hot reload, Tika service)
 └── ...
 ```
 
