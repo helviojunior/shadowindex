@@ -3,7 +3,7 @@ Download Worker - Processador de downloads em background
 
 Este módulo gerencia a fila de downloads e processa jobs de forma assíncrona.
 Características:
-- Máximo de 3 downloads simultâneos
+- Número de downloads simultâneos configurável via AppSettings
 - Processamento em background independente do navegador
 - Suporte a downloads em chunks para arquivos grandes
 - Atualização de progresso em tempo real
@@ -21,12 +21,29 @@ from sqlalchemy import select
 logger = logging.getLogger(__name__)
 
 # Configurações do worker
-MAX_CONCURRENT_DOWNLOADS = 3
 CHUNK_SIZE = 1024 * 1024  # 1MB chunks
 WORKER_POLL_INTERVAL = 2  # segundos entre verificações
 
 # Instância global do worker
 _worker_instance: Optional['DownloadWorker'] = None
+
+
+async def get_max_concurrent_downloads() -> int:
+    """Obtém o número máximo de downloads simultâneos das configurações"""
+    from database import AppSettings, AsyncSessionLocal
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(AppSettings).where(AppSettings.key == 'max_simultaneous_downloads')
+            )
+            setting = result.scalar_one_or_none()
+            if setting and setting.value:
+                return int(setting.value)
+    except Exception as e:
+        logger.warning(f"Error getting max_simultaneous_downloads: {e}")
+    
+    return 3  # Valor padrão
 
 
 class DownloadWorker:
