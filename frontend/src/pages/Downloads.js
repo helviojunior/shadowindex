@@ -245,7 +245,7 @@ const Downloads = () => {
       </div>
 
       {/* Stats Cards - Clickable for filtering */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 lg:gap-6">
         {Object.entries(statusConfig).map(([status, config]) => {
           const count = stats[status] || 0;
           const isActive = activeFilter === status;
