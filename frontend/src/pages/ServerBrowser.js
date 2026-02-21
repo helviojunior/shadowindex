@@ -809,8 +809,8 @@ const ServerBrowser = () => {
   };
 
   // Função para processar download de um diretório (incremental)
-  const processDirectoryDownload = async (path, shareName, currentDepth, maxDepth, maxSizeBytes, cancelledRef) => {
-    if (currentDepth > maxDepth || cancelledRef.current) return;
+  const processDirectoryDownload = async (path, shareName, currentDepth, maxDepth, maxSizeBytes) => {
+    if (currentDepth > maxDepth || bulkDownloadCancelledRef.current) return;
     
     try {
       // Buscar conteúdo do diretório
