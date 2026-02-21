@@ -90,8 +90,8 @@ const ServerBrowser = () => {
   const [bulkDownloadConfig, setBulkDownloadConfig] = useState({ depth: 2, maxSize: 10 }); // maxSize em MB
   const [bulkDownloadActive, setBulkDownloadActive] = useState(false);
   const [bulkDownloadItems, setBulkDownloadItems] = useState([]); // Lista de itens a baixar
-  const [bulkDownloadCancelled, setBulkDownloadCancelled] = useState(false);
   const [bulkDownloadStats, setBulkDownloadStats] = useState({ total: 0, completed: 0, failed: 0, skipped: 0 });
+  const bulkDownloadCancelledRef = useRef(false); // Ref para cancelamento síncrono
 
   useEffect(() => {
     loadServer();
