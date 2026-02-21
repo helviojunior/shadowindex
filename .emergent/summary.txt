@@ -1,179 +1,131 @@
 <analysis>**original_problem_statement:**
-The user initially requested a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. The project has since evolved into a comprehensive SQL management and execution tool. Recent requests have focused on improving the SQL editor and implementing a complex file versioning system for a server file browser feature. The latest requests involve fixing state management bugs in the server file browser.
+The user initially requested a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. The project has since evolved into a comprehensive SQL management and execution tool with an advanced server file browser and a backend-driven download management system.
 
 **PRODUCT REQUIREMENTS:**
-- A web panel with a modern dark mode layout and a collapsible left sidebar.
-- Cadastro (Registration) sections for Credentials, SQL Connections, Proxy Servers, and SOAP URLs.
-- A Servers management feature with an interactive file browser that syncs files from an external API. This browser must support file versioning based on SHA1 hashes, allowing users to view and sync different versions of a file.
-- A SQL feature that includes:
-    - Management of database connections (MSSQL, MySQL, PostgreSQL, etc.).
-    - A CRUD interface for a library of preset SQL queries.
-    - A multi-tab SQL execution interface with syntax highlighting, keyboard shortcuts (), and query history.
-    - Functionality to test connections, edit connections, and export query results.
-    - Persistence of open SQL tabs across browser sessions.
+- A web panel with a modern dark mode layout and a collapsible, multi-level left sidebar.
+- A dedicated Downloads page to view and manage the status of all historical and in-progress downloads.
+- A robust, backend-driven download system where background workers handle file listing and downloading, allowing the process to continue even if the user closes the browser.
+- A General Settings page to configure application-wide parameters like download concurrency, default batch download settings, and ignored file extensions.
+- All data-entry forms should be collapsible, appearing only when the user clicks an Add button.
+- The  function should have different behaviors depending on the context: return all IPs for SOAP operations but prioritize IPv4 for server creation.
+- Data tables should be enhanced with features like scrolling, sorting, and searching.
 
 **User's preferred language**: Portuguese. The next agent MUST respond in Portuguese.
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and a React frontend, using a persistent SQLite database. The application's data is now stored in a host-mounted directory ().
+A full-stack application with a FastAPI backend and a React frontend. The application uses a persistent SQLite database for metadata.
 
-- **SQL Dashboard:** A feature-rich tool for managing and executing SQL queries. It supports multiple database types, connection management (add, edit, test), a library of presets, a multi-tab editor with syntax highlighting, query history, data export, and localStorage persistence for open tabs. DB types are now represented by official logos.
-
-- **Server Browser:** An interface for browsing files from a SOAP service. It features a file versioning system where syncing a file calculates its SHA1 hash and stores it as a new version if the hash is different. The backend models (, , ) and API endpoints () have been updated to support this. However, this feature is currently affected by critical UI bugs.
+- **UI/UX:** The application features a multi-level sidebar inspired by the JFrog UI. All primary data entry pages (, , , etc.) have been refactored to use a consistent pattern where the creation form is hidden by default and toggled by an Add... button in the page header.
+- **Download System:** A sophisticated, fully backend-driven download architecture is in place.
+    - **Two-Worker System:** A  worker populates a queue with files to be downloaded from a directory, and a separate  processes the actual file downloads from this queue.
+    - **Configuration:** A new General Settings page allows the user to configure download concurrency, default recursion depth, max file size, and a list of file extensions to ignore during batch scans.
+    - **Job-Specific Parameters:** Batch download jobs initiated from the frontend carry their own configuration (depth, max size) which overrides the global server settings for that specific job.
+- **Backend:** Endpoints for managing general settings () and initiating backend directory scans () have been created. The  logic has been split to handle different use cases.
+- **Bug Fixes:** Previously reported issues with sidebar navigation, flyout menus, and duplicated download paths have been resolved.
 
 **Last working item**:
-- **Last item agent was working:** Debugging two critical bugs in the  component related to UI state management after expanding a share (directory) node in the file tree.
+- **Last item agent was working:** The user identified a recurring UI inconsistency: a lack of vertical spacing between card/box elements on multiple pages, making the layout look cramped. The agent was tasked with applying a consistent vertical margin/padding across all affected pages.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** both.
-    - **Backend:** The agent needs to verify the  endpoint works correctly and that the  endpoint no longer destructively deletes share state. This can be tested with .
-    - **Frontend:** Use the  tool to verify the UI behavior on the Server Browser page after applying fixes. Specifically, check that a share turns blue immediately on expansion and that the expanded state persists after clicking the refresh button.
+- **Which testing method agent to use?** Frontend testing agent. The agent should be instructed to take screenshots of the , , , and  pages to verify that consistent vertical spacing (e.g., , , or ) has been applied between all major card/box containers.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0): Server share does not turn blue on first expansion.**
-- **Issue 2 (P1): Refreshing shares resets the entire tree's expanded state.**
+- **Issue 1 (P0): Inconsistent vertical spacing between UI cards/boxes.**
 
 **Issues Detail:**
-- **Issue 1: Server share does not turn blue on first expansion.**
-    - **Attempted fixes:** The agent identified that the UI was not updating immediately because the  flag was only being set in the local React state, not persisted. A  endpoint was created in  and the frontend  was modified to call this endpoint when a node is expanded. However, the user reports the issue persists.
+- **Issue 1: Inconsistent vertical spacing between UI cards/boxes.**
+    - **Attempted fixes:** The agent correctly identified the recurring nature of the problem and viewed files like  and  to diagnose the issue. The intended fix is to add Tailwind CSS utility classes for vertical spacing to the parent containers of these card elements.
     - **Next debug checklist:**
-        1.  In , within the  function (or equivalent), place  statements to trace the API call to . Verify it is being called with the correct ID.
-        2.  Check the browser's network tab (via agent's internal tools) to confirm the  request is successful (returns 200 OK) and that the response contains the updated share object with .
-        3.  Verify that the React state update ( or similar) is correctly using the response from the PATCH call to re-render the component. The component rendering the node color might be using stale data.
-    - **Why fix this issue and what will be achieved with the fix?** Provides essential visual feedback to the user, confirming that a directory's contents have been loaded.
+        1. Systematically review all pages that use a card-based layout: , , , , , , , and .
+        2. For each page, identify the main  container that wraps the collection of cards or boxes.
+        3. Apply a consistent vertical spacing utility class like  to this container.
+        4. Use the screenshot tool to visually verify the added spacing on all modified pages.
+    - **Why fix this issue and what will be achieved with the fix?** To resolve a recurring UI/UX complaint from the user and establish a consistent, polished visual standard across the application.
     - **Status:** IN PROGRESS
     - **Is recurring issue?** Y
-    - **Should Test frontend/backend/both after fix?** Both.
-    - **Blocked on other issue:** Potentially linked to Issue 2.
-
-- **Issue 2: Refreshing shares resets the entire tree's expanded state.**
-    - **Attempted fixes:** The agent found that the backend endpoint  was destructively deleting all existing shares for a server before fetching new ones, thus losing all state like . The agent modified this logic in  to perform an upsert-like operation, preserving existing shares.
-    - **Next debug checklist:**
-        1.  Review the implementation of the  endpoint in . Ensure the logic correctly identifies existing shares (by a unique key like  or ) and updates them instead of deleting and re-creating them.
-        2.  In , review the  function. It was previously clearing , which caused the UI to collapse. The agent attempted a fix to preserve this state. Verify that the current implementation correctly maintains the  set for nodes that still exist after the refresh.
-    - **Why fix this issue and what will be achieved with the fix?** Prevents a frustrating user experience where the entire navigation context is lost on a simple refresh.
-    - **Status:** IN PROGRESS
-    - **Is recurring issue?** Y
-    - **Should Test frontend/backend/both after fix?** Both.
+    - **Should Test frontend/backend/both after fix?** Frontend.
     - **Blocked on other issue:** None.
 
 **In progress Task List**:
-- **Task 1: Resolve Server Browser Bugs**
-    - **Where to resume:** Resume debugging in  and  following the checklists for the two pending issues above. The core of the problem lies in the synchronization of state between the frontend (React state), the backend (API logic), and the database.
-    - **What will be achieved with this?** A stable and usable Server Browser feature.
-    - **Status:** IN PROGRESS
-    - **Should Test frontend/backend/both after fix?** Both.
-    - **Blocked on something:** None.
-
-**Upcoming and Future Tasks**
-- **Future Tasks:**
-    - **(P2) Mock SOAP Service for Testing:** Create a mock service to test the file browser logic without relying on the live, unreliable API.
-    - **(P3) Refactor DB Schema Migration:** Refactor the current custom migration logic to use a dedicated migration tool like .
-    - **(P4) Complete File Download Tracking:** Persist the downloaded status of a file in the  model after a successful sync/download.
-
-**Completed work in this session**
-- **File Versioning System:**
-  - Implemented a file versioning system using SHA1 hashes. Syncing a file now calculates its hash and saves it as a new version if the hash differs from the previous one.
-  - Modified backend models (), storage utilities (), and the sync endpoint ().
-  - Updated the frontend  to always enable the Sync button, show status messages (Arquivo atualizado, Arquivo sem alteração), and include a (partially implemented) dropdown for versions.
-- **SQL Editor & Connection Management:**
-  - **Edit Connections:** Added functionality to edit existing SQL connections via a modal.
-  - **DB Logos:** Replaced colored dots with database logos ( component) in the connection list and SQL editor. Corrected the MS SQL Server logo based on user feedback.
-  - **Test in Add Modal:** Added a Testar Conexão button to the Add Connection modal.
-  - **Clickable Links:** Made connection names in the list table clickable links that open the SQL editor.
-  - **Presets Scrollbar:** Fixed a CSS issue where the presets dropdown in the SQL editor was not scrollable.
-  - **Result Header Layout:** Re-arranged the query result header to place status, execution time, and row count on a single line.
-  - **History with Results:** When opening a query from history, the new tab is now pre-filled with both the query and its previously fetched result and execution timestamp.
-  - **Tab Persistence:** Implemented  caching to persist and restore open SQL editor tabs and their content on browser refresh.
-  - **Export Filename:** Changed the exported CSV/Excel filename format to .
-- **General UI/UX:**
-  - **Server Browser Layout:** Moved the Refresh Shares button to be inline with the Compartilhamentos title.
-- **Infrastructure & DX:**
-  - **Persistent Storage:** Modified  and  to mount a local  directory for the database, removing the Docker-managed volume.
-  - **:** Cleaned up the  file and added  and  to it.
-
-**Earlier issues found/mentioned but not fixed**
 - None.
 
-**Known issue recurrence from previous fork**
-- None in this session.
+**Upcoming and Future Tasks**
+- **Upcoming Tasks:**
+    - **(P1) Downloads UI Enhancements:** While many download features are complete, the original PRD mentioned adding more advanced filtering options to the Downloads page (e.g., by status).
+- **Future Tasks:**
+    - **(P2) Mock SOAP Service for Testing:** Create a mock service to allow for reliable testing of the server browser functionality without depending on the live external API.
+    - **(P3) Refactor DB Schema Migration:** Adopt a standard migration tool like  to manage database schema changes more robustly.
+    - **(P4) Address  Dependency:** The root cause of the  import error (handled by a  block) should be fixed by ensuring the library is properly installed in the application's environment.
+
+**Completed work in this session**
+- **Download System Rearchitecture:** Implemented a complete backend-driven download system with separate workers for directory scanning and file downloading.
+- **General Settings Page:** Created a new UI and backend endpoints for managing global application settings like download concurrency and ignored file extensions.
+- **UI Refactoring (Collapsible Forms):** Standardized the UI on all data entry pages to use a collapsible form, improving layout consistency.
+- **Servers Table Enhancement:** Upgraded the servers list with client-side search, sorting capabilities, and a scrollable body with a fixed header.
+- **Logic Refinements:**
+    - Adjusted the  function to prioritize IPv4 or return all IPs based on context.
+    - Configured batch downloads to use parameters set on the frontend at the time of request, overriding global defaults.
+- **Bug Fixes:**
+    - Resolved a critical bug causing duplicated paths during the download process.
+    - Fixed sidebar highlighting and flyout menu issues.
+    - Improved the layout of the Downloads dashboard, including changing an icon that was causing confusion.
+
+**Earlier issues found/mentioned but not fixed**
+- ** environment dependency:** The application uses a  block to handle a missing  library in the execution environment. The root cause (library not being installed in the Docker container) has not been fixed.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend:** React, Tailwind CSS, Shadcn UI.
-  - **State Management:** Heavy use of  and  for managing complex UI states in  and .
-  - **Local Persistence:**  is used to cache open SQL tabs.
-- **Backend:** FastAPI, Pydantic, SQLAlchemy.
-- **Database:** SQLite.
-- **File Hashing:** Python's  library is used to calculate SHA1 hashes for file versioning.
-- **Containerization:** Docker Compose is used for local development, now configured with a bind mount for persistent data.
+- **Background Workers in FastAPI:** Using  to run persistent background tasks (, ) that poll the database for jobs.
+- **Centralized Application Configuration:** Storing operational parameters (concurrency limits, ignored extensions) in a dedicated database table () and providing a UI to manage them.
+- **Job-Specific Configuration:** Overriding global settings with parameters stored on a per-job basis. For instance, a  stores its own  and , which are then used by the workers for that specific task.
+- **Advanced React UI Patterns:** Implementing a reusable collapsible form pattern across multiple pages. Enhancing a data table with client-side search, sorting, and a fixed header with a scrollable body.
 
 **key DB schema**
-- **DatabaseConnection:** 
-- **ServerShare:** 
-- **DownloadedFile:** 
-- **FileVersion:** 
-- **ServerFile:** (Implicitly used from SOAP, represents remote file)
+- **AppSettings**:  (New model for global settings)
+- **ScanJob**:  (New model for directory scan tasks)
+- **DownloadJob**:  (Modified to store its own size limit)
 
 **All files of reference**
-- **Buggy Files (Primary Focus):**
-    - : Contains the frontend logic for the file tree, state management, and API calls that are currently buggy.
-    - : Contains the API endpoints (, ) whose logic is central to the bugs.
-- **Recently Modified Files:**
-    - 
-    - 
-    - 
-    - 
-    - 
-    - 
-    - 
-    - 
+- **Current Issue:** , ,  (and other pages with card layouts).
+- **Download System:** , , .
+- **Settings:** ,  (AppSettings model).
+- **UI Patterns:**  (for the advanced table),  (for the collapsible form pattern).
 
 **Critical Info for New Agent**
-- **Top Priority:** You must fix the two interconnected bugs in the **Server Browser**. Do not move on to other tasks until this feature is stable.
-- **Debugging Strategy:** The root cause is a desynchronization between the frontend's local state, the backend's API logic, and the database's persistent state.
-    1.  Focus on : Ensure the  endpoint correctly *updates* existing shares instead of deleting them.
-    2.  Focus on : Ensure the  call is made successfully on node expansion and that the component's state is updated with the fresh data from the API response, forcing a re-render that turns the node blue.
+- **Immediate Priority:** The immediate task is to fix the inconsistent vertical spacing on all pages with card/box layouts, as explicitly requested by the user. This is a recurring UI polish item.
+- **Download Architecture:** The download system is a two-stage process. The  worker handles file discovery for batch jobs (creating s), and the  handles the actual downloading (processing s). Respect this architecture.
+- **Configuration Hierarchy:** Global settings from the  table are used as defaults, especially for populating UI elements. However, individual jobs (like  and ) store and use their own parameters, which take precedence over the global settings for that specific task.
 
 **documents and test reports created in this job**
-- None.
+-  was updated multiple times.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** When downloading (Sync) a file, calculate its SHA1 hash, save it to the DB, and implement a versioning system.
-2.  **Agent:** Implemented the file versioning system on the backend and frontend.
-3.  **User:** The Update Shares button has a bug; it removes the expanded/viewed flag.
-4.  **Agent:** Investigated and found the  function was resetting the state.
-5.  **User:** When clicking a Share, it's not being marked in blue, only after a page refresh. The flag seems to be a DB status issue.
-6.  **Agent:** Investigated and found the backend's refresh logic was destructively deleting and re-creating shares.
-7.  **Agent:** Also found the frontend wasn't persisting the  state to the DB and created a  endpoint to fix it.
-8.  **User:** The share is still not being marked blue on the first expansion.
-9.  **Agent:** Began a deeper investigation into the frontend state management in .
-10. **Agent:** Suspected an issue with how the component re-renders after the state is updated and was examining the code flow.
+1.  **Request:** Add sorting, searching, and scrolling to the Servers table. (Completed)
+2.  **Bug Report:** Identified a recurring issue with a lack of vertical spacing between UI cards/boxes across multiple pages. (In Progress - This is the current P0 issue)
+3.  **Request:** For batch downloads, the parameters (depth, max size) from the UI's dropdowns must be stored on the job and used by the workers, overriding global settings. (Completed)
+4.  **Request:** The UI dropdowns for batch downloads should be populated with default values from the new General Settings page. (Completed)
+5.  **Request:** Create a General Settings page to manage ignored file extensions and other parameters. Manual (single-file) downloads should ignore all filters. (Completed)
+6.  **Request:** Rework the download engine to be 100% backend-driven with a separate worker for listing directories and other workers for downloading. (Completed)
+7.  **Request:** Fix a bug where the download path was being duplicated by the worker. (Completed)
+8.  **Request:** Improve the Downloads dashboard layout, specifically the spacing and the icon for the Downloading status. (Completed)
+9.  **Request:** Adjust the  logic to return a list of all IPs in SOAP Operations but only the IPv4 when adding a server. (Completed)
+10. **Request:** Adjust various UI elements, including collapsible forms and button labels. (Completed)
 
 **Project Health Check:**
-- **Broken:**
-    - The  feature is functionally broken due to the UI state bugs (nodes not turning blue, tree collapsing on refresh). This is the highest priority to fix.
-- **Mocked:**
-    - The  relies on a SOAP API that is unavailable in the test environment. All testing for this feature is based on code logic and cannot be end-to-end verified without a mock or the live service.
+- **In-Progress Refinement:** The application is functionally robust, but the user is now focused on UI/UX polish and consistency. The current task to fix vertical spacing is a prime example.
+- **Technical Debt:** The  dependency issue remains an unresolved piece of technical debt.
 
 **3rd Party Integrations**
-- **Custom SOAP Web Service:** Private SOAP API for the file browser feature.
-- **UI Libraries:** , .
-- **SQL Editor:** , .
-- **Data Handling:** , .
-- **Database Drivers:** .
+- Custom SOAP Web Service
+- UI Libraries: , , , 
+- Data Handling: , 
+- Backend: ,  (with a try/except workaround), 
 
 **Testing status**
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None.
-- **Known regressions:** The 's core functionality regressed due to the state management bugs.
-
-**Credentials to test flow:**
-- No new credentials were introduced. The app uses a local SQLite database and assumes the user provides valid connection strings for external databases.
-
-**What agent forgot to execute**
-- The agent was in the middle of a complex debugging session for the  bugs. The fixes were incomplete, and the agent had not yet fully resolved the root causes of the state synchronization issues.</analysis>
+- **Test files created:** None
+- **Known regressions:** None. The active issue is a UI consistency problem, not a regression of functionality.</analysis>
