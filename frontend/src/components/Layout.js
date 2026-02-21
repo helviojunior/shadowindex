@@ -281,21 +281,25 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           )}
         </button>
 
-        {/* Flyout menu when collapsed */}
-        {effectiveCollapsed && isHovered && (
+        {/* Flyout menu when collapsed - rendered via Portal */}
+        {effectiveCollapsed && isHovered && createPortal(
           <div 
-            className="fixed ml-2 z-[9999] min-w-[180px]"
+            className="fixed min-w-[180px]"
             style={{ 
-              left: '64px',
-              top: 'auto'
+              left: '72px',
+              top: `${flyoutPosition.top}px`,
+              zIndex: 99999
             }}
-            onMouseEnter={() => handleMenuHover(item.id)}
+            onMouseEnter={(e) => handleMenuHover(item.id, e)}
             onMouseLeave={handleMenuLeave}
           >
             {/* Arrow indicator */}
-            <div className="absolute left-0 top-3 -ml-1.5 w-3 h-3 bg-card border-l border-t border-border rotate-[-45deg] z-[9999]" />
+            <div 
+              className="absolute left-0 top-3 -ml-1.5 w-3 h-3 bg-popover border-l border-t border-border rotate-[-45deg]" 
+              style={{ zIndex: 99999 }}
+            />
             
-            <div className="bg-card border border-border rounded-lg shadow-xl py-2 ml-1">
+            <div className="bg-popover border border-border rounded-lg shadow-2xl py-2 ml-1">
               {/* Header */}
               <div className="px-3 py-2 border-b border-border">
                 <span className="font-semibold text-sm">{item.label}</span>
@@ -308,20 +312,22 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                   <Link
                     key={child.id}
                     to={child.path}
-                    data-testid={`nav-${child.id}`}
+                    data-testid={`nav-flyout-${child.id}`}
                     className={cn(
                       "block px-4 py-2 text-sm transition-colors",
                       isChildActive
                         ? "text-emerald-400 bg-emerald-400/10 font-medium"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
+                    onClick={() => setHoveredMenu(null)}
                   >
                     {child.label}
                   </Link>
                 );
               })}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Inline submenu when expanded */}
