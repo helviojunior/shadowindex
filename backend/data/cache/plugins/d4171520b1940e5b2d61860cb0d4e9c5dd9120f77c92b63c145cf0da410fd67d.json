@@ -1,0 +1,12 @@
+{
+  "operation": "direct_resolve",
+  "params_hash": "d4171520b1940e5b2d61860cb0d4e9c5dd9120f77c92b63c145cf0da410fd67d",
+  "params": {
+    "hostname": "google.com",
+    "dns_mode": "custom",
+    "dns_servers": "8.8.8.8,8.8.4.4"
+  },
+  "response": "173.194.64.102",
+  "timestamp": "2026-02-21T22:39:31.184796+00:00",
+  "ttl_hours": 24
+}
