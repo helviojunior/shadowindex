@@ -380,23 +380,15 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
             "flex items-center justify-center px-4 py-3 border-r border-border transition-all duration-300",
             effectiveCollapsed ? "w-16" : "w-52"
           )}>
-            {/* Logo - Always visible in header, centered */}
-            {effectiveCollapsed ? (
-              <img 
-                src="/assets/stratasec_icon.png" 
-                alt="StrataSec" 
-                className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
-              />
-            ) : (
-              <img 
-                src="/assets/stratasec_light.png" 
-                alt="StrataSec" 
-                className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-              />
-            )}
+            {/* Logo - Always show full logo regardless of sidebar state */}
+            <img 
+              src="/assets/stratasec_light.png" 
+              alt="StrataSec" 
+              className={cn(
+                "w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] transition-all duration-300",
+                effectiveCollapsed ? "h-5" : "h-7"
+              )}
+            />
           </div>
           
           {/* Right side - Controls */}
