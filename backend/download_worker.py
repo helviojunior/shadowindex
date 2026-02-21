@@ -237,16 +237,11 @@ class DownloadWorker:
         full_content = ''.join(chunks)
         await self._save_file_content(db, job, full_content, server)
     
-    async def _save_file_content(self, db: AsyncSession, job: DownloadJob, content: str):
+    async def _save_file_content(self, db: AsyncSession, job, content: str, server):
         """Salva o conteúdo do arquivo no storage"""
         import base64
         from pathlib import Path
-        
-        # Obter servidor
-        result = await db.execute(select(Server).where(Server.id == job.server_id))
-        server = result.scalar_one_or_none()
-        if not server:
-            return
+        from database import DownloadedFile
         
         try:
             # Decodificar base64 e salvar
@@ -257,7 +252,7 @@ class DownloadWorker:
             sha1_hash = hashlib.sha1(file_bytes).hexdigest()
             
             # Criar estrutura de diretórios
-            from storage_utils import get_server_storage_path, sanitize_path_component
+            from storage_utils import get_server_storage_path
             
             storage_base = get_server_storage_path(server.guid)
             relative_path = job.file_path.replace('\\', '/')
@@ -314,6 +309,8 @@ class DownloadWorker:
     
     async def _update_job_status(self, job_id: int, status: str, error_message: str = None):
         """Atualiza status de um job"""
+        from database import DownloadJob, AsyncSessionLocal
+        
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(DownloadJob).where(DownloadJob.id == job_id))
             job = result.scalar_one_or_none()
