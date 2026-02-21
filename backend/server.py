@@ -1835,7 +1835,7 @@ async def clear_access_denied_status(
     return {"success": False, "message": "Item não encontrado"}
 
 
-@api_router.post("/servers/{server_id}/download")
+@api_router.post("/servers/{server_id}/download", deprecated=True)
 async def download_server_file(
     server_id: int,
     file_path: str,
@@ -1844,7 +1844,9 @@ async def download_server_file(
     body: dict = None,  # Body com content_base64 para chunked upload
     db: AsyncSession = Depends(get_db)
 ):
-    """Baixa um arquivo do servidor via SOAP com versionamento"""
+    """[DEPRECATED] Use POST /api/v2/servers/{server_id}/download
+    
+    Baixa um arquivo do servidor via SOAP com versionamento"""
     # Obter servidor
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
