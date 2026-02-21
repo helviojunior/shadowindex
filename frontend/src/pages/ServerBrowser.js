@@ -2480,7 +2480,7 @@ const ServerBrowser = () => {
                       }
                     }
                     
-                    await axios.post(`${API}/servers/${serverId}/clear-access-denied`, null, { params });
+                    await axios.post(`${API_V2}/servers/${serverId}/clear-access-denied`, null, { params });
                     
                     const clearedData = {
                       access_denied: false,
