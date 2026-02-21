@@ -1144,10 +1144,10 @@ const ServerBrowser = () => {
           return;
         }
         
-        // Enviar para salvar no servidor
+        // Enviar para salvar no servidor usando API V2
         const combinedBase64 = allChunks.join('');
         response = await axios.post(
-          `${API}/servers/${serverId}/download`,
+          `${API_V2}/servers/${serverId}/download`,
           { content_base64: combinedBase64 },
           {
             params: {
@@ -1158,9 +1158,9 @@ const ServerBrowser = () => {
           }
         );
       } else {
-        // Download normal para arquivos pequenos
+        // Download normal para arquivos pequenos usando API V2
         response = await axios.post(
-          `${API}/servers/${serverId}/download`,
+          `${API_V2}/servers/${serverId}/download`,
           null,
           {
             params: {
