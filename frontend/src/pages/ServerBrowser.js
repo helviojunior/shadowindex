@@ -743,42 +743,49 @@ const ServerBrowser = () => {
             return [...newShares];
           });
         } else {
-          // É um diretório - atualizar o item dentro do nodeChildren do pai
-          // O nodeId tem formato "share-ShareName-0-1-2" onde os números são índices
-          const parts = nodeId.split('-');
-          if (parts.length > 2) {
-            // Encontrar o nodeId do pai
-            const parentNodeId = parts.slice(0, -1).join('-');
+          // É um diretório - atualizar o item em TODOS os nodeChildren
+          // Buscar pelo fullPath para garantir que encontramos o item correto
+          
+          console.log('[AccessDenied] Atualizando diretório com path:', path);
+          
+          setNodeChildren(prev => {
+            const newState = { ...prev };
+            let found = false;
             
-            console.log('[AccessDenied] Atualizando diretório:', nodeId, 'pai:', parentNodeId);
-            
-            setNodeChildren(prev => {
-              const parentChildren = prev[parentNodeId];
-              if (!parentChildren) {
-                console.log('[AccessDenied] Pai não encontrado:', parentNodeId);
-                return prev;
+            // Percorrer todos os nodeChildren para encontrar e atualizar o item
+            for (const parentKey of Object.keys(newState)) {
+              const children = newState[parentKey];
+              if (!children || !Array.isArray(children)) continue;
+              
+              const updatedChildren = children.map(child => {
+                // Comparar pelo fullPath ou pelo id
+                if (child.fullPath === path || child.id === nodeId) {
+                  console.log('[AccessDenied] Item encontrado em', parentKey, '- child:', child.name);
+                  found = true;
+                  return { 
+                    ...child, 
+                    access_denied: true,
+                    accessDenied: true,
+                    error_message: response.data.errorMessage || 'Acesso negado',
+                    children_fetched: true,
+                    has_children: false
+                  };
+                }
+                return child;
+              });
+              
+              if (found) {
+                newState[parentKey] = [...updatedChildren];
+                break;
               }
-              
-              // Atualizar o item específico dentro dos filhos do pai
-              const updatedChildren = parentChildren.map(child => 
-                child.id === nodeId 
-                  ? { 
-                      ...child, 
-                      access_denied: true,
-                      accessDenied: true,
-                      error_message: response.data.errorMessage || 'Acesso negado',
-                      children_fetched: true,
-                      has_children: false
-                    }
-                  : child
-              );
-              
-              return {
-                ...prev,
-                [parentNodeId]: [...updatedChildren]
-              };
-            });
-          }
+            }
+            
+            if (!found) {
+              console.log('[AccessDenied] Item não encontrado em nenhum nodeChildren');
+            }
+            
+            return newState;
+          });
         }
         
         // Atualizar o selectedItem
