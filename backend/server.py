@@ -2365,7 +2365,7 @@ async def get_file_content(
     try:
         import os
         if not os.path.exists(full_path):
-            raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
+            raise HTTPException(status_code=404, detail=f"Arquivo não encontrado no storage: {full_path}")
         
         # Ler arquivo em modo binário primeiro para detectar BOM
         with open(full_path, 'rb') as f:
@@ -2395,8 +2395,12 @@ async def get_file_content(
             "has_bom": has_bom,
             "encoding": "UTF-8 with BOM" if has_bom else "UTF-8"
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        logging.error(f"Error reading file {full_path}: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao ler arquivo: {str(e)}")
 
 
 class CertificateInfoRequest(BaseModel):
