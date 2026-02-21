@@ -878,6 +878,22 @@ async def delete_proxy_server(proxy_id: int, db: AsyncSession = Depends(get_db))
     await db.commit()
     return {"message": "Proxy server deleted"}
 
+@api_router.put("/proxy-servers/{proxy_id}", response_model=ProxyServerResponse)
+async def update_proxy_server(proxy_id: int, proxy: ProxyServerUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ProxyServer).where(ProxyServer.id == proxy_id))
+    db_proxy = result.scalar_one_or_none()
+    
+    if not db_proxy:
+        raise HTTPException(status_code=404, detail="Proxy server não encontrado")
+    
+    update_data = proxy.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_proxy, key, value)
+    
+    await db.commit()
+    await db.refresh(db_proxy)
+    return db_proxy
+
 # SOAP API URLs CRUD
 @api_router.post("/soap-apis", response_model=SoapApiUrlResponse)
 async def create_soap_api(soap_api: SoapApiUrlCreate, db: AsyncSession = Depends(get_db)):
