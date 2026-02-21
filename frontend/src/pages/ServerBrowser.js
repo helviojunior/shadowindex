@@ -642,16 +642,36 @@ const ServerBrowser = () => {
       // Tentar decodificar
       const decoded = atob(cleanContent);
       
-      // Verificar se o resultado é texto válido (não binário)
-      const isValidText = /^[\x20-\x7E\t\r\n]*$/.test(decoded);
+      // Verificar se o resultado é texto válido
+      // Contar caracteres printáveis (incluindo UTF-8/acentos)
+      let printableCount = 0;
+      let nullCount = 0;
+      const bytes = new Uint8Array(decoded.length);
       
-      if (!isValidText && decoded.length > 0) {
-        // Conteúdo binário - mostrar no formato hexdump -C
-        const bytes = new Uint8Array(decoded.length);
-        for (let i = 0; i < decoded.length; i++) {
-          bytes[i] = decoded.charCodeAt(i);
-        }
+      for (let i = 0; i < decoded.length; i++) {
+        const byte = decoded.charCodeAt(i);
+        bytes[i] = byte;
         
+        // Caracteres printáveis: tab, newline, carriage return, e 32-126, ou bytes UTF-8 (128-255)
+        if (byte === 9 || byte === 10 || byte === 13 || (byte >= 32 && byte <= 126) || byte >= 128) {
+          printableCount++;
+        }
+        if (byte === 0) {
+          nullCount++;
+        }
+      }
+      
+      // Calcular proporção de caracteres printáveis
+      const printableRatio = decoded.length > 0 ? printableCount / decoded.length : 0;
+      
+      // Considera texto se:
+      // - Mais de 85% dos caracteres são printáveis
+      // - E não tem muitos bytes nulos (< 5%)
+      const nullRatio = decoded.length > 0 ? nullCount / decoded.length : 0;
+      const isText = printableRatio > 0.85 && nullRatio < 0.05;
+      
+      if (!isText && decoded.length > 0) {
+        // Conteúdo binário - mostrar no formato hexdump -C
         let hexdump = '';
         const bytesPerLine = 16;
         
