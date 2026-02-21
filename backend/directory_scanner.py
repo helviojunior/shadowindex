@@ -145,8 +145,8 @@ class DirectoryScanner:
             print(f"=== SCANNER: Cancelled all {count} scan jobs ===", flush=True)
             return count
     
-    async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True):
-        """Adiciona um diretório para ser escaneado"""
+    async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True) -> str:
+        """Adiciona um diretório para ser escaneado. Retorna o ID do job."""
         async with self._lock:
             job = ScanJob(
                 server_id=server_id,
@@ -158,8 +158,9 @@ class DirectoryScanner:
                 apply_filters=apply_filters
             )
             self.scan_queue.append(job)
-            print(f"=== SCANNER: Added scan job: server={server_id}, share={share_name}, path={path} ===", flush=True)
+            print(f"=== SCANNER: Added scan job {job.id}: server={server_id}, share={share_name}, path={path} ===", flush=True)
             logger.info(f"Added scan job: {path}")
+            return job.id
     
     async def _run_loop(self):
         """Loop principal do scanner"""
