@@ -820,11 +820,19 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
         {/* Resize Handle */}
         <div
           ref={resizeRef}
-          className="h-1 bg-border hover:bg-blue-500 hover:h-1.5 cursor-ns-resize flex items-center justify-center transition-all duration-200 group"
+          className={`h-1 cursor-ns-resize flex items-center justify-center transition-all duration-200 group ${
+            isResizing 
+              ? 'bg-blue-500 h-1.5' 
+              : 'bg-border hover:bg-blue-500 hover:h-1.5'
+          }`}
           onMouseDown={() => setIsResizing(true)}
           data-testid="resize-handle"
         >
-          <GripHorizontal className="w-4 h-4 text-muted-foreground group-hover:text-white transition-colors duration-200" />
+          <GripHorizontal className={`w-4 h-4 transition-colors duration-200 ${
+            isResizing 
+              ? 'text-white' 
+              : 'text-muted-foreground group-hover:text-white'
+          }`} />
         </div>
 
         {/* Bottom Section - Results */}
