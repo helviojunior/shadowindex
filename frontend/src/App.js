@@ -16,6 +16,7 @@ import SqlPresets from "@/pages/SqlPresets";
 import Downloads from "@/pages/Downloads";
 import GeneralSettings from "@/pages/GeneralSettings";
 import PluginSoapConfig from "@/pages/PluginSoapConfig";
+import PluginDirectConfig from "@/pages/PluginDirectConfig";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 
