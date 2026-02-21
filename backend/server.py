@@ -1598,7 +1598,9 @@ async def download_server_file(
                 content_base64 = result_str.strip()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-        
+    
+    # Processar o conteúdo (comum para ambos os casos)
+    try:
         # Verificar se arquivo está vazio
         if not content_base64:
             # Se o tamanho esperado é 0, criar arquivo vazio
