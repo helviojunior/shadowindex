@@ -604,16 +604,36 @@ const Leaks = () => {
                   {filteredFiles.map((file) => 
                     file.findings.map((finding, fIndex) => {
                       const risk = getRiskIndicators(finding.RuleID);
+                      const originalFile = getOriginalFileName(file.file);
+                      const fileSource = getFileSource(file.file);
+                      const fileName = originalFile.split('/').pop();
+                      
                       return (
                         <TableRow key={`${file.file}-${fIndex}`} className="hover:bg-muted/30">
                           <TableCell>
-                            <div>
-                              <p className="font-medium text-sm text-cyan-400 truncate max-w-[300px]">
-                                {file.file.split('/').pop()}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate max-w-[300px]">
-                                {file.file}
-                              </p>
+                            <div className="flex items-start gap-2">
+                              {fileSource && (
+                                <div className="flex-shrink-0 mt-0.5">
+                                  {fileSource === 'ocr' ? (
+                                    <FileSearch className="w-4 h-4 text-blue-400" title="Detectado via OCR" />
+                                  ) : (
+                                    <FileText className="w-4 h-4 text-purple-400" title="Detectado via Metadata" />
+                                  )}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm text-cyan-400 truncate max-w-[280px]">
+                                  {fileName}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate max-w-[280px]">
+                                  {originalFile}
+                                </p>
+                                {fileSource && (
+                                  <Badge variant="outline" className="text-[10px] mt-1 px-1.5 py-0">
+                                    {fileSource === 'ocr' ? 'via OCR' : 'via Metadata'}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -657,7 +677,8 @@ const Leaks = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setSelectedFinding(finding)}
+                                onClick={() => setSelectedFinding({...finding, originalFile})}
+                              >
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
