@@ -953,13 +953,16 @@ const ServerBrowser = () => {
       for (const file of files) {
         if (bulkDownloadCancelledRef.current) break;
         
+        // O size pode vir como string do SOAP, converter para número
         const fileSize = parseInt(file.size) || 0;
+        console.log(`Download file: ${file.name}, size from SOAP: ${file.size}, parsed: ${fileSize}`);
         
         if (fileSize > maxSizeBytes) {
           // Arquivo muito grande - adicionar como skipped
           setBulkDownloadItems(prev => [{
             ...file,
             shareName,
+            fileSize,
             status: 'skipped',
             error: `Tamanho excede limite (${formatSize(fileSize)})`
           }, ...prev]);
@@ -975,6 +978,7 @@ const ServerBrowser = () => {
         setBulkDownloadItems(prev => [{
           ...file,
           shareName,
+          fileSize,
           status: 'downloading',
           progress: 0,
           error: null
