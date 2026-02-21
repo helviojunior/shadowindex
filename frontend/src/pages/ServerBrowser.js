@@ -1052,7 +1052,8 @@ const ServerBrowser = () => {
     // Se arquivo > 1MB, adicionar na fila de downloads
     if (fileSize > ONE_MB) {
       try {
-        const response = await axios.post(`${API}/downloads`, {
+        // Usar API V2 para adicionar à fila
+        const response = await axios.post(`${API_V2}/downloads`, {
           server_id: parseInt(serverId),
           share_name: shareName,
           file_path: filePath,
@@ -1097,8 +1098,9 @@ const ServerBrowser = () => {
             return;
           }
           
+          // Usar API V2 para download em chunks
           const chunkResponse = await axios.post(
-            `${API}/servers/${serverId}/download-chunk`,
+            `${API_V2}/servers/${serverId}/download-chunk`,
             null,
             {
               params: {
