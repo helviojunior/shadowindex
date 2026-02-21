@@ -902,32 +902,115 @@ const ServerBrowser = () => {
           continue;
         }
         
-        // Adicionar à lista com status downloading (no início)
+        // Adicionar à lista com status downloading (no início) com progresso
         setBulkDownloadItems(prev => [{
           ...file,
           shareName,
           status: 'downloading',
+          progress: 0,
           error: null
         }, ...prev]);
         setBulkDownloadStats(prev => ({ ...prev, total: prev.total + 1 }));
         
+        const CHUNK_SIZE = 512000; // 512KB
+        const useChunks = fileSize > CHUNK_SIZE;
+        
         try {
-          await axios.post(
-            `${API}/servers/${serverId}/download`,
-            null,
-            {
-              params: {
-                file_path: file.fullPath,
-                share_name: shareName,
-                expected_size: fileSize
+          if (useChunks) {
+            // Download em chunks para arquivos grandes
+            let offset = 0;
+            let allChunks = [];
+            
+            while (true) {
+              if (bulkDownloadCancelledRef.current) break;
+              
+              // Verificar se o item foi cancelado individualmente
+              const currentItems = await new Promise(resolve => {
+                setBulkDownloadItems(prev => {
+                  resolve(prev);
+                  return prev;
+                });
+              });
+              const currentItem = currentItems.find(it => it.fullPath === file.fullPath);
+              if (currentItem?.status === 'cancelled') break;
+              
+              const chunkResponse = await axios.post(
+                `${API}/servers/${serverId}/download-chunk`,
+                null,
+                {
+                  params: {
+                    file_path: file.fullPath,
+                    share_name: shareName,
+                    offset: offset,
+                    chunk_size: CHUNK_SIZE
+                  }
+                }
+              );
+              
+              if (chunkResponse.data.content_base64) {
+                allChunks.push(chunkResponse.data.content_base64);
+              }
+              
+              offset += chunkResponse.data.chunk_size;
+              const progress = Math.min(100, Math.round((offset / fileSize) * 100));
+              
+              // Atualizar progresso
+              setBulkDownloadItems(prev => prev.map((it) => 
+                it.fullPath === file.fullPath && it.status === 'downloading'
+                  ? { ...it, progress } 
+                  : it
+              ));
+              
+              if (chunkResponse.data.is_last_chunk || chunkResponse.data.chunk_size === 0) {
+                break;
               }
             }
-          );
+            
+            // Verificar se foi cancelado
+            const finalItems = await new Promise(resolve => {
+              setBulkDownloadItems(prev => {
+                resolve(prev);
+                return prev;
+              });
+            });
+            const finalItem = finalItems.find(it => it.fullPath === file.fullPath);
+            if (finalItem?.status === 'cancelled' || bulkDownloadCancelledRef.current) {
+              continue;
+            }
+            
+            // Combinar chunks e salvar
+            const combinedBase64 = allChunks.join('');
+            await axios.post(
+              `${API}/servers/${serverId}/download`,
+              null,
+              {
+                params: {
+                  file_path: file.fullPath,
+                  share_name: shareName,
+                  expected_size: fileSize,
+                  content_base64: combinedBase64
+                }
+              }
+            );
+          } else {
+            // Download normal para arquivos pequenos
+            await axios.post(
+              `${API}/servers/${serverId}/download`,
+              null,
+              {
+                params: {
+                  file_path: file.fullPath,
+                  share_name: shareName,
+                  expected_size: fileSize
+                }
+              }
+            );
+          }
           
           // Atualizar para completed
           setBulkDownloadItems(prev => prev.map((it) => 
             it.fullPath === file.fullPath && it.status === 'downloading'
-              ? { ...it, status: 'completed' } 
+              ? { ...it, status: 'completed', progress: 100 } 
               : it
           ));
           setBulkDownloadStats(prev => ({ ...prev, completed: prev.completed + 1 }));
