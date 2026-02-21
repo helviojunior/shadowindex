@@ -65,6 +65,38 @@ const Downloads = () => {
     skipped: 0
   });
 
+  // Load scan jobs
+  const loadScanJobs = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/scans`);
+      setScanJobs(response.data || []);
+    } catch (error) {
+      console.error('Error loading scan jobs:', error);
+    }
+  }, []);
+
+  // Cancel scan job
+  const cancelScanJob = async (scanId) => {
+    try {
+      await axios.post(`${API}/scans/${scanId}/cancel`);
+      toast.success('Scan cancelado');
+      loadScanJobs();
+    } catch (error) {
+      toast.error('Erro ao cancelar scan');
+    }
+  };
+
+  // Cancel all scans
+  const cancelAllScans = async () => {
+    try {
+      const response = await axios.post(`${API}/scans/cancel-all`);
+      toast.success(`${response.data.cancelled} scans cancelados`);
+      loadScanJobs();
+    } catch (error) {
+      toast.error('Erro ao cancelar scans');
+    }
+  };
+
   // Load download jobs
   const loadDownloadJobs = useCallback(async () => {
     try {
