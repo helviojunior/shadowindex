@@ -453,6 +453,13 @@ async def init_db():
             offline_config = AppConfig(key="offline_mode", value="false")
             session.add(offline_config)
         
+        # Create default app settings
+        for key, (default_value, description) in DEFAULT_SETTINGS.items():
+            result = await session.execute(select(AppSettings).where(AppSettings.key == key))
+            if not result.scalar_one_or_none():
+                setting = AppSettings(key=key, value=default_value, description=description)
+                session.add(setting)
+        
         # Check if default SOAP API exists
         result = await session.execute(select(SoapApiUrl).where(SoapApiUrl.name == "Default SOAP API"))
         if not result.scalar_one_or_none():
