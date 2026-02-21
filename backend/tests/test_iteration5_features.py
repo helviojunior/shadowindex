@@ -232,12 +232,12 @@ class TestCredentialVerifyEndpoint:
     
     def test_create_credential_for_verify_test(self):
         """Create credential for verification tests"""
-        response = requests.post(f"{BASE_URL}/api/credentials", json={
+        response = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials", json={
             "name": "TEST_verify_cred",
             "credential_type": "user_password",
             "username": "verify_user",
             "password": "verify_pass"
-        })
+        }))
         assert response.status_code == 200
         data = response.json()
         TestCredentialVerifyEndpoint.test_cred_id = data["id"]
@@ -251,7 +251,7 @@ class TestCredentialVerifyEndpoint:
             pytest.skip("No test credential")
         
         cred_id = TestCredentialVerifyEndpoint.test_cred_id
-        response = requests.post(f"{BASE_URL}/api/credentials/{cred_id}/verify?success=true")
+        response = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials/{cred_id}/verify?success=true"))
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["id"] == cred_id
@@ -265,7 +265,7 @@ class TestCredentialVerifyEndpoint:
             pytest.skip("No test credential")
         
         cred_id = TestCredentialVerifyEndpoint.test_cred_id
-        response = requests.get(f"{BASE_URL}/api/credentials")
+        response = retry_request(lambda: requests.get(f"{BASE_URL}/api/credentials"))
         assert response.status_code == 200
         data = response.json()
         cred = next((c for c in data if c["id"] == cred_id), None)
@@ -276,20 +276,20 @@ class TestCredentialVerifyEndpoint:
     def test_mark_credential_as_failed_verification(self):
         """POST /api/credentials/{id}/verify with success=false and error_message"""
         # Create a new credential for this test
-        create_resp = requests.post(f"{BASE_URL}/api/credentials", json={
+        create_resp = retry_request(lambda: requests.post(f"{BASE_URL}/api/credentials", json={
             "name": "TEST_verify_fail",
             "credential_type": "user_password",
             "username": "fail_user",
             "password": "fail_pass"
-        })
+        }))
         assert create_resp.status_code == 200
         cred_id = create_resp.json()["id"]
         
         # Mark as failed
-        response = requests.post(
+        response = retry_request(lambda: requests.post(
             f"{BASE_URL}/api/credentials/{cred_id}/verify",
             params={"success": False, "error_message": "Authentication failed: invalid password"}
-        )
+        ))
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["verified"] == False
