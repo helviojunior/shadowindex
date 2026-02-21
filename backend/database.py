@@ -354,6 +354,35 @@ async def init_db():
     except Exception as e:
         logger.warning(f"Migration check for file_versions failed: {e}")
     
+    # Migration for download_jobs table
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("PRAGMA table_info(download_jobs)")
+        columns = {col[1] for col in cursor.fetchall()}
+        
+        if 'max_file_size_bytes' not in columns:
+            cursor.execute('ALTER TABLE download_jobs ADD COLUMN max_file_size_bytes INTEGER')
+            logger.info("Added column 'max_file_size_bytes' to download_jobs")
+        
+        if 'max_depth' not in columns:
+            cursor.execute('ALTER TABLE download_jobs ADD COLUMN max_depth INTEGER')
+            logger.info("Added column 'max_depth' to download_jobs")
+        
+        if 'is_directory' not in columns:
+            cursor.execute('ALTER TABLE download_jobs ADD COLUMN is_directory BOOLEAN DEFAULT 0')
+            logger.info("Added column 'is_directory' to download_jobs")
+        
+        if 'parent_job_id' not in columns:
+            cursor.execute('ALTER TABLE download_jobs ADD COLUMN parent_job_id INTEGER')
+            logger.info("Added column 'parent_job_id' to download_jobs")
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Migration check for download_jobs failed: {e}")
+    
     # Create default records
     async with AsyncSessionLocal() as session:
         from sqlalchemy import select
