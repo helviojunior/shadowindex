@@ -27,6 +27,34 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 13 - API V2 Refactoring)
+- [x] **Nova API V2 baseada em IDs**
+  - Criado arquivo `backend/routes_v2.py` com endpoints baseados em IDs
+  - Resolve problemas de encoding em URLs com caracteres especiais (`\`, `$`, `:`, etc.)
+  - Estrutura mais RESTful e segura
+- [x] **Novos Endpoints V2:**
+  - `GET /api/v2/servers/{server_id}/shares/{share_id}` - Info do share
+  - `GET /api/v2/servers/{server_id}/shares/{share_id}/items` - Itens do share
+  - `POST /api/v2/servers/{server_id}/shares/{share_id}/browse` - Navegar no share (SOAP)
+  - `GET /api/v2/servers/{server_id}/items/by-path?full_path=...` - Buscar item por path
+  - `GET /api/v2/servers/{server_id}/items/{item_id}` - Info do item
+  - `GET /api/v2/servers/{server_id}/items/{item_id}/children` - Filhos do item
+  - `POST /api/v2/servers/{server_id}/items/{item_id}/browse` - Navegar no diretório
+  - `POST /api/v2/servers/{server_id}/items/{item_id}/download` - Download direto
+  - `POST /api/v2/servers/{server_id}/items/{item_id}/queue` - Adicionar à fila
+  - `GET /api/v2/servers/{server_id}/files/by-path?file_path=...` - Buscar arquivo por path
+  - `GET /api/v2/servers/{server_id}/files/{file_id}` - Info do arquivo baixado
+  - `GET /api/v2/servers/{server_id}/files/{file_id}/content` - Conteúdo do arquivo
+  - `GET /api/v2/servers/{server_id}/files/{file_id}/versions` - Versões do arquivo
+  - `POST /api/v2/servers/{server_id}/files/{file_id}/certificate-info` - Info certificado
+  - `GET /api/v2/servers/{server_id}/files/{file_id}/download` - Download do arquivo
+  - `POST /api/v2/servers/{server_id}/batch/queue` - Batch queue
+- [x] **Frontend atualizado para usar API V2:**
+  - `loadFileContent` usa ID quando disponível
+  - `loadFileVersions` usa ID quando disponível
+  - `openFile` usa ID quando disponível
+  - Fallback para API antiga mantido para compatibilidade
+
 ### 2026-02-22 (Session 12 - Scan Jobs & Download Sorting)
 - [x] **Botão "Limpar Finalizados" para Scan Jobs**
   - Adicionado botão `data-testid="clear-finished-scans"` na seção de Scan Jobs
