@@ -341,6 +341,22 @@ const ServerBrowser = () => {
     }
   }, [activeTab, selectedItem?.id, fileContent, filePreviewUrl, loadingContent, contentLoadError, downloadedFiles]);
 
+  // Carregar dados de OCR quando arquivo baixado for selecionado
+  useEffect(() => {
+    if (selectedItem?.itemType === 'File') {
+      const filePath = selectedItem.fullPath || selectedItem.serverPath;
+      const fileInfo = downloadedFilesInfo[filePath];
+      
+      if (fileInfo?.id) {
+        loadOcrData(fileInfo.id);
+      } else {
+        setOcrData(null);
+      }
+    } else {
+      setOcrData(null);
+    }
+  }, [selectedItem?.id, downloadedFilesInfo]);
+
   const loadServer = async () => {
     try {
       const response = await axios.get(`${API}/servers/${serverId}`);
