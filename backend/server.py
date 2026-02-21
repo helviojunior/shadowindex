@@ -1545,9 +1545,9 @@ async def download_server_file(
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
-    # Chamar SOAP Exec5
+    # Chamar SOAP Exec5 (sempre passar l1=0 e l2=0 para download completo)
     soap_service = await get_default_soap_service(db)
-    params = {"s1": file_path, "s2": ""}
+    params = {"s1": file_path, "s2": "", "l1": 0, "l2": 0}
     
     try:
         result_str = await soap_service.call_soap_operation(db, "Exec5", params, False)
