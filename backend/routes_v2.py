@@ -570,6 +570,30 @@ async def queue_item(server_id: int, item_id: int, db: AsyncSession = Depends(ge
 # Downloaded File Endpoints
 # ==========================================
 
+# IMPORTANTE: Rotas específicas devem vir ANTES das rotas com parâmetros {file_id}
+@router.get("/servers/{server_id}/files/by-path")
+async def get_file_by_path(
+    server_id: int, 
+    file_path: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Busca um arquivo baixado pelo path (para compatibilidade)"""
+    server = await get_server_or_404(db, server_id)
+    
+    result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.server_guid == server.guid,
+            DownloadedFile.file_path == file_path
+        )
+    )
+    file = result.scalar_one_or_none()
+    
+    if not file:
+        return {"found": False, "file_id": None}
+    
+    return {"found": True, "file_id": file.id, "file": file}
+
+
 @router.get("/servers/{server_id}/files/{file_id}", response_model=DownloadedFileResponse)
 async def get_downloaded_file(server_id: int, file_id: int, db: AsyncSession = Depends(get_db)):
     """Obtém informações de um arquivo baixado"""
