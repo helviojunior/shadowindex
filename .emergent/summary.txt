@@ -3,129 +3,179 @@ The user initially requested a web dashboard to manage credentials, database con
 
 **PRODUCT REQUIREMENTS:**
 - A web panel with a modern dark mode layout and a collapsible, multi-level left sidebar.
-- A dedicated Downloads page to view and manage the status of all historical and in-progress downloads.
-- A robust, backend-driven download system where background workers handle file listing and downloading, allowing the process to continue even if the user closes the browser.
-- A General Settings page to configure application-wide parameters like download concurrency, default batch download settings, and ignored file extensions.
-- All data-entry forms should be collapsible, appearing only when the user clicks an Add button.
-- The  function should have different behaviors depending on the context: return all IPs for SOAP operations but prioritize IPv4 for server creation.
+- A dedicated Downloads page to view and manage the status of all historical and in-progress downloads, including directory scanning jobs.
+- A robust, backend-driven download system where background workers handle file listing () and downloading (), allowing the process to continue even if the user closes the browser.
+- A General Settings page to configure application-wide parameters.
 - Data tables should be enhanced with features like scrolling, sorting, and searching.
+- The UI should provide feedback on queued downloads and prevent re-queueing of the same file.
+- Users should be able to manage the lifecycle of directory scans (view, cancel, clear).
 
 **User's preferred language**: Portuguese. The next agent MUST respond in Portuguese.
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and a React frontend. The application uses a persistent SQLite database for metadata.
-
-- **UI/UX:** The application features a multi-level sidebar inspired by the JFrog UI. All primary data entry pages (, , , etc.) have been refactored to use a consistent pattern where the creation form is hidden by default and toggled by an Add... button in the page header.
-- **Download System:** A sophisticated, fully backend-driven download architecture is in place.
-    - **Two-Worker System:** A  worker populates a queue with files to be downloaded from a directory, and a separate  processes the actual file downloads from this queue.
-    - **Configuration:** A new General Settings page allows the user to configure download concurrency, default recursion depth, max file size, and a list of file extensions to ignore during batch scans.
-    - **Job-Specific Parameters:** Batch download jobs initiated from the frontend carry their own configuration (depth, max size) which overrides the global server settings for that specific job.
-- **Backend:** Endpoints for managing general settings () and initiating backend directory scans () have been created. The  logic has been split to handle different use cases.
-- **Bug Fixes:** Previously reported issues with sidebar navigation, flyout menus, and duplicated download paths have been resolved.
+A full-stack application with a FastAPI backend and a React frontend, using a persistent SQLite database for metadata.
+- **Backend:** Features a two-worker system for downloads: a  that parses SOAP XML responses to find files and a  that downloads them. It includes endpoints for managing download jobs and directory scan jobs (). The backend now has a centralized utility function for parsing the specific SOAP XML format.
+- **Frontend:** The UI features a Downloads page that displays status cards for download jobs, a list of individual download jobs, and a new section for managing . The  page allows navigation of a remote file system, shows which files are already downloaded or queued, and provides options to Sync (download) or Force Download ignored files.
+- **Database:** The schema includes tables for  and , with a manager class in  to handle  state transitions (pending, scanning, completed, cancelled, failed).
 
 **Last working item**:
-- **Last item agent was working:** The user identified a recurring UI inconsistency: a lack of vertical spacing between card/box elements on multiple pages, making the layout look cramped. The agent was tasked with applying a consistent vertical margin/padding across all affected pages.
+- **Last item agent was working:** Implementing a user request to add a button to the Downloads page to clear finished and cancelled scan jobs from the list. The agent had already created the backend endpoint () and the database logic. The next step was to add the corresponding button and its handler to the frontend.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** Frontend testing agent. The agent should be instructed to take screenshots of the , , , and  pages to verify that consistent vertical spacing (e.g., , , or ) has been applied between all major card/box containers.
+- **Which testing method agent to use?** Frontend testing agent. The test should involve:
+    1. Initiating a new directory scan.
+    2. Cancelling the scan or letting it finish/fail.
+    3. Verifying that a Limpar Scans Finalizados button appears.
+    4. Clicking the button and confirming that only , , or  scans are removed from the list, while  or  scans remain.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0): Inconsistent vertical spacing between UI cards/boxes.**
+- **Issue 1 (P0): Complete the Clear Finished Scans feature.**
+- **Issue 2 (P1): Limpar concluídos button for download jobs deletes all jobs.**
+- **Issue 3 (P2): Downloaded file metadata is not updated after download.**
+- **Issue 4 (P3): File tree in  doesn't auto-update after a download.**
 
 **Issues Detail:**
-- **Issue 1: Inconsistent vertical spacing between UI cards/boxes.**
-    - **Attempted fixes:** The agent correctly identified the recurring nature of the problem and viewed files like  and  to diagnose the issue. The intended fix is to add Tailwind CSS utility classes for vertical spacing to the parent containers of these card elements.
+- **Issue 1: Complete the Clear Finished Scans feature.**
+    - **Attempted fixes:** The backend endpoint () and the corresponding database method () have been implemented in  and .
     - **Next debug checklist:**
-        1. Systematically review all pages that use a card-based layout: , , , , , , , and .
-        2. For each page, identify the main  container that wraps the collection of cards or boxes.
-        3. Apply a consistent vertical spacing utility class like  to this container.
-        4. Use the screenshot tool to visually verify the added spacing on all modified pages.
-    - **Why fix this issue and what will be achieved with the fix?** To resolve a recurring UI/UX complaint from the user and establish a consistent, polished visual standard across the application.
+        1. In , add a Limpar Scans Finalizados button.
+        2. This button should only be visible if there is at least one scan job with a status of 'completed', 'failed', or 'cancelled'.
+        3. Create a handler function that calls the  endpoint.
+        4. On success, refresh the list of scan jobs by calling .
+    - **Why fix this issue and what will be achieved with the fix?** This is a direct user request to improve the usability of the new Scan Jobs UI.
     - **Status:** IN PROGRESS
-    - **Is recurring issue?** Y
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** Both.
+    - **Blocked on other issue:** None.
+
+- **Issue 2: Limpar concluídos button for download jobs deletes all jobs.**
+    - **Attempted fixes:** The agent reviewed the backend code for the  endpoint in  and confirmed the logic correctly targets only jobs with status 'completed', 'failed', or 'cancelled'. The agent added logging to trace which jobs are being deleted but did not find the root cause.
+    - **Next debug checklist:**
+        1. Add several download jobs with different statuses (, , , ).
+        2. Click the Limpar Concluídos button on the Downloads page.
+        3. Check the backend logs for the output of the  statement to see exactly which jobs are being targeted.
+        4. Verify if the jobs remaining in the UI and database match the expected outcome. If not, investigate potential state management issues in the frontend or unintended side effects in the backend transaction.
+    - **Why fix this issue and what will be achieved with the fix?** This is a critical bug that causes data loss and makes download management unreliable.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** Both.
+    - **Blocked on other issue:** None.
+
+- **Issue 3: Downloaded file metadata is not updated after download.**
+    - **Attempted fixes:** The user reported that after a file is downloaded, its metadata (SHA1, status, etc.) is not updated in the database. The agent added extensive logging to the  function and the main loop in  to trace the execution flow.
+    - **Next debug checklist:**
+        1. Perform a file download and monitor the backend logs.
+        2. Look for the logs added by the previous agent, such as SAVING/UPDATING DownloadedFile and DOWNLOAD JOB COMPLETED.
+        3. If the logs appear, verify the data being saved to the  record is correct.
+        4. If logs do not appear, trace why the  function is not being reached or is exiting prematurely. Check for unhandled exceptions around the file I/O operations.
+    - **Why fix this issue and what will be achieved with the fix?** Without this fix, the application cannot correctly track which files have been successfully downloaded, defeating a core purpose of the server browser.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** Backend.
+    - **Blocked on other issue:** None.
+
+- **Issue 4: File tree in  doesn't auto-update after a download.**
+    - **Attempted fixes:** The user reported that the file tree doesn't reflect a new download without a manual page refresh. The agent implemented a fix in  by adding  to the  hook that runs when a file is selected.
+    - **Next debug checklist:**
+        1. Test the user flow: browse to a directory, download a file (especially one that gets queued to the worker), and then navigate back to that directory or re-select the file.
+        2. Confirm if the file's status icon updates automatically without a full page reload.
+        3. If it doesn't, the current fix is insufficient. A more robust solution like periodic polling (while on the  page) or a WebSocket connection might be needed to get real-time updates from the backend workers.
+    - **Why fix this issue and what will be achieved with the fix?** To provide a seamless user experience and immediate feedback on download status within the file browser.
+    - **Status:** USER VERIFICATION PENDING
+    - **Is recurring issue?** N
     - **Should Test frontend/backend/both after fix?** Frontend.
     - **Blocked on other issue:** None.
 
 **In progress Task List**:
-- None.
+- **Task 1: Add UI for Clear Finished Scans (P0).**
+    - **Where to resume:** .
+    - **What will be achieved with this?** Complete the user-requested feature for managing the Scan Jobs list.
+    - **Status:** IN PROGRESS
+    - **Should Test frontend/backend/both after fix?** Both.
+    - **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - **(P1) Downloads UI Enhancements:** While many download features are complete, the original PRD mentioned adding more advanced filtering options to the Downloads page (e.g., by status).
+  - **(P1) Downloads UI Enhancements:** Add advanced filtering options to the Downloads page (e.g., filter by status, server).
 - **Future Tasks:**
-    - **(P2) Mock SOAP Service for Testing:** Create a mock service to allow for reliable testing of the server browser functionality without depending on the live external API.
-    - **(P3) Refactor DB Schema Migration:** Adopt a standard migration tool like  to manage database schema changes more robustly.
-    - **(P4) Address  Dependency:** The root cause of the  import error (handled by a  block) should be fixed by ensuring the library is properly installed in the application's environment.
+  - **(P2) Mock SOAP Service for Testing:** Create a mock service to allow for reliable testing of the server browser functionality without depending on the live external API.
+  - **(P3) Refactor DB Schema Migration:** Adopt a standard migration tool like  to manage database schema changes more robustly.
+  - **(P4) Address  Dependency:** The root cause of the  import error (handled by a  block) should be fixed by ensuring the library is properly installed in the application's environment.
 
 **Completed work in this session**
-- **Download System Rearchitecture:** Implemented a complete backend-driven download system with separate workers for directory scanning and file downloading.
-- **General Settings Page:** Created a new UI and backend endpoints for managing global application settings like download concurrency and ignored file extensions.
-- **UI Refactoring (Collapsible Forms):** Standardized the UI on all data entry pages to use a collapsible form, improving layout consistency.
-- **Servers Table Enhancement:** Upgraded the servers list with client-side search, sorting capabilities, and a scrollable body with a fixed header.
-- **Logic Refinements:**
-    - Adjusted the  function to prioritize IPv4 or return all IPs based on context.
-    - Configured batch downloads to use parameters set on the frontend at the time of request, overriding global defaults.
-- **Bug Fixes:**
-    - Resolved a critical bug causing duplicated paths during the download process.
-    - Fixed sidebar highlighting and flyout menu issues.
-    - Improved the layout of the Downloads dashboard, including changing an icon that was causing confusion.
+- **Fixed Critical Worker Bugs:**
+  - **Directory Scanner:** Resolved a critical XML parsing bug that prevented the scanner from finding any files. The agent refactored the parsing logic into a reusable utility function () in  and applied it in .
+  - **Download Worker:** Fixed a crash caused by incorrect path handling between Windows UNC paths from the SOAP service and the Linux storage path.
+- **Implemented Full Scan Job Management:**
+  - Created backend models (), manager class, and API endpoints (, ) to create, list, and cancel directory scanning jobs.
+  - Built a new UI section on the Downloads page to display the status of scan jobs, with options to cancel them.
+- **Enhanced  Functionality:**
+  - Implemented backend and frontend logic to check if a file is already in the download queue, preventing duplicate downloads.
+  - The UI now displays Em fila de download instead of the Sync button for queued files.
+  - Added a Forçar download button for files in the batch download list that are normally ignored by filters.
+- **UI/UX Improvements:**
+  - Redesigned the status cards on the  page, removing icon backgrounds and aligning them to the top-right as requested.
+  - Fixed inconsistent padding on cards on the  and  pages.
 
 **Earlier issues found/mentioned but not fixed**
-- ** environment dependency:** The application uses a  block to handle a missing  library in the execution environment. The root cause (library not being installed in the Docker container) has not been fixed.
+- ** environment dependency:** The application uses a  block in  to handle a missing  library. The root cause (library not being installed) has not been fixed.
+- **Limpar concluídos for downloads:** As detailed in the pending issues, the button for clearing finished download jobs is reportedly deleting all jobs, including active ones. This is a critical unresolved bug.
+- **Download metadata updates:** As detailed, the download worker is not correctly updating the  record with SHA1 and other metadata upon completion.
+
+**Known issue recurrence from previous fork**
+- **UI Spacing/Layout:** The initial task was to fix inconsistent vertical spacing. The agent found existing  classes and assumed the task was done. The user then provided a screenshot showing a different, specific spacing bug on the Downloads page. This indicates that UI polish issues are subtle and require careful visual verification, as the user has a keen eye for them.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Background Workers in FastAPI:** Using  to run persistent background tasks (, ) that poll the database for jobs.
-- **Centralized Application Configuration:** Storing operational parameters (concurrency limits, ignored extensions) in a dedicated database table () and providing a UI to manage them.
-- **Job-Specific Configuration:** Overriding global settings with parameters stored on a per-job basis. For instance, a  stores its own  and , which are then used by the workers for that specific task.
-- **Advanced React UI Patterns:** Implementing a reusable collapsible form pattern across multiple pages. Enhancing a data table with client-side search, sorting, and a fixed header with a scrollable body.
+- **Background Worker State Management:** Introduction of a  class in  to handle the lifecycle (pending, scanning, completed, cancelled) of long-running background tasks. The worker () now checks the job status in the database to allow for cancellation.
+- **Code Consolidation:** A fragile SOAP XML parsing logic, which was a recurring source of bugs, was refactored into a single utility function ( in ) and reused by both the interactive endpoint and the background worker to ensure consistency.
+- **Frontend State Synchronization:** Attempting to keep the frontend UI (file tree in ) synchronized with backend state changes by re-fetching data on user interactions ( on file selection).
 
 **key DB schema**
-- **AppSettings**:  (New model for global settings)
-- **ScanJob**:  (New model for directory scan tasks)
-- **DownloadJob**:  (Modified to store its own size limit)
+- **ScanJob**: 
 
 **All files of reference**
-- **Current Issue:** , ,  (and other pages with card layouts).
-- **Download System:** , , .
-- **Settings:** ,  (AppSettings model).
-- **UI Patterns:**  (for the advanced table),  (for the collapsible form pattern).
+- **Current Task (Clear Scans):** , , .
+- **Pending Bug (Clear Downloads):** , .
+- **Pending Bug (Metadata Update):** .
+- **Pending Bug (UI Refresh):** .
+- **Core Logic:**  (for scanning),  (for downloading).
 
 **Critical Info for New Agent**
-- **Immediate Priority:** The immediate task is to fix the inconsistent vertical spacing on all pages with card/box layouts, as explicitly requested by the user. This is a recurring UI polish item.
-- **Download Architecture:** The download system is a two-stage process. The  worker handles file discovery for batch jobs (creating s), and the  handles the actual downloading (processing s). Respect this architecture.
-- **Configuration Hierarchy:** Global settings from the  table are used as defaults, especially for populating UI elements. However, individual jobs (like  and ) store and use their own parameters, which take precedence over the global settings for that specific task.
-
-**documents and test reports created in this job**
--  was updated multiple times.
+- **Prioritize User-Reported Bugs:** There are several critical bugs reported by the user (clearing all downloads, metadata not updating) that degrade core functionality. These should be fixed before implementing new features.
+- **SOAP XML Parsing is Fragile:** The logic to parse the SOAP response for directory listings ( in ) was fixed after many attempts. Be extremely cautious when modifying it. The remote SOAP service is not available in the preview environment (it returns 403), so logic must be tested carefully. The user provided a real XML response that can be used for creating test cases.
+- **Worker Management:** The application now has two types of background jobs: Download Jobs and Scan Jobs. Be mindful of their distinct states and management endpoints.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **Request:** Add sorting, searching, and scrolling to the Servers table. (Completed)
-2.  **Bug Report:** Identified a recurring issue with a lack of vertical spacing between UI cards/boxes across multiple pages. (In Progress - This is the current P0 issue)
-3.  **Request:** For batch downloads, the parameters (depth, max size) from the UI's dropdowns must be stored on the job and used by the workers, overriding global settings. (Completed)
-4.  **Request:** The UI dropdowns for batch downloads should be populated with default values from the new General Settings page. (Completed)
-5.  **Request:** Create a General Settings page to manage ignored file extensions and other parameters. Manual (single-file) downloads should ignore all filters. (Completed)
-6.  **Request:** Rework the download engine to be 100% backend-driven with a separate worker for listing directories and other workers for downloading. (Completed)
-7.  **Request:** Fix a bug where the download path was being duplicated by the worker. (Completed)
-8.  **Request:** Improve the Downloads dashboard layout, specifically the spacing and the icon for the Downloading status. (Completed)
-9.  **Request:** Adjust the  logic to return a list of all IPs in SOAP Operations but only the IPv4 when adding a server. (Completed)
-10. **Request:** Adjust various UI elements, including collapsible forms and button labels. (Completed)
+1.  **(request)** Add button to clear finished/cancelled scans. (In Progress)
+2.  **(feedback)** Scan list shows all jobs as awaiting and is not ordered. (Fixed)
+3.  **(feedback)** The list of scans becomes empty after the page polls for updates. (Fixed)
+4.  **(request)** Ability to see Scan Jobs and cancel them. (Completed)
+5.  **(bug)** The directory scanner is not running and nothing appears on the downloads screen after a scan is initiated. (Fixed - was a critical XML parsing bug).
+6.  **(bug)** The file tree does not automatically show a file as synchronized after download; a manual refresh is needed. (Attempted Fix, needs verification).
+7.  **(bug)** The Clear completed button on the downloads page is clearing ALL jobs, including active ones. (In Progress).
+8.  **(bug)** After a file is downloaded, its metadata (SHA1, status, etc.) is not being updated correctly. (In Progress).
+9.  **(bug)** A crash occurred when saving a downloaded file due to a path incompatibility issue. (Fixed).
+10. **(request)** Add padding to the top of cards on the Downloads and General Settings pages. (Completed).
 
 **Project Health Check:**
-- **In-Progress Refinement:** The application is functionally robust, but the user is now focused on UI/UX polish and consistency. The current task to fix vertical spacing is a prime example.
-- **Technical Debt:** The  dependency issue remains an unresolved piece of technical debt.
+- **Broken:**
+    - The Clear finished functionality for **download jobs** is critically broken, as it reportedly deletes all jobs.
+    - The core loop of the **download worker** is not correctly updating file metadata in the database upon completion.
+    - The **Server Browser UI** does not provide reliable real-time feedback on the status of worker-completed downloads.
+- **Mocked:** The external SOAP API for listing files is not available in the development environment; the workers receive a 403 Forbidden error, which is handled gracefully. Development of the scanner relies on logs and the sample XML provided by the user.
 
 **3rd Party Integrations**
-- Custom SOAP Web Service
-- UI Libraries: , , , 
-- Data Handling: , 
-- Backend: ,  (with a try/except workaround), 
+- **Custom SOAP Web Service:** For browsing and downloading files.
+- **UI Libraries:** , , , .
+- **Data Handling:** , .
+- **Backend:** ,  (with a  workaround), , .
 
 **Testing status**
-- **Testing agent used after significant changes:** NO
+- **Testing agent used after significant changes:** NO (not in the latest cycle of bug fixes)
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** None
-- **Known regressions:** None. The active issue is a UI consistency problem, not a regression of functionality.</analysis>
+- **Known regressions:** None identified, but several critical bugs have been reported by the user.</analysis>
