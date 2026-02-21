@@ -1074,6 +1074,48 @@ async def queue_item(server_id: int, item_id: int, db: AsyncSession = Depends(ge
 class DownloadRequest(BaseModel):
     content_base64: Optional[str] = None
 
+
+def process_file_content(raw_content: str) -> bytes:
+    """
+    Processa o conteúdo de arquivo seguindo o fluxo:
+    1. Tenta decodificar de base64
+       1.1. Se falhar, trata como texto em claro
+       1.2. Se sucesso, usa o conteúdo decodificado
+    2. Se conteúdo < 2KB, verifica se é erro de permissão
+    
+    Retorna: bytes do conteúdo final
+    """
+    if not raw_content:
+        return b''
+    
+    # Tentar decodificar de base64
+    try:
+        # Limpar espaços e quebras de linha que podem estar no base64
+        cleaned_content = raw_content.strip()
+        decoded_content = base64.b64decode(cleaned_content)
+        logger.debug(f"Conteúdo decodificado de base64: {len(decoded_content)} bytes")
+        final_content = decoded_content
+    except Exception as e:
+        # Não é base64 válido, tratar como texto em claro
+        logger.debug(f"Conteúdo não é base64, tratando como texto: {e}")
+        final_content = raw_content.encode('utf-8')
+    
+    # Verificar erros de permissão (apenas se < 2KB)
+    if len(final_content) < 2048:
+        try:
+            content_str = final_content.decode('utf-8', errors='replace').lower()
+            if "access" in content_str and "denied" in content_str:
+                raise PermissionError("Acesso negado ao arquivo")
+            if "not found" in content_str or "cannot find" in content_str:
+                raise FileNotFoundError("Arquivo não encontrado no servidor")
+        except (PermissionError, FileNotFoundError):
+            raise
+        except Exception:
+            pass  # Pode ser binário, ignorar
+    
+    return final_content
+
+
 class QueueRequest(BaseModel):
     server_id: int
     share_name: str
@@ -1095,41 +1137,40 @@ async def download_file_by_path(
 ):
     """Download de arquivo via path - para compatibilidade com chunked downloads"""
     from soap_service import get_default_soap_service
-    from storage_utils import save_downloaded_file, format_size
+    from storage_utils import format_size
     from server import get_file_mimetype
     
     server = await get_server_or_404(db, server_id)
     
-    content = None
+    raw_content = None
     
-    # Se recebeu content_base64, usar isso (chunked download)
+    # Se recebeu content_base64, usar isso (chunked download do frontend)
     if request and request.content_base64:
-        try:
-            content = base64.b64decode(request.content_base64).decode('utf-8', errors='replace')
-        except Exception as e:
-            logger.error(f"Error decoding base64 content: {e}")
-            raise HTTPException(status_code=400, detail="Erro ao decodificar conteúdo base64")
+        raw_content = request.content_base64
     else:
         # Buscar via SOAP
         soap_service = await get_default_soap_service(db)
         params = {"s1": file_path, "s2": "", "l1": 0, "l2": 0}
         
         try:
-            content = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
+            raw_content = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
         except Exception as e:
             logger.error(f"Error downloading file {file_path}: {e}")
             raise HTTPException(status_code=500, detail=str(e))
     
-    if not content:
+    if not raw_content:
         raise HTTPException(status_code=500, detail="Resposta vazia do servidor")
     
-    # Verificar erros
-    content_lower = content.lower()
-    if "access" in content_lower and "denied" in content_lower:
-        raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
-    
-    if "not found" in content_lower or "cannot find" in content_lower:
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
+    # Processar conteúdo (decode base64 se necessário, verificar erros)
+    try:
+        content_bytes = process_file_content(raw_content)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error processing content: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao processar conteúdo: {str(e)}")
     
     # Verificar se já existe no banco
     existing_result = await db.execute(
