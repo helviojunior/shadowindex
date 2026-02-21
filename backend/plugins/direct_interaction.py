@@ -407,10 +407,10 @@ class DirectInteractionPlugin(BasePlugin):
             AuthenticationFailureException: If authentication fails
             ConnectionException: If connection fails
         """
-        cache_key = f"direct_shares:{server_ip}:{self.credential_id}"
+        cache_params = {"server_ip": server_ip, "credential_id": self.credential_id}
         
         if not ignore_cache:
-            cached = self.cache.get(cache_key)
+            cached = await self.cache.get("direct_shares", cache_params)
             if cached:
                 logger.debug(f"Shares cache hit for {server_ip}")
                 return [ShareInfo(**s) for s in cached]
@@ -460,7 +460,7 @@ class DirectInteractionPlugin(BasePlugin):
             shares = await loop.run_in_executor(None, do_list_shares)
             
             # Cache the result
-            self.cache.set(cache_key, [s.__dict__ for s in shares], ttl_hours=24)
+            await self.cache.set("direct_shares", cache_params, [s.__dict__ for s in shares], ttl_hours=24)
             
             logger.info(f"Listed {len(shares)} shares on {server_ip}")
             return shares
