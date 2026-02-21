@@ -1747,8 +1747,8 @@ const ServerBrowser = () => {
                     ) : (
                       <>
                         {/* Header */}
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+                          <div className="flex items-center gap-3">
                             <Badge variant="outline" className="text-green-500 border-green-500">
                               {fileContent.type?.toUpperCase()}
                             </Badge>
@@ -1771,6 +1771,7 @@ const ServerBrowser = () => {
                         </div>
                         
                         {/* Certificates */}
+                        <div className="space-y-4">
                         {fileContent.certificates?.map((cert, idx) => (
                           <div key={idx} className="border border-border rounded-lg overflow-hidden">
                             {/* Cert Header */}
