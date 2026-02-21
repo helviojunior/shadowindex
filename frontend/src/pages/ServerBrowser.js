@@ -1901,6 +1901,7 @@ const ServerBrowser = () => {
                             </div>
                           </div>
                         ))}
+                        </div>
                       </>
                     )}
                   </div>
