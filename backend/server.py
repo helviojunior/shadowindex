@@ -847,19 +847,31 @@ async def soap_exec5(
 # Cache management
 @api_router.get("/cache/stats")
 async def get_cache_stats(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(SoapCache))
-    cache_entries = result.scalars().all()
+    """Retorna estatísticas do cache em arquivos"""
+    cache_dir = Path(__file__).parent / "storage" / ".cache"
     
     stats = {
-        "total_entries": len(cache_entries),
+        "total_entries": 0,
+        "total_size_bytes": 0,
         "operations": {}
     }
     
-    for entry in cache_entries:
-        if entry.operation not in stats["operations"]:
-            stats["operations"][entry.operation] = 0
-        stats["operations"][entry.operation] += 1
+    if cache_dir.exists():
+        for cache_file in cache_dir.glob("*.json"):
+            try:
+                stats["total_entries"] += 1
+                stats["total_size_bytes"] += cache_file.stat().st_size
+                
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+                    operation = cache_data.get('operation', 'unknown')
+                    if operation not in stats["operations"]:
+                        stats["operations"][operation] = 0
+                    stats["operations"][operation] += 1
+            except Exception:
+                pass
     
+    stats["total_size_formatted"] = format_size(stats["total_size_bytes"])
     return stats
 
 @api_router.delete("/cache/clear")
