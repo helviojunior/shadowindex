@@ -1218,33 +1218,37 @@ const ServerBrowser = () => {
         {isExpanded && children.length > 0 && (
           <div>
             {(() => {
-              // Se há um foco, filtrar filhos para mostrar apenas o caminho até o item focado
-              let filteredChildren = children;
-              
-              if (focusedNodeId && !isFocusedNode) {
-                // Verificar se algum filho é o item focado ou contém o item focado
-                filteredChildren = children.filter(child => {
-                  const childNodeId = String(child.id || `share-${child.share_name}`);
-                  // Mostrar se é o nó focado
-                  if (childNodeId === focusedNodeId) return true;
-                  // Verificar se o nó focado está nos filhos deste child
-                  const childChildren = nodeChildren[childNodeId] || [];
-                  const hasFocusedDescendant = (nodes) => {
-                    for (const node of nodes) {
-                      const nId = String(node.id || `share-${node.share_name}`);
-                      if (nId === focusedNodeId) return true;
-                      const nc = nodeChildren[nId] || [];
-                      if (nc.length > 0 && hasFocusedDescendant(nc)) return true;
-                    }
-                    return false;
-                  };
-                  return hasFocusedDescendant(childChildren);
+              // Se este nó é o focado ou estamos dentro do item focado, mostrar todos os filhos
+              if (isFocusedNode || !focusedNodeId) {
+                return children.map((child, index) => {
+                  const isLast = index === children.length - 1;
+                  const newParentLines = [...parentLines, !isLastChild];
+                  // Passar null como focusedNodeId para mostrar todos os descendentes
+                  return renderTreeNode(child, depth + 1, currentShareName, isLast, newParentLines, null);
                 });
               }
               
+              // Se há um foco mas este não é o item focado, filtrar filhos para mostrar apenas o caminho até o item focado
+              const filteredChildren = children.filter(child => {
+                const childNodeId = String(child.id || `share-${child.share_name}`);
+                // Mostrar se é o nó focado
+                if (childNodeId === focusedNodeId) return true;
+                // Verificar se o nó focado está nos filhos deste child
+                const hasFocusedDescendant = (nodes, targetId) => {
+                  for (const node of nodes) {
+                    const nId = String(node.id || `share-${node.share_name}`);
+                    if (nId === targetId) return true;
+                    const nc = nodeChildren[nId] || [];
+                    if (nc.length > 0 && hasFocusedDescendant(nc, targetId)) return true;
+                  }
+                  return false;
+                };
+                const childChildren = nodeChildren[childNodeId] || [];
+                return hasFocusedDescendant(childChildren, focusedNodeId);
+              });
+              
               return filteredChildren.map((child, index) => {
                 const isLast = index === filteredChildren.length - 1;
-                // Propagar as linhas para os filhos - mostrar linha se não for o último
                 const newParentLines = [...parentLines, !isLastChild];
                 return renderTreeNode(child, depth + 1, currentShareName, isLast, newParentLines, focusedNodeId);
               });
