@@ -915,7 +915,7 @@ const ServerBrowser = () => {
       // 2. Depois: Entrar em cada subdiretório recursivamente
       if (currentDepth < maxDepth) {
         for (const dir of directories) {
-          if (cancelledRef.current) break;
+          if (bulkDownloadCancelledRef.current) break;
           
           // Expandir o nó na árvore
           const dirNodeId = String(dir.id || dir.fullPath).replace(/[^a-zA-Z0-9]/g, '_');
@@ -927,8 +927,7 @@ const ServerBrowser = () => {
             shareName,
             currentDepth + 1,
             maxDepth,
-            maxSizeBytes,
-            cancelledRef
+            maxSizeBytes
           );
         }
       }
@@ -948,16 +947,12 @@ const ServerBrowser = () => {
     
     // Resetar estados
     setBulkDownloadActive(true);
-    setBulkDownloadCancelled(false);
+    bulkDownloadCancelledRef.current = false;
     setBulkDownloadItems([]);
     setBulkDownloadStats({ total: 0, completed: 0, failed: 0, skipped: 0 });
     setActiveTab('download');
     
-    // Ref para controle de cancelamento
-    const cancelledRef = { current: false };
-    
-    // Watch para cancelamento
-    const checkCancelled = setInterval(() => {
+    toast.info('Iniciando download...');
       if (bulkDownloadCancelled) {
         cancelledRef.current = true;
         clearInterval(checkCancelled);
