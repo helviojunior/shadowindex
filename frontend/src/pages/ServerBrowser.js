@@ -814,6 +814,83 @@ const ServerBrowser = () => {
     setShowAdvancedSearch(false);
   };
 
+  // Exportar resultados da busca para JSON
+  const exportSearchResultsToJson = () => {
+    if (!searchResults) return;
+    
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      server: {
+        id: serverId,
+        name: server?.name,
+        ip: server?.ip
+      },
+      searchCriteria: {
+        query: searchQuery || null,
+        filters: {
+          extension: searchFilters.extension || null,
+          sha1: searchFilters.sha1 || null,
+          dateFrom: searchFilters.dateFrom || null,
+          dateTo: searchFilters.dateTo || null,
+          itemType: searchFilters.itemType || null
+        }
+      },
+      summary: {
+        totalResults: searchResults.total,
+        directories: searchResults.directories?.length || 0,
+        files: searchResults.files?.length || 0,
+        downloadedFiles: searchResults.downloaded?.length || 0
+      },
+      results: {
+        directories: searchResults.directories?.map(item => ({
+          id: item.id,
+          name: item.name,
+          fullPath: item.full_path,
+          shareName: item.share_name,
+          size: item.size,
+          modified: item.modified,
+          type: 'Directory'
+        })) || [],
+        files: searchResults.files?.map(item => ({
+          id: item.id,
+          name: item.name,
+          fullPath: item.full_path,
+          shareName: item.share_name,
+          size: item.size,
+          modified: item.modified,
+          type: 'File',
+          isDownloaded: false
+        })) || [],
+        downloadedFiles: searchResults.downloaded?.map(item => ({
+          id: item.id,
+          name: item.name,
+          fullPath: item.full_path,
+          shareName: item.share_name,
+          size: item.size,
+          sha1Hash: item.sha1_hash,
+          downloadedAt: item.downloaded_at,
+          type: 'File',
+          isDownloaded: true
+        })) || []
+      }
+    };
+    
+    // Criar e baixar o arquivo JSON
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `search-results-${server?.name || serverId}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success(`Exportados ${searchResults.total} resultados para JSON`);
+  };
+
   // Função para destacar termos de busca no texto
   const highlightSearchTerm = (text, query) => {
     if (!query || !text) return text;
