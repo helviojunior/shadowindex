@@ -223,8 +223,14 @@ const Downloads = () => {
     ? downloadJobs.filter(job => job.status === activeFilter)
     : downloadJobs;
 
-  // Group jobs by server
-  const jobsByServer = filteredJobs.reduce((acc, job) => {
+  // Group jobs by server (with sorting: downloading > pending > others)
+  const sortedFilteredJobs = [...filteredJobs].sort((a, b) => {
+    // Ordem: downloading > pending > completed > failed > cancelled > skipped
+    const statusOrder = { downloading: 0, pending: 1, completed: 2, failed: 3, cancelled: 4, skipped: 5 };
+    return (statusOrder[a.status] ?? 6) - (statusOrder[b.status] ?? 6);
+  });
+  
+  const jobsByServer = sortedFilteredJobs.reduce((acc, job) => {
     const serverId = job.server_id || 'unknown';
     if (!acc[serverId]) {
       acc[serverId] = {
