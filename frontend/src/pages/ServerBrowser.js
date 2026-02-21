@@ -85,6 +85,7 @@ const ServerBrowser = () => {
   const [itemsSortConfig, setItemsSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [focusedItem, setFocusedItem] = useState(null); // Item focado (oculta os demais) - {nodeId, shareName, path}
   const [pfxPassword, setPfxPassword] = useState(''); // Senha para arquivos PFX
+  const [singleDownloadProgress, setSingleDownloadProgress] = useState(null); // Progresso do download individual (0-100)
   
   // Estados para download recursivo
   const [bulkDownloadConfig, setBulkDownloadConfig] = useState({ depth: 2, maxSize: 10 }); // maxSize em MB
