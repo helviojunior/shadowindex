@@ -648,9 +648,6 @@ const Leaks = () => {
                               )}
                             </div>
                           </TableCell>
-                              {finding.job_id ? 'Scan' : 'Manual'}
-                            </Badge>
-                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               {/* Risk indicators coloridos como no Sn1per */}
