@@ -801,9 +801,13 @@ async def soap_resolve(
         result = await soap_service.call_soap_operation(
             db, "Resolve", params, request.ignore_cache
         )
+        
+        # Extrair IPv4 prioritário do resultado
+        ipv4_result = extract_ipv4_from_resolve_result(result)
+        
         return {
             "operation": "Resolve",
-            "result": result,
+            "result": ipv4_result or result,  # Retorna IPv4 se encontrado, senão o resultado original
             "from_cache": not request.ignore_cache
         }
     except Exception as e:
