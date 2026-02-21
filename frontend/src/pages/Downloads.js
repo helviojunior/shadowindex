@@ -310,7 +310,7 @@ const Downloads = () => {
       {/* Download list grouped by server */}
       {Object.keys(jobsByServer).length === 0 ? (
         <Card>
-          <CardContent className="p-8 text-center">
+          <CardContent className="p-8 pt-8 text-center">
             <Download className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
               {activeFilter 
