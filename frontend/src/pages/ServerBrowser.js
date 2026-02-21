@@ -1580,8 +1580,8 @@ const ServerBrowser = () => {
                   {/* Access Status */}
                   <InfoRow 
                     label="Access Status" 
-                    value={isAccessDenied ? 'Negado' : 'Permitido'}
-                    valueClassName={isAccessDenied ? 'text-red-500 font-medium' : 'text-green-500'}
+                    value={accessStatus}
+                    valueClassName={accessStatusColor}
                   />
                   
                   {/* Fetched Date */}
