@@ -312,6 +312,33 @@ const ServerBrowser = () => {
     return CERTIFICATE_EXTENSIONS.includes(ext);
   };
 
+  // Função auxiliar para obter fileId pelo path (usando API V2)
+  const getFileIdByPath = async (filePath) => {
+    // Primeiro verificar no cache local
+    const cachedInfo = downloadedFilesInfo[filePath];
+    if (cachedInfo?.id) {
+      return cachedInfo.id;
+    }
+    
+    // Buscar via API V2
+    try {
+      const response = await axios.get(`${API_V2}/servers/${serverId}/files/by-path`, {
+        params: { file_path: filePath }
+      });
+      if (response.data.found && response.data.file_id) {
+        // Atualizar cache local
+        setDownloadedFilesInfo(prev => ({
+          ...prev,
+          [filePath]: { ...prev[filePath], id: response.data.file_id, ...response.data.file }
+        }));
+        return response.data.file_id;
+      }
+    } catch (error) {
+      console.error('Error getting file ID by path:', error);
+    }
+    return null;
+  };
+
   // Carrega o conteúdo do arquivo para visualização
   const loadFileContent = async () => {
     if (!selectedItem || !isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath)) {
@@ -322,9 +349,16 @@ const ServerBrowser = () => {
     const filename = selectedItem.name;
     const filePath = selectedItem.fullPath || selectedItem.serverPath;
     
-    // Obter file_id do downloadedFilesInfo
-    const fileInfo = downloadedFilesInfo[filePath];
-    const fileId = fileInfo?.id;
+    // Obter file_id do downloadedFilesInfo ou buscar via API
+    let fileId = downloadedFilesInfo[filePath]?.id;
+    if (!fileId) {
+      fileId = await getFileIdByPath(filePath);
+    }
+    
+    if (!fileId) {
+      toast.error('Arquivo não encontrado no banco de dados');
+      return;
+    }
     
     // Para certificados, carregar informações parseadas
     if (isCertificateFile(filename)) {
