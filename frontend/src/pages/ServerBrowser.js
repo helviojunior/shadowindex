@@ -1284,7 +1284,7 @@ const ServerBrowser = () => {
     const hasLoadedChildren = nodeChildren[nodeId] !== undefined;
     const isDirectory = item.type === 'Directory' || isShare;
     const isFile = item.type === 'File';
-    const isAccessDenied = item.access_denied || item.accessDenied || item.type === 'AccessDenied';
+    const isAccessDenied = item.access_denied || item.accessDenied;
     const isDownloaded = isFile && isFileDownloaded(item.fullPath);
     const isSelected = selectedItem?.id === nodeId || 
                        (isShare && selectedItem?.share_name === item.share_name && selectedItem?.itemType === 'share');
