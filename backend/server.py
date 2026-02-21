@@ -3039,6 +3039,7 @@ class ScanDirectoryRequest(BaseModel):
     path: str
     max_depth: Optional[int] = 5
     max_file_size_bytes: Optional[int] = None
+    apply_filters: bool = True  # Se False, ignora filtros de tamanho e extensão
 
 
 @api_router.post("/downloads/scan")
@@ -3064,13 +3065,15 @@ async def scan_directory_for_download(
         share_name=request.share_name,
         path=request.path,
         max_depth=request.max_depth,
-        max_file_size_bytes=request.max_file_size_bytes
+        max_file_size_bytes=request.max_file_size_bytes,
+        apply_filters=request.apply_filters
     )
     
     return {
         "success": True,
         "message": f"Scan iniciado para {request.path}",
-        "max_depth": request.max_depth
+        "max_depth": request.max_depth,
+        "apply_filters": request.apply_filters
     }
 
 
