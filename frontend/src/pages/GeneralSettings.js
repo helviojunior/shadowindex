@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Settings, Download, Layers, HardDrive, RefreshCw } from 'lucide-react';
+import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -13,10 +14,12 @@ const GeneralSettings = () => {
   const [settings, setSettings] = useState({
     max_simultaneous_downloads: '3',
     default_depth_levels: '5',
-    default_max_file_size_mb: '100'
+    default_max_file_size_mb: '100',
+    ignored_extensions: '.log,.tmp,.bak'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [newExtension, setNewExtension] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -55,6 +58,38 @@ const GeneralSettings = () => {
 
   const handleChange = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Funções para gerenciar extensões
+  const getExtensionsList = () => {
+    const ext = settings.ignored_extensions || '';
+    return ext.split(',').map(e => e.trim()).filter(e => e);
+  };
+
+  const addExtension = () => {
+    if (!newExtension.trim()) return;
+    
+    let ext = newExtension.trim().toLowerCase();
+    // Garantir que começa com ponto
+    if (!ext.startsWith('.')) {
+      ext = '.' + ext;
+    }
+    
+    const currentList = getExtensionsList();
+    if (currentList.includes(ext)) {
+      toast.error('Extensão já existe na lista');
+      return;
+    }
+    
+    const newList = [...currentList, ext].join(',');
+    handleChange('ignored_extensions', newList);
+    setNewExtension('');
+  };
+
+  const removeExtension = (extToRemove) => {
+    const currentList = getExtensionsList();
+    const newList = currentList.filter(e => e !== extToRemove).join(',');
+    handleChange('ignored_extensions', newList);
   };
 
   if (loading) {
@@ -151,14 +186,82 @@ const GeneralSettings = () => {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Ignored Extensions */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <FileX className="w-5 h-5 text-orange-500" />
+            <CardTitle>Extensões Ignoradas</CardTitle>
+          </div>
+          <CardDescription>
+            Extensões de arquivo que serão ignoradas no download em batch. Downloads manuais (botão Sync) não aplicam esses filtros.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Add new extension */}
+          <div className="flex gap-2">
+            <Input
+              placeholder="Ex: .log"
+              value={newExtension}
+              onChange={(e) => setNewExtension(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addExtension()}
+              className="max-w-xs"
+              data-testid="new-extension-input"
+            />
+            <Button variant="outline" onClick={addExtension} data-testid="add-extension-btn">
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar
+            </Button>
+          </div>
+
+          {/* Extensions list */}
+          <div className="flex flex-wrap gap-2">
+            {getExtensionsList().map((ext) => (
+              <Badge 
+                key={ext} 
+                variant="secondary" 
+                className="px-3 py-1.5 text-sm flex items-center gap-2"
+              >
+                {ext}
+                <button
+                  onClick={() => removeExtension(ext)}
+                  className="hover:bg-destructive/20 rounded-full p-0.5"
+                  data-testid={`remove-ext-${ext}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+            {getExtensionsList().length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhuma extensão configurada</p>
+            )}
+          </div>
 
           {/* Info Box */}
+          <div className="rounded-lg bg-orange-500/10 border border-orange-500/30 p-4 mt-4">
+            <h4 className="text-sm font-medium text-orange-400 mb-2">Sobre as Extensões Ignoradas</h4>
+            <ul className="text-xs text-orange-300/80 space-y-1">
+              <li>• Arquivos com essas extensões serão automaticamente ignorados no download em batch (botão "Enviar para Fila")</li>
+              <li>• Downloads manuais pelo botão Sync baixam qualquer arquivo, sem aplicar filtros</li>
+              <li>• Use para evitar baixar arquivos de log, temporários ou backups</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Info Box */}
+      <Card>
+        <CardContent className="p-4">
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-4">
             <h4 className="text-sm font-medium text-blue-400 mb-2">Sobre as Configurações</h4>
             <ul className="text-xs text-blue-300/80 space-y-1">
               <li>• <strong>Downloads Simultâneos:</strong> Controla quantos arquivos são baixados ao mesmo tempo pelo servidor. Valores maiores podem sobrecarregar o sistema.</li>
               <li>• <strong>Níveis de Profundidade:</strong> Define o valor padrão que aparece no combo da tela de arquivos. O usuário pode alterar na hora do download.</li>
               <li>• <strong>Tamanho Máximo:</strong> Define o valor padrão para ignorar arquivos maiores que o limite. O usuário pode alterar na hora do download.</li>
+              <li>• <strong>Extensões Ignoradas:</strong> Arquivos com essas extensões são automaticamente pulados no batch download.</li>
             </ul>
           </div>
         </CardContent>
