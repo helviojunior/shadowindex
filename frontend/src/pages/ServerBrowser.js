@@ -694,8 +694,8 @@ const ServerBrowser = () => {
   const loadShares = async () => {
     setLoadingShares(true);
     try {
-      // Usar o novo endpoint que retorna shares com filhos do banco
-      const response = await axios.get(`${API}/servers/${serverId}/shares-tree`);
+      // Usar API V2 que retorna shares com filhos do banco
+      const response = await axios.get(`${API_V2}/servers/${serverId}/shares-tree`);
       const { shares, items_by_path } = response.data;
       
       // Definir os shares
