@@ -717,11 +717,22 @@ const ServerBrowser = () => {
         
         // Atualizar o share na lista local se for um share
         if (nodeId.startsWith('share-')) {
-          setShares(prev => prev.map(s => 
-            s.share_name === shareName 
-              ? { ...s, ...updatedItemData }
-              : s
-          ));
+          // Extrair o nome do share do nodeId (formato: "share-ShareName")
+          const shareNameFromNodeId = nodeId.substring(6); // Remove "share-"
+          
+          console.log('[AccessDenied] Atualizando share:', shareNameFromNodeId, updatedItemData);
+          
+          setShares(prev => {
+            const updated = prev.map(s => {
+              if (s.share_name === shareNameFromNodeId) {
+                console.log('[AccessDenied] Match encontrado, atualizando:', s.share_name);
+                return { ...s, ...updatedItemData };
+              }
+              return s;
+            });
+            console.log('[AccessDenied] Shares atualizados:', updated);
+            return updated;
+          });
         } else {
           // É um diretório - atualizar o item dentro do nodeChildren do pai
           // O nodeId tem formato "share-ShareName-0-1-2" onde os números são índices
@@ -730,9 +741,14 @@ const ServerBrowser = () => {
             // Encontrar o nodeId do pai
             const parentNodeId = parts.slice(0, -1).join('-');
             
+            console.log('[AccessDenied] Atualizando diretório:', nodeId, 'pai:', parentNodeId);
+            
             setNodeChildren(prev => {
               const parentChildren = prev[parentNodeId];
-              if (!parentChildren) return prev;
+              if (!parentChildren) {
+                console.log('[AccessDenied] Pai não encontrado:', parentNodeId);
+                return prev;
+              }
               
               // Atualizar o item específico dentro dos filhos do pai
               const updatedChildren = parentChildren.map(child => 
