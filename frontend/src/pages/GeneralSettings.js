@@ -254,7 +254,7 @@ const GeneralSettings = () => {
 
       {/* Info Box */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-4 pt-4">
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-4">
             <h4 className="text-sm font-medium text-blue-400 mb-2">Sobre as Configurações</h4>
             <ul className="text-xs text-blue-300/80 space-y-1">
