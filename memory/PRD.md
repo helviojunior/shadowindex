@@ -27,10 +27,20 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2026-02-21 (Session 11 - UI Polish & Spacing Verification)
+### 2026-02-21 (Session 11 - Bug Fixes & UI Polish)
+- [x] **Bug Fix Crítico: DownloadedFile.remote_path**
+  - Corrigido em `download_worker.py`: Alterado `remote_path` → `file_path` 
+  - Removido `local_path` que não existia no modelo
+  - O modelo `DownloadedFile` usa `file_path` e `sanitized_path`
+- [x] **Bug Fix: Batch download com campo path**
+  - Corrigido em `server.py`: Adicionado suporte para `path` além de `file_path` e `fullPath`
+  - Adicionada validação para evitar erros de `None` em `file_path`
+- [x] **UI Fix: Espaçamento na página Downloads**
+  - Alterado container de `space-y-6` para `flex flex-col gap-6`
+  - Corrigido renderização condicional do filtro ativo (usando `? : null`)
+  - Removido gap visual estranho entre cards de status e lista de downloads
 - [x] **Verificação de espaçamento vertical consistente**
-  - Confirmado: Todas as 8 páginas principais usam `space-y-6` (24px) no container principal
-  - Páginas verificadas: Downloads, Servers, Settings, Credentials, ProxyServers, SoapApis, DatabaseConnections, SqlPresets
+  - Confirmado: Todas as 8 páginas principais usam espaçamento consistente
   - Testing agent confirmou 100% de consistência
 
 ### 2026-02-22 (Session 10 - Sistema de Downloads Backend-Driven v2)
