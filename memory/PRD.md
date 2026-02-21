@@ -27,6 +27,25 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-21 (Session 15 - P1/P2 Fixes & Alembic Migration)
+- [x] **P2 Fix: libmagic workaround cleanup**
+  - Updated `server.py` to use libmagic with fallback to mimetypes by extension
+  - Updated `download_worker.py` to calculate mimetype using libmagic or extension fallback
+- [x] **P1.2 Fix: Downloaded file metadata update**
+  - `download_worker.py` now saves `sha1_hash`, `file_size`, and `mimetype` to `DownloadedFile` table
+  - Uses libmagic when available, falls back to extension-based detection
+- [x] **P1.1 Fix: Visited directory highlight after refresh**
+  - Rewrote `loadShares()` in `ServerBrowser.js` to correctly process all levels of subdirectories
+  - Creates map of all items for quick lookup, properly processes `items_by_path` recursively
+- [x] **P1.3 Feature: Auto-update file tree after background downloads**
+  - Added polling mechanism in `ServerBrowser.js` to check for active downloads
+  - When downloads complete, automatically refreshes `downloadedFiles` and reloads shares tree
+- [x] **Alembic Migration System**
+  - Installed and configured Alembic for SQLAlchemy schema migrations
+  - Created initial migration capturing current schema
+  - Updated `init_db()` to use Alembic with fallback to `create_all`
+  - Removed all manual migration scripts from `database.py`
+
 ### 2026-02-21 (Session 15 - Database Migration Fix)
 - [x] **P0 Bug Fix: OperationalError: no such column: server_shares.server_id**
   - Verified the `server_id` column already exists in the database
