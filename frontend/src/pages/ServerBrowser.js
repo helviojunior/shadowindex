@@ -1462,6 +1462,35 @@ const ServerBrowser = () => {
     ));
   };
 
+  // Forçar download de item ignorado
+  const forceDownloadItem = async (item, index) => {
+    try {
+      const response = await axios.post(`${API}/downloads`, {
+        server_id: parseInt(serverId),
+        share_name: item.shareName || selectedItem?.shareName,
+        file_path: item.path || item.fullPath,
+        file_name: item.name,
+        file_size: item.size,
+        force: true,
+        max_file_size_bytes: null // Sem limite para forçar
+      });
+      
+      if (response.data.success) {
+        toast.success(`Download forçado adicionado à fila: ${item.name}`);
+        
+        // Atualizar status do item na lista
+        setBulkDownloadItems(prev => prev.map((it, idx) => 
+          idx === index 
+            ? { ...it, status: 'pending', forcedDownload: true } 
+            : it
+        ));
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || 'Erro ao forçar download';
+      toast.error(errorMsg);
+    }
+  };
+
   const copyToClipboard = async (text, field) => {
     try {
       await navigator.clipboard.writeText(text);
