@@ -2973,6 +2973,27 @@ const ServerBrowser = () => {
                   )}
                 </button>
               )}
+              
+              {/* OCR Tab - apenas para arquivos baixados */}
+              {isFile && downloaded && !isAccessDenied && (
+                <button
+                  onClick={() => setActiveTab('ocr')}
+                  className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
+                    activeTab === 'ocr' 
+                      ? 'text-green-500' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <ScanText className="w-3.5 h-3.5" />
+                  OCR
+                  {ocrData?.ocr_processed && (
+                    <CheckCircle className="w-3 h-3 text-green-500" />
+                  )}
+                  {activeTab === 'ocr' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
           
