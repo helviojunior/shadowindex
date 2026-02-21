@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2, Plus, Pencil, Check, X, Code } from 'lucide-react';
+import { Trash2, Plus, Pencil, Check, X, Code, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -27,6 +27,7 @@ const SqlPresets = () => {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({ db_type_id: '', name: '', query: '', description: '' });
   const [filterDbType, setFilterDbType] = useState('all');
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     loadDbTypes();
@@ -134,87 +135,108 @@ const SqlPresets = () => {
 
   return (
     <div className="space-y-6" data-testid="sql-presets-page">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">SQL Presets</h1>
-        <p className="text-muted-foreground mt-2">Gerencie comandos SQL pré-definidos por tipo de banco</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">SQL Presets</h1>
+          <p className="text-muted-foreground mt-2">Gerencie comandos SQL pré-definidos por tipo de banco</p>
+        </div>
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)} 
+          data-testid="toggle-add-form-btn"
+          variant={showAddForm ? "secondary" : "default"}
+        >
+          {showAddForm ? (
+            <>
+              <ChevronUp className="w-4 h-4 mr-2" />
+              Fechar
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Preset
+            </>
+          )}
+        </Button>
       </div>
 
-      {/* Form Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Novo Preset</CardTitle>
-          <CardDescription>Adicione um novo comando SQL pré-definido</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="db_type">Tipo de Banco</Label>
-                <Select
-                  value={formData.db_type_id}
-                  onValueChange={(value) => setFormData({ ...formData, db_type_id: value })}
-                >
-                  <SelectTrigger data-testid="preset-db-type-select">
-                    <SelectValue placeholder="Universal (todos)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="universal">Universal (todos)</SelectItem>
-                    {dbTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: type.color || '#666' }}
-                          />
-                          {type.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      {/* Form Card - Collapsible */}
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Novo Preset</CardTitle>
+            <CardDescription>Adicione um novo comando SQL pré-definido</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="db_type">Tipo de Banco</Label>
+                  <Select
+                    value={formData.db_type_id}
+                    onValueChange={(value) => setFormData({ ...formData, db_type_id: value })}
+                  >
+                    <SelectTrigger data-testid="preset-db-type-select">
+                      <SelectValue placeholder="Universal (todos)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="universal">Universal (todos)</SelectItem>
+                      {dbTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: type.color || '#666' }}
+                            />
+                            {type.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome</Label>
+                  <Input
+                    id="name"
+                    data-testid="preset-name-input"
+                    placeholder="Ex: List Users"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição (opcional)</Label>
+                  <Input
+                    id="description"
+                    data-testid="preset-description-input"
+                    placeholder="Ex: Lista todos os usuários"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input
-                  id="name"
-                  data-testid="preset-name-input"
-                  placeholder="Ex: List Users"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                <Label htmlFor="query">Query SQL</Label>
+                <Textarea
+                  id="query"
+                  data-testid="preset-query-input"
+                  placeholder="SELECT * FROM users WHERE active = 1"
+                  value={formData.query}
+                  onChange={(e) => setFormData({ ...formData, query: e.target.value })}
+                  rows={3}
+                  className="font-mono text-sm"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição (opcional)</Label>
-                <Input
-                  id="description"
-                  data-testid="preset-description-input"
-                  placeholder="Ex: Lista todos os usuários"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="query">Query SQL</Label>
-              <Textarea
-                id="query"
-                data-testid="preset-query-input"
-                placeholder="SELECT * FROM users WHERE active = 1"
-                value={formData.query}
-                onChange={(e) => setFormData({ ...formData, query: e.target.value })}
-                rows={3}
-                className="font-mono text-sm"
-                required
-              />
-            </div>
-            <Button type="submit" disabled={loading} data-testid="add-preset-btn">
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Preset
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button type="submit" disabled={loading} data-testid="add-preset-btn">
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Preset
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* List Card */}
       <Card>
