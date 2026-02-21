@@ -1094,11 +1094,8 @@ const ServerBrowser = () => {
       
       setExpandedNodes(validExpandedNodes);
       setNodeChildren(validNodeChildren);
-      
-      toast.success(`${response.data.length} compartilhamentos atualizados`);
     } catch (error) {
       console.error('Error refreshing shares:', error);
-      toast.error('Erro ao atualizar compartilhamentos');
     } finally {
       setLoadingShares(false);
     }
