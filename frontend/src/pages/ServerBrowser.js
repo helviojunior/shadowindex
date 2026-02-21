@@ -41,7 +41,9 @@ import {
   Focus,
   X,
   FileJson,
-  Binary
+  Binary,
+  FileText,
+  ScanText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
