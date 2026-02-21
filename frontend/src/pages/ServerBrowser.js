@@ -840,17 +840,24 @@ const ServerBrowser = () => {
       
       setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
       
-      // Atualizar o share na lista local apenas se for o nível raiz
-      if (shareName && nodeId.startsWith('share-')) {
+      // Detectar se é um share pelo path (formato: \\IP\ShareName - sem subpastas)
+      const pathParts = path.split('\\').filter(p => p !== '');
+      const isSharePath = pathParts.length === 2; // IP + ShareName
+      const shareNameFromPath = isSharePath ? pathParts[1] : shareName;
+      
+      // Atualizar o share na lista local se for o nível raiz
+      if (isSharePath || nodeId.startsWith('share-')) {
+        console.log('[LoadDirectory] Atualizando share após carregar filhos:', shareNameFromPath);
+        
         // Atualizar estado local imediatamente
         setShares(prev => prev.map(s => 
-          s.share_name === shareName 
+          s.share_name === shareNameFromPath 
             ? { ...s, children_fetched: true, has_children: items.length > 0 }
             : s
         ));
         
         // Persistir no banco de dados (não esperar resposta para UI)
-        axios.patch(`${API}/servers/${serverId}/shares/${encodeURIComponent(shareName)}`, {
+        axios.patch(`${API}/servers/${serverId}/shares/${encodeURIComponent(shareNameFromPath)}`, {
           children_fetched: true,
           has_children: items.length > 0
         }).catch(err => {
