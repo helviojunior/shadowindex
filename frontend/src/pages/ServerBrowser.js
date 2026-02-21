@@ -705,6 +705,137 @@ const ServerBrowser = () => {
     }
   };
 
+  // Função de busca rápida (debounced)
+  const performQuickSearch = async (query) => {
+    if (!query || query.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    
+    setSearchLoading(true);
+    try {
+      const response = await axios.get(`${API_V2}/servers/${serverId}/search/quick`, {
+        params: { q: query, limit: 50 }
+      });
+      setSearchResults(response.data);
+    } catch (error) {
+      console.error('Error searching:', error);
+      toast.error('Erro ao buscar');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Função de busca avançada
+  const performAdvancedSearch = async () => {
+    setSearchLoading(true);
+    try {
+      const searchParams = {
+        query: searchQuery || null,
+        sha1: searchFilters.sha1 || null,
+        extension: searchFilters.extension || null,
+        date_from: searchFilters.dateFrom || null,
+        date_to: searchFilters.dateTo || null,
+        item_type: searchFilters.itemType || null,
+        limit: 100
+      };
+      
+      const response = await axios.post(`${API_V2}/servers/${serverId}/search`, searchParams);
+      setSearchResults({
+        query: searchQuery,
+        directories: response.data.filter(r => r.item_type === 'Directory'),
+        files: response.data.filter(r => r.item_type === 'File' && !r.is_downloaded),
+        downloaded: response.data.filter(r => r.is_downloaded),
+        total: response.data.length
+      });
+    } catch (error) {
+      console.error('Error in advanced search:', error);
+      toast.error('Erro na busca avançada');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Handler para mudança no campo de busca (com debounce)
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    
+    // Limpar timeout anterior
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Se busca avançada está ativa, não fazer busca rápida automática
+    if (showAdvancedSearch) return;
+    
+    // Debounce de 300ms
+    searchTimeoutRef.current = setTimeout(() => {
+      performQuickSearch(value);
+    }, 300);
+  };
+
+  // Limpar busca
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults(null);
+    setSearchFilters({
+      extension: '',
+      sha1: '',
+      dateFrom: '',
+      dateTo: '',
+      itemType: ''
+    });
+    setShowAdvancedSearch(false);
+  };
+
+  // Navegar para um resultado de busca
+  const navigateToSearchResult = async (result) => {
+    // Encontrar o share do resultado
+    const shareName = result.share_name;
+    
+    // Expandir a árvore até o item
+    const pathParts = result.full_path.split('\\').filter(p => p);
+    
+    // Construir os paths intermediários
+    let currentPath = `\\\\${pathParts[0]}\\${pathParts[1]}`; // \\IP\ShareName
+    const shareNodeId = `share-${shareName}`;
+    
+    // Expandir share
+    if (!expandedNodes[shareNodeId]) {
+      setExpandedNodes(prev => ({ ...prev, [shareNodeId]: true }));
+      await loadDirectory(shareNodeId, currentPath, shareName);
+    }
+    
+    // Expandir diretórios intermediários
+    for (let i = 2; i < pathParts.length - 1; i++) {
+      currentPath += `\\${pathParts[i]}`;
+      const nodeId = `${shareNodeId}-${currentPath.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      
+      if (!expandedNodes[nodeId]) {
+        setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
+        await loadDirectory(nodeId, currentPath, shareName);
+      }
+    }
+    
+    // Selecionar o item
+    setSelectedItem({
+      id: result.id,
+      name: result.name,
+      fullPath: result.full_path,
+      serverPath: result.full_path,
+      shareName: shareName,
+      itemType: result.item_type,
+      type: result.item_type,
+      size: result.size,
+      modified: result.modified
+    });
+    
+    // Limpar busca
+    clearSearch();
+    
+    toast.success(`Navegando para ${result.name}`);
+  };
+
   const loadShares = async () => {
     setLoadingShares(true);
     try {
