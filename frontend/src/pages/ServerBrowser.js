@@ -793,6 +793,7 @@ const ServerBrowser = () => {
     
     setLoading(true);
     setSingleDownloadProgress(0);
+    singleDownloadCancelledRef.current = false;
     
     try {
       const fileSize = parseInt(selectedItem.size) || 0;
@@ -810,6 +811,12 @@ const ServerBrowser = () => {
         let totalBytesReceived = 0;
         
         while (true) {
+          // Verificar cancelamento
+          if (singleDownloadCancelledRef.current) {
+            toast.info('Download cancelado');
+            return;
+          }
+          
           const chunkResponse = await axios.post(
             `${API}/servers/${serverId}/download-chunk`,
             null,
@@ -822,6 +829,12 @@ const ServerBrowser = () => {
               }
             }
           );
+          
+          // Verificar cancelamento após resposta
+          if (singleDownloadCancelledRef.current) {
+            toast.info('Download cancelado');
+            return;
+          }
           
           if (chunkResponse.data.content_base64) {
             allChunks.push(chunkResponse.data.content_base64);
@@ -841,6 +854,12 @@ const ServerBrowser = () => {
           if (chunkResponse.data.is_last_chunk || chunkSize === 0) {
             break;
           }
+        }
+        
+        // Verificar cancelamento antes de salvar
+        if (singleDownloadCancelledRef.current) {
+          toast.info('Download cancelado');
+          return;
         }
         
         // Enviar para salvar no servidor
