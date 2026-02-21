@@ -12,13 +12,7 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Tentar importar magic (opcional)
-try:
-    import magic
-    MAGIC_AVAILABLE = True
-except ImportError:
-    MAGIC_AVAILABLE = False
-    logging.warning("libmagic não disponível - mimetype não será calculado")
+import magic
 
 from database import (
     init_db, get_db, 
