@@ -1969,19 +1969,19 @@ async def get_certificate_info(
                     )
                     print(f"DEBUG try_open_pfx: pk={pk is not None}, cert={cert is not None}, additional={additional is not None and len(additional) if additional else 0}")
                     
-                    # Se não tem cert principal mas tem additional, usar o primeiro
-                    if not cert and additional and len(additional) > 0:
-                        print(f"DEBUG: No main cert but found {len(additional)} additional cert(s), using first one")
-                        cert = additional[0]
-                        additional = additional[1:] if len(additional) > 1 else None
+                    # Verificar se temos pelo menos um certificado (principal ou additional)
+                    has_any_cert = cert is not None or (additional and len(additional) > 0)
                     
-                    if cert:
+                    if has_any_cert:
+                        # Para log, mostrar o CN do certificado principal ou do primeiro additional
+                        log_cert = cert if cert else (additional[0] if additional else None)
                         subject_cn = None
-                        for attr in cert.subject:
-                            if attr.oid._name == 'commonName':
-                                subject_cn = attr.value
-                                break
-                        print(f"PFX SUCCESS [{context}]: password={pwd_display}, CN={subject_cn}")
+                        if log_cert:
+                            for attr in log_cert.subject:
+                                if attr.oid._name == 'commonName':
+                                    subject_cn = attr.value
+                                    break
+                        print(f"PFX SUCCESS [{context}]: password={pwd_display}, CN={subject_cn}, main_cert={cert is not None}, additional={len(additional) if additional else 0}")
                         return pk, cert, additional, pwd_str
                     else:
                         print(f"PFX FAILED [{context}]: password={pwd_display}, error=Nenhum certificado encontrado no arquivo")
