@@ -22,7 +22,8 @@ import {
   Settings,
   Wrench,
   FileCode,
-  Network
+  Network,
+  Plug
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
