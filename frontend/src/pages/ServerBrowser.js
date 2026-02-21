@@ -1928,6 +1928,15 @@ const ServerBrowser = () => {
                     valueClassName={accessStatusColor}
                   />
                   
+                  {/* Error Message - apenas quando acesso negado */}
+                  {isAccessDenied && selectedItem.error_message && (
+                    <InfoRow 
+                      label="Mensagem de Erro" 
+                      value={selectedItem.error_message}
+                      valueClassName="text-red-400 text-xs"
+                    />
+                  )}
+                  
                   {/* Fetched Date */}
                   <InfoRow 
                     label="Data de Leitura" 
