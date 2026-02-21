@@ -872,6 +872,15 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                   <FileSpreadsheet className="w-4 h-4 mr-1" />
                   Excel
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToJSON}
+                  data-testid="export-json-btn"
+                >
+                  <FileJson className="w-4 h-4 mr-1" />
+                  JSON
+                </Button>
               </div>
             )}
           </div>
