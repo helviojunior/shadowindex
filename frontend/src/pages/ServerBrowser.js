@@ -643,22 +643,50 @@ const ServerBrowser = () => {
       const decoded = atob(cleanContent);
       
       // Verificar se o resultado é texto válido (não binário)
-      const isValidText = /^[\x20-\x7E\t\r\n]*$/.test(decoded) || 
-                          /^[\x00-\x7F]*$/.test(decoded);
+      const isValidText = /^[\x20-\x7E\t\r\n]*$/.test(decoded);
       
       if (!isValidText && decoded.length > 0) {
-        // Pode ser binário, mostrar como hex
-        const hexView = Array.from(decoded)
-          .map(c => c.charCodeAt(0).toString(16).padStart(2, '0'))
-          .join(' ');
-        setFileContent(`[Conteúdo binário - ${decoded.length} bytes]\n\nHex View:\n${hexView}`);
+        // Conteúdo binário - mostrar no formato hexdump -C
+        const bytes = new Uint8Array(decoded.length);
+        for (let i = 0; i < decoded.length; i++) {
+          bytes[i] = decoded.charCodeAt(i);
+        }
+        
+        let hexdump = '';
+        const bytesPerLine = 16;
+        
+        for (let offset = 0; offset < bytes.length; offset += bytesPerLine) {
+          // Offset em hexadecimal (8 caracteres)
+          const offsetHex = offset.toString(16).padStart(8, '0');
+          
+          // Bytes em hexadecimal
+          let hexPart = '';
+          let asciiPart = '';
+          
+          for (let i = 0; i < bytesPerLine; i++) {
+            if (offset + i < bytes.length) {
+              const byte = bytes[offset + i];
+              hexPart += byte.toString(16).padStart(2, '0') + ' ';
+              // ASCII printable (32-126), senão ponto
+              asciiPart += (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
+            } else {
+              hexPart += '   ';
+              asciiPart += ' ';
+            }
+            // Espaço extra no meio (após 8 bytes)
+            if (i === 7) hexPart += ' ';
+          }
+          
+          hexdump += `${offsetHex}  ${hexPart} |${asciiPart}|\n`;
+        }
+        
+        setFileContent(`[Conteúdo binário - ${decoded.length} bytes]\n\n${hexdump}`);
       } else {
         setFileContent(decoded);
       }
       
       setBase64Decoded(true);
       setBeautified(false);
-      toast.success('Base64 decodificado com sucesso');
     } catch (error) {
       console.error('Base64 decode error:', error);
       toast.error('Erro ao decodificar Base64 - conteúdo inválido');
