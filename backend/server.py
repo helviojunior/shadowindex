@@ -39,6 +39,54 @@ from storage_utils import (
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Regex para validar IPv4
+import re
+IPV4_REGEX = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
+
+def is_valid_ipv4(ip: str) -> bool:
+    """Verifica se é um endereço IPv4 válido"""
+    if not ip or not IPV4_REGEX.match(ip):
+        return False
+    parts = ip.split('.')
+    return all(0 <= int(part) <= 255 for part in parts)
+
+def extract_ipv4_from_resolve_result(result: str) -> Optional[str]:
+    """
+    Extrai o primeiro endereço IPv4 válido do resultado da operação Resolve.
+    Prioriza IPv4 sobre IPv6.
+    
+    Args:
+        result: String contendo IPs (pode ser XML ou texto simples, separados por vírgula)
+    
+    Returns:
+        O primeiro IPv4 válido encontrado, ou None se não houver
+    """
+    if not result or not result.strip():
+        return None
+    
+    result = result.strip()
+    
+    # Se for XML, extrair o conteúdo de texto
+    if result.startswith('<'):
+        try:
+            # Extrair texto de dentro de tags XML usando regex simples
+            # Remove todas as tags XML e pega o conteúdo
+            text_content = re.sub(r'<[^>]+>', '', result).strip()
+            result = text_content
+        except Exception:
+            pass
+    
+    # Dividir por vírgula e buscar IPs
+    candidates = [ip.strip() for ip in result.split(',') if ip.strip()]
+    
+    # Primeiro, procurar por IPv4 válido
+    for candidate in candidates:
+        if is_valid_ipv4(candidate):
+            return candidate
+    
+    # Se não encontrou IPv4, retornar o primeiro candidato (pode ser IPv6 ou hostname)
+    return candidates[0] if candidates else None
+
 # Função auxiliar para calcular mimetype
 def get_file_mimetype(file_path: str) -> Optional[str]:
     """Calcula o mimetype de um arquivo usando libmagic (se disponível)"""
