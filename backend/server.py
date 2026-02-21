@@ -730,6 +730,14 @@ async def clear_sql_history(connection_id: Optional[int] = None, db: AsyncSessio
     return {"message": "History cleared"}
 
 
+# Plugins API
+@api_router.get("/plugins")
+async def get_available_plugins():
+    """Get list of available plugins"""
+    from plugins.factory import PluginFactory
+    return PluginFactory.get_available_plugins()
+
+
 # Proxy Servers CRUD
 @api_router.post("/proxy-servers", response_model=ProxyServerResponse)
 async def create_proxy_server(proxy: ProxyServerCreate, db: AsyncSession = Depends(get_db)):
