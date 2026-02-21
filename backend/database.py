@@ -87,6 +87,9 @@ class ProxyServer(Base):
     name = Column(String, nullable=False, unique=True)
     ip = Column(String, nullable=False)
     port = Column(Integer, nullable=False)
+    proxy_type = Column(String, default="http")  # "http" or "socks5"
+    username = Column(String, nullable=True)  # Optional for SOCKS
+    password = Column(String, nullable=True)  # Optional for SOCKS
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class SoapApiUrl(Base):
