@@ -1378,9 +1378,9 @@ async def browse_server_directory(
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     
-    # Chamar SOAP Exec4 (sempre passar l1=0 e l2=0)
+    # Chamar SOAP Exec4
     soap_service = await get_default_soap_service(db)
-    params = {"s1": path, "s2": "", "l1": 0, "l2": 0}
+    params = {"s1": path, "s2": ""}
     
     try:
         result_str = await soap_service.call_soap_operation(db, "Exec4", params, ignore_cache)
