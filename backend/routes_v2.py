@@ -486,7 +486,6 @@ async def list_shares(
                     else:
                         share = ServerShare(
                             server_guid=server.guid,
-                            server_id=server.id,
                             share_name=share_data['share_name'],
                             share_type=share_data['share_type'],
                             remark=share_data['remark']
