@@ -1358,7 +1358,29 @@ const ServerBrowser = () => {
         childrenFetched: item.children_fetched || false  // Flag do banco para diretórios visitados
       }));
       
-      setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
+      setNodeChildren(prev => {
+        const newState = { ...prev, [nodeId]: items };
+        
+        // Atualizar o próprio item no nodeChildren do pai para marcar como childrenFetched
+        // Isso é necessário para que o ícone azul apareça
+        Object.keys(prev).forEach(parentKey => {
+          const parentChildren = prev[parentKey];
+          if (Array.isArray(parentChildren)) {
+            const childIndex = parentChildren.findIndex(c => String(c.id) === nodeId);
+            if (childIndex !== -1) {
+              const updatedChildren = [...parentChildren];
+              updatedChildren[childIndex] = {
+                ...updatedChildren[childIndex],
+                childrenFetched: true,
+                children_fetched: true
+              };
+              newState[parentKey] = updatedChildren;
+            }
+          }
+        });
+        
+        return newState;
+      });
       
       // Detectar se é um share pelo path (formato: \\IP\ShareName - sem subpastas)
       const pathParts = path.split('\\').filter(p => p !== '');
