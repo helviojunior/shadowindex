@@ -1769,3 +1769,136 @@ async def batch_queue(
         "skipped": skipped,
         "errors": errors
     }
+
+
+# ==========================================
+# Additional Endpoints (migrated from v1)
+# ==========================================
+
+@router.post("/servers/{server_id}/files/{file_id}/set-current")
+async def set_file_version_current(
+    server_id: int, 
+    file_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Define uma versão específica como atual"""
+    server = await get_server_or_404(db, server_id)
+    file = await get_downloaded_file_or_404(db, server, file_id)
+    
+    from database import FileVersion
+    from storage_utils import get_file_path
+    import shutil
+    import os
+    
+    # Buscar a versão
+    version_result = await db.execute(
+        select(FileVersion).where(
+            FileVersion.downloaded_file_id == file.id
+        )
+    )
+    version = version_result.scalar_one_or_none()
+    
+    if not version:
+        raise HTTPException(status_code=404, detail="Versão não encontrada")
+    
+    # Copiar arquivo da versão para o local atual
+    version_path = version.file_path
+    current_path = get_file_path(server.guid, file.share_name, file.sanitized_path)
+    
+    if os.path.exists(version_path):
+        shutil.copy2(version_path, current_path)
+        
+        # Atualizar SHA1 e tamanho no registro principal
+        import hashlib
+        with open(current_path, 'rb') as f:
+            new_sha1 = hashlib.sha1(f.read()).hexdigest()
+        file.sha1_hash = new_sha1
+        file.file_size = os.path.getsize(current_path)
+        await db.commit()
+        
+        return {"success": True, "message": "Versão definida como atual"}
+    else:
+        raise HTTPException(status_code=404, detail="Arquivo da versão não encontrado")
+
+
+@router.post("/servers/{server_id}/clear-access-denied")
+async def clear_access_denied_v2(
+    server_id: int,
+    share_name: str = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Limpa registros de acesso negado para um servidor/share"""
+    from database import ServerItem
+    
+    server = await get_server_or_404(db, server_id)
+    
+    # Buscar shares do servidor
+    shares_result = await db.execute(
+        select(ServerShare).where(ServerShare.server_id == server.id)
+    )
+    shares = shares_result.scalars().all()
+    
+    if share_name:
+        shares = [s for s in shares if s.share_name == share_name]
+    
+    deleted_count = 0
+    for share in shares:
+        result = await db.execute(
+            delete(ServerItem).where(
+                ServerItem.share_id == share.id,
+                ServerItem.access_denied == True
+            )
+        )
+        deleted_count += result.rowcount
+    
+    await db.commit()
+    
+    return {
+        "success": True,
+        "deleted": deleted_count
+    }
+
+
+@router.post("/downloads/scan")
+async def queue_directory_scan_v2(
+    server_id: int,
+    share_name: str,
+    path: str,
+    max_depth: int = 10,
+    db: AsyncSession = Depends(get_db)
+):
+    """Adiciona um scan de diretório à fila"""
+    from database import ScanJob
+    
+    server = await get_server_or_404(db, server_id)
+    
+    # Verificar se já existe scan para este path
+    existing = await db.execute(
+        select(ScanJob).where(
+            ScanJob.server_guid == server.guid,
+            ScanJob.share_name == share_name,
+            ScanJob.path == path,
+            ScanJob.status.in_(['pending', 'running'])
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Scan já em andamento para este diretório")
+    
+    # Criar job de scan
+    scan_job = ScanJob(
+        server_guid=server.guid,
+        share_name=share_name,
+        path=path,
+        max_depth=max_depth,
+        status='pending'
+    )
+    db.add(scan_job)
+    await db.commit()
+    await db.refresh(scan_job)
+    
+    return {
+        "success": True,
+        "scan_id": scan_job.id,
+        "message": "Scan adicionado à fila"
+    }
+
