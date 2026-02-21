@@ -171,10 +171,16 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
     }
   };
 
-  const handleMenuHover = (menuId) => {
+  const handleMenuHover = (menuId, event) => {
     if (effectiveCollapsed) {
       clearTimeout(hoverTimeoutRef.current);
       setHoveredMenu(menuId);
+      
+      // Calculate position for flyout
+      if (event && event.currentTarget) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setFlyoutPosition({ top: rect.top });
+      }
     }
   };
 
