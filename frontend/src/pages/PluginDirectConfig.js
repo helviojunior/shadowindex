@@ -144,7 +144,7 @@ const PluginDirectConfig = () => {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Key className="w-4 h-4" />
-                Credencial (opcional)
+                Credencial (tipo Usuário/Senha)
               </Label>
               <Select 
                 value={testConfig.credential_id} 
@@ -157,11 +157,15 @@ const PluginDirectConfig = () => {
                   <SelectItem value="none">Nenhuma</SelectItem>
                   {credentials.map((cred) => (
                     <SelectItem key={cred.id} value={cred.id.toString()}>
-                      {cred.domain}\\{cred.username}
+                      {cred.name || `${cred.domain || ''}\\${cred.username}`}
+                      {cred.verified && ' ✓'}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Apenas credenciais do tipo Usuário/Senha são suportadas para SMB
+              </p>
             </div>
 
             <div className="space-y-2">
