@@ -2106,8 +2106,8 @@ async def get_certificate_info(
                 "signature_algorithm": cert.signature_algorithm_oid._name,
                 "public_key": public_key_info,
                 "extensions": extensions,
-                "fingerprint_sha1": cert.fingerprint(x509.load_pem_x509_certificate.__globals__['hashes'].SHA1()).hex(':').upper(),
-                "fingerprint_sha256": cert.fingerprint(x509.load_pem_x509_certificate.__globals__['hashes'].SHA256()).hex(':').upper()
+                "fingerprint_sha1": cert.fingerprint(hashes.SHA1()).hex(':').upper(),
+                "fingerprint_sha256": cert.fingerprint(hashes.SHA256()).hex(':').upper()
             }
             
             cert_infos.append(cert_info)
