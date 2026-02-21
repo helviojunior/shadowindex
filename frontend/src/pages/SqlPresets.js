@@ -256,15 +256,22 @@ const SqlPresets = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="universal">Universal</SelectItem>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <GenericDbIcon className="w-4 h-4" color="#888" />
+                      Todos os tipos
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="universal">
+                    <div className="flex items-center gap-2">
+                      <GenericDbIcon className="w-4 h-4" color="#666" />
+                      Universal
+                    </div>
+                  </SelectItem>
                   {dbTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id.toString()}>
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: type.color || '#666' }}
-                        />
+                        {getDatabaseIcon(type.name, "w-4 h-4")}
                         {type.name}
                       </div>
                     </SelectItem>
