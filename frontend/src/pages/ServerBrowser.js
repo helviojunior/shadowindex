@@ -1894,6 +1894,8 @@ const ServerBrowser = () => {
           style={{ paddingLeft: '8px', paddingRight: '8px', minHeight: '32px' }}
           onClick={handleNodeClick}
           data-testid={`tree-node-${safeTestId}`}
+          data-item-path={path}
+          data-node-id={nodeId}
         >
           {/* Tree Lines - Renderiza linhas verticais para cada nível de profundidade */}
           {depth > 0 && (
