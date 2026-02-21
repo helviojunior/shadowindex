@@ -837,6 +837,53 @@ const ServerBrowser = () => {
     }
   };
 
+  // Carregar dados de OCR do arquivo selecionado
+  const loadOcrData = async (fileId) => {
+    if (!fileId) return;
+    
+    setOcrLoading(true);
+    try {
+      const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/ocr`);
+      setOcrData(response.data);
+    } catch (error) {
+      console.error('Error loading OCR data:', error);
+      setOcrData(null);
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  // Processar OCR no arquivo
+  const processOcr = async () => {
+    if (!selectedItem) return;
+    
+    const filePath = selectedItem.fullPath || selectedItem.serverPath;
+    const fileInfo = downloadedFilesInfo[filePath];
+    
+    if (!fileInfo?.id) {
+      toast.error('Arquivo não encontrado para processar OCR');
+      return;
+    }
+    
+    setProcessingOcr(true);
+    try {
+      const response = await axios.post(`${API_V2}/servers/${serverId}/files/${fileInfo.id}/process-ocr`);
+      
+      if (response.data.success) {
+        toast.success(`OCR processado! ${response.data.content_length} caracteres extraídos`);
+        // Recarregar dados de OCR
+        await loadOcrData(fileInfo.id);
+      } else {
+        toast.error(`Erro no OCR: ${response.data.error}`);
+      }
+    } catch (error) {
+      console.error('Error processing OCR:', error);
+      toast.error('Erro ao processar OCR');
+    } finally {
+      setProcessingOcr(false);
+    }
+  };
+
   // Verificar se arquivo está na fila de downloads
   const checkFileInQueue = async (filePath, shareName) => {
     try {
