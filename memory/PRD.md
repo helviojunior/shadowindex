@@ -28,6 +28,33 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 20 - GitLeaks Integration Complete)
+- [x] **Dockerfile atualizado para GitLeaks dinâmico:**
+  - Download automático da última versão do GitLeaks no build
+  - Detecta arquitetura (arm64/x64) automaticamente
+  - Usa GitHub API para obter latest release
+- [x] **Novo Dashboard com gráficos (inspirado no Sn1per):**
+  - Cards de estatísticas com bordas coloridas (Total Servidores, Serv. com Arquivos, Leaks Detectados, Credenciais)
+  - Overall Risk Score em card verde com sparkline
+  - Risk vs. Time area chart (recharts)
+  - Risk by Severity donut chart
+  - Botão "Escanear Todos os Servidores"
+- [x] **Página de Leaks redesenhada:**
+  - Controle de scan integrado (Todos os Servidores, Servidor Específico, Caminho Custom)
+  - Jobs Recentes com status em tempo real
+  - Tabela estilo Sn1per: TARGET, LINE, RULE, TAGS, RISK (indicators coloridos), ACTIONS
+  - Modal de detalhes com informações completas
+- [x] **Backend GitLeaks melhorado:**
+  - `POST /api/v2/gitleaks/scan-all-servers` - scan em todos os servidores
+  - `GET /api/v2/gitleaks/stats` - estatísticas para Dashboard
+  - Normalização de arquivos .ocr e .metadata no processamento
+  - Campos adicionados: `original_file`, `scanned_file`, `detection_source`
+- [x] **Tratamento de arquivos OCR/Metadata:**
+  - Arquivos .ocr são exibidos referenciando o arquivo original (ex: `document.pdf.ocr` → `document.pdf`)
+  - Arquivos .metadata idem
+  - Badge visual indica fonte de detecção (via OCR, via Metadata)
+- [x] **Página GitLeaks separada removida** - controle integrado na página Leaks
+
 ### 2026-02-22 (Session 19 - Nmap XML Import)
 - [x] **Endpoint de Importação de Servidores via Nmap XML:**
   - `POST /api/v2/servers/import/nmap` - Importa servidores a partir de hosts parseados
