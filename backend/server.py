@@ -490,6 +490,48 @@ async def update_credential(credential_id: int, credential: CredentialUpdate, db
     return db_credential
 
 
+@api_router.get("/credentials/by-type/{credential_type}", response_model=List[CredentialResponse])
+async def get_credentials_by_type(credential_type: str, db: AsyncSession = Depends(get_db)):
+    """Get credentials filtered by type"""
+    if credential_type not in CREDENTIAL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Tipo inválido. Use: {', '.join(CREDENTIAL_TYPES)}")
+    
+    result = await db.execute(
+        select(Credential).where(Credential.credential_type == credential_type)
+    )
+    return result.scalars().all()
+
+
+@api_router.post("/credentials/{credential_id}/verify")
+async def mark_credential_verified(
+    credential_id: int, 
+    success: bool = True,
+    error_message: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Mark credential as verified after successful use"""
+    result = await db.execute(select(Credential).where(Credential.id == credential_id))
+    db_credential = result.scalar_one_or_none()
+    
+    if not db_credential:
+        raise HTTPException(status_code=404, detail="Credencial não encontrada")
+    
+    db_credential.verified = success
+    db_credential.last_verified_at = datetime.now(timezone.utc)
+    db_credential.verification_error = error_message if not success else None
+    db_credential.updated_at = datetime.now(timezone.utc)
+    
+    await db.commit()
+    await db.refresh(db_credential)
+    
+    return {
+        "id": db_credential.id,
+        "verified": db_credential.verified,
+        "last_verified_at": db_credential.last_verified_at.isoformat() if db_credential.last_verified_at else None,
+        "verification_error": db_credential.verification_error
+    }
+
+
 # Database Types CRUD
 @api_router.get("/db-types", response_model=List[DatabaseTypeResponse])
 async def get_db_types(db: AsyncSession = Depends(get_db)):
