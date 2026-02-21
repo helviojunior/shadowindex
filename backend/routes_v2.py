@@ -1248,17 +1248,9 @@ async def download_file_by_path(
             "version": version
         }
     else:
-        # Criar novo arquivo
-        downloaded_file = DownloadedFile(
-            server_guid=server.guid,
-            share_name=share_name,
-            file_path=file_path,
-            sanitized_path=sanitized_path,
-            file_size=file_size,
-            sha1_hash=sha1_hash,
-            mimetype=mimetype
-        )
-        db.add(downloaded_file)
+        # Atualizar registro já criado com caminho sanitizado
+        downloaded_file.sanitized_path = sanitized_path
+        downloaded_file.mimetype = mimetype
         
         # Criar primeira versão
         first_version = FileVersion(
@@ -1269,7 +1261,7 @@ async def download_file_by_path(
             sha1_hash=sha1_hash,
             file_size=file_size,
             mimetype=mimetype,
-            local_path=str(full_path),
+            local_path=local_path,
             is_current=True
         )
         db.add(first_version)
