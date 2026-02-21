@@ -1415,6 +1415,31 @@ async def get_file_by_path(
     return {"found": True, "file_id": file.id, "file": file}
 
 
+@router.get("/servers/{server_id}/downloads")
+async def list_server_downloads(server_id: int, db: AsyncSession = Depends(get_db)):
+    """Lista todos os arquivos baixados de um servidor"""
+    server = await get_server_or_404(db, server_id)
+    
+    result = await db.execute(
+        select(DownloadedFile).where(
+            DownloadedFile.server_guid == server.guid
+        ).order_by(DownloadedFile.downloaded_at.desc())
+    )
+    files = result.scalars().all()
+    
+    return [
+        {
+            "id": f.id,
+            "file_path": f.file_path,
+            "sanitized_path": f.sanitized_path,
+            "sha1_hash": f.sha1_hash,
+            "file_size": f.file_size,
+            "downloaded_at": f.downloaded_at.isoformat() if f.downloaded_at else None
+        }
+        for f in files
+    ]
+
+
 @router.get("/servers/{server_id}/files/{file_id}", response_model=DownloadedFileResponse)
 async def get_downloaded_file(server_id: int, file_id: int, db: AsyncSession = Depends(get_db)):
     """Obtém informações de um arquivo baixado"""
