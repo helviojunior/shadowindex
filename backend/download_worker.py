@@ -256,17 +256,21 @@ class DownloadWorker:
         from storage_utils import get_server_storage_path
         
         try:
+            logger.info(f"Saving file content for job {job.id}: {job.file_path}")
+            
             # Decodificar base64 e salvar
             file_bytes = base64.b64decode(content)
             
             # Calcular hash
             sha1_hash = hashlib.sha1(file_bytes).hexdigest()
+            logger.info(f"Calculated SHA1: {sha1_hash}, size: {len(file_bytes)} bytes")
             
             # Criar estrutura de diretórios
             storage_base = get_server_storage_path(server.guid)
             
             # Sanitizar o file_path removendo prefixo UNC e caracteres especiais
             file_path = job.file_path
+            original_file_path = file_path  # Guardar original para salvar no banco
             
             # Remover prefixo UNC se existir (ex: \\127.0.0.1\D$\...)
             if file_path.startswith('\\\\'):
@@ -285,6 +289,7 @@ class DownloadWorker:
             relative_path = relative_path.replace('$', '_').replace(':', '_')
             
             full_storage_path = storage_base / relative_path
+            logger.info(f"Storage path: {full_storage_path}")
             
             # Criar diretórios
             full_storage_path.parent.mkdir(parents=True, exist_ok=True)
@@ -292,6 +297,8 @@ class DownloadWorker:
             # Salvar arquivo
             with open(full_storage_path, 'wb') as f:
                 f.write(file_bytes)
+            
+            logger.info(f"File saved successfully: {full_storage_path}")
             
             # Atualizar job
             job.downloaded_bytes = len(file_bytes)
