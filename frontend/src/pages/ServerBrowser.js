@@ -87,6 +87,7 @@ const ServerBrowser = () => {
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
   const [beautified, setBeautified] = useState(false);
+  const [base64Decoded, setBase64Decoded] = useState(false); // Flag para conteúdo decodificado de base64
   const [itemsSortConfig, setItemsSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [focusedItem, setFocusedItem] = useState(null); // Item focado (oculta os demais) - {nodeId, shareName, path}
   const [pfxPassword, setPfxPassword] = useState(''); // Senha para arquivos PFX
