@@ -95,6 +95,56 @@ class DirectoryScanner:
                 pass
         logger.info("Directory scanner stopped")
     
+    def get_scan_jobs(self) -> List[dict]:
+        """Retorna lista de scan jobs (pendentes + últimos completados)"""
+        jobs = []
+        # Jobs pendentes e em scanning
+        for job in self.scan_queue:
+            jobs.append(job.to_dict())
+        # Últimos completados (máximo 20)
+        for job in self.completed_scans[-20:]:
+            jobs.append(job.to_dict())
+        return jobs
+    
+    async def cancel_scan(self, scan_id: str) -> bool:
+        """Cancela um scan job pelo ID"""
+        async with self._lock:
+            # Marcar como cancelado
+            self.cancelled_ids.add(scan_id)
+            
+            # Remover da fila se pendente
+            for job in self.scan_queue:
+                if job.id == scan_id:
+                    job.status = 'cancelled'
+                    self.scan_queue.remove(job)
+                    self.completed_scans.append(job)
+                    print(f"=== SCANNER: Cancelled scan job {scan_id} ===", flush=True)
+                    return True
+            
+            # Cancelar todos os sub-scans deste parent
+            to_remove = [j for j in self.scan_queue if j.parent_id == scan_id]
+            for job in to_remove:
+                job.status = 'cancelled'
+                self.scan_queue.remove(job)
+            
+            if to_remove:
+                print(f"=== SCANNER: Cancelled {len(to_remove)} sub-scans of {scan_id} ===", flush=True)
+                return True
+            
+            return False
+    
+    async def cancel_all_scans(self) -> int:
+        """Cancela todos os scan jobs pendentes"""
+        async with self._lock:
+            count = len(self.scan_queue)
+            for job in self.scan_queue:
+                job.status = 'cancelled'
+                self.cancelled_ids.add(job.id)
+                self.completed_scans.append(job)
+            self.scan_queue.clear()
+            print(f"=== SCANNER: Cancelled all {count} scan jobs ===", flush=True)
+            return count
+    
     async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True):
         """Adiciona um diretório para ser escaneado"""
         async with self._lock:
