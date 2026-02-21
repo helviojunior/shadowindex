@@ -1048,7 +1048,8 @@ async def download_chunk(
     """Download de um chunk de arquivo via SOAP"""
     from soap_service import get_default_soap_service
     
-    server = await get_server_or_404(db, server_id)
+    # Validar servidor existe
+    await get_server_or_404(db, server_id)
     
     # Chamar SOAP Exec5 com offset e chunk_size
     soap_service = await get_default_soap_service(db)
