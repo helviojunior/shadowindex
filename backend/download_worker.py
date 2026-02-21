@@ -264,7 +264,26 @@ class DownloadWorker:
             
             # Criar estrutura de diretórios
             storage_base = get_server_storage_path(server.guid)
-            relative_path = job.file_path.replace('\\', '/')
+            
+            # Sanitizar o file_path removendo prefixo UNC e caracteres especiais
+            file_path = job.file_path
+            
+            # Remover prefixo UNC se existir (ex: \\127.0.0.1\D$\...)
+            if file_path.startswith('\\\\'):
+                # Remove \\server\share\ do início
+                parts = file_path.split('\\')
+                # parts será ['', '', 'server', 'share', 'rest', 'of', 'path']
+                if len(parts) > 4:
+                    file_path = '\\'.join(parts[4:])  # Pega do 5º elemento em diante
+                else:
+                    file_path = parts[-1] if parts else job.file_name or 'unknown_file'
+            
+            # Converter barras e remover caracteres problemáticos
+            relative_path = file_path.replace('\\', '/').lstrip('/')
+            
+            # Remover caracteres especiais do Windows que não são válidos em Linux
+            relative_path = relative_path.replace('$', '_').replace(':', '_')
+            
             full_storage_path = storage_base / relative_path
             
             # Criar diretórios
