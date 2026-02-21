@@ -224,7 +224,7 @@ Portuguese (pt-BR)
 - **SqlQueryHistory:** `{id, connection_id, connection_name, query, result, success, error_message, execution_time_ms, executed_at}`
 
 ## 3rd Party Integrations
-- **Custom SOAP Web Service:** Private SOAP API at sdweb.suzanonet.com.br
+- **Custom SOAP Web Service:** Private SOAP API (configurable)
 - **UI Libraries:** lucide-react for icons, PrismJS for syntax highlighting, xlsx for Excel export
 
 ## Critical Notes

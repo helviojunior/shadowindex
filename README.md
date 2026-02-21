@@ -116,7 +116,7 @@ O docker-compose.yml está configurado com:
 
 ### SOAP API Padrão
 - **Nome**: Default SOAP API
-- **URL**: https://sdweb.suzanonet.com.br/dna/upload/api_tst.asmx?WSDL
+- **URL**: (Configure sua URL WSDL)
 
 ## 📝 Como Usar
 
@@ -259,8 +259,7 @@ services:
 
 ## 📞 Suporte
 
-Para mais informações, consulte a documentação do WSDL em:
-https://sdweb.suzanonet.com.br/dna/upload/api_tst.asmx?WSDL
+Para mais informações, consulte a documentação do seu WSDL.
 
 ---
 
