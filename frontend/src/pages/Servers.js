@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
 
@@ -34,6 +34,7 @@ const Servers = () => {
   const [resolvingIp, setResolvingIp] = useState(false);
   const [editingServer, setEditingServer] = useState(null);
   const [editIp, setEditIp] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     loadServers();
@@ -173,63 +174,84 @@ const Servers = () => {
 
   return (
     <div className="space-y-6" data-testid="servers-page">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Servidores</h1>
-        <p className="text-muted-foreground mt-2">Gerencie os servidores monitorados</p>
-      </div>
-
-      {/* Form Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Novo Servidor</CardTitle>
-          <CardDescription>Adicione um novo servidor para monitoramento</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome do Servidor</Label>
-                <Input
-                  id="name"
-                  data-testid="server-name-input"
-                  placeholder="servidor.exemplo.com"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ip">Endereço IP</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="ip"
-                    data-testid="server-ip-input"
-                    placeholder="192.168.1.100"
-                    value={formData.ip}
-                    onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-                    required
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleResolveIp}
-                    disabled={resolvingIp || !formData.name}
-                    data-testid="resolve-ip-btn"
-                  >
-                    <Network className="w-4 h-4 mr-2" />
-                    {resolvingIp ? 'Resolvendo...' : 'Resolve IP'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <Button type="submit" disabled={loading} data-testid="add-server-btn">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Servidores</h1>
+          <p className="text-muted-foreground mt-2">Gerencie os servidores monitorados</p>
+        </div>
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)} 
+          data-testid="toggle-add-form-btn"
+          variant={showAddForm ? "secondary" : "default"}
+        >
+          {showAddForm ? (
+            <>
+              <ChevronUp className="w-4 h-4 mr-2" />
+              Fechar
+            </>
+          ) : (
+            <>
               <Plus className="w-4 h-4 mr-2" />
               Adicionar Servidor
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Form Card - Collapsible */}
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Novo Servidor</CardTitle>
+            <CardDescription>Adicione um novo servidor para monitoramento</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome do Servidor</Label>
+                  <Input
+                    id="name"
+                    data-testid="server-name-input"
+                    placeholder="servidor.exemplo.com"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ip">Endereço IP</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="ip"
+                      data-testid="server-ip-input"
+                      placeholder="192.168.1.100"
+                      value={formData.ip}
+                      onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
+                      required
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResolveIp}
+                      disabled={resolvingIp || !formData.name}
+                      data-testid="resolve-ip-btn"
+                    >
+                      <Network className="w-4 h-4 mr-2" />
+                      {resolvingIp ? 'Resolvendo...' : 'Resolve IP'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} data-testid="add-server-btn">
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Servidor
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Servers Table Card */}
       <Card>
