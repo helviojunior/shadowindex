@@ -1417,9 +1417,7 @@ const ServerBrowser = () => {
           
           {/* Icon */}
           <div className="mx-1 flex-shrink-0">
-            {item.type === 'AccessDenied' ? (
-              <File className="w-4 h-4 text-red-500" />
-            ) : isShare ? (
+            {isShare ? (
               <HardDrive className={`w-4 h-4 ${iconColor}`} />
             ) : isDirectory ? (
               isExpanded ? (
@@ -1440,7 +1438,7 @@ const ServerBrowser = () => {
             title={isShare ? item.share_name : (item.errorMessage || item.name)}
           >
             {isShare ? String(item.share_name) : String(item.name)}
-            {isAccessDenied && item.type !== 'AccessDenied' && (
+            {isAccessDenied && (
               <span className="ml-2 text-xs text-red-400">(Acesso Negado)</span>
             )}
           </span>
