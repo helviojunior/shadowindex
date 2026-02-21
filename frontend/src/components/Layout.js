@@ -55,12 +55,22 @@ const menuStructure = [
     children: null
   },
   { 
+    id: 'servidores',
+    icon: Server, 
+    label: 'Servidores',
+    children: [
+      { id: 'servers-list', path: '/servers', label: 'Servidores' },
+      { id: 'servers-import', path: '/servers/import', label: 'Importar Servidores' },
+    ]
+  },
+  { 
     id: 'arquivos',
     icon: FolderTree, 
     label: 'Arquivos',
     children: [
-      { id: 'servers', path: '/servers', label: 'Servidores' },
+      { id: 'navigation', path: '/files/browse', label: 'Navegação' },
       { id: 'downloads', path: '/downloads', label: 'Downloads' },
+      { id: 'leaks', path: '/leaks', label: 'Leaks' },
     ]
   },
   { 
