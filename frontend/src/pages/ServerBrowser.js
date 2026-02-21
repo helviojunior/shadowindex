@@ -972,6 +972,11 @@ const ServerBrowser = () => {
       for (const file of files) {
         if (bulkDownloadCancelledRef.current) break;
         
+        // Verificar se o arquivo já foi baixado - se sim, ignorar
+        if (downloadedFiles.includes(file.fullPath)) {
+          continue; // Pular arquivo já sincronizado
+        }
+        
         // O size vem como número do SOAP (campo length)
         const fileSize = parseInt(file.size) || 0;
         
