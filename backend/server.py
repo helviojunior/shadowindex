@@ -3446,6 +3446,10 @@ async def update_multiple_settings(request: UpdateMultipleSettingsRequest, db: A
 # Include router
 app.include_router(api_router)
 
+# Include V2 router (ID-based endpoints)
+from routes_v2 import router as router_v2
+app.include_router(router_v2)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
