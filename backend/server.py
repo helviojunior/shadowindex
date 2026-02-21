@@ -16,7 +16,7 @@ from database import (
     init_db, get_db, 
     Credential, DatabaseConnection, ProxyServer, SoapApiUrl, SoapCache, AppConfig,
     Server, ServerShare, DownloadedFile, ServerItem, SqlPreset, SqlQueryHistory, DatabaseType,
-    FileVersion
+    FileVersion, PfxPassword
 )
 from soap_service import SoapService, get_default_soap_service
 import uuid
