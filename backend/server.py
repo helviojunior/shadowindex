@@ -2050,7 +2050,8 @@ async def get_certificate_info(
                     await db.commit()
             
             # 3. Se não funcionou, tentar brute-force com senhas conhecidas
-            if not certificate:
+            has_any_cert = certificate is not None or (additional_certs and len(additional_certs) > 0)
+            if not has_any_cert:
                 known_passwords = await db.execute(
                     select(PfxPassword.password).where(
                         PfxPassword.server_guid == server.guid
@@ -2061,10 +2062,12 @@ async def get_certificate_info(
                 print(f"PFX BRUTEFORCE: trying {len(known_passwords)} known passwords")
                 for idx, known_pwd in enumerate(known_passwords):
                     private_key, certificate, additional_certs, used_password = try_open_pfx(known_pwd, f"bruteforce-{idx+1}")
-                    if certificate:
+                    has_any_cert = certificate is not None or (additional_certs and len(additional_certs) > 0)
+                    if has_any_cert:
                         # Salvar a senha que funcionou
+                        log_cert = certificate if certificate else additional_certs[0]
                         subject_cn = None
-                        for attr in certificate.subject:
+                        for attr in log_cert.subject:
                             if attr.oid._name == 'commonName':
                                 subject_cn = attr.value
                                 break
