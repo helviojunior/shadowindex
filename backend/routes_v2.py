@@ -98,6 +98,30 @@ class CertificateInfoRequest(BaseModel):
     password: Optional[str] = None
 
 
+class SearchRequest(BaseModel):
+    query: Optional[str] = None           # Busca por nome
+    sha1: Optional[str] = None            # Busca por hash SHA1
+    extension: Optional[str] = None       # Busca por extensão (.aspx, .config, etc)
+    date_from: Optional[datetime] = None  # Data inicial
+    date_to: Optional[datetime] = None    # Data final
+    item_type: Optional[str] = None       # 'File', 'Directory' ou None para ambos
+    limit: int = 100                      # Limite de resultados
+
+
+class SearchResultItem(BaseModel):
+    id: int
+    type: str  # 'item' ou 'file'
+    item_type: Optional[str]  # 'File' ou 'Directory'
+    name: str
+    full_path: str
+    share_name: str
+    size: Optional[str]
+    sha1_hash: Optional[str]
+    modified: Optional[str]
+    downloaded_at: Optional[datetime]
+    is_downloaded: bool
+
+
 # ==========================================
 # Helper Functions
 # ==========================================
