@@ -1918,6 +1918,9 @@ async def get_certificate_info(
     share_name = request.share_name
     password = request.password
     
+    # Debug: verificar valor real da senha
+    print(f"DEBUG password: repr={repr(password)}, type={type(password)}, bool={bool(password)}")
+    
     # Obter servidor
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
