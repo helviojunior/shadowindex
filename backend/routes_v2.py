@@ -2690,75 +2690,147 @@ async def scan_server_storage(
         logger.error(f"Erro ao iniciar scan para servidor {server_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post("/gitleaks/scan-all-servers")
+async def scan_all_servers_storage(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Inicia scans do GitLeaks em TODOS os servidores que têm arquivos baixados.
+    Escaneia apenas os arquivos já baixados, não interage com os servidores remotos.
+    """
+    from gitleaks_service import get_gitleaks_service
+    from storage_utils import get_server_storage_path
     
-    # Importar hosts
-    results = {
-        "imported": [],
-        "failed": [],
-        "skipped": []
-    }
+    # Buscar todos os servidores
+    result = await db.execute(select(Server))
+    servers = result.scalars().all()
     
-    for host in hosts_to_import:
+    if not servers:
+        return {
+            "success": True,
+            "message": "Nenhum servidor cadastrado",
+            "total_servers": 0,
+            "scans_started": 0,
+            "skipped": 0,
+            "jobs": []
+        }
+    
+    service = get_gitleaks_service()
+    jobs_started = []
+    servers_skipped = []
+    
+    for server in servers:
+        storage_path = get_server_storage_path(server.guid)
+        
+        # Verificar se há arquivos baixados
+        if not os.path.exists(storage_path):
+            servers_skipped.append({
+                "server_id": server.id,
+                "server_name": server.name,
+                "reason": "Nenhum arquivo baixado"
+            })
+            continue
+        
+        # Verificar se o diretório não está vazio
+        if not any(os.scandir(storage_path)):
+            servers_skipped.append({
+                "server_id": server.id,
+                "server_name": server.name,
+                "reason": "Diretório vazio"
+            })
+            continue
+        
         try:
-            # Verificar se servidor já existe pelo IP
-            existing = await db.execute(
-                select(Server).where(Server.ip == host["ip"])
-            )
-            existing_server = existing.scalar_one_or_none()
-            
-            if existing_server:
-                results["skipped"].append({
-                    "ip": host["ip"],
-                    "name": host["name"],
-                    "reason": f"Servidor já existe (ID: {existing_server.id})"
-                })
-                continue
-            
-            # Criar novo servidor
-            new_server = Server(
-                guid=str(uuid.uuid4()),
-                name=host["name"],
-                ip=host["ip"],
-                plugin_type="direct_interaction",
-                plugin_config={
-                    "imported_from": "nmap",
-                    "has_smb": host["has_smb"],
-                    "has_db": host["has_db"],
-                    "db_types": host["db_types"]
-                }
-            )
-            db.add(new_server)
-            await db.flush()
-            
-            results["imported"].append({
-                "id": new_server.id,
-                "ip": host["ip"],
-                "name": host["name"],
-                "has_smb": host["has_smb"],
-                "db_types": host["db_types"]
+            job = await service.start_scan(str(storage_path), server.id)
+            jobs_started.append({
+                "job_id": job.job_id,
+                "server_id": server.id,
+                "server_name": server.name,
+                "target_path": str(storage_path)
             })
-            
         except Exception as e:
-            logger.error(f"Error importing server {host['ip']}: {e}")
-            results["failed"].append({
-                "ip": host["ip"],
-                "name": host["name"],
-                "error": str(e)
+            servers_skipped.append({
+                "server_id": server.id,
+                "server_name": server.name,
+                "reason": str(e)
             })
-    
-    await db.commit()
     
     return {
         "success": True,
-        "message": f"{len(results['imported'])} servidores importados com sucesso",
-        "hosts_found": len(hosts_to_import),
-        "imported": len(results["imported"]),
-        "failed": len(results["failed"]),
-        "skipped": len(results["skipped"]),
-        "details": {
-            "imported": results["imported"],
-            "failed": results["failed"],
-            "skipped": results["skipped"]
+        "message": f"{len(jobs_started)} scans iniciados em background",
+        "total_servers": len(servers),
+        "scans_started": len(jobs_started),
+        "skipped": len(servers_skipped),
+        "jobs": jobs_started,
+        "skipped_details": servers_skipped
+    }
+
+
+@router.get("/gitleaks/stats")
+async def get_gitleaks_stats(db: AsyncSession = Depends(get_db)):
+    """
+    Retorna estatísticas gerais do GitLeaks para o Dashboard.
+    """
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    findings = service.get_all_findings()
+    jobs = service.get_all_jobs()
+    
+    # Contagem de severidades
+    severity_counts = {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+    }
+    
+    high_severity_rules = ['aws', 'private-key', 'github', 'jwt', 'stripe', 'ssh']
+    medium_severity_rules = ['password', 'token', 'secret', 'api-key']
+    
+    for finding in findings:
+        rule_id = (finding.get('RuleID') or '').lower()
+        
+        if any(s in rule_id for s in high_severity_rules):
+            if 'private-key' in rule_id or 'jwt' in rule_id:
+                severity_counts["critical"] += 1
+            else:
+                severity_counts["high"] += 1
+        elif any(s in rule_id for s in medium_severity_rules):
+            severity_counts["medium"] += 1
+        else:
+            severity_counts["low"] += 1
+    
+    # Buscar estatísticas de servidores
+    servers_result = await db.execute(select(Server))
+    servers = servers_result.scalars().all()
+    
+    # Contar servidores com arquivos baixados
+    from storage_utils import get_server_storage_path
+    servers_with_files = 0
+    for server in servers:
+        storage_path = get_server_storage_path(server.guid)
+        if os.path.exists(storage_path) and any(os.scandir(storage_path)):
+            servers_with_files += 1
+    
+    # Jobs stats
+    running_jobs = len([j for j in jobs if j.get('status') in ['pending', 'running']])
+    completed_jobs = len([j for j in jobs if j.get('status') == 'completed'])
+    
+    return {
+        "total_findings": len(findings),
+        "total_files_affected": len(set(f.get('File', '') for f in findings)),
+        "severity_counts": severity_counts,
+        "total_servers": len(servers),
+        "servers_with_files": servers_with_files,
+        "servers_scanned": len(set(f.get('server_id') for f in findings if f.get('server_id'))),
+        "jobs": {
+            "total": len(jobs),
+            "running": running_jobs,
+            "completed": completed_jobs
         }
     }
+
 
