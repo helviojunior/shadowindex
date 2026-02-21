@@ -32,6 +32,7 @@ Portuguese (pt-BR)
   - Backend: Adicionada verificação de erro no texto bruto (`result_str`) ANTES de parsear o XML
   - Backend: Melhorada função `check_error_message` / `check_download_error` para verificar textos fallback
   - Backend: Ambos endpoints `/download` e `/download-chunk` agora verificam erros consistentemente
+  - Backend: Função `update_access_denied_status()` atualiza o status de acesso negado no DB (pasta pai ou share)
   - Frontend: `handleDownload` agora extrai `error.response?.data?.detail` para mostrar mensagem de erro específica
   - Frontend: Bulk download agora mostra "Acesso Negado" ou "Não encontrado" para códigos HTTP específicos
   - Criados testes unitários em `/app/backend/tests/test_download_error_handling.py`
