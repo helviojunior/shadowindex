@@ -122,9 +122,9 @@ const SoapOperations = () => {
             <TabsList className="grid w-full grid-cols-5 mb-4">
               <TabsTrigger value="resolve" data-testid="tab-resolve">Resolve</TabsTrigger>
               <TabsTrigger value="shares" data-testid="tab-shares">Shares</TabsTrigger>
-              <TabsTrigger value="exec" data-testid="tab-exec">Exec</TabsTrigger>
-              <TabsTrigger value="exec4" data-testid="tab-exec4">Exec4</TabsTrigger>
-              <TabsTrigger value="exec5" data-testid="tab-exec5">Exec5</TabsTrigger>
+              <TabsTrigger value="exec" data-testid="tab-exec">Consulta SQL</TabsTrigger>
+              <TabsTrigger value="exec4" data-testid="tab-exec4">Lista Diretório</TabsTrigger>
+              <TabsTrigger value="exec5" data-testid="tab-exec5">Download File</TabsTrigger>
             </TabsList>
 
             {/* Resolve Tab */}
