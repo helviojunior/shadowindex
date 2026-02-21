@@ -128,16 +128,22 @@ class DirectoryScanner:
         from database import Server, DownloadJob, AppSettings
         from soap_service import get_default_soap_service
         
+        print(f"=== SCANNER: _scan_directory called for {scan_job.path}, depth={scan_job.depth}/{scan_job.max_depth} ===", flush=True)
+        
         # Verificar limite de profundidade
         if scan_job.depth > scan_job.max_depth:
+            print(f"=== SCANNER: Max depth reached, skipping ===", flush=True)
             return
         
         # Obter servidor
         result = await db.execute(select(Server).where(Server.id == scan_job.server_id))
         server = result.scalar_one_or_none()
         if not server:
+            print(f"=== SCANNER: Server {scan_job.server_id} not found ===", flush=True)
             logger.warning(f"Server {scan_job.server_id} not found")
             return
+        
+        print(f"=== SCANNER: Found server {server.name} ({server.ip}) ===", flush=True)
         
         # Obter extensões ignoradas (apenas se aplicar filtros)
         ignored_extensions = []
@@ -149,28 +155,41 @@ class DirectoryScanner:
         
         # Obter serviço SOAP
         soap_service = await get_default_soap_service(db)
+        if not soap_service:
+            print(f"=== SCANNER: No SOAP service available ===", flush=True)
+            return
         
         # Preparar path para listagem (Exec4)
         full_path = scan_job.path
         if not full_path.startswith('\\\\'):
             full_path = f"\\\\{server.ip}\\{scan_job.share_name}\\{scan_job.path}"
         
+        print(f"=== SCANNER: Calling Exec4 for path: {full_path} ===", flush=True)
+        
         try:
             # Chamar Exec4 para listar diretório
             params = {"s1": full_path, "s2": ""}
             result = await soap_service.call_soap_operation(db, "Exec4", params, ignore_cache=True)
             
+            print(f"=== SCANNER: Exec4 result length: {len(result) if result else 0} ===", flush=True)
+            
             if not result:
+                print(f"=== SCANNER: Empty result from Exec4 ===", flush=True)
                 return
             
             # Verificar erros
             result_lower = result.lower()
             if "access" in result_lower and "denied" in result_lower:
+                print(f"=== SCANNER: Access denied for {full_path} ===", flush=True)
                 logger.warning(f"Access denied: {full_path}")
                 return
             
             # Parsear resultado (formato CSV ou XML)
             items = self._parse_directory_listing(result)
+            print(f"=== SCANNER: Parsed {len(items)} items from directory listing ===", flush=True)
+            
+            files_added = 0
+            dirs_added = 0
             
             for item in items:
                 item_type = item.get('type', '')
