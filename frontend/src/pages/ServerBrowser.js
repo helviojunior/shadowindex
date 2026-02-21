@@ -663,7 +663,7 @@ const ServerBrowser = () => {
 
   const loadDownloadedFiles = async () => {
     try {
-      const response = await axios.get(`${API}/servers/${serverId}/downloads`);
+      const response = await axios.get(`${API_V2}/servers/${serverId}/downloads`);
       setDownloadedFiles(response.data.map(f => f.file_path));
       // Criar mapa de informações por file_path
       const infoMap = {};
