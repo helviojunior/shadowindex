@@ -92,31 +92,29 @@ const FileNavigation = () => {
               className="group cursor-pointer"
               data-testid={`server-card-${server.id}`}
             >
-              <Card className="h-full transition-all duration-200 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 group-hover:scale-[1.02]">
-                <CardContent className="p-4 flex flex-col items-center text-center">
-                  {/* Server Icon */}
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
-                    <HardDrive className="w-8 h-8 text-primary" />
-                  </div>
-                  
-                  {/* Server Name */}
-                  <h3 className="font-semibold text-sm truncate w-full mb-1" title={server.name}>
-                    {server.name}
-                  </h3>
-                  
-                  {/* Server IP */}
-                  <p className="text-xs text-muted-foreground font-mono truncate w-full" title={server.ip}>
-                    {server.ip}
-                  </p>
-                  
-                  {/* Plugin Badge */}
-                  {server.plugin_type && (
-                    <Badge variant="outline" className="mt-2 text-[10px]">
-                      {server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type}
-                    </Badge>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="h-full p-4 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
+                {/* Server Icon */}
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
+                  <HardDrive className="w-8 h-8 text-primary" />
+                </div>
+                
+                {/* Server Name */}
+                <h3 className="font-semibold text-sm truncate w-full mb-1" title={server.name}>
+                  {server.name}
+                </h3>
+                
+                {/* Server IP */}
+                <p className="text-xs text-muted-foreground font-mono truncate w-full" title={server.ip}>
+                  {server.ip}
+                </p>
+                
+                {/* Plugin Badge */}
+                {server.plugin_type && (
+                  <Badge variant="outline" className="mt-2 text-[10px]">
+                    {server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type}
+                  </Badge>
+                )}
+              </div>
             </div>
           ))}
         </div>
