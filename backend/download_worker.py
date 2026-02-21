@@ -301,12 +301,17 @@ class DownloadWorker:
             
             logger.info(f"File saved successfully: {full_storage_path}")
             
-            # Calcular mimetype usando libmagic
+            # Calcular mimetype usando libmagic ou por extensão
             mimetype = None
             try:
                 mime = magic.Magic(mime=True)
                 mimetype = mime.from_file(str(full_storage_path))
-                logger.info(f"Calculated mimetype: {mimetype}")
+                logger.info(f"Calculated mimetype (libmagic): {mimetype}")
+            except ImportError:
+                # Fallback: detectar por extensão
+                import mimetypes
+                mimetype, _ = mimetypes.guess_type(str(full_storage_path))
+                logger.info(f"Calculated mimetype (extension): {mimetype}")
             except Exception as e:
                 logger.warning(f"Could not calculate mimetype: {e}")
             
