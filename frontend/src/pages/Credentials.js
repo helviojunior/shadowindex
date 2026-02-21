@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -14,6 +14,7 @@ const Credentials = () => {
   const [credentials, setCredentials] = useState([]);
   const [formData, setFormData] = useState({ domain: '', username: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     loadCredentials();
@@ -59,62 +60,83 @@ const Credentials = () => {
 
   return (
     <div className="space-y-6" data-testid="credentials-page">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Credenciais</h1>
-        <p className="text-muted-foreground mt-2">Gerencie as credenciais de acesso</p>
-      </div>
-
-      {/* Form Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Nova Credencial</CardTitle>
-          <CardDescription>Adicione uma nova credencial ao sistema</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="domain">Domínio</Label>
-                <Input
-                  id="domain"
-                  data-testid="credential-domain-input"
-                  placeholder="exemplo.com"
-                  value={formData.domain}
-                  onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="username">Usuário</Label>
-                <Input
-                  id="username"
-                  data-testid="credential-username-input"
-                  placeholder="usuario"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
-                  data-testid="credential-password-input"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <Button type="submit" disabled={loading} data-testid="add-credential-btn">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Credenciais</h1>
+          <p className="text-muted-foreground mt-2">Gerencie as credenciais de acesso</p>
+        </div>
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)} 
+          data-testid="toggle-add-form-btn"
+          variant={showAddForm ? "secondary" : "default"}
+        >
+          {showAddForm ? (
+            <>
+              <ChevronUp className="w-4 h-4 mr-2" />
+              Fechar
+            </>
+          ) : (
+            <>
               <Plus className="w-4 h-4 mr-2" />
               Adicionar Credencial
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Form Card - Collapsible */}
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Nova Credencial</CardTitle>
+            <CardDescription>Adicione uma nova credencial ao sistema</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="domain">Domínio</Label>
+                  <Input
+                    id="domain"
+                    data-testid="credential-domain-input"
+                    placeholder="exemplo.com"
+                    value={formData.domain}
+                    onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">Usuário</Label>
+                  <Input
+                    id="username"
+                    data-testid="credential-username-input"
+                    placeholder="usuario"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <Input
+                    id="password"
+                    data-testid="credential-password-input"
+                    type="password"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} data-testid="add-credential-btn">
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Credencial
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* List Card */}
       <Card>

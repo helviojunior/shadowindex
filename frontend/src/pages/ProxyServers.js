@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -14,6 +14,7 @@ const ProxyServers = () => {
   const [proxies, setProxies] = useState([]);
   const [formData, setFormData] = useState({ name: '', ip: '', port: '' });
   const [loading, setLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     loadProxies();
@@ -62,62 +63,83 @@ const ProxyServers = () => {
 
   return (
     <div className="space-y-6" data-testid="proxy-servers-page">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Proxy Servers</h1>
-        <p className="text-muted-foreground mt-2">Gerencie os servidores proxy</p>
-      </div>
-
-      {/* Form Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Novo Proxy Server</CardTitle>
-          <CardDescription>Adicione um novo servidor proxy</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input
-                  id="name"
-                  data-testid="proxy-name-input"
-                  placeholder="Meu Proxy"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ip">IP</Label>
-                <Input
-                  id="ip"
-                  data-testid="proxy-ip-input"
-                  placeholder="192.168.1.1"
-                  value={formData.ip}
-                  onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="port">Porta</Label>
-                <Input
-                  id="port"
-                  data-testid="proxy-port-input"
-                  type="number"
-                  placeholder="8080"
-                  value={formData.port}
-                  onChange={(e) => setFormData({ ...formData, port: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <Button type="submit" disabled={loading} data-testid="add-proxy-btn">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Proxy Servers</h1>
+          <p className="text-muted-foreground mt-2">Gerencie os servidores proxy</p>
+        </div>
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)} 
+          data-testid="toggle-add-form-btn"
+          variant={showAddForm ? "secondary" : "default"}
+        >
+          {showAddForm ? (
+            <>
+              <ChevronUp className="w-4 h-4 mr-2" />
+              Fechar
+            </>
+          ) : (
+            <>
               <Plus className="w-4 h-4 mr-2" />
               Adicionar Proxy
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Form Card - Collapsible */}
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Novo Proxy Server</CardTitle>
+            <CardDescription>Adicione um novo servidor proxy</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome</Label>
+                  <Input
+                    id="name"
+                    data-testid="proxy-name-input"
+                    placeholder="Meu Proxy"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ip">IP</Label>
+                  <Input
+                    id="ip"
+                    data-testid="proxy-ip-input"
+                    placeholder="192.168.1.1"
+                    value={formData.ip}
+                    onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="port">Porta</Label>
+                  <Input
+                    id="port"
+                    data-testid="proxy-port-input"
+                    type="number"
+                    placeholder="8080"
+                    value={formData.port}
+                    onChange={(e) => setFormData({ ...formData, port: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} data-testid="add-proxy-btn">
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Proxy
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* List Card */}
       <Card>

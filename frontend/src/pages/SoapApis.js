@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -14,6 +14,7 @@ const SoapApis = () => {
   const [soapApis, setSoapApis] = useState([]);
   const [formData, setFormData] = useState({ name: '', uri: '' });
   const [loading, setLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     loadSoapApis();
@@ -59,51 +60,72 @@ const SoapApis = () => {
 
   return (
     <div className="space-y-6" data-testid="soap-apis-page">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">SOAP API URLs</h1>
-        <p className="text-muted-foreground mt-2">Gerencie as URLs das APIs SOAP</p>
-      </div>
-
-      {/* Form Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Nova SOAP API</CardTitle>
-          <CardDescription>Adicione uma nova URL de API SOAP</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input
-                  id="name"
-                  data-testid="soap-api-name-input"
-                  placeholder="Minha API SOAP"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="uri">URI (WSDL)</Label>
-                <Input
-                  id="uri"
-                  data-testid="soap-api-uri-input"
-                  type="url"
-                  placeholder="https://exemplo.com/api.asmx?WSDL"
-                  value={formData.uri}
-                  onChange={(e) => setFormData({ ...formData, uri: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <Button type="submit" disabled={loading} data-testid="add-soap-api-btn">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">SOAP API URLs</h1>
+          <p className="text-muted-foreground mt-2">Gerencie as URLs das APIs SOAP</p>
+        </div>
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)} 
+          data-testid="toggle-add-form-btn"
+          variant={showAddForm ? "secondary" : "default"}
+        >
+          {showAddForm ? (
+            <>
+              <ChevronUp className="w-4 h-4 mr-2" />
+              Fechar
+            </>
+          ) : (
+            <>
               <Plus className="w-4 h-4 mr-2" />
               Adicionar SOAP API
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Form Card - Collapsible */}
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Nova SOAP API</CardTitle>
+            <CardDescription>Adicione uma nova URL de API SOAP</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome</Label>
+                  <Input
+                    id="name"
+                    data-testid="soap-api-name-input"
+                    placeholder="Minha API SOAP"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="uri">URI (WSDL)</Label>
+                  <Input
+                    id="uri"
+                    data-testid="soap-api-uri-input"
+                    type="url"
+                    placeholder="https://exemplo.com/api.asmx?WSDL"
+                    value={formData.uri}
+                    onChange={(e) => setFormData({ ...formData, uri: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} data-testid="add-soap-api-btn">
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar SOAP API
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* List Card */}
       <Card>

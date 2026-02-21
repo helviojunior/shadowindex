@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Trash2, Plus, CheckCircle, XCircle, Play, Code, Database, Loader2, Zap, Pencil } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, XCircle, Play, Database, Loader2, Zap, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { getDatabaseIcon } from '@/components/DatabaseIcons';
 
@@ -38,6 +38,7 @@ const DatabaseConnections = () => {
   const [testingConnectionId, setTestingConnectionId] = useState(null);
   const [testingNewConnection, setTestingNewConnection] = useState(false);
   const [newConnectionTestResult, setNewConnectionTestResult] = useState(null); // 'success', 'error', null
+  const [showAddForm, setShowAddForm] = useState(false);
   
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -229,19 +230,33 @@ const DatabaseConnections = () => {
           <h1 className="text-3xl font-bold tracking-tight">Conexões SQL</h1>
           <p className="text-muted-foreground mt-2">Gerencie as conexões com bancos de dados</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/sql/presets')} data-testid="manage-presets-btn">
-          <Code className="w-4 h-4 mr-2" />
-          Gerenciar Presets
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)} 
+          data-testid="toggle-add-form-btn"
+          variant={showAddForm ? "secondary" : "default"}
+        >
+          {showAddForm ? (
+            <>
+              <ChevronUp className="w-4 h-4 mr-2" />
+              Fechar
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Conexão
+            </>
+          )}
         </Button>
       </div>
 
-      {/* Form Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Nova Conexão</CardTitle>
-          <CardDescription>Adicione uma nova conexão de banco de dados</CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* Form Card - Collapsible */}
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Nova Conexão</CardTitle>
+            <CardDescription>Adicione uma nova conexão de banco de dados</CardDescription>
+          </CardHeader>
+          <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -327,6 +342,7 @@ const DatabaseConnections = () => {
           </form>
         </CardContent>
       </Card>
+      )}
 
       {/* Connections Table */}
       <Card>
