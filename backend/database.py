@@ -167,6 +167,7 @@ class FileVersion(Base):
     version_number = Column(Integer, nullable=False, default=1)  # Número da versão
     sha1_hash = Column(String(40), nullable=False)  # SHA1 hash desta versão
     file_size = Column(Integer, nullable=True)
+    mimetype = Column(String, nullable=True)  # MIME type do arquivo (calculado via libmagic)
     local_path = Column(String, nullable=False)  # Caminho local onde está armazenado
     is_current = Column(Boolean, default=True)  # Se é a versão atual
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
