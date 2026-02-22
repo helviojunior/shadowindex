@@ -1322,6 +1322,55 @@ async def soap_resolve_ipv4(
     db: AsyncSession = Depends(get_db)
 ):
     """Resolve priorizando IPv4 - usado para adicionar servidores"""
+    import traceback
+    
+    # Se plugin_instance_id foi fornecido, usar a instância específica
+    if request.plugin_instance_id:
+        try:
+            from plugins.factory import get_plugin_for_instance
+            
+            plugin = await get_plugin_for_instance(db, request.plugin_instance_id)
+            
+            if not plugin:
+                raise HTTPException(
+                    status_code=404, 
+                    detail="Instância de plugin não encontrada"
+                )
+            
+            # Verificar se o plugin tem o método resolve
+            if not hasattr(plugin, 'resolve'):
+                raise HTTPException(
+                    status_code=400,
+                    detail="O plugin selecionado não suporta resolução de nomes"
+                )
+            
+            # Chamar resolve do plugin
+            result = await plugin.resolve(request.s1, ignore_cache=request.ignore_cache)
+            
+            # Extrair IPv4 prioritário do resultado
+            ipv4_result = extract_ipv4_from_resolve_result(result)
+            
+            return {
+                "operation": "Resolve",
+                "result": ipv4_result or result,
+                "from_cache": not request.ignore_cache,
+                "plugin_instance_id": request.plugin_instance_id
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            error_traceback = traceback.format_exc()
+            logger.error(f"Error resolving IP with plugin instance {request.plugin_instance_id}: {e}\n{error_traceback}")
+            raise HTTPException(
+                status_code=500, 
+                detail={
+                    "error": "plugin_error",
+                    "message": f"Erro ao resolver IP: {str(e)}",
+                    "plugin_instance_id": request.plugin_instance_id
+                }
+            )
+    
+    # Fallback para o serviço SOAP padrão (compatibilidade)
     soap_service = await get_default_soap_service(db)
     params = {"s1": request.s1, "s2": request.s2}
     
@@ -1339,7 +1388,15 @@ async def soap_resolve_ipv4(
             "from_cache": not request.ignore_cache
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_traceback = traceback.format_exc()
+        logger.error(f"Error resolving IP with default SOAP service: {e}\n{error_traceback}")
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "error": "soap_error",
+                "message": f"Erro ao resolver IP: {str(e)}"
+            }
+        )
 
 @api_router.post("/soap/shares", response_model=SoapOperationResponse)
 async def soap_shares(
