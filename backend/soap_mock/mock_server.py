@@ -240,7 +240,8 @@ def build_download_file_response(path: str, offset: int = 0, length: int = 0) ->
     
     # Replace any IP with mock IP for matching
     import re
-    normalized_for_match = re.sub(r'\\\\[\d.]+\\', f'\\\\{MOCK_SERVER_IP}\\', normalized_path)
+    replacement = '\\\\\\\\' + MOCK_SERVER_IP + '\\\\'
+    normalized_for_match = re.sub(r'\\\\[\d.]+\\', replacement, normalized_path)
     
     # Check if file exists in mock data
     content = None
