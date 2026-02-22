@@ -466,6 +466,11 @@ const ServerBrowser = () => {
     setBeautified(false);
     setFileVersions([]);
     
+    // Resetar estados do PDF
+    setPdfNumPages(null);
+    setPdfPageNumber(1);
+    setPdfScale(1.0);
+    
     // Se acesso negado, mostrar apenas Info
     if (isAccessDenied) {
       setActiveTab('info');
