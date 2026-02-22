@@ -438,7 +438,7 @@ const Dashboard = () => {
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                Escanear Todos os Servidores
+                Escanear todos os arquivos baixados
               </Button>
             </div>
           </CardContent>
@@ -447,7 +447,7 @@ const Dashboard = () => {
         {/* Risk vs Time Area Chart */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Risco vs. Tempo</CardTitle>
+            <CardTitle className="text-lg">Leaks vs. Tempo</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[250px]">
