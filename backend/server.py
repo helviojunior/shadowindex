@@ -4089,14 +4089,17 @@ async def scan_directory_for_download(
         path=request.path,
         max_depth=request.max_depth,
         max_file_size_bytes=request.max_file_size_bytes,
-        apply_filters=request.apply_filters
+        apply_filters=request.apply_filters,
+        critical_only=request.critical_only
     )
     
+    scan_type = "crítica" if request.critical_only else "normal"
     return {
         "success": True,
-        "message": f"Scan iniciado para {request.path}",
+        "message": f"Scan {scan_type} iniciado para {request.path}",
         "max_depth": request.max_depth,
-        "apply_filters": request.apply_filters
+        "apply_filters": request.apply_filters,
+        "critical_only": request.critical_only
     }
 
 
