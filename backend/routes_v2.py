@@ -2829,3 +2829,119 @@ async def get_gitleaks_stats(db: AsyncSession = Depends(get_db)):
     }
 
 
+# ==========================================
+# Manual Leak Registration
+# ==========================================
+
+class ManualLeakCreate(BaseModel):
+    """Modelo para criação de leak manual"""
+    file_path: str
+    server_id: Optional[int] = None
+    secret_type: str  # password, token, api_key, private_key, ssh_key, certificate, connection_string, other
+    secret_value: Optional[str] = None
+    description: Optional[str] = None
+    line_number: Optional[int] = None
+    match_text: Optional[str] = None
+
+
+LEAK_TYPES = {
+    "password": {"name": "Senha", "rule_id": "manual-password", "severity": "medium"},
+    "token": {"name": "Token", "rule_id": "manual-token", "severity": "medium"},
+    "api_key": {"name": "API Key", "rule_id": "manual-api-key", "severity": "high"},
+    "private_key": {"name": "Chave Privada", "rule_id": "manual-private-key", "severity": "critical"},
+    "ssh_key": {"name": "Chave SSH", "rule_id": "manual-ssh-key", "severity": "critical"},
+    "certificate": {"name": "Certificado com Chave", "rule_id": "manual-certificate-key", "severity": "critical"},
+    "connection_string": {"name": "String de Conexão", "rule_id": "manual-connection-string", "severity": "high"},
+    "other": {"name": "Outro", "rule_id": "manual-credential", "severity": "low"}
+}
+
+
+@router.post("/gitleaks/manual-leak")
+async def register_manual_leak(leak: ManualLeakCreate, db: AsyncSession = Depends(get_db)):
+    """
+    Registra um leak manualmente identificado pelo usuário.
+    Útil quando o GitLeaks não detectou automaticamente.
+    """
+    from gitleaks_service import get_gitleaks_service
+    from datetime import datetime, timezone
+    import hashlib
+    
+    service = get_gitleaks_service()
+    
+    # Validar tipo de leak
+    leak_info = LEAK_TYPES.get(leak.secret_type, LEAK_TYPES["other"])
+    
+    # Gerar fingerprint único
+    fingerprint_source = f"{leak.file_path}:{leak.line_number or 0}:{leak.secret_type}:{leak.match_text or ''}"
+    fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
+    
+    # Criar finding no formato GitLeaks
+    finding = {
+        "RuleID": leak_info["rule_id"],
+        "Description": leak.description or f"Credencial identificada manualmente: {leak_info['name']}",
+        "File": leak.file_path,
+        "StartLine": leak.line_number or 1,
+        "EndLine": leak.line_number or 1,
+        "Match": leak.match_text or "[identificado manualmente]",
+        "Secret": leak.secret_value[:50] + "..." if leak.secret_value and len(leak.secret_value) > 50 else leak.secret_value,
+        "Fingerprint": f"manual_{fingerprint}",
+        "Tags": ["manual", leak.secret_type],
+        "Severity": leak_info["severity"],
+        
+        # Metadados adicionais
+        "job_id": "manual",
+        "server_id": leak.server_id,
+        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "original_file": leak.file_path,
+        "scanned_file": leak.file_path,
+        "detection_source": "manual"
+    }
+    
+    # Verificar se já existe
+    existing = [f for f in service._findings if f.get('Fingerprint') == finding['Fingerprint']]
+    if existing:
+        return {
+            "success": False,
+            "message": "Leak já registrado para este arquivo e localização",
+            "finding": existing[0]
+        }
+    
+    # Adicionar ao cache
+    service._findings.append(finding)
+    
+    return {
+        "success": True,
+        "message": "Leak registrado com sucesso",
+        "finding": finding
+    }
+
+
+@router.get("/gitleaks/leak-types")
+async def get_leak_types():
+    """
+    Retorna os tipos de leak disponíveis para registro manual.
+    """
+    return [
+        {"value": key, "label": info["name"], "severity": info["severity"]}
+        for key, info in LEAK_TYPES.items()
+    ]
+
+
+@router.delete("/gitleaks/findings/{fingerprint}")
+async def delete_leak_finding(fingerprint: str):
+    """
+    Remove um leak específico pelo fingerprint.
+    """
+    from gitleaks_service import get_gitleaks_service
+    
+    service = get_gitleaks_service()
+    
+    # Encontrar e remover
+    original_count = len(service._findings)
+    service._findings = [f for f in service._findings if f.get('Fingerprint') != fingerprint]
+    
+    if len(service._findings) < original_count:
+        return {"success": True, "message": "Leak removido com sucesso"}
+    else:
+        return {"success": False, "message": "Leak não encontrado"}
+
