@@ -3070,6 +3070,44 @@ async def get_gitleaks_job(job_id: str):
     
     return job.to_dict()
 
+
+@router.get("/gitleaks/jobs/{job_id}/report")
+async def get_gitleaks_job_report(job_id: str):
+    """Retorna o JSON completo do relatório do GitLeaks para um job específico"""
+    from gitleaks_service import get_gitleaks_service
+    import json
+    
+    service = get_gitleaks_service()
+    job = service.get_job(job_id)
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    
+    if not job.report_path:
+        raise HTTPException(status_code=404, detail="Relatório não disponível para este job")
+    
+    if not os.path.exists(job.report_path):
+        raise HTTPException(status_code=404, detail="Arquivo de relatório não encontrado")
+    
+    try:
+        with open(job.report_path, 'r') as f:
+            report_data = json.load(f)
+        
+        return {
+            "job_id": job.job_id,
+            "target_path": job.target_path,
+            "server_id": job.server_id,
+            "status": job.status,
+            "findings_count": len(report_data) if isinstance(report_data, list) else 0,
+            "report_path": job.report_path,
+            "report": report_data
+        }
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao parsear JSON do relatório: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao ler relatório: {str(e)}")
+
+
 @router.post("/gitleaks/jobs/{job_id}/cancel")
 async def cancel_gitleaks_job(job_id: str):
     """Cancela um job em execução"""
