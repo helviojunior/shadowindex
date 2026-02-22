@@ -85,13 +85,19 @@ const DatabaseConnections = () => {
   const loadAvailablePlugins = async () => {
     try {
       const response = await axios.get(`${API}/plugins`);
-      setAvailablePlugins(response.data);
+      // Keep this for backwards compatibility but not used
     } catch (error) {
       console.error('Error loading plugins:', error);
-      // Fallback to known plugins
-      setAvailablePlugins({
-        soap_api: { type: 'soap_api', name: 'SOAP API Plugin', version: '1.0.0' }
-      });
+    }
+  };
+
+  const loadPluginInstances = async () => {
+    try {
+      const response = await axios.get(`${API}/plugin-instances`);
+      setPluginInstances(response.data || []);
+    } catch (error) {
+      console.error('Error loading plugin instances:', error);
+      setPluginInstances([]);
     }
   };
 
