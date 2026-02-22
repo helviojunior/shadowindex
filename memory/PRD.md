@@ -46,6 +46,20 @@ Portuguese (pt-BR)
   - Atualização de plugin existente (curl)
   - Interface visual (screenshots)
 
+### 2026-02-22 (Session 22 - P0 Fix & Import Improvements)
+- [x] **P0 Corrigido: Health Check do Plugin SOAP usando Proxy:**
+  - Método `health_check()` em `plugins/soap_api.py` agora utiliza o proxy ativo
+  - Campo `proxy_used` adicionado aos detalhes da resposta
+  - Testado: quando proxy ativo, a requisição passa pelo proxy configurado
+- [x] **Página de Importação de Servidores melhorada:**
+  - Status de upload em tempo real: "Enviando arquivo...", "Analisando XML...", "Pronto para importar"
+  - Progress bar durante upload do arquivo
+  - Botões de ação movidos para o header do card (Selecionar Todos, Desmarcar, Importar)
+  - Removido ScrollArea interno - lista usa scroll da página principal
+  - Ícones visuais para cada etapa do processo
+- [x] **Espaçamento da página Plugin SOAP:**
+  - Aumentado espaçamento entre seções (space-y-8)
+
 ### 2026-02-22 (Session 20 - GitLeaks Integration Complete)
 - [x] **Dockerfile atualizado para GitLeaks dinâmico:**
   - Download automático da última versão do GitLeaks no build
