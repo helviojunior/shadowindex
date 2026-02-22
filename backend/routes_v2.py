@@ -1627,20 +1627,21 @@ async def download_chunk(
     chunk_size: int = 512000,
     db: AsyncSession = Depends(get_db)
 ):
-    """Download de um chunk de arquivo via SOAP"""
-    from soap_service import get_default_soap_service
+    """Download de um chunk de arquivo usando o plugin configurado para o servidor"""
+    from plugins.factory import get_plugin_for_server
+    from plugins.exceptions import CredentialNotSetException, AccessDeniedException, ItemNotFoundException
     
-    # Validar servidor existe
-    await get_server_or_404(db, server_id)
+    server = await get_server_or_404(db, server_id)
     
-    # Chamar SOAP Exec5 com offset e chunk_size
-    soap_service = await get_default_soap_service(db)
-    params = {"s1": file_path, "s2": "", "l1": offset, "l2": chunk_size}
+    logger.info(f"Downloading chunk from {file_path} (offset={offset}, chunk_size={chunk_size}) for server {server.ip}")
     
     try:
-        result_str = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
+        plugin = await get_plugin_for_server(db, server)
         
-        if not result_str:
+        # Chamar download_file do plugin com offset e length
+        file_content = await plugin.download_file(file_path, offset=offset, length=chunk_size, ignore_cache=True)
+        
+        if not file_content or not file_content.data:
             return {
                 "success": True,
                 "data": "",
@@ -1648,15 +1649,10 @@ async def download_chunk(
                 "is_last": True
             }
         
-        # Verificar erros
-        result_lower = result_str.lower()
-        if "access" in result_lower and "denied" in result_lower:
-            raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
-        
         # Codificar em base64
-        content_base64 = base64.b64encode(result_str.encode('utf-8')).decode('ascii')
-        bytes_read = len(result_str)
-        is_last = bytes_read < chunk_size
+        content_base64 = base64.b64encode(file_content.data).decode('ascii')
+        bytes_read = len(file_content.data)
+        is_last = bytes_read < chunk_size or file_content.is_complete
         
         return {
             "success": True,
@@ -1664,11 +1660,28 @@ async def download_chunk(
             "bytes_read": bytes_read,
             "is_last": is_last
         }
-        
+    
+    except CredentialNotSetException as e:
+        logger.warning(f"Credential not set for server {server.ip}: {e.message}")
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "credential_not_set",
+                "message": e.message,
+                "operation": e.operation,
+                "plugin_name": e.plugin_name
+            }
+        )
+    except AccessDeniedException:
+        raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+    except ItemNotFoundException:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error downloading chunk from {file_path}: {e}")
+        import traceback
+        error_traceback = traceback.format_exc()
+        logger.error(f"Error downloading chunk from {file_path}: {e}\n{error_traceback}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
