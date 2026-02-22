@@ -341,6 +341,14 @@ class GitleaksService:
         if not os.path.exists(target_path):
             raise FileNotFoundError(f"Caminho não encontrado: {target_path}")
         
+        # Verificar se é um diretório e se não está vazio
+        if os.path.isdir(target_path):
+            try:
+                if not any(os.scandir(target_path)):
+                    raise FileNotFoundError(f"Diretório vazio: {target_path}")
+            except PermissionError:
+                raise FileNotFoundError(f"Sem permissão para acessar: {target_path}")
+        
         # Criar job
         job_id = str(uuid.uuid4())[:8]
         job = GitleaksJob(job_id, target_path, server_id)
