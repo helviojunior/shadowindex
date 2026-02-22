@@ -49,8 +49,8 @@ class OCRWorker:
     async def _get_ocr_service(self):
         """Obtém instância do serviço OCR"""
         if self._ocr_service is None:
-            from ocr_service import OCRService
-            self._ocr_service = OCRService()
+            from ocr_service import TikaService
+            self._ocr_service = TikaService()
             await self._ocr_service.initialize()
         return self._ocr_service
     
