@@ -57,7 +57,7 @@ const Downloads = () => {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState(null);
   const [expandedServers, setExpandedServers] = useState({});
-  const [showScanJobs, setShowScanJobs] = useState(true);
+  const [activeTab, setActiveTab] = useState('downloads'); // 'downloads' or 'scans'
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
