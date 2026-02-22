@@ -2231,8 +2231,7 @@ const ServerBrowser = () => {
         });
         
         if (response.data.success) {
-          toast.success(`Download adicionado à fila (${(fileSize / ONE_MB).toFixed(2)} MB)`);
-          toast.info('Acompanhe o progresso em Arquivos > Downloads');
+          toast.success(`Download adicionado à fila (${(fileSize / ONE_MB).toFixed(2)} MB). Acompanhe em Arquivos > Downloads`);
         }
       } catch (error) {
         const errorMsg = error.response?.data?.detail || 'Erro ao adicionar à fila de downloads';
