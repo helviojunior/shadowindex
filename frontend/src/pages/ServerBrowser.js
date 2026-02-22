@@ -3362,27 +3362,27 @@ const ServerBrowser = () => {
                   
                   {/* OCR Status - apenas para arquivos sincronizados */}
                   {isFile && downloaded && (
-                    <div className="flex items-center justify-between py-2 border-b border-border/50">
-                      <span className="text-sm text-muted-foreground">OCR</span>
-                      <div className="flex items-center gap-2">
-                        {ocrData?.ocr_processed ? (
-                          <>
+                    <InfoRow 
+                      label="OCR" 
+                      value={
+                        ocrData?.ocr_processed ? (
+                          <div className="flex items-center gap-2">
                             <CheckCircle className="w-4 h-4 text-green-500" />
-                            <span className="text-sm text-green-500">Processado</span>
+                            <span className="text-green-500">Processado</span>
                             {ocrData?.ocr_content && (
                               <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                 {ocrData.ocr_content.length.toLocaleString()} chars
                               </span>
                             )}
-                          </>
+                          </div>
                         ) : (
-                          <>
+                          <div className="flex items-center gap-2">
                             <XCircle className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">Não processado</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                            <span className="text-muted-foreground">Não processado</span>
+                          </div>
+                        )
+                      } 
+                    />
                   )}
                   
                   {/* Versão atual - apenas para arquivos sincronizados com múltiplas versões */}
