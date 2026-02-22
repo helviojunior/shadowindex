@@ -151,6 +151,9 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   const location = useLocation();
   const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
   const { isConnected, errorMessage, resetConnection } = useConnectionStatus();
+  
+  // Ativar notificações sonoras globais para conclusão de jobs
+  useJobCompletionSFX(true);
 
   // Handler para tentar reconectar
   const handleRetryConnection = useCallback(async () => {
