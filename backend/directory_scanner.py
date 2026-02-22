@@ -549,7 +549,12 @@ class DirectoryScanner:
             await db.commit()
             scan_job.files_found = files_added
             scan_job.dirs_found = dirs_added
-            print(f"=== SCANNER: Scanned {full_path}, added {files_added} files, {dirs_added} subdirs ===", flush=True)
+            scan_job.critical_files_found = critical_files_added
+            
+            if scan_job.critical_only:
+                print(f"=== SCANNER: Critical scan {full_path}, found {critical_files_added} critical files, {dirs_added} subdirs ===", flush=True)
+            else:
+                print(f"=== SCANNER: Scanned {full_path}, added {files_added} files, {dirs_added} subdirs ===", flush=True)
             logger.info(f"Scanned directory: {full_path}, found {len(items)} items")
             
         except Exception as e:
