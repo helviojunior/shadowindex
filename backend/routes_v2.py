@@ -3316,7 +3316,11 @@ async def get_gitleaks_stats(db: AsyncSession = Depends(get_db)):
     from storage_utils import get_server_storage_path
     servers_with_files = 0
     for server in servers:
-        storage_path = get_server_storage_path(server.guid)
+        # Tentar primeiro com server.id (nova estrutura)
+        storage_path = get_server_storage_path(server.id)
+        if not os.path.exists(storage_path):
+            # Fallback para guid (estrutura legada)
+            storage_path = get_server_storage_path(server.guid)
         if os.path.exists(storage_path) and any(os.scandir(storage_path)):
             servers_with_files += 1
     
