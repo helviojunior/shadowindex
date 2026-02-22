@@ -102,7 +102,7 @@ class OCRWorker:
             # Obter serviço OCR
             ocr_service = await self._get_ocr_service()
             
-            if not ocr_service.is_available():
+            if not ocr_service.is_available:
                 job.status = 'failed'
                 job.error_message = "Serviço OCR não disponível"
                 job.completed_at = datetime.now(timezone.utc)
