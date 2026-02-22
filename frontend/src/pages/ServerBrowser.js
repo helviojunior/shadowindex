@@ -2688,8 +2688,10 @@ const ServerBrowser = () => {
     const isLoading = loadingNodes[nodeId];
     const children = nodeChildren[nodeId] || [];
     const hasLoadedChildren = nodeChildren[nodeId] !== undefined;
-    const isDirectory = item.type === 'Directory' || isShare;
-    const isFile = item.type === 'File';
+    // Verificar se é diretório - considerar vários formatos possíveis
+    const itemType = (item.type || item.itemType || '').toLowerCase();
+    const isDirectory = isShare || itemType === 'directory' || itemType === 'dir' || itemType === 'folder';
+    const isFile = itemType === 'file';
     const isAccessDenied = item.access_denied === true || item.accessDenied === true;
     const isDownloaded = isFile && isFileDownloaded(item.fullPath);
     const isSelected = selectedItem?.id === nodeId || 
