@@ -631,7 +631,7 @@ async def list_shares(
 
 
 @router.get("/servers/{server_id}/shares-tree")
-async def get_shares_tree(server_id: int, db: AsyncSession = Depends(get_db)):
+async def get_shares_tree(server_id: int, db: AsyncSession = Depends(get_db_readonly)):
     """Retorna shares com todos os itens já visitados (children_fetched=True)"""
     server = await get_server_or_404(db, server_id)
     
