@@ -266,17 +266,6 @@ const Leaks = () => {
     }
   };
 
-  // Recarregar do disco
-  const handleReload = async () => {
-    try {
-      await axios.post(`${API}/gitleaks/findings/reload`);
-      toast.success('Findings recarregados do disco');
-      loadFindings();
-    } catch (error) {
-      toast.error('Erro ao recarregar');
-    }
-  };
-
   // Copiar para clipboard
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
