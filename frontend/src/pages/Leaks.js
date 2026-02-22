@@ -84,12 +84,14 @@ const Leaks = () => {
   const [scanning, setScanning] = useState(false);
   const [polling, setPolling] = useState(false);
   const [showScanPanel, setShowScanPanel] = useState(true);
+  const errorCountRef = useRef(0);
 
   // Carregar status do GitLeaks
   const loadGitleaksStatus = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/gitleaks/status`);
       setGitleaksStatus(response.data);
+      errorCountRef.current = 0;
     } catch (error) {
       console.error('Error loading gitleaks status:', error);
       setGitleaksStatus({ available: false, version: null });
