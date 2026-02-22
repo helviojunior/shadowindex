@@ -43,6 +43,11 @@ Portuguese (pt-BR)
   - Botão de edição removido da página de browse (`/servers/{id}/browse`)
   - Botão de edição adicionado na tabela de listagem de servidores (`/servers`)
   - Edição inline com Enter para salvar e Escape para cancelar
+- [x] **Novas colunas na tabela de servidores:**
+  - Coluna "Risco" com índice de risco (0-100) com badge colorido (verde/amarelo/vermelho)
+  - Coluna "Leaks" mostrando quantidade de leaks encontrados
+  - Ordenação habilitada para: Risco, Leaks, Shares, Downloads
+  - Backend calcula risk_score baseado em: leaks (peso maior), shares e downloads
 
 ### 2026-02-22 (Session 40 - SQL Execution & Bug Fixes)
 - [x] **Execute SQL no Plugin de Interação Direta:**
