@@ -916,6 +916,40 @@ async def browse_path(
             db.add(db_item)
             items.append(db_item)
         
+        # Atualizar o share ou diretório pai para marcar como children_fetched=True
+        path_parts = path.replace('/', '\\').split('\\')
+        path_parts = [p for p in path_parts if p]  # Remove vazios
+        
+        if len(path_parts) == 2:
+            # É um share (formato: IP\ShareName)
+            share_name_from_path = path_parts[1]
+            share_result = await db.execute(
+                select(ServerShare).where(
+                    ServerShare.server_guid == server.guid,
+                    ServerShare.share_name == share_name_from_path
+                )
+            )
+            share = share_result.scalar_one_or_none()
+            if share:
+                share.children_fetched = True
+                share.has_children = len(items) > 0
+                share.access_denied = False
+                share.error_message = None
+        else:
+            # É um diretório - atualizar o item
+            item_result = await db.execute(
+                select(ServerItem).where(
+                    ServerItem.server_guid == server.guid,
+                    ServerItem.full_path == path
+                )
+            )
+            parent_item = item_result.scalar_one_or_none()
+            if parent_item:
+                parent_item.children_fetched = True
+                parent_item.has_children = len(items) > 0
+                parent_item.access_denied = False
+                parent_item.error_message = None
+        
         await db.commit()
         
         # Refresh para obter IDs
