@@ -728,7 +728,6 @@ const ServerBrowser = () => {
     }
 
     // Para arquivos de texto
-    console.log('[loadFileContent] Loading as text');
     setLoadingContent(true);
     try {
       const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/content`);
