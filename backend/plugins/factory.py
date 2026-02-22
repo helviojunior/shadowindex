@@ -96,7 +96,7 @@ class PluginFactory:
 
 async def get_active_proxy_url(db: AsyncSession) -> Optional[str]:
     """Get the currently active proxy URL from database"""
-    from database import AppConfig, ProxyServer
+    from database import AppConfig, ProxyServer, Credential
     
     result = await db.execute(
         select(AppConfig).where(AppConfig.key == "active_proxy_id")
@@ -113,8 +113,25 @@ async def get_active_proxy_url(db: AsyncSession) -> Optional[str]:
             
             if proxy:
                 proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
-                username = getattr(proxy, 'username', None)
-                password = getattr(proxy, 'password', None)
+                username = None
+                password = None
+                
+                # Try to get credentials from credential_id first
+                credential_id = getattr(proxy, 'credential_id', None)
+                if credential_id:
+                    cred_result = await db.execute(
+                        select(Credential).where(Credential.id == credential_id)
+                    )
+                    credential = cred_result.scalar_one_or_none()
+                    if credential:
+                        username = credential.username
+                        password = credential.password
+                
+                # Fallback to deprecated fields if no credential found
+                if not username:
+                    username = getattr(proxy, 'username', None)
+                if not password:
+                    password = getattr(proxy, 'password', None)
                 
                 # Build proxy URL based on type
                 if proxy_type == 'socks5':
@@ -124,7 +141,10 @@ async def get_active_proxy_url(db: AsyncSession) -> Optional[str]:
                         return f"socks5://{proxy.ip}:{proxy.port}"
                 else:
                     # HTTP proxy
-                    return f"http://{proxy.ip}:{proxy.port}"
+                    if username and password:
+                        return f"http://{username}:{password}@{proxy.ip}:{proxy.port}"
+                    else:
+                        return f"http://{proxy.ip}:{proxy.port}"
         except (ValueError, TypeError) as e:
             logger.warning(f"Invalid proxy_id in config: {e}")
     
