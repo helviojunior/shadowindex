@@ -29,22 +29,36 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2026-02-22 (Session 35 - Connection Status Alert Bar)
+### 2026-02-22 (Session 35 - Connection Status Alert Bar & WebSocket Expansion)
 - [x] **Barra de alerta global para erros de conexão:**
   - Novo contexto `ConnectionStatusContext.js` para gerenciar estado de conexão
   - Componente `ConnectionBridge.js` que conecta WebSocket ao contexto de status
-  - Barra vermelha no topo da aplicação quando há falha de comunicação
+  - Barra vermelha suave no topo da aplicação quando há falha de comunicação
   - Botão "Tentar novamente" com animação de loading
   - Botão "X" para dispensar o alerta manualmente
   - Health check periódico (10s) para detectar problemas de API HTTP
+  - WebSocket só reporta desconexão após 10 segundos (evita falsos positivos)
   - Auto-recuperação quando a conexão é restabelecida
-  - Requer 2 falhas consecutivas antes de exibir alerta (evita falsos positivos)
-  - Arquivos criados/modificados:
-    - `frontend/src/contexts/ConnectionStatusContext.js` (NEW)
-    - `frontend/src/components/ConnectionBridge.js` (NEW)
-    - `frontend/src/hooks/useWebSocket.js` (MODIFIED - added setConnectionStatusCallback)
-    - `frontend/src/components/Layout.js` (MODIFIED - added alert bar rendering)
-    - `frontend/src/App.js` (MODIFIED - added providers)
+- [x] **WebSocket para Dashboard:**
+  - Hook `useStatsEvents` integrado para receber atualizações em tempo real
+  - Badge "Tempo real" / "Offline" no header do Dashboard indicando status da conexão
+  - Estatísticas são atualizadas automaticamente via WebSocket
+- [x] **WebSocket para Tree View (ServerBrowser):**
+  - Hooks `useFileStatusEvents` e `useDownloadEvents` integrados
+  - Status de arquivos (baixado, em progresso) atualizado em tempo real
+  - Progresso de download individual mostrado sem polling
+  - Lista de arquivos baixados atualizada automaticamente
+- [x] **UI de configurações "Auto OCR":**
+  - Interface completa na página GeneralSettings
+  - Toggle para habilitar/desabilitar OCR automático
+  - Lista editável de extensões para OCR (.pdf, .doc, .docx, etc.)
+  - Lista editável de MIME types para OCR automático
+  - Info box explicativo sobre funcionamento
+- [x] **Proxy SOCKS5:**
+  - UI completa com seletor HTTP/SOCKS5 na página Proxy Servers
+  - Backend implementado com suporte a autenticação
+  - Função `get_active_proxy_url()` gera URLs corretas para SOCKS5
+  - Plugin DirectInteraction com método `_resolve_through_socks()` para DNS via SOCKS
 
 ### 2026-02-22 (Session 34 - WebSocket Implementation)
 - [x] **WebSocket para atualizações em tempo real:**
