@@ -137,10 +137,15 @@ class SoapService:
         proxies = None
         if self.proxy_url:
             logger.info(f"Using proxy: {self.proxy_url}")
+            # Para SOCKS5, precisamos usar o mesmo URL para http e https
             proxies = {
                 'http': self.proxy_url,
                 'https': self.proxy_url
             }
+            
+            # Verificar se é SOCKS e se a lib está disponível
+            if 'socks' in self.proxy_url.lower() and not SOCKS_AVAILABLE:
+                logger.warning("SOCKS proxy configured but PySocks not available. Install with: pip install PySocks")
         
         # Fazer requisição POST - verify=False ignora erros de SSL
         response = requests.post(
