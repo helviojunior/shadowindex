@@ -70,6 +70,12 @@ const FileNavigation = () => {
               data-testid="server-search-input"
             />
           </div>
+          {/* Stats - show count below search when filtering */}
+          {servers.length > 0 && searchTerm && (
+            <p className="text-sm text-muted-foreground mt-3">
+              {filteredServers.length} encontrado{filteredServers.length !== 1 ? 's' : ''}
+            </p>
+          )}
         </CardContent>
       </Card>
 
