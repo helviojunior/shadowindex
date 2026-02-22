@@ -696,14 +696,57 @@ class SoapApiPlugin(BasePlugin):
                 try:
                     root = ET.fromstring(f"<root>{result}</root>")
                     
-                    for row_elem in root.findall('.//Table'):
-                        row = {}
-                        for child in row_elem:
-                            tag = child.tag
-                            if tag not in columns:
-                                columns.append(tag)
-                            row[tag] = child.text
-                        rows.append(row)
+                    # Check for error messages first (diffgram format)
+                    for result_elem in root.findall('.//Result'):
+                        message_elem = result_elem.find('message')
+                        stacktrace_elem = result_elem.find('stacktrace')
+                        
+                        # If has message and stacktrace, it's an error
+                        if message_elem is not None and stacktrace_elem is not None:
+                            error_msg = message_elem.text or ""
+                            stacktrace = stacktrace_elem.text or ""
+                            full_error = f"{error_msg}\n\nStackTrace:\n{stacktrace}" if stacktrace else error_msg
+                            return SqlResult(
+                                columns=[],
+                                rows=[],
+                                row_count=0,
+                                execution_time_ms=execution_time,
+                                error=full_error
+                            )
+                        
+                        # Check for simple error messages
+                        if message_elem is not None and message_elem.text:
+                            msg_lower = message_elem.text.lower()
+                            if any(kw in msg_lower for kw in ["error", "denied", "exception", "failed", "invalid", "cannot", "unable"]):
+                                return SqlResult(
+                                    columns=[],
+                                    rows=[],
+                                    row_count=0,
+                                    execution_time_ms=execution_time,
+                                    error=message_elem.text
+                                )
+                    
+                    # Try diffgram format (Result elements)
+                    result_elements = root.findall('.//Result')
+                    if result_elements:
+                        for row_elem in result_elements:
+                            row = {}
+                            for child in row_elem:
+                                tag = child.tag
+                                if tag not in columns:
+                                    columns.append(tag)
+                                row[tag] = child.text or ""
+                            rows.append(row)
+                    else:
+                        # Fallback: Try Table format
+                        for row_elem in root.findall('.//Table'):
+                            row = {}
+                            for child in row_elem:
+                                tag = child.tag
+                                if tag not in columns:
+                                    columns.append(tag)
+                                row[tag] = child.text or ""
+                            rows.append(row)
                         
                 except ET.ParseError as e:
                     return SqlResult(
