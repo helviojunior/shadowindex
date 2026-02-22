@@ -374,14 +374,14 @@ const Servers = () => {
                 <div className="space-y-2">
                   <Label htmlFor="plugin_instance">Instância de Plugin</Label>
                   <Select 
-                    value={formData.plugin_instance_id} 
-                    onValueChange={(value) => setFormData({ ...formData, plugin_instance_id: value })}
+                    value={formData.plugin_instance_id || 'none'} 
+                    onValueChange={(value) => setFormData({ ...formData, plugin_instance_id: value === 'none' ? '' : value })}
                   >
                     <SelectTrigger data-testid="server-plugin-select">
                       <SelectValue placeholder="Selecione a instância (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">
+                      <SelectItem value="none">
                         <span className="text-muted-foreground">Nenhuma (usar padrão)</span>
                       </SelectItem>
                       {pluginInstances.map((instance) => (
