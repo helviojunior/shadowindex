@@ -1,19 +1,22 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileCode, Server, Database, Loader2, CheckCircle, AlertCircle, Trash2, FileUp, Search, FileText, CloudUpload } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Upload, FileCode, Server, Database, Loader2, CheckCircle, AlertCircle, Trash2, FileUp, Search, CloudUpload, Plug, Settings } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Known database ports
-const DB_PORTS = {
+// Default known database ports (fallback)
+const DEFAULT_DB_PORTS = {
   1433: 'MSSQL',
   3306: 'MySQL',
   5432: 'PostgreSQL',
@@ -24,7 +27,7 @@ const DB_PORTS = {
   9200: 'Elasticsearch'
 };
 
-const SMB_PORT = 445;
+const DEFAULT_SMB_PORT = 445;
 
 // Status steps for upload process
 const UPLOAD_STEPS = {
@@ -43,7 +46,43 @@ const ImportServers = () => {
   const [uploadStatus, setUploadStatus] = useState(UPLOAD_STEPS.IDLE);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [fileName, setFileName] = useState('');
+  const [availablePlugins, setAvailablePlugins] = useState({});
+  const [selectedPlugin, setSelectedPlugin] = useState('direct_interaction');
+  const [configuredPorts, setConfiguredPorts] = useState([]);
+  const [loadingConfig, setLoadingConfig] = useState(true);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    setLoadingConfig(true);
+    try {
+      const [pluginsRes, settingsRes] = await Promise.all([
+        axios.get(`${API}/plugins`),
+        axios.get(`${API}/settings`)
+      ]);
+      
+      setAvailablePlugins(pluginsRes.data);
+      
+      // Carregar portas configuradas
+      const importPorts = settingsRes.data?.import_ports?.value || '445,1433,3306,5432,1521,27017,6379,5984,9200';
+      const ports = importPorts.split(',').map(p => parseInt(p.trim())).filter(p => p);
+      setConfiguredPorts(ports);
+    } catch (error) {
+      console.error('Error loading config:', error);
+      // Usar portas padrão em caso de erro
+      setConfiguredPorts([DEFAULT_SMB_PORT, ...Object.keys(DEFAULT_DB_PORTS).map(p => parseInt(p))]);
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
+  const getPortName = (portNum) => {
+    if (portNum === DEFAULT_SMB_PORT) return 'SMB';
+    return DEFAULT_DB_PORTS[portNum] || `Porta ${portNum}`;
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
@@ -109,9 +148,7 @@ const ImportServers = () => {
 
         const name = hostname?.getAttribute('name') || ip;
         const openPorts = [];
-        let hasSMB = false;
-        let hasDB = false;
-        const dbTypes = [];
+        let hasRelevantPort = false;
 
         ports.forEach((port) => {
           const state = port.querySelector('state');
@@ -123,25 +160,18 @@ const ImportServers = () => {
           
           openPorts.push({ port: portId, service: serviceName });
           
-          if (portId === SMB_PORT) {
-            hasSMB = true;
-          }
-          
-          if (DB_PORTS[portId]) {
-            hasDB = true;
-            dbTypes.push(DB_PORTS[portId]);
+          // Verificar se é uma porta configurada
+          if (configuredPorts.includes(portId)) {
+            hasRelevantPort = true;
           }
         });
 
-        // Only include hosts with SMB or DB ports
-        if (hasSMB || hasDB) {
+        // Incluir apenas hosts com portas relevantes configuradas
+        if (hasRelevantPort) {
           hosts.push({
             ip,
             name,
-            hasSMB,
-            hasDB,
-            dbTypes,
-            openPorts: openPorts.filter(p => p.port === SMB_PORT || DB_PORTS[p.port])
+            openPorts: openPorts.filter(p => configuredPorts.includes(p.port))
           });
         }
       });
@@ -151,7 +181,7 @@ const ImportServers = () => {
       setUploadStatus(UPLOAD_STEPS.READY);
       
       if (hosts.length === 0) {
-        toast.warning('Nenhum servidor com porta SMB (445) ou banco de dados encontrado');
+        toast.warning('Nenhum servidor com portas configuradas encontrado');
       } else {
         toast.success(`${hosts.length} servidores encontrados`);
       }
@@ -197,9 +227,7 @@ const ImportServers = () => {
         hosts: hostsToImport.map(h => ({
           ip: h.ip,
           name: h.name,
-          hasSMB: h.hasSMB,
-          hasDB: h.hasDB,
-          dbTypes: h.dbTypes
+          plugin_type: selectedPlugin
         }))
       });
       
@@ -268,6 +296,14 @@ const ImportServers = () => {
 
   const statusInfo = getStatusMessage();
 
+  if (loadingConfig) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6" data-testid="import-servers-page">
       <div>
@@ -283,7 +319,12 @@ const ImportServers = () => {
             Upload XML do Nmap
           </CardTitle>
           <CardDescription>
-            Faça upload de um arquivo XML gerado pelo nmap para importar servidores com porta SMB (445) ou portas de banco de dados abertas
+            Faça upload de um arquivo XML gerado pelo nmap. Serão importados apenas hosts com as{' '}
+            <Link to="/config/general" className="text-primary hover:underline inline-flex items-center gap-1">
+              <Settings className="w-3 h-3" />
+              portas configuradas
+            </Link>
+            {' '}abertas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -316,19 +357,6 @@ const ImportServers = () => {
                 )}
               </div>
             )}
-            
-            <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-              <Badge variant="outline" className="gap-1">
-                <Server className="w-3 h-3" />
-                SMB: Porta 445
-              </Badge>
-              {Object.entries(DB_PORTS).map(([port, name]) => (
-                <Badge key={port} variant="outline" className="gap-1">
-                  <Database className="w-3 h-3" />
-                  {name}: {port}
-                </Badge>
-              ))}
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -349,6 +377,26 @@ const ImportServers = () => {
               </div>
               {/* Action buttons moved to header */}
               <div className="flex items-center gap-2">
+                {/* Plugin selector */}
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground whitespace-nowrap">
+                    <Plug className="w-4 h-4 inline mr-1" />
+                    Plugin:
+                  </Label>
+                  <Select value={selectedPlugin} onValueChange={setSelectedPlugin}>
+                    <SelectTrigger className="w-48" data-testid="plugin-select">
+                      <SelectValue placeholder="Selecione o plugin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(availablePlugins).map(([type, info]) => (
+                        <SelectItem key={type} value={type}>
+                          {info.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-px h-6 bg-border mx-2" />
                 <Button variant="outline" size="sm" onClick={selectAll}>
                   Selecionar Todos
                 </Button>
@@ -369,9 +417,6 @@ const ImportServers = () => {
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Os servidores serão importados com o plugin "Interação Direta" como padrão
-            </p>
           </CardHeader>
           <CardContent className="p-0">
             {/* Server list without ScrollArea - uses page scroll */}
@@ -393,20 +438,6 @@ const ImportServers = () => {
                       <div className="font-medium">{host.name}</div>
                       <div className="text-sm text-muted-foreground font-mono">{host.ip}</div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {host.hasSMB && (
-                      <Badge variant="default" className="gap-1 bg-blue-600">
-                        <Server className="w-3 h-3" />
-                        SMB
-                      </Badge>
-                    )}
-                    {host.dbTypes.map((db) => (
-                      <Badge key={db} variant="secondary" className="gap-1">
-                        <Database className="w-3 h-3" />
-                        {db}
-                      </Badge>
-                    ))}
                   </div>
                 </div>
               ))}
