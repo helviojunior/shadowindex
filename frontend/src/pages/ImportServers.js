@@ -46,8 +46,8 @@ const ImportServers = () => {
   const [uploadStatus, setUploadStatus] = useState(UPLOAD_STEPS.IDLE);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [fileName, setFileName] = useState('');
-  const [availablePlugins, setAvailablePlugins] = useState({});
-  const [selectedPlugin, setSelectedPlugin] = useState('direct_interaction');
+  const [pluginInstances, setPluginInstances] = useState([]);
+  const [selectedPluginInstance, setSelectedPluginInstance] = useState('');
   const [configuredPorts, setConfiguredPorts] = useState([]);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const fileInputRef = useRef(null);
