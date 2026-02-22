@@ -419,8 +419,9 @@ class SetActiveProxyRequest(BaseModel):
 class ServerCreate(BaseModel):
     name: str
     ip: str
-    plugin_type: Optional[str] = "soap_api"
-    plugin_config: Optional[dict] = None
+    plugin_instance_id: Optional[int] = None
+    plugin_type: Optional[str] = "soap_api"  # Deprecated
+    plugin_config: Optional[dict] = None  # Deprecated
 
 class ServerResponse(BaseModel):
     id: int
@@ -432,6 +433,7 @@ class ServerResponse(BaseModel):
     downloaded_files_count: int
     last_verified_at: Optional[datetime]
     created_at: datetime
+    plugin_instance_id: Optional[int] = None
     plugin_type: Optional[str] = "soap_api"
     plugin_config: Optional[dict] = None
 
