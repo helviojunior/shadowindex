@@ -93,6 +93,19 @@ Portuguese (pt-BR)
   - Nova tag "Auto-PFX" (laranja) para leaks de certificados detectados automaticamente
   - Campo `detection_source` utilizado para diferenciação visual
 
+### 2026-02-22 (Session 25 - Auto SSH/RSA/PPK Detection & Custom Icon)
+- [x] **Detecção Automática de Chaves Privadas SSH/RSA/PPK:**
+  - Detecção automática ao visualizar conteúdo de arquivo
+  - Tipos suportados: OpenSSH, RSA, DSA, EC, PKCS#8, PKCS#8 Criptografado, PuTTY PPK
+  - Registro automático como leak sem duplicação (verifica fingerprint único)
+  - Tag "Auto-Key" (vermelho) na página de Leaks
+  - Campos adicionados à resposta: `private_key_detected`, `private_key_type`, `leak_registered`
+- [x] **Novo Ícone ShieldKeyIcon:**
+  - Ícone customizado SVG (escudo com cadeado e chave)
+  - Substitui o ícone `Key` do lucide-react em todo o sistema
+  - Componente reutilizável em `/components/icons/ShieldKeyIcon.jsx`
+  - Implementado em: Dashboard, Leaks, Credentials, ServerBrowser, PluginDirectConfig
+
 ### 2026-02-22 (Session 20 - GitLeaks Integration Complete)
 - [x] **Dockerfile atualizado para GitLeaks dinâmico:**
   - Download automático da última versão do GitLeaks no build
