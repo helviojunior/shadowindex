@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Database, Server, Globe, FileText, Wifi, WifiOff, HardDrive, Download,
-  AlertTriangle, Shield, Activity, Search, RefreshCw, Play, FileWarning
+  AlertTriangle, Shield, Activity, Search, RefreshCw, Play, FileWarning,
+  Clock, CheckCircle, XCircle, Loader2, FolderSearch, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -12,8 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
-import { useStatsEvents, useWebSocket } from '@/hooks/useWebSocket';
+import { useStatsEvents, useWebSocket, useDownloadEvents, useScanEvents } from '@/hooks/useWebSocket';
 import { ShieldKeyIcon } from '@/components/icons';
+import { cn } from '@/lib/utils';
 import {
   AreaChart,
   Area,
