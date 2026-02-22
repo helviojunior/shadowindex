@@ -5,22 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, ChevronUp, Globe, Shield, Pencil, X, Check, User, KeyRound } from 'lucide-react';
+import { Trash2, Plus, ChevronUp, Globe, Shield, Pencil, X, Check, User, Ban } from 'lucide-react';
 import { toast } from 'sonner';
+import { CredentialIcon } from '@/components/ui/CustomIcons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const ProxyServers = () => {
   const [proxies, setProxies] = useState([]);
+  const [credentials, setCredentials] = useState([]);
   const [formData, setFormData] = useState({ 
     name: '', 
     ip: '', 
     port: '', 
     proxy_type: 'http',
-    auth_type: 'none',
-    username: '',
-    password: ''
+    credential_id: 'none'
   });
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -29,7 +29,19 @@ const ProxyServers = () => {
 
   useEffect(() => {
     loadProxies();
+    loadCredentials();
   }, []);
+
+  const loadCredentials = async () => {
+    try {
+      const response = await axios.get(`${API}/credentials`);
+      // Filtrar apenas credenciais do tipo user_password
+      const userPassCredentials = response.data.filter(c => c.credential_type === 'user_password');
+      setCredentials(userPassCredentials);
+    } catch (error) {
+      console.error('Error loading credentials:', error);
+    }
+  };
 
   const loadProxies = async () => {
     try {
