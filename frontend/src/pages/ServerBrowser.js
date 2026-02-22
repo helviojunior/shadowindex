@@ -2464,8 +2464,9 @@ const ServerBrowser = () => {
         for (const dir of directories) {
           if (bulkDownloadCancelledRef.current) break;
           
-          // Expandir o nó na árvore
-          const dirNodeId = String(dir.id || dir.fullPath).replace(/[^a-zA-Z0-9]/g, '_');
+          // Expandir o nó na árvore usando o ID correto do banco
+          // O dir já tem o id do banco de dados
+          const dirNodeId = dir.id ? String(dir.id) : dir.fullPath.replace(/[^a-zA-Z0-9]/g, '_');
           setExpandedNodes(prev => ({ ...prev, [dirNodeId]: true }));
           
           // Processar subdiretório
