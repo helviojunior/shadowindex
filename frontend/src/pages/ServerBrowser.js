@@ -174,8 +174,68 @@ const ServerBrowser = () => {
       }
     };
     
+    // Carregar tipos de leak
+    const loadLeakTypes = async () => {
+      try {
+        const response = await axios.get(`${API_V2}/gitleaks/leak-types`);
+        setLeakTypes(response.data);
+      } catch (error) {
+        console.error('Error loading leak types:', error);
+        // Usar tipos padrão se falhar
+        setLeakTypes([
+          { value: 'password', label: 'Senha', severity: 'medium' },
+          { value: 'token', label: 'Token', severity: 'medium' },
+          { value: 'api_key', label: 'API Key', severity: 'high' },
+          { value: 'private_key', label: 'Chave Privada', severity: 'critical' },
+          { value: 'ssh_key', label: 'Chave SSH', severity: 'critical' },
+          { value: 'certificate', label: 'Certificado com Chave', severity: 'critical' },
+          { value: 'connection_string', label: 'String de Conexão', severity: 'high' },
+          { value: 'other', label: 'Outro', severity: 'low' }
+        ]);
+      }
+    };
+    
     loadGeneralSettings();
+    loadLeakTypes();
   }, []);
+
+  // Função para submeter leak manual
+  const submitManualLeak = async () => {
+    if (!selectedItem || !selectedItem.fullPath) {
+      toast.error('Nenhum arquivo selecionado');
+      return;
+    }
+    
+    setSubmittingLeak(true);
+    try {
+      const response = await axios.post(`${API_V2}/gitleaks/manual-leak`, {
+        file_path: selectedItem.fullPath,
+        server_id: parseInt(serverId),
+        secret_type: manualLeak.secret_type,
+        description: manualLeak.description || null,
+        line_number: manualLeak.line_number || null,
+        match_text: manualLeak.match_text || null
+      });
+      
+      if (response.data.success) {
+        toast.success('Credencial identificada com sucesso');
+        setShowLeakModal(false);
+        setManualLeak({
+          secret_type: 'password',
+          description: '',
+          line_number: null,
+          match_text: ''
+        });
+      } else {
+        toast.error(response.data.message || 'Erro ao registrar credencial');
+      }
+    } catch (error) {
+      console.error('Error submitting manual leak:', error);
+      toast.error('Erro ao registrar credencial');
+    } finally {
+      setSubmittingLeak(false);
+    }
+  };
 
   useEffect(() => {
     loadServer();
