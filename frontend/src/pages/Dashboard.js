@@ -810,7 +810,7 @@ const Dashboard = () => {
             </div>
             
             {/* GitLeaks Jobs */}
-            <div className="space-y-3">
+            <div className="space-y-3 pl-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <ScanSearch className="w-4 h-4" />
                 GitLeaks
