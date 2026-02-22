@@ -390,6 +390,23 @@ class SoapApiPlugin(BasePlugin):
                     result_elements = root.findall('.//Result')
                     
                     if result_elements:
+                        # First check for error messages (access denied, etc)
+                        first_result = result_elements[0]
+                        error_message = first_result.findtext('message', '')
+                        stack_trace = first_result.findtext('stacktrace', '')
+                        
+                        if error_message:
+                            error_lower = error_message.lower()
+                            if "access" in error_lower and "denied" in error_lower:
+                                logger.warning(f"Access denied to path: {path}")
+                                raise AccessDeniedException(path)
+                            elif "not found" in error_lower or "cannot find" in error_lower:
+                                raise ItemNotFoundException(path)
+                            else:
+                                # Other error
+                                logger.error(f"SOAP error: {error_message}")
+                                raise PluginException(f"Erro ao listar diretório: {error_message}")
+                        
                         # diffgram format: type, name, length, s_length, lastwritetime, fullname
                         for item_elem in result_elements:
                             name = item_elem.findtext('name', '')
