@@ -146,7 +146,7 @@ const Dashboard = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      toast.error('Erro ao carregar dados do dashboard');
+      // Não mostrar toast para erros de carregamento - a barra de conexão já informa
       setLoading(false);
     }
   };
