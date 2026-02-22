@@ -1,102 +1,21 @@
 import React from 'react';
 
 /**
- * CredentialKeyIcon - Custom icon for credentials/passwords
- * Key with zigzag teeth (outline style) + password field with asterisks
+ * CredentialKeyIcon - Font Awesome key icon
+ * Classic key shape for credentials/passwords
  */
 const CredentialKeyIcon = ({ className = '', size = 24, ...props }) => {
   return (
     <svg 
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 512 512"
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 640 640"
       width={size}
       height={size}
       className={className}
+      fill="currentColor"
       {...props}
     >
-      <defs>
-        {/* Clip to prevent lines inside the key head */}
-        <clipPath id="cutHead">
-          <rect width="512" height="512"/>
-          <circle cx="120" cy="170" r="95"/>
-        </clipPath>
-      </defs>
-
-      {/* KEY HEAD */}
-      <circle cx="120" cy="170" r="85" fill="currentColor"/>
-      <circle cx="95" cy="170" r="18" fill="var(--background, #1a1a1a)"/>
-
-      {/* KEY BODY (outline) */}
-      <g 
-        clipPath="url(#cutHead)"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="18"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      >
-        {/* Body */}
-        <path d="M200 140 H410 V200 H200 Z"/>
-
-        {/* Teeth */}
-        <path d="
-          M410 140
-          H470
-          L500 170
-          L470 200
-          H445
-          L430 185
-          L410 200
-          H390
-          L370 180
-          L350 200
-          H320
-          V180
-          L350 140
-          Z"
-        />
-      </g>
-
-      {/* PASSWORD BOX */}
-      <rect x="35" y="300" width="465" height="90" fill="currentColor"/>
-
-      {/* ASTERISKS */}
-      <g stroke="var(--background, #1a1a1a)" strokeWidth="8" strokeLinecap="round">
-        <g transform="translate(110,345)">
-          <line x1="-14" y1="0" x2="14" y2="0"/>
-          <line x1="0" y1="-14" x2="0" y2="14"/>
-          <line x1="-10" y1="-10" x2="10" y2="10"/>
-          <line x1="-10" y1="10" x2="10" y2="-10"/>
-        </g>
-
-        <g transform="translate(185,345)">
-          <line x1="-14" y1="0" x2="14" y2="0"/>
-          <line x1="0" y1="-14" x2="0" y2="14"/>
-          <line x1="-10" y1="-10" x2="10" y2="10"/>
-          <line x1="-10" y1="10" x2="10" y2="-10"/>
-        </g>
-
-        <g transform="translate(260,345)">
-          <line x1="-14" y1="0" x2="14" y2="0"/>
-          <line x1="0" y1="-14" x2="0" y2="14"/>
-          <line x1="-10" y1="-10" x2="10" y2="10"/>
-          <line x1="-10" y1="10" x2="10" y2="-10"/>
-        </g>
-
-        <g transform="translate(335,345)">
-          <line x1="-14" y1="0" x2="14" y2="0"/>
-          <line x1="0" y1="-14" x2="0" y2="14"/>
-          <line x1="-10" y1="-10" x2="10" y2="10"/>
-          <line x1="-10" y1="10" x2="10" y2="-10"/>
-        </g>
-
-        <g transform="translate(410,345)">
-          <line x1="-14" y1="0" x2="14" y2="0"/>
-          <line x1="0" y1="-14" x2="0" y2="14"/>
-          <line x1="-10" y1="-10" x2="10" y2="10"/>
-          <line x1="-10" y1="10" x2="10" y2="-10"/>
-        </g>
-      </g>
+      <path d="M400 416C497.2 416 576 337.2 576 240C576 142.8 497.2 64 400 64C302.8 64 224 142.8 224 240C224 258.7 226.9 276.8 232.3 293.7L71 455C66.5 459.5 64 465.6 64 472L64 552C64 565.3 74.7 576 88 576L168 576C181.3 576 192 565.3 192 552L192 512L232 512C245.3 512 256 501.3 256 488L256 448L296 448C302.4 448 308.5 445.5 313 441L346.3 407.7C363.2 413.1 381.3 416 400 416zM440 160C462.1 160 480 177.9 480 200C480 222.1 462.1 240 440 240C417.9 240 400 222.1 400 200C400 177.9 417.9 160 440 160z"/>
     </svg>
   );
 };
