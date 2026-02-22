@@ -27,7 +27,7 @@ import hashlib
 import os
 
 from database import (
-    get_db, Server, ServerShare, ServerItem, DownloadedFile, FileVersion, 
+    get_db, get_db_readonly, Server, ServerShare, ServerItem, DownloadedFile, FileVersion, 
     DownloadJob, PfxPassword, PluginInstance
 )
 
