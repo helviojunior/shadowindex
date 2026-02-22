@@ -68,6 +68,101 @@ const Downloads = () => {
     skipped: 0
   });
 
+  // WebSocket para atualizações em tempo real
+  const { isConnected } = useWebSocket();
+  
+  // Handler para progresso de download
+  const handleDownloadProgress = useCallback((data) => {
+    setDownloadJobs(prev => prev.map(job => 
+      job.id === data.job_id 
+        ? { 
+            ...job, 
+            progress: data.progress, 
+            downloaded_bytes: data.downloaded_bytes,
+            total_bytes: data.total_bytes,
+            status: 'downloading'
+          }
+        : job
+    ));
+  }, []);
+  
+  // Handler para download concluído
+  const handleDownloadComplete = useCallback((data) => {
+    setDownloadJobs(prev => prev.map(job => 
+      job.id === data.job_id 
+        ? { ...job, status: 'completed', progress: 100 }
+        : job
+    ));
+    // Atualizar stats
+    setStats(prev => ({
+      ...prev,
+      downloading: Math.max(0, prev.downloading - 1),
+      completed: prev.completed + 1
+    }));
+  }, []);
+  
+  // Handler para download falhado
+  const handleDownloadFailed = useCallback((data) => {
+    setDownloadJobs(prev => prev.map(job => 
+      job.id === data.job_id 
+        ? { ...job, status: 'failed', error_message: data.error }
+        : job
+    ));
+    setStats(prev => ({
+      ...prev,
+      downloading: Math.max(0, prev.downloading - 1),
+      failed: prev.failed + 1
+    }));
+  }, []);
+  
+  // Handler para download iniciado
+  const handleDownloadStarted = useCallback((data) => {
+    setDownloadJobs(prev => prev.map(job => 
+      job.id === data.job_id 
+        ? { ...job, status: 'downloading', progress: 0 }
+        : job
+    ));
+    setStats(prev => ({
+      ...prev,
+      pending: Math.max(0, prev.pending - 1),
+      downloading: prev.downloading + 1
+    }));
+  }, []);
+  
+  // Handler para progresso de scan
+  const handleScanProgress = useCallback((data) => {
+    setScanJobs(prev => prev.map(scan => 
+      scan.id === data.scan_id 
+        ? { 
+            ...scan, 
+            status: data.status,
+            processed_files: data.processed_files,
+            total_files: data.total_files,
+            queued_files: data.queued_files
+          }
+        : scan
+    ));
+  }, []);
+  
+  // Handler para scan concluído
+  const handleScanComplete = useCallback((data) => {
+    setScanJobs(prev => prev.map(scan => 
+      scan.id === data.scan_id 
+        ? { ...scan, status: 'completed', total_files: data.total_files, queued_files: data.queued_files }
+        : scan
+    ));
+  }, []);
+  
+  // Registrar eventos do WebSocket
+  useDownloadEvents(
+    handleDownloadProgress,
+    handleDownloadComplete,
+    handleDownloadFailed,
+    handleDownloadStarted
+  );
+  
+  useScanEvents(handleScanProgress, handleScanComplete);
+
   // Load scan jobs
   const loadScanJobs = useCallback(async () => {
     try {
