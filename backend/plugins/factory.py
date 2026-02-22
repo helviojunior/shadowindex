@@ -212,14 +212,26 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
                 message="Apenas credenciais do tipo 'Usuário/Senha' são suportadas para SMB."
             )
         
-        # Set credential on plugin
+        # Set credential on plugin with ID for verification tracking
         plugin.set_credential({
             "credential_type": credential.credential_type,
             "domain": credential.domain,
             "username": credential.username,
             "password": credential.password,
-            "ntlm_hash": credential.ntlm_hash
-        })
+            "ntlm_hash": credential.ntlm_hash,
+            "id": credential.id
+        }, credential_id=credential.id)
+        
+        # Set callback for credential verification
+        from credential_verification import mark_credential_verified
+        
+        async def on_auth_success(cred_id):
+            # Create new session for async callback
+            from database import AsyncSessionLocal
+            async with AsyncSessionLocal() as session:
+                await mark_credential_verified(session, cred_id, context="SMB/Direct Interaction")
+        
+        plugin.set_on_auth_success_callback(on_auth_success)
     
     return plugin
 
