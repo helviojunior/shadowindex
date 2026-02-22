@@ -933,6 +933,9 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
+      {/* Divisor */}
+      <div className="h-px bg-border/50 my-2" />
+
       {/* Resumo / Quick Stats */}
       <Card>
         <CardHeader className="pb-2">
