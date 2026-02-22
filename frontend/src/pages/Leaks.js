@@ -141,21 +141,40 @@ const Leaks = () => {
 
   // Polling para jobs ativos - para após erros consecutivos
   useEffect(() => {
+    let isMounted = true;
+    
     if (polling && errorCountRef.current < 3) {
       const interval = setInterval(() => {
-        loadJobs();
-        loadFindings();
+        if (isMounted) {
+          loadJobs();
+          loadFindings();
+        }
       }, 5000);
-      return () => clearInterval(interval);
+      return () => {
+        isMounted = false;
+        clearInterval(interval);
+      };
     }
+    
+    return () => { isMounted = false; };
   }, [polling, loadJobs, loadFindings]);
 
   // Carregar dados iniciais
   useEffect(() => {
-    loadGitleaksStatus();
-    loadServers();
-    loadJobs();
-    loadFindings();
+    let isMounted = true;
+    
+    const loadInitial = async () => {
+      if (isMounted) {
+        await loadGitleaksStatus();
+        await loadServers();
+        await loadJobs();
+        await loadFindings();
+      }
+    };
+    
+    loadInitial();
+    
+    return () => { isMounted = false; };
   }, [loadGitleaksStatus, loadServers, loadJobs, loadFindings]);
 
   // Iniciar scan
