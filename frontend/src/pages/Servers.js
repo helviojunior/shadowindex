@@ -558,16 +558,19 @@ const Servers = () => {
                         {editingPluginServer === server.id ? (
                           <div className="flex items-center justify-center gap-2">
                             <Select
-                              value={editPluginType}
-                              onValueChange={setEditPluginType}
+                              value={editPluginInstanceId}
+                              onValueChange={setEditPluginInstanceId}
                             >
-                              <SelectTrigger className="w-32 h-8 text-xs">
-                                <SelectValue placeholder="Plugin" />
+                              <SelectTrigger className="w-40 h-8 text-xs">
+                                <SelectValue placeholder="Instância" />
                               </SelectTrigger>
                               <SelectContent>
-                                {Object.entries(availablePlugins).map(([type, info]) => (
-                                  <SelectItem key={type} value={type}>
-                                    {info.name}
+                                <SelectItem value="">
+                                  <span className="text-muted-foreground">Nenhuma</span>
+                                </SelectItem>
+                                {pluginInstances.map((instance) => (
+                                  <SelectItem key={instance.id} value={instance.id.toString()}>
+                                    {instance.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -593,7 +596,7 @@ const Servers = () => {
                           <div className="flex items-center justify-center gap-1">
                             <Badge variant="outline" className="text-xs">
                               <Plug className="w-3 h-3 mr-1" />
-                              {availablePlugins[server.plugin_type]?.name || server.plugin_type || 'soap_api'}
+                              {getPluginInstanceName(server.plugin_instance_id)}
                             </Badge>
                             <Button
                               variant="ghost"
