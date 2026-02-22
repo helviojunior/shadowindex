@@ -1415,6 +1415,10 @@ const ServerBrowser = () => {
         }, 2500);
       }
     }, 800);
+    } finally {
+      // Esconder overlay de loading
+      setNavigatingToResult(false);
+    }
   };
 
   const loadShares = async () => {
