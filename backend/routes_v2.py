@@ -3190,10 +3190,12 @@ async def cancel_gitleaks_job(job_id: str):
 @router.get("/gitleaks/findings")
 async def get_gitleaks_findings(
     server_id: Optional[int] = None,
-    job_id: Optional[str] = None
+    job_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
 ):
-    """Retorna findings do GitLeaks"""
+    """Retorna findings do GitLeaks enriquecidos com dados do banco"""
     from gitleaks_service import get_gitleaks_service
+    from database import DownloadedFile, FileVersion, Server
     
     service = get_gitleaks_service()
     
@@ -3204,24 +3206,78 @@ async def get_gitleaks_findings(
     else:
         findings = service.get_all_findings()
     
+    # Cache de servidores e arquivos para evitar múltiplas queries
+    servers_cache = {}
+    files_cache = {}
+    
+    # Enriquecer findings com dados do banco
+    enriched_findings = []
+    for finding in findings:
+        enriched = dict(finding)
+        
+        # Tentar obter dados do banco usando IDs extraídos
+        extracted_server_id = finding.get('extracted_server_id')
+        extracted_file_id = finding.get('extracted_file_id')
+        
+        if extracted_server_id and extracted_file_id:
+            # Buscar servidor
+            if extracted_server_id not in servers_cache:
+                server_result = await db.execute(
+                    select(Server).where(Server.id == extracted_server_id)
+                )
+                server = server_result.scalar_one_or_none()
+                servers_cache[extracted_server_id] = server
+            else:
+                server = servers_cache[extracted_server_id]
+            
+            if server:
+                enriched['server_name'] = server.name
+                enriched['server_ip'] = server.ip
+                enriched['db_server_id'] = server.id
+            
+            # Buscar arquivo
+            cache_key = f"{extracted_server_id}_{extracted_file_id}"
+            if cache_key not in files_cache:
+                file_result = await db.execute(
+                    select(DownloadedFile).where(DownloadedFile.id == extracted_file_id)
+                )
+                downloaded_file = file_result.scalar_one_or_none()
+                files_cache[cache_key] = downloaded_file
+            else:
+                downloaded_file = files_cache[cache_key]
+            
+            if downloaded_file:
+                enriched['db_file_id'] = downloaded_file.id
+                enriched['file_name'] = downloaded_file.file_name
+                enriched['server_path'] = downloaded_file.file_path  # Caminho original no servidor
+                enriched['share_name'] = downloaded_file.share_name
+        
+        enriched_findings.append(enriched)
+    
     # Agrupar por arquivo para melhor visualização
     files_map = {}
-    for finding in findings:
+    for finding in enriched_findings:
         file_path = finding.get('File', 'unknown')
         if file_path not in files_map:
             files_map[file_path] = {
                 "file": file_path,
                 "findings": [],
-                "count": 0
+                "count": 0,
+                # Adicionar metadados do primeiro finding
+                "server_name": finding.get('server_name'),
+                "server_ip": finding.get('server_ip'),
+                "file_name": finding.get('file_name'),
+                "server_path": finding.get('server_path'),
+                "share_name": finding.get('share_name')
             }
         files_map[file_path]["findings"].append(finding)
         files_map[file_path]["count"] += 1
     
     return {
-        "total_findings": len(findings),
+        "total_findings": len(enriched_findings),
         "total_files": len(files_map),
         "files": list(files_map.values()),
-        "findings": findings
+        "findings": enriched_findings
     }
 
 @router.delete("/gitleaks/findings")
