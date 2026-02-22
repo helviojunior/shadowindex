@@ -4636,67 +4636,6 @@ const ServerBrowser = () => {
                           ))}
                         </div>
                       )}
-                      
-                      {/* Resultados OCR */}
-                      {searchResults.ocr?.length > 0 && (
-                        <div>
-                          <div className="px-3 py-1 bg-blue-500/10 text-xs font-medium text-blue-400 flex items-center gap-1">
-                            <Search className="w-3 h-3" />
-                            Conteúdo OCR ({searchResults.ocr.length})
-                          </div>
-                          {searchResults.ocr.map((item, idx) => (
-                            <div
-                              key={`ocr-${idx}`}
-                              className="px-3 py-2 hover:bg-muted/50 cursor-pointer flex items-start gap-2"
-                              onClick={() => navigateToSearchResult({ ...item, item_type: 'File', is_downloaded: true, full_path: item.file_path })}
-                            >
-                              <Search className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm truncate flex items-center gap-1">
-                                  {item.name}
-                                  <Badge variant="outline" className="text-[9px] px-1 py-0">V{item.version}</Badge>
-                                </div>
-                                {item.snippet && (
-                                  <div className="text-xs text-muted-foreground bg-muted/50 p-1 rounded mt-1 line-clamp-2">
-                                    {highlightSearchTerm(item.snippet, searchQuery)}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {/* Resultados GitLeaks */}
-                      {searchResults.gitleaks?.length > 0 && (
-                        <div>
-                          <div className="px-3 py-1 bg-red-500/10 text-xs font-medium text-red-400 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Leaks Detectados ({searchResults.gitleaks.length})
-                          </div>
-                          {searchResults.gitleaks.map((item, idx) => (
-                            <div
-                              key={`leak-${idx}`}
-                              className="px-3 py-2 hover:bg-muted/50 cursor-pointer flex items-start gap-2"
-                              onClick={() => {
-                                // Navegar para a página de Leaks com filtro
-                                window.location.href = `/leaks?q=${encodeURIComponent(item.fingerprint || item.rule_id)}`;
-                              }}
-                            >
-                              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm truncate flex items-center gap-1">
-                                  {item.file_name || 'Arquivo'}
-                                  <Badge className="bg-red-600 text-[9px] px-1 py-0">{item.rule_id}</Badge>
-                                </div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {item.description || `Linha ${item.line}`}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
