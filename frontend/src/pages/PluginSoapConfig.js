@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Loader2, CheckCircle, XCircle, RefreshCw, Plus, Trash2, ChevronUp, 
   Settings, Plug, Globe, Star, StarOff, Power, PowerOff, Pencil, X, Check
@@ -181,37 +181,23 @@ const PluginSoapConfig = () => {
   }
 
   return (
-    <div className="space-y-6" data-testid="plugin-soap-config-page">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Globe className="w-8 h-8" />
-            SOAP Plugin
-          </h1>
-          <p className="text-muted-foreground mt-2">Comunicação via WebService SOAP</p>
-        </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="instances" data-testid="tab-instances">
-            <Plug className="w-4 h-4 mr-2" />
-            Instâncias
-          </TabsTrigger>
-          <TabsTrigger value="info" data-testid="tab-info">
-            <Settings className="w-4 h-4 mr-2" />
-            Info
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Tab: Instâncias */}
-        <TabsContent value="instances" className="space-y-6 mt-6">
-          {/* Botão Adicionar */}
-          <div className="flex justify-end">
+    <div className="h-full flex flex-col" data-testid="plugin-soap-config-page">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+              <Globe className="w-6 h-6" />
+              SOAP Plugin
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">Comunicação via WebService SOAP</p>
+          </div>
+          {activeTab === 'instances' && (
             <Button 
               onClick={() => setShowAddForm(!showAddForm)} 
               data-testid="toggle-add-instance-btn"
               variant={showAddForm ? "secondary" : "default"}
+              size="sm"
             >
               {showAddForm ? (
                 <>
@@ -225,72 +211,117 @@ const PluginSoapConfig = () => {
                 </>
               )}
             </Button>
-          </div>
-
-          {/* Form para nova instância */}
-          {showAddForm && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Nova Instância SOAP</CardTitle>
-                <CardDescription>Configure uma nova instância do plugin SOAP</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Nome da Instância</Label>
-                      <Input
-                        id="name"
-                        data-testid="instance-name-input"
-                        placeholder="Produção, Homologação, etc."
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="soap_url">URL do WebService (WSDL)</Label>
-                      <Input
-                        id="soap_url"
-                        data-testid="instance-soap-url-input"
-                        type="url"
-                        placeholder="https://exemplo.com/api.asmx?WSDL"
-                        value={formData.config?.soap_url || ''}
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          config: { ...formData.config, soap_url: e.target.value }
-                        })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea
-                      id="description"
-                      data-testid="instance-description-input"
-                      placeholder="Descrição opcional da instância"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    />
-                  </div>
-                  <Button type="submit" disabled={formLoading} data-testid="create-instance-btn">
-                    {formLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                    Criar Instância
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
           )}
+        </div>
+      </div>
 
-          {/* Lista de Instâncias */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Instâncias Configuradas</CardTitle>
-              <CardDescription>{instances.length} instância(s) do plugin SOAP</CardDescription>
-            </CardHeader>
-            <CardContent>
+      {/* Tabs - Flat Style */}
+      <div className="px-6 pt-4 border-b border-border">
+        <div className="flex gap-8">
+          <button
+            onClick={() => setActiveTab('instances')}
+            className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
+              activeTab === 'instances' 
+                ? 'text-green-500' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            data-testid="tab-instances"
+          >
+            <Plug className="w-4 h-4" />
+            Instâncias
+            <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{instances.length}</span>
+            {activeTab === 'instances' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+            )}
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('info')}
+            className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
+              activeTab === 'info' 
+                ? 'text-green-500' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            data-testid="tab-info"
+          >
+            <Settings className="w-4 h-4" />
+            Info
+            {activeTab === 'info' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <ScrollArea className="flex-1">
+        <div className="p-6">
+          {/* Tab: Instâncias */}
+          {activeTab === 'instances' && (
+            <div className="space-y-6">
+              {/* Form para nova instância */}
+              {showAddForm && (
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base">Nova Instância SOAP</CardTitle>
+                    <CardDescription>Configure uma nova instância do plugin SOAP</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Nome da Instância</Label>
+                          <Input
+                            id="name"
+                            data-testid="instance-name-input"
+                            placeholder="Produção, Homologação, etc."
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="soap_url">URL do WebService (WSDL)</Label>
+                          <Input
+                            id="soap_url"
+                            data-testid="instance-soap-url-input"
+                            type="url"
+                            placeholder="https://exemplo.com/api.asmx?WSDL"
+                            value={formData.config?.soap_url || ''}
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              config: { ...formData.config, soap_url: e.target.value }
+                            })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="description">Descrição</Label>
+                        <Textarea
+                          id="description"
+                          data-testid="instance-description-input"
+                          placeholder="Descrição opcional da instância"
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          rows={2}
+                        />
+                      </div>
+                      <Button type="submit" disabled={formLoading} data-testid="create-instance-btn" size="sm">
+                        {formLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                        Criar Instância
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Lista de Instâncias */}
               {instances.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Nenhuma instância configurada</p>
+                <div className="text-center py-12 text-muted-foreground">
+                  <Plug className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhuma instância configurada</p>
+                  <p className="text-sm mt-1">Clique em "Nova Instância" para criar</p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {instances.map((instance) => {
@@ -332,6 +363,7 @@ const PluginSoapConfig = () => {
                               <Textarea
                                 value={editData.description}
                                 onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                                rows={2}
                               />
                             </div>
                             <div className="flex gap-2">
@@ -348,25 +380,24 @@ const PluginSoapConfig = () => {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-lg">{instance.name}</span>
+                                <span className="font-medium">{instance.name}</span>
                                 {instance.is_default && (
-                                  <Badge variant="secondary" className="gap-1">
+                                  <Badge variant="secondary" className="gap-1 text-xs">
                                     <Star className="w-3 h-3" /> Padrão
                                   </Badge>
                                 )}
                                 {!instance.is_active && (
-                                  <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
+                                  <Badge variant="outline" className="text-muted-foreground text-xs">Inativo</Badge>
                                 )}
                               </div>
                               {instance.description && (
                                 <p className="text-sm text-muted-foreground mb-2">{instance.description}</p>
                               )}
-                              {instance.config?.soap_url && (
-                                <div className="text-xs text-muted-foreground font-mono">
+                              {instance.config?.soap_url ? (
+                                <div className="text-xs text-muted-foreground font-mono truncate max-w-xl">
                                   URL: {instance.config.soap_url}
                                 </div>
-                              )}
-                              {!instance.config?.soap_url && (
+                              ) : (
                                 <div className="text-xs text-amber-500">
                                   ⚠ URL não configurada
                                 </div>
@@ -375,7 +406,7 @@ const PluginSoapConfig = () => {
                             <div className="flex items-center gap-1">
                               {/* Health status */}
                               {health && (
-                                <Badge variant={health.healthy ? "default" : "destructive"} className="mr-2">
+                                <Badge variant={health.healthy ? "default" : "destructive"} className="mr-2 text-xs">
                                   {health.healthy ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
                                   {health.healthy ? 'OK' : 'Erro'}
                                 </Badge>
@@ -385,6 +416,7 @@ const PluginSoapConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => checkHealth(instance.id)}
                                 disabled={checkingHealth[instance.id]}
                                 title="Verificar saúde"
@@ -400,6 +432,7 @@ const PluginSoapConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => toggleDefault(instance)}
                                 title={instance.is_default ? "Remover padrão" : "Definir como padrão"}
                               >
@@ -414,6 +447,7 @@ const PluginSoapConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => toggleActive(instance)}
                                 title={instance.is_active ? "Desativar" : "Ativar"}
                               >
@@ -428,6 +462,7 @@ const PluginSoapConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => startEdit(instance)}
                                 title="Editar"
                               >
@@ -438,8 +473,9 @@ const PluginSoapConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => handleDelete(instance.id)}
-                                className="text-destructive hover:text-destructive"
+                                className="text-destructive hover:text-destructive h-8 w-8"
                                 title="Excluir"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -452,143 +488,111 @@ const PluginSoapConfig = () => {
                   })}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab: Info */}
-        <TabsContent value="info" className="space-y-6 mt-6">
-          {/* Plugin Info Card */}
-          {pluginInfo && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plug className="w-5 h-5" />
-                  Informações do Plugin
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Nome</div>
-                    <div className="font-medium">{pluginInfo.name}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Tipo</div>
-                    <Badge variant="outline">{pluginInfo.type}</Badge>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Versão</div>
-                    <div className="font-medium">{pluginInfo.version}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Descrição</div>
-                    <div className="text-sm text-muted-foreground">{pluginInfo.description}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           )}
 
-          {/* Funcionalidades */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Funcionalidades</CardTitle>
-              <CardDescription>Operações disponíveis via SOAP</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-5 h-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Resolução de Nomes (Resolve)</div>
-                      <div className="text-sm text-muted-foreground">
-                        Resolver hostname para endereço IP via WebService
+          {/* Tab: Info */}
+          {activeTab === 'info' && (
+            <div className="space-y-6">
+              {/* Plugin Info Card */}
+              {pluginInfo && (
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Plug className="w-4 h-4" />
+                      Informações do Plugin
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Nome</div>
+                        <div className="font-medium text-sm">{pluginInfo.name}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Tipo</div>
+                        <Badge variant="outline" className="text-xs">{pluginInfo.type}</Badge>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Versão</div>
+                        <div className="font-medium text-sm">{pluginInfo.version}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Descrição</div>
+                        <div className="text-sm text-muted-foreground">{pluginInfo.description}</div>
                       </div>
                     </div>
-                  </div>
-                  <Badge variant="default" className="bg-green-500">Implementado</Badge>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-5 h-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Listagem de Compartilhamentos</div>
-                      <div className="text-sm text-muted-foreground">
-                        Listar shares de rede disponíveis no servidor
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="default" className="bg-green-500">Implementado</Badge>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-5 h-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Navegação de Diretórios</div>
-                      <div className="text-sm text-muted-foreground">
-                        Listar arquivos e pastas em um caminho remoto
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="default" className="bg-green-500">Implementado</Badge>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-5 h-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Download de Arquivos</div>
-                      <div className="text-sm text-muted-foreground">
-                        Baixar arquivos remotos via WebService
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="default" className="bg-green-500">Implementado</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
+              )}
 
-          {/* Config Schema Card */}
-          {pluginInfo?.config_schema && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Esquema de Configuração</CardTitle>
-                <CardDescription>Campos disponíveis para configuração de instâncias</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(pluginInfo.config_schema.properties || {}).map(([key, prop]) => (
-                    <div key={key} className="flex items-start gap-3 p-3 border border-border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-medium">{key}</span>
-                          {pluginInfo.config_schema.required?.includes(key) && (
-                            <Badge variant="destructive" className="text-[10px]">obrigatório</Badge>
+              {/* Funcionalidades */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base">Funcionalidades</CardTitle>
+                  <CardDescription>Operações disponíveis via SOAP</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {[
+                      { name: 'Resolução de Nomes (Resolve)', desc: 'Resolver hostname para endereço IP via WebService' },
+                      { name: 'Listagem de Compartilhamentos', desc: 'Listar shares de rede disponíveis no servidor' },
+                      { name: 'Navegação de Diretórios', desc: 'Listar arquivos e pastas em um caminho remoto' },
+                      { name: 'Download de Arquivos', desc: 'Baixar arquivos remotos via WebService' },
+                    ].map((feat, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Globe className="w-4 h-4 text-green-500" />
+                          <div>
+                            <div className="font-medium text-sm">{feat.name}</div>
+                            <div className="text-xs text-muted-foreground">{feat.desc}</div>
+                          </div>
+                        </div>
+                        <Badge variant="default" className="bg-green-500 text-xs">Implementado</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Config Schema Card */}
+              {pluginInfo?.config_schema && (
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base">Esquema de Configuração</CardTitle>
+                    <CardDescription>Campos disponíveis para configuração de instâncias</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {Object.entries(pluginInfo.config_schema.properties || {}).map(([key, prop]) => (
+                        <div key={key} className="flex items-start gap-3 p-3 border border-border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm font-medium">{key}</span>
+                              {pluginInfo.config_schema.required?.includes(key) && (
+                                <Badge variant="destructive" className="text-[10px]">obrigatório</Badge>
+                              )}
+                              <Badge variant="outline" className="text-[10px]">{prop.type}</Badge>
+                            </div>
+                            {prop.description && (
+                              <div className="text-xs text-muted-foreground mt-1">{prop.description}</div>
+                            )}
+                          </div>
+                          {prop.default !== undefined && (
+                            <div className="text-xs text-muted-foreground">
+                              default: <span className="font-mono">{String(prop.default)}</span>
+                            </div>
                           )}
-                          <Badge variant="outline" className="text-[10px]">{prop.type}</Badge>
                         </div>
-                        {prop.description && (
-                          <div className="text-sm text-muted-foreground mt-1">{prop.description}</div>
-                        )}
-                      </div>
-                      {prop.default !== undefined && (
-                        <div className="text-sm text-muted-foreground">
-                          default: <span className="font-mono">{String(prop.default)}</span>
-                        </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      </ScrollArea>
     </div>
   );
 };
