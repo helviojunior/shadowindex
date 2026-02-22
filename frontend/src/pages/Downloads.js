@@ -271,19 +271,32 @@ const Downloads = () => {
 
   // Initial load and polling
   useEffect(() => {
-    loadDownloadJobs();
-    loadScanJobs();
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (!isMounted) return;
+      await loadDownloadJobs();
+      if (!isMounted) return;
+      await loadScanJobs();
+    };
+    
+    loadData();
     
     // Polling menos frequente quando WebSocket está conectado
     // WebSocket cuida das atualizações em tempo real
     const pollInterval = isConnected ? 10000 : 3000;
     
     const interval = setInterval(() => {
-      loadDownloadJobs();
-      loadScanJobs();
+      if (isMounted) {
+        loadDownloadJobs();
+        loadScanJobs();
+      }
     }, pollInterval);
     
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [loadDownloadJobs, loadScanJobs, isConnected]);
 
   // Cancel single job
