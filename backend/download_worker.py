@@ -485,26 +485,10 @@ class DownloadWorker:
             
             # Adicionar à fila de OCR se configurado
             if should_ocr:
-                'text/',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument',
-                'application/vnd.ms-excel',
-                'application/vnd.ms-powerpoint'
-            ]
-            
-            if mimetype and any(m in mimetype for m in ocr_supported_mimes):
                 try:
                     from ocr_worker import queue_ocr_job
                     
-                    # Buscar versão atual do arquivo
-                    version_result = await db.execute(
-                        select(FileVersion).where(
-                            FileVersion.file_id == downloaded_file.id,
-                            FileVersion.is_current == True
-                        )
-                    )
-                    current_version = version_result.scalar_one_or_none()
-                    version_id = current_version.id if current_version else None
+                    version_id = version.id if version else None
                     
                     await queue_ocr_job(
                         db=db,
