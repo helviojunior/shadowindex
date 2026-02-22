@@ -257,6 +257,11 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
             "Acesse Plugins > SOAP API > Instâncias e configure a URL do WebService."
         )
     
+    # Add proxy credentials to plugin config for direct_interaction
+    if plugin_type == "direct_interaction" and proxy_config:
+        plugin_config["proxy_user"] = proxy_config.get("proxy_user")
+        plugin_config["proxy_pass"] = proxy_config.get("proxy_pass")
+    
     # Create the plugin instance
     plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
     
