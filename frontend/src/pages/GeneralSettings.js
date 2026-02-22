@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus } from 'lucide-react';
+import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,16 +10,33 @@ import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
+// Portas conhecidas de bancos de dados
+const DEFAULT_DB_PORTS = {
+  1433: 'MSSQL',
+  3306: 'MySQL',
+  5432: 'PostgreSQL',
+  1521: 'Oracle',
+  27017: 'MongoDB',
+  6379: 'Redis',
+  5984: 'CouchDB',
+  9200: 'Elasticsearch'
+};
+
+const DEFAULT_SMB_PORT = 445;
+
 const GeneralSettings = () => {
   const [settings, setSettings] = useState({
     max_simultaneous_downloads: '3',
     default_depth_levels: '5',
     default_max_file_size_mb: '100',
-    ignored_extensions: '.log,.tmp,.bak'
+    ignored_extensions: '.log,.tmp,.bak',
+    import_ports: '445,1433,3306,5432,1521,27017,6379,5984,9200'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newExtension, setNewExtension] = useState('');
+  const [newPort, setNewPort] = useState('');
+  const [newPortName, setNewPortName] = useState('');
 
   useEffect(() => {
     loadSettings();
