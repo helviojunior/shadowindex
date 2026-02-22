@@ -2028,7 +2028,7 @@ const ServerBrowser = () => {
     }
   };
 
-  const handleSelectItem = (item, type, path, shareName = '') => {
+  const handleSelectItem = async (item, type, path, shareName = '') => {
     // Definir o item selecionado para mostrar no painel Info
     setSelectedItem({
       ...item,
@@ -2037,6 +2037,16 @@ const ServerBrowser = () => {
       shareName: shareName,
       fetchedAt: new Date().toISOString()
     });
+    
+    // Se for um arquivo, verificar se foi baixado (atualiza o estado para refletir downloads do batch)
+    if (type === 'File') {
+      const filePath = item.fullPath || item.full_path || path;
+      // Verificar se o arquivo está na lista de baixados
+      if (!downloadedFiles.includes(filePath)) {
+        // Recarregar lista de arquivos baixados para pegar novos downloads do batch
+        loadDownloadedFiles();
+      }
+    }
   };
 
   const handleDownload = async () => {
