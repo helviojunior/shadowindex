@@ -209,10 +209,15 @@ const Downloads = () => {
 
   // Load download jobs
   const loadDownloadJobs = useCallback(async () => {
+    const isInitialLoad = !lastErrorRef.current && errorCountRef.current === 0;
+    
     try {
       const response = await axios.get(`${API}/downloads`);
       const jobs = response.data || [];
       setDownloadJobs(jobs);
+      
+      // Reset error tracking on success
+      errorCountRef.current = 0;
       
       // Calculate stats
       const newStats = {
@@ -236,23 +241,13 @@ const Downloads = () => {
       setExpandedServers(prev => ({ ...prev, ...serversWithActive }));
       
     } catch (error) {
+      // Silenciosamente ignorar erros durante polling
+      // Só logar no console, sem toast para evitar spam
       console.error('Error loading download jobs:', error);
-      // Só mostra toast se for o primeiro erro ou se passou mais de 30 segundos
-      const now = Date.now();
-      if (!lastErrorRef.current || now - lastErrorRef.current > 30000) {
-        errorCountRef.current = 1;
-        // Não mostrar toast durante polling - só na primeira carga
-        if (loading) {
-          toast.error('Erro ao carregar downloads');
-        }
-      } else {
-        errorCountRef.current += 1;
-      }
-      lastErrorRef.current = now;
     } finally {
       setLoading(false);
     }
-  }, [loading]);
+  }, []);
 
   // Initial load and polling
   useEffect(() => {
