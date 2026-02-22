@@ -761,7 +761,7 @@ const Dashboard = () => {
             </div>
             
             {/* OCR Jobs */}
-            <div className="space-y-3">
+            <div className="space-y-3 px-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Eye className="w-4 h-4" />
                 OCR
