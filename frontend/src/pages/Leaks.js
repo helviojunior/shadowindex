@@ -854,16 +854,21 @@ const Leaks = () => {
                     )}
                   </div>
                   
-                  {/* Botão Abrir Arquivo no modal - só mostra se tem extracted_file_id (arquivo baixado) */}
-                  {selectedFinding.extracted_file_id && (
+                  {/* Botão Abrir Arquivo no modal - mostra se tem extracted_file_id OU path */}
+                  {(selectedFinding.extracted_file_id || (selectedFinding.server_id && fullPath)) && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="w-full mt-2"
                       onClick={() => {
                         const serverId = selectedFinding.extracted_server_id || selectedFinding.server_id;
-                        if (serverId) {
+                        if (!serverId) return;
+                        
+                        if (selectedFinding.extracted_file_id) {
                           window.open(`/servers/${serverId}/browse?file_id=${selectedFinding.extracted_file_id}`, '_blank');
+                        } else if (fullPath) {
+                          const encodedPath = encodeURIComponent(fullPath);
+                          window.open(`/servers/${serverId}/browse?path=${encodedPath}`, '_blank');
                         }
                       }}
                     >
