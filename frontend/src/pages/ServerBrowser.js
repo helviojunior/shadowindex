@@ -315,20 +315,15 @@ const ServerBrowser = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchResults]);
 
-  // Verificar parâmetro file_id ou path na URL para navegação automática
+  // Verificar parâmetro file_id na URL para navegação automática
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const fileId = searchParams.get('file_id');
-    const filePath = searchParams.get('path');
     
     if (fileId && server && !pendingFileNavigation) {
       setPendingFileNavigation(parseInt(fileId));
-    } else if (filePath && server && shares.length > 0 && !pendingFileNavigation) {
-      // Navegar pelo caminho do arquivo (para leaks manuais)
-      const decodedPath = decodeURIComponent(filePath);
-      navigateToFilePath(decodedPath);
     }
-  }, [location.search, server, shares]);
+  }, [location.search, server]);
   
   // Navegar até o arquivo quando temos pendingFileNavigation e os shares carregaram
   useEffect(() => {
