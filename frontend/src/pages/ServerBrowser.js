@@ -2744,8 +2744,7 @@ const ServerBrowser = () => {
         }
       });
       
-      toast.success(response.data.message);
-      toast.info('Acompanhe o progresso em Arquivos > Downloads');
+      toast.success(`${response.data.message}. Acompanhe em Arquivos > Downloads`);
       
       // Forçar atualização do estado de downloads ativos para iniciar polling
       // Isso garante que o frontend comece a verificar os jobs criados no backend
