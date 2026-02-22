@@ -748,12 +748,13 @@ const Leaks = () => {
                                     try {
                                       // Buscar informações do arquivo para obter o server_id
                                       const response = await axios.get(`${API}/downloads/${finding.extracted_file_id}`);
-                                      if (response.data && response.data.server_guid) {
-                                        // Buscar servidor pelo guid
-                                        const serversResponse = await axios.get(`${API.replace('/v2', '')}/servers`);
-                                        const server = serversResponse.data.find(s => s.guid === response.data.server_guid);
-                                        if (server) {
-                                          window.open(`/servers/${server.id}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                      if (response.data && response.data.server_id) {
+                                        window.open(`/servers/${response.data.server_id}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                      } else {
+                                        // Fallback: usar server_id do finding se disponível
+                                        const serverId = finding.extracted_server_id || finding.server_id;
+                                        if (serverId) {
+                                          window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`, '_blank');
                                         }
                                       }
                                     } catch (error) {
