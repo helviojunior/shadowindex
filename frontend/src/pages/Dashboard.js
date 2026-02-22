@@ -240,10 +240,20 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-2">Visão geral de segurança e assets</p>
         </div>
-        <Button variant="outline" onClick={loadData}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* WebSocket Status Indicator */}
+          <Badge 
+            variant={wsConnected ? "outline" : "secondary"} 
+            className={`text-xs ${wsConnected ? 'border-green-600 text-green-600' : 'text-muted-foreground'}`}
+          >
+            <span className={`w-2 h-2 rounded-full mr-1.5 ${wsConnected ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            {wsConnected ? 'Tempo real' : 'Offline'}
+          </Badge>
+          <Button variant="outline" onClick={loadData}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Linha 1: Top Stats Cards */}
