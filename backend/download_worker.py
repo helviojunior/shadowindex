@@ -263,6 +263,9 @@ class DownloadWorker:
                     status='downloaded'
                 )
                 
+                # Emitir stats atualizadas (para notificação sonora)
+                await emit_download_stats()
+                
                 logger.info(f"Download completed: {job.file_path}")
             
             except CredentialNotSetException as e:
@@ -273,6 +276,7 @@ class DownloadWorker:
                 # Emitir evento WebSocket de falha
                 ws_manager = get_websocket_manager()
                 await ws_manager.emit_download_failed(job.id, job.file_path, job.error_message)
+                await emit_download_stats()
                 raise
             except AccessDeniedException:
                 job.status = 'failed'
@@ -281,6 +285,7 @@ class DownloadWorker:
                 await db.commit()
                 ws_manager = get_websocket_manager()
                 await ws_manager.emit_download_failed(job.id, job.file_path, job.error_message)
+                await emit_download_stats()
                 raise
             except ItemNotFoundException:
                 job.status = 'failed'
@@ -289,6 +294,7 @@ class DownloadWorker:
                 await db.commit()
                 ws_manager = get_websocket_manager()
                 await ws_manager.emit_download_failed(job.id, job.file_path, job.error_message)
+                await emit_download_stats()
                 raise
             except Exception as e:
                 job.status = 'failed'
@@ -297,6 +303,7 @@ class DownloadWorker:
                 await db.commit()
                 ws_manager = get_websocket_manager()
                 await ws_manager.emit_download_failed(job.id, job.file_path, str(e))
+                await emit_download_stats()
                 raise
     
     async def _download_direct_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
