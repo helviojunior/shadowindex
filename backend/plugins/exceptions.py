@@ -99,3 +99,20 @@ class NotImplementedException(PluginException):
         )
         self.method = method
         self.plugin_name = plugin_name
+
+
+class CredentialNotSetException(PluginException):
+    """Raised when a required credential is not configured for an operation"""
+    def __init__(self, operation: str = None, plugin_name: str = None, message: str = None):
+        msg = message or "Credencial não configurada"
+        if operation:
+            msg = f"Credencial não configurada para operação '{operation}'"
+        if plugin_name:
+            msg += f" no plugin '{plugin_name}'"
+        
+        super().__init__(
+            msg,
+            {"operation": operation, "plugin_name": plugin_name}
+        )
+        self.operation = operation
+        self.plugin_name = plugin_name
