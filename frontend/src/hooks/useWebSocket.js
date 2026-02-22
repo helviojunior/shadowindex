@@ -174,7 +174,7 @@ export const useWebSocket = () => {
 };
 
 // Hook específico para eventos de download
-export const useDownloadEvents = (onProgress, onComplete, onFailed, onStarted, onCleanup) => {
+export const useDownloadEvents = (onProgress, onComplete, onFailed, onStarted) => {
   const { subscribe } = useWebSocket();
   
   useEffect(() => {
@@ -192,14 +192,11 @@ export const useDownloadEvents = (onProgress, onComplete, onFailed, onStarted, o
     if (onStarted) {
       unsubscribers.push(subscribe('download_started', onStarted));
     }
-    if (onCleanup) {
-      unsubscribers.push(subscribe('downloads_cleanup', onCleanup));
-    }
     
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [subscribe, onProgress, onComplete, onFailed, onStarted, onCleanup]);
+  }, [subscribe, onProgress, onComplete, onFailed, onStarted]);
 };
 
 // Hook específico para eventos de scan
