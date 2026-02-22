@@ -1599,33 +1599,6 @@ const ServerBrowser = () => {
     }
   };
 
-  // Salvar novo nome do servidor
-  const handleSaveServerName = async () => {
-    if (!newServerName.trim()) {
-      toast.error('Nome do servidor não pode estar vazio');
-      return;
-    }
-    
-    if (newServerName.trim() === server.name) {
-      setEditingServerName(false);
-      return;
-    }
-    
-    try {
-      await axios.patch(`${BACKEND_URL}/api/servers/${serverId}`, {
-        name: newServerName.trim()
-      });
-      
-      // Atualizar o estado local do servidor
-      setServer(prev => ({ ...prev, name: newServerName.trim() }));
-      setEditingServerName(false);
-      toast.success('Nome do servidor atualizado');
-    } catch (error) {
-      console.error('Error updating server name:', error);
-      toast.error('Erro ao atualizar nome do servidor');
-    }
-  };
-
   const loadShares = async () => {
     // Verificar se o servidor tem uma instância de plugin configurada
     if (!server?.plugin_instance_id) {
