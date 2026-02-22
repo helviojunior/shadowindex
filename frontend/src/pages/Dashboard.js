@@ -135,12 +135,25 @@ const Dashboard = () => {
   useScanEvents(handleScanProgress, handleScanComplete);
 
   useEffect(() => {
+    let isMounted = true;
+    
     loadData();
-    loadJobs();
+    
+    const loadJobsIfMounted = async () => {
+      if (isMounted) await loadJobs();
+    };
+    
+    loadJobsIfMounted();
     
     // Polling para jobs ativos (a cada 5 segundos)
-    const jobsInterval = setInterval(loadJobs, 5000);
-    return () => clearInterval(jobsInterval);
+    const jobsInterval = setInterval(() => {
+      if (isMounted) loadJobs();
+    }, 5000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(jobsInterval);
+    };
   }, []);
   
   const loadJobs = async () => {
