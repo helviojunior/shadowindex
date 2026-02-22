@@ -28,6 +28,21 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 29 - Plugin-Aware Download Fix)
+- [x] **Bug Fix P1: Download/Sync usando plugin errado:**
+  - Corrigidos 4 endpoints em `routes_v2.py` que usavam `get_default_soap_service()` em vez de `get_plugin_for_server()`
+  - `/servers/{server_id}/items/{item_id}/browse` - Agora usa o plugin correto do servidor
+  - `/servers/{server_id}/items/{item_id}/download` - Agora usa o plugin correto do servidor
+  - `/servers/{server_id}/download` - Agora usa o plugin correto do servidor
+  - `/servers/{server_id}/download-chunk` - Agora usa o plugin correto do servidor
+- [x] **Refatoração do download_worker.py:**
+  - Worker de downloads em background agora usa `get_plugin_for_server()` 
+  - Métodos `_download_direct_via_plugin()` e `_download_chunked_via_plugin()` criados
+  - Tratamento específico de exceções: `CredentialNotSetException`, `AccessDeniedException`, `ItemNotFoundException`
+- [x] **Arquivos modificados:**
+  - `backend/routes_v2.py` - Endpoints de browse e download corrigidos
+  - `backend/download_worker.py` - Worker refatorado para usar plugins
+
 ### 2026-02-22 (Session 28 - Plugin Page Refactoring)
 - [x] **Refatoração da Página de Plugins:**
   - Removida a página centralizada "Instâncias de Plugins" (`/plugins/instances`)
