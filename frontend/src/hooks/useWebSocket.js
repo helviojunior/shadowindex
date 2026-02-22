@@ -154,8 +154,7 @@ export const WebSocketProvider = ({ children }) => {
     lastMessage,
     subscribe,
     connect,
-    disconnect,
-    setConnectionStatusCallback
+    disconnect
   };
 
   return (
