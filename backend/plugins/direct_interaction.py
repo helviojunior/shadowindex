@@ -971,13 +971,13 @@ class DirectInteractionPlugin(BasePlugin):
         raise PluginException(f"Formato de connection string inválido: {connection_string}")
     
     def _parse_proxy_url(self, proxy_url: str) -> Dict[str, Any]:
-        """Parse SOCKS proxy URL into config dict."""
+        """Parse SOCKS proxy URL into config dict, using plugin config for credentials."""
         config = {
             "type": "socks5",
             "host": None,
             "port": 1080,
-            "user": None,
-            "password": None
+            "user": self.proxy_user,  # From plugin config
+            "password": self.proxy_pass  # From plugin config
         }
         
         url = proxy_url
@@ -988,18 +988,15 @@ class DirectInteractionPlugin(BasePlugin):
             config["type"] = "socks4"
             url = url[9:]
         
+        # Strip any auth from URL (we use config credentials)
         if "@" in url:
-            auth, host_part = url.rsplit("@", 1)
-            if ":" in auth:
-                config["user"], config["password"] = auth.split(":", 1)
-        else:
-            host_part = url
+            _, url = url.rsplit("@", 1)
         
-        if ":" in host_part:
-            config["host"], port_str = host_part.rsplit(":", 1)
+        if ":" in url:
+            config["host"], port_str = url.rsplit(":", 1)
             config["port"] = int(port_str)
         else:
-            config["host"] = host_part
+            config["host"] = url
         
         return config
     
