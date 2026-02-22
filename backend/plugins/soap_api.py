@@ -539,12 +539,26 @@ class SoapApiPlugin(BasePlugin):
             if not result:
                 raise ItemNotFoundException(path)
             
+            # Check for error messages in the result (File not found, access denied)
+            if "not found!" in result.lower() or "cannot find" in result.lower():
+                raise ItemNotFoundException(path)
+            if "access" in result.lower() and "denied" in result.lower():
+                raise AccessDeniedException(path)
+            
             # Result should be base64 encoded content
             import base64
             try:
                 data = base64.b64decode(result)
             except Exception:
-                # If not base64, use raw data
+                # If not base64, check if it's an error message
+                if "at Test.Test." in result or "at System." in result:
+                    # This is a stack trace, not valid file content
+                    error_lines = result.split('\n')
+                    error_msg = error_lines[0] if error_lines else result
+                    if "not found" in error_msg.lower():
+                        raise ItemNotFoundException(path)
+                    raise PluginException(f"Erro ao baixar arquivo: {error_msg}")
+                # Use raw data if not base64 and not an error
                 data = result.encode('utf-8')
             
             return FileContent(
