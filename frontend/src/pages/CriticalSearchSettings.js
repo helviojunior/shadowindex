@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
   Save, Shield, FileSearch, AlertTriangle, X, Plus, 
   RefreshCw, Settings2, Folder, RotateCcw, FileKey,
-  Loader2, Check
+  Loader2, Check, Ban
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
