@@ -2751,7 +2751,7 @@ async def queue_directory_scan_v2(
     db: AsyncSession = Depends(get_db)
 ):
     """Adiciona um scan de diretório à fila do DirectoryScanner"""
-    from directory_scanner import get_directory_scanner
+    from directory_scanner import get_scanner
     
     server = await get_server_or_404(db, server_id)
     
@@ -2759,7 +2759,7 @@ async def queue_directory_scan_v2(
     max_file_size_bytes = max_file_size_mb * 1024 * 1024
     
     # Usar o DirectoryScanner para adicionar o job
-    scanner = get_directory_scanner()
+    scanner = get_scanner()
     job_id = await scanner.add_scan_job(
         server_id=server.id,
         share_name=share_name,
