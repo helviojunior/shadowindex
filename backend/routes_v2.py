@@ -3085,9 +3085,16 @@ async def queue_directory_scan_v2(
     path: str,
     max_depth: int = 10,
     max_file_size_mb: int = 100,
+    critical_only: bool = False,
     db: AsyncSession = Depends(get_db)
 ):
-    """Adiciona um scan de diretório à fila do DirectoryScanner"""
+    """
+    Adiciona um scan de diretório à fila do DirectoryScanner.
+    
+    Se critical_only=True, apenas arquivos considerados 'críticos' (sensíveis)
+    serão adicionados à fila de download, e um scan do GitLeaks será iniciado
+    automaticamente ao final.
+    """
     from directory_scanner import get_scanner
     
     server = await get_server_or_404(db, server_id)
@@ -3103,13 +3110,16 @@ async def queue_directory_scan_v2(
         path=path,
         max_depth=max_depth,
         max_file_size_bytes=max_file_size_bytes,
-        apply_filters=True
+        apply_filters=True,
+        critical_only=critical_only
     )
     
+    scan_type = "Busca crítica" if critical_only else "Scan"
     return {
         "success": True,
         "scan_id": job_id,
-        "message": f"Scan adicionado à fila (job: {job_id})"
+        "critical_only": critical_only,
+        "message": f"{scan_type} adicionado à fila (job: {job_id})"
     }
 
 
