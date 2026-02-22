@@ -54,6 +54,16 @@ Portuguese (pt-BR)
   - `ConnectionException` retorna HTTP 503 (Service Unavailable)
   - `AccessDeniedException` retorna HTTP 403 (Forbidden)
   - Mensagens de erro em português incluídas na resposta
+- [x] **Consultas SQL usando Instância de Plugin Correta:**
+  - Endpoint `/sql/execute` refatorado para usar `get_plugin_for_instance()`
+  - Antes usava `get_default_soap_service()` ignorando a instância configurada
+  - Agora usa o método `sql_request()` do plugin SOAP com a URL da instância correta
+  - Plugin SOAP (`sql_request`) atualizado para usar operação `Exec` com parâmetros corretos
+  - Tratamento de erros diffgram (message + stacktrace) no parsing de resultados SQL
+  - Validação: retorna HTTP 422 se conexão não tiver `plugin_instance_id` configurado
+- [x] **Texto "X encontrado" movido no filtro de navegação:**
+  - Contador de resultados agora aparece diretamente abaixo do campo de busca
+  - Removido contador duplicado do final da página
 
 ### 2026-02-22 (Session 30 - Plugin Instance Architecture Update)
 - [x] **SOAP Mock Server criado:**
