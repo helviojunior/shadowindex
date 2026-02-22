@@ -1779,6 +1779,7 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
         "shares": [],
         "items": [],
         "downloaded_files": [],
+        "gitleaks_findings": [],
         "deleted_at": datetime.now(timezone.utc).isoformat()
     }
     
