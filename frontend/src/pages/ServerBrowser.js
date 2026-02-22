@@ -680,13 +680,16 @@ const ServerBrowser = () => {
     
     // Para imagens e PDFs, carregar como blob e criar URL
     if (isImageFile(filename) || isPdfFile(filename)) {
+      console.log('DEBUG: Loading image/PDF preview for:', filename);
       setLoadingContent(true);
       try {
         const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
           responseType: 'blob'
         });
         
+        console.log('DEBUG: Blob response:', response.data, 'type:', response.data.type);
         const url = window.URL.createObjectURL(new Blob([response.data]));
+        console.log('DEBUG: Created preview URL:', url);
         setFilePreviewUrl(url);
         setFileContent(null);
       } catch (error) {
