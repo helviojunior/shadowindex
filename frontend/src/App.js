@@ -20,6 +20,7 @@ import Downloads from "@/pages/Downloads";
 import GeneralSettings from "@/pages/GeneralSettings";
 import PluginSoapConfig from "@/pages/PluginSoapConfig";
 import PluginDirectConfig from "@/pages/PluginDirectConfig";
+import PluginInstances from "@/pages/PluginInstances";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 
