@@ -739,15 +739,25 @@ const Leaks = () => {
                                   <Copy className="w-4 h-4" />
                                 </Button>
                               )}
-                              {/* Abrir arquivo - só mostra se tem extracted_file_id (arquivo baixado) */}
-                              {finding.extracted_file_id && (
+                              {/* Abrir arquivo - mostra se tem extracted_file_id OU se tem server_id com path */}
+                              {(finding.extracted_file_id || (finding.server_id && (finding.server_path || finding.File))) && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
                                     const serverId = finding.extracted_server_id || finding.server_id;
-                                    if (serverId) {
+                                    if (!serverId) return;
+                                    
+                                    // Se tem extracted_file_id, usar navegação direta por file_id
+                                    if (finding.extracted_file_id) {
                                       window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                    } else {
+                                      // Fallback: navegar pelo path do arquivo
+                                      const filePath = finding.server_path || finding.File || finding.original_file;
+                                      if (filePath) {
+                                        const encodedPath = encodeURIComponent(filePath);
+                                        window.open(`/servers/${serverId}/browse?path=${encodedPath}`, '_blank');
+                                      }
                                     }
                                   }}
                                   title="Abrir arquivo no navegador"
