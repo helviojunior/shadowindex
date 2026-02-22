@@ -157,6 +157,22 @@ class WebSocketManager:
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
+    async def emit_download_stats(self, stats: Dict[str, int]):
+        """Emite estatísticas de downloads (para notificação sonora)"""
+        await self.broadcast({
+            "type": "download_stats",
+            **stats,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+    
+    async def emit_gitleaks_stats(self, stats: Dict[str, int]):
+        """Emite estatísticas de GitLeaks (para notificação sonora)"""
+        await self.broadcast({
+            "type": "gitleaks_stats",
+            **stats,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+    
     async def emit_file_status_change(self, file_path: str, server_id: int, 
                                        status: str, file_id: int = None):
         """Emite mudança de status de arquivo (para tree view)"""
