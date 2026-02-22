@@ -352,6 +352,9 @@ DEFAULT_SETTINGS = {
     'default_depth_levels': ('5', 'Quantidade padrão de níveis de profundidade'),
     'default_max_file_size_mb': ('100', 'Tamanho máximo padrão de arquivo (MB)'),
     'ignored_extensions': ('.log,.tmp,.bak', 'Extensões de arquivo a ignorar no batch download'),
+    'auto_ocr_enabled': ('true', 'Habilita OCR automático após download'),
+    'auto_ocr_extensions': ('.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.odt,.ods,.odp', 'Extensões de arquivo para OCR automático'),
+    'auto_ocr_mimetypes': ('application/pdf,image/,text/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument', 'MIME types para OCR automático (parcial match)'),
 }
 
 
