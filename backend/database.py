@@ -291,6 +291,25 @@ class DownloadJob(Base):
     completed_at = Column(DateTime, nullable=True)
 
 
+class ScanJob(Base):
+    """Jobs de scan de diretório para download em massa"""
+    __tablename__ = "scan_jobs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    server_guid = Column(String, nullable=False)
+    share_name = Column(String, nullable=False)
+    path = Column(String, nullable=False)
+    max_depth = Column(Integer, default=10)
+    status = Column(String, default='pending')  # pending, running, completed, failed, cancelled
+    total_files = Column(Integer, default=0)
+    processed_files = Column(Integer, default=0)
+    queued_files = Column(Integer, default=0)
+    error_message = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+
 class AppSettings(Base):
     """Configurações gerais da aplicação"""
     __tablename__ = "app_settings"
