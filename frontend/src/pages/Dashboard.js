@@ -59,6 +59,8 @@ const Dashboard = () => {
   // Estados para monitoramento de jobs
   const [downloadJobs, setDownloadJobs] = useState([]);
   const [scanJobs, setScanJobs] = useState([]);
+  const [ocrJobs, setOcrJobs] = useState([]);
+  const [gitleaksJobs, setGitleaksJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
 
   // WebSocket para atualizações em tempo real
