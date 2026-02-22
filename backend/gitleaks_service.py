@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 
+from websocket_manager import get_websocket_manager
+
 logger = logging.getLogger(__name__)
 
 # Diretório para armazenar resultados do GitLeaks
@@ -22,6 +24,28 @@ STORAGE_BASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "da
 
 # Garantir que o diretório existe
 os.makedirs(GITLEAKS_OUTPUT_DIR, exist_ok=True)
+
+
+async def emit_gitleaks_stats(service: 'GitleaksService'):
+    """Emite estatísticas de GitLeaks via WebSocket"""
+    try:
+        running = sum(1 for j in service._jobs.values() if j.status == 'running')
+        pending = sum(1 for j in service._jobs.values() if j.status == 'pending')
+        completed = sum(1 for j in service._jobs.values() if j.status in ['finished', 'completed'])
+        failed = sum(1 for j in service._jobs.values() if j.status == 'failed')
+        
+        stats = {
+            "running": running,
+            "pending": pending,
+            "completed": completed,
+            "failed": failed,
+            "total": len(service._jobs)
+        }
+        
+        ws_manager = get_websocket_manager()
+        await ws_manager.emit_gitleaks_stats(stats)
+    except Exception as e:
+        logger.error(f"Error emitting gitleaks stats: {e}")
 
 
 async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
