@@ -324,7 +324,7 @@ class OCRWorker:
     
     async def _process_pending_jobs(self, db: AsyncSession):
         """Processa jobs pendentes de OCR"""
-        from database import OCRJob, FileVersion
+        from database import OCRJob, FileVersion, AppSettings
         
         # Buscar próximo job pendente (ordenado por prioridade e data)
         result = await db.execute(
@@ -338,6 +338,38 @@ class OCRWorker:
         if not job:
             return
         
+        # Verificar lista de exclusão ANTES de processar
+        import os
+        file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
+        
+        # Carregar lista de extensões excluídas
+        excluded_result = await db.execute(
+            select(AppSettings).where(AppSettings.key == 'auto_ocr_excluded_extensions')
+        )
+        excluded_setting = excluded_result.scalar_one_or_none()
+        auto_ocr_excluded_extensions = []
+        if excluded_setting and excluded_setting.value:
+            auto_ocr_excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
+        
+        # Verificar se a extensão está na lista de exclusão
+        is_excluded = False
+        if file_ext and auto_ocr_excluded_extensions:
+            for excluded_ext in auto_ocr_excluded_extensions:
+                excluded_ext_normalized = excluded_ext if excluded_ext.startswith('.') else f'.{excluded_ext}'
+                if file_ext == excluded_ext_normalized:
+                    is_excluded = True
+                    break
+        
+        if is_excluded:
+            # Marcar como skipped e não processar
+            job.status = 'skipped'
+            job.error_message = f'Extensão {file_ext} está na lista de exclusão'
+            job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            print(f"=== OCR WORKER: Skipping job {job.id} for {job.file_name} (excluded extension: {file_ext}) ===", flush=True)
+            logger.info(f"OCR job {job.id} skipped for {job.file_name} (excluded extension: {file_ext})")
+            return
+        
         print(f"=== OCR WORKER: Processing job {job.id} for {job.file_name} ===", flush=True)
         logger.info(f"Processing OCR job {job.id} for {job.file_name}")
         
@@ -348,12 +380,10 @@ class OCRWorker:
         
         try:
             # Verificar se o arquivo existe
-            import os
             if not job.local_path or not os.path.exists(job.local_path):
                 raise FileNotFoundError(f"Arquivo não encontrado: {job.local_path}")
             
             # Verificar se é certificado digital
-            file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
             certificate_extensions = ['.pfx', '.p12', '.cer', '.crt', '.pem']
             
             if file_ext in certificate_extensions:
