@@ -87,6 +87,7 @@ const menuStructure = [
     icon: Plug, 
     label: 'Plugins',
     children: [
+      { id: 'plugin-instances', path: '/plugins/instances', label: 'Instâncias' },
       { id: 'soap-plugin', path: '/plugins/soap', label: 'SOAP Plugin' },
       { id: 'direct-plugin', path: '/plugins/direct', label: 'Interação Direta' },
     ]
