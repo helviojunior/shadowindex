@@ -529,6 +529,12 @@ const Credentials = () => {
                                     onChange={(e) => setEditData({ ...editData, password: e.target.value })}
                                     placeholder="Nova senha"
                                   />
+                                  <Input
+                                    value={editData.ntlm_hash || ''}
+                                    onChange={(e) => setEditData({ ...editData, ntlm_hash: e.target.value })}
+                                    placeholder="NTLM Hash (LM:NT ou apenas NT)"
+                                    className="col-span-2 font-mono text-sm"
+                                  />
                                 </>
                               )}
                               {type === 'token' && (
