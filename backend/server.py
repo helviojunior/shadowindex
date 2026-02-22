@@ -437,6 +437,7 @@ class ServerResponse(BaseModel):
     last_verified_at: Optional[datetime]
     created_at: datetime
     plugin_instance_id: Optional[int] = None
+    plugin_instance_name: Optional[str] = None  # Nome da instância do plugin
     plugin_type: Optional[str] = "soap_api"
     plugin_config: Optional[dict] = None
 
