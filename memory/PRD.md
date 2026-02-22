@@ -29,6 +29,17 @@ Portuguese (pt-BR)
 ## Completed Features
 
 ### 2026-02-22 (Session 30 - Plugin Instance Architecture Update)
+- [x] **SOAP Mock Server criado:**
+  - Novo serviço em `backend/soap_mock/mock_server.py`
+  - Suporta operações: `ListShares`, `ListDirectory`, `ResolveAddress`, `DownloadFile`
+  - Formato de resposta compatível com o webservice real (diffgram)
+  - Inclui tratamento de erros (Access Denied, File Not Found)
+  - Docker Compose atualizado com serviço `soap-mock` na porta 9999
+  - Criado `docker-compose.dev.yml` para desenvolvimento sem Tika
+- [x] **Plugin SOAP melhorado:**
+  - `ResolveAddress` já usa parâmetro `hostname` corretamente
+  - `list_directory` agora trata erros `<message>` e `<stacktrace>` do XML
+  - `download_file` valida se o resultado é erro ou conteúdo válido
 - [x] **Validação backend para plugin_instance_id:**
   - Função `get_plugin_for_server()` agora requer `plugin_instance_id`
   - Retorna erro 422 com mensagem clara: "Servidor não possui instância de plugin configurada"
