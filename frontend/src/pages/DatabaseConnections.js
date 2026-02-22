@@ -110,13 +110,12 @@ const DatabaseConnections = () => {
         name: formData.name,
         connection_string: formData.connection_string,
         db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null,
-        plugin_type: formData.plugin_type,
-        plugin_config: formData.plugin_config
+        plugin_instance_id: formData.plugin_instance_id ? parseInt(formData.plugin_instance_id) : null
       };
       
       await axios.post(`${API}/db-connections`, payload);
       toast.success('Conexão cadastrada com sucesso');
-      setFormData({ name: '', db_type_id: '', connection_string: '', plugin_type: 'soap_api', plugin_config: {} });
+      setFormData({ name: '', db_type_id: '', connection_string: '', plugin_instance_id: '' });
       setNewConnectionTestResult(null);
       setShowAddForm(false);
       loadConnections();
