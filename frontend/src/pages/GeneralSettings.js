@@ -61,7 +61,7 @@ const GeneralSettings = () => {
       setSettings(prev => ({ ...prev, ...loadedSettings }));
     } catch (error) {
       console.error('Error loading settings:', error);
-      toast.error('Erro ao carregar configurações');
+      // Não mostrar toast - a barra de conexão já informa
     } finally {
       setLoading(false);
     }
