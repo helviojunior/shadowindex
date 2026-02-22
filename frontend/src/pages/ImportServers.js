@@ -3,11 +3,10 @@ import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Upload, FileCode, Server, Database, Loader2, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Upload, FileCode, Server, Database, Loader2, CheckCircle, AlertCircle, Trash2, FileUp, Search, FileText, CloudUpload } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -27,12 +26,23 @@ const DB_PORTS = {
 
 const SMB_PORT = 445;
 
+// Status steps for upload process
+const UPLOAD_STEPS = {
+  IDLE: 'idle',
+  UPLOADING: 'uploading',
+  PARSING: 'parsing',
+  READY: 'ready'
+};
+
 const ImportServers = () => {
   const [xmlContent, setXmlContent] = useState('');
   const [parsedHosts, setParsedHosts] = useState([]);
   const [selectedHosts, setSelectedHosts] = useState(new Set());
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState(UPLOAD_STEPS.IDLE);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [fileName, setFileName] = useState('');
   const fileInputRef = useRef(null);
 
   const handleFileUpload = (e) => {
@@ -44,12 +54,37 @@ const ImportServers = () => {
       return;
     }
 
+    setFileName(file.name);
+    setUploadStatus(UPLOAD_STEPS.UPLOADING);
+    setUploadProgress(0);
+
     const reader = new FileReader();
+    
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(progress);
+      }
+    };
+    
     reader.onload = (event) => {
       const content = event.target?.result;
       setXmlContent(content);
-      parseNmapXml(content);
+      setUploadStatus(UPLOAD_STEPS.PARSING);
+      setUploadProgress(100);
+      
+      // Small delay to show parsing status
+      setTimeout(() => {
+        parseNmapXml(content);
+      }, 300);
     };
+    
+    reader.onerror = () => {
+      toast.error('Erro ao ler o arquivo');
+      setUploadStatus(UPLOAD_STEPS.IDLE);
+      setUploadProgress(0);
+    };
+    
     reader.readAsText(file);
   };
 
@@ -113,6 +148,7 @@ const ImportServers = () => {
 
       setParsedHosts(hosts);
       setSelectedHosts(new Set(hosts.map(h => h.ip)));
+      setUploadStatus(UPLOAD_STEPS.READY);
       
       if (hosts.length === 0) {
         toast.warning('Nenhum servidor com porta SMB (445) ou banco de dados encontrado');
@@ -122,6 +158,7 @@ const ImportServers = () => {
     } catch (error) {
       console.error('Error parsing XML:', error);
       toast.error('Erro ao processar arquivo XML');
+      setUploadStatus(UPLOAD_STEPS.IDLE);
     }
   };
 
@@ -208,10 +245,28 @@ const ImportServers = () => {
     setParsedHosts([]);
     setSelectedHosts(new Set());
     setImportResults(null);
+    setUploadStatus(UPLOAD_STEPS.IDLE);
+    setUploadProgress(0);
+    setFileName('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
+  const getStatusMessage = () => {
+    switch (uploadStatus) {
+      case UPLOAD_STEPS.UPLOADING:
+        return { icon: <FileUp className="w-4 h-4 animate-bounce" />, text: 'Enviando arquivo...' };
+      case UPLOAD_STEPS.PARSING:
+        return { icon: <Search className="w-4 h-4 animate-pulse" />, text: 'Analisando XML...' };
+      case UPLOAD_STEPS.READY:
+        return { icon: <CheckCircle className="w-4 h-4 text-green-500" />, text: 'Pronto para importar' };
+      default:
+        return null;
+    }
+  };
+
+  const statusInfo = getStatusMessage();
 
   return (
     <div className="space-y-6" data-testid="import-servers-page">
@@ -250,6 +305,18 @@ const ImportServers = () => {
               )}
             </div>
             
+            {/* Upload Status */}
+            {statusInfo && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                {statusInfo.icon}
+                <span className="text-sm font-medium">{statusInfo.text}</span>
+                {fileName && <span className="text-sm text-muted-foreground">({fileName})</span>}
+                {uploadStatus === UPLOAD_STEPS.UPLOADING && (
+                  <Progress value={uploadProgress} className="w-32 h-2" />
+                )}
+              </div>
+            )}
+            
             <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
               <Badge variant="outline" className="gap-1">
                 <Server className="w-3 h-3" />
@@ -280,72 +347,69 @@ const ImportServers = () => {
                   {parsedHosts.length} servidores com portas relevantes • {selectedHosts.size} selecionados
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
+              {/* Action buttons moved to header */}
+              <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={selectAll}>
                   Selecionar Todos
                 </Button>
                 <Button variant="outline" size="sm" onClick={deselectAll}>
                   Desmarcar Todos
                 </Button>
+                <Button 
+                  onClick={handleImport} 
+                  disabled={importing || selectedHosts.size === 0}
+                  data-testid="import-btn"
+                >
+                  {importing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CloudUpload className="w-4 h-4 mr-2" />
+                  )}
+                  Importar {selectedHosts.size} Servidor{selectedHosts.size !== 1 ? 'es' : ''}
+                </Button>
               </div>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Os servidores serão importados com o plugin "Interação Direta" como padrão
+            </p>
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-2">
-                {parsedHosts.map((host) => (
-                  <div
-                    key={host.ip}
-                    className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                      selectedHosts.has(host.ip) ? 'bg-primary/5 border-primary/30' : 'border-border hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={selectedHosts.has(host.ip)}
-                        onCheckedChange={() => toggleHost(host.ip)}
-                        data-testid={`select-host-${host.ip}`}
-                      />
-                      <div>
-                        <div className="font-medium">{host.name}</div>
-                        <div className="text-sm text-muted-foreground font-mono">{host.ip}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {host.hasSMB && (
-                        <Badge variant="default" className="gap-1 bg-blue-600">
-                          <Server className="w-3 h-3" />
-                          SMB
-                        </Badge>
-                      )}
-                      {host.dbTypes.map((db) => (
-                        <Badge key={db} variant="secondary" className="gap-1">
-                          <Database className="w-3 h-3" />
-                          {db}
-                        </Badge>
-                      ))}
+          <CardContent className="p-0">
+            {/* Server list without ScrollArea - uses page scroll */}
+            <div className="divide-y divide-border">
+              {parsedHosts.map((host) => (
+                <div
+                  key={host.ip}
+                  className={`flex items-center justify-between px-6 py-3 transition-colors ${
+                    selectedHosts.has(host.ip) ? 'bg-primary/5' : 'hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={selectedHosts.has(host.ip)}
+                      onCheckedChange={() => toggleHost(host.ip)}
+                      data-testid={`select-host-${host.ip}`}
+                    />
+                    <div>
+                      <div className="font-medium">{host.name}</div>
+                      <div className="text-sm text-muted-foreground font-mono">{host.ip}</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-
-            <div className="mt-4 pt-4 border-t">
-              <Button 
-                onClick={handleImport} 
-                disabled={importing || selectedHosts.size === 0}
-                data-testid="import-btn"
-              >
-                {importing ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4 mr-2" />
-                )}
-                Importar {selectedHosts.size} Servidor{selectedHosts.size !== 1 ? 'es' : ''}
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                Os servidores serão importados com o plugin "Interação Direta" como padrão
-              </p>
+                  <div className="flex items-center gap-2">
+                    {host.hasSMB && (
+                      <Badge variant="default" className="gap-1 bg-blue-600">
+                        <Server className="w-3 h-3" />
+                        SMB
+                      </Badge>
+                    )}
+                    {host.dbTypes.map((db) => (
+                      <Badge key={db} variant="secondary" className="gap-1">
+                        <Database className="w-3 h-3" />
+                        {db}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
