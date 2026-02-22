@@ -141,8 +141,12 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
         
     Returns:
         Configured plugin instance
+        
+    Raises:
+        CredentialNotSetException: If plugin requires credential but none configured
     """
-    from database import SoapApiUrl
+    from database import SoapApiUrl, Credential
+    from .exceptions import CredentialNotSetException
     
     # Get proxy URL
     proxy_url = await get_active_proxy_url(db)
@@ -173,7 +177,51 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
         else:
             raise ValueError("No SOAP API URL configured")
     
-    return PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
+    # Create the plugin instance
+    plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
+    
+    # For direct_interaction plugin, load and set the credential
+    if plugin_type == "direct_interaction":
+        credential_id = plugin_config.get("credential_id")
+        
+        if not credential_id:
+            raise CredentialNotSetException(
+                operation="SMB",
+                plugin_name="Interação Direta",
+                message="Credencial não configurada para este servidor. Configure uma credencial nas configurações do plugin do servidor."
+            )
+        
+        # Load credential from database
+        result = await db.execute(
+            select(Credential).where(Credential.id == credential_id)
+        )
+        credential = result.scalar_one_or_none()
+        
+        if not credential:
+            raise CredentialNotSetException(
+                operation="SMB",
+                plugin_name="Interação Direta",
+                message=f"Credencial ID {credential_id} não encontrada. Configure uma credencial válida."
+            )
+        
+        # Check credential type
+        if credential.credential_type != "user_password":
+            raise CredentialNotSetException(
+                operation="SMB",
+                plugin_name="Interação Direta",
+                message="Apenas credenciais do tipo 'Usuário/Senha' são suportadas para SMB."
+            )
+        
+        # Set credential on plugin
+        plugin.set_credential({
+            "credential_type": credential.credential_type,
+            "domain": credential.domain,
+            "username": credential.username,
+            "password": credential.password,
+            "ntlm_hash": credential.ntlm_hash
+        })
+    
+    return plugin
 
 
 async def get_default_soap_plugin(db: AsyncSession) -> SoapApiPlugin:
