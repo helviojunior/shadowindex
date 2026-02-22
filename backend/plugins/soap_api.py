@@ -281,33 +281,68 @@ class SoapApiPlugin(BasePlugin):
         try:
             result = await self._call_soap(
                 "ListShares",
-                {"ip": server_ip},
+                {"host": server_ip},  # Changed from "ip" to "host"
                 ignore_cache=ignore_cache
             )
             
             shares = []
             
-            # Parse the result - it contains XML with share info
+            # Parse the result - it contains XML with diffgram format
             if result and result.strip():
                 try:
-                    # Try to parse as XML
-                    root = ET.fromstring(f"<root>{result}</root>")
+                    # Try to parse as XML - wrap in root if needed
+                    xml_content = result.strip()
+                    if not xml_content.startswith('<'):
+                        logger.warning("ListShares response is not XML")
+                        return shares
                     
-                    for share_elem in root.findall('.//Table'):
-                        name = share_elem.findtext('shi1_netname', '')
-                        share_type = share_elem.findtext('shi1_type', 'Disk')
-                        remark = share_elem.findtext('shi1_remark', '')
-                        
-                        if name:
-                            shares.append(ShareInfo(
-                                name=name,
-                                share_type=share_type,
-                                remark=remark,
-                                path=f"\\\\{server_ip}\\{name}"
-                            ))
-                except ET.ParseError:
-                    # If not XML, try other formats
-                    logger.warning("Could not parse shares response as XML")
+                    # Parse the XML
+                    root = ET.fromstring(f"<root>{xml_content}</root>")
+                    
+                    # Try diffgram format first (Microsoft DataSet format)
+                    # Look for Result elements in diffgram
+                    namespaces = {
+                        'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1',
+                        'msdata': 'urn:schemas-microsoft-com:xml-msdata'
+                    }
+                    
+                    # Find all Result elements (diffgram format)
+                    result_elements = root.findall('.//Result')
+                    
+                    if result_elements:
+                        for share_elem in result_elements:
+                            # diffgram format: host, name, type, remark
+                            name = share_elem.findtext('name', '')
+                            share_type = share_elem.findtext('type', 'Disk')
+                            remark = share_elem.findtext('remark', '')
+                            host = share_elem.findtext('host', server_ip)
+                            
+                            if name:
+                                shares.append(ShareInfo(
+                                    name=name,
+                                    share_type=share_type,
+                                    remark=remark or '',
+                                    path=f"\\\\{host}\\{name}"
+                                ))
+                    else:
+                        # Fallback: Try legacy Table format
+                        for share_elem in root.findall('.//Table'):
+                            name = share_elem.findtext('shi1_netname', '')
+                            share_type = share_elem.findtext('shi1_type', 'Disk')
+                            remark = share_elem.findtext('shi1_remark', '')
+                            
+                            if name:
+                                shares.append(ShareInfo(
+                                    name=name,
+                                    share_type=share_type,
+                                    remark=remark or '',
+                                    path=f"\\\\{server_ip}\\{name}"
+                                ))
+                    
+                    logger.info(f"Parsed {len(shares)} shares from SOAP response")
+                    
+                except ET.ParseError as e:
+                    logger.warning(f"Could not parse shares response as XML: {e}")
             
             return shares
             
