@@ -67,6 +67,7 @@ function App() {
         </BrowserRouter>
         <Toaster position="top-right" richColors />
       </AppProvider>
+      </WebSocketProvider>
     </div>
   );
 }
