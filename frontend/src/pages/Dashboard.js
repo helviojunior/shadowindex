@@ -55,6 +55,11 @@ const Dashboard = () => {
   const [extensionStats, setExtensionStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scanningAll, setScanningAll] = useState(false);
+  
+  // Estados para monitoramento de jobs
+  const [downloadJobs, setDownloadJobs] = useState([]);
+  const [scanJobs, setScanJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
 
   // WebSocket para atualizações em tempo real
   useStatsEvents((data) => {
@@ -72,6 +77,60 @@ const Dashboard = () => {
       setGitleaksStats(data.gitleaks);
     }
   });
+  
+  // Handlers para eventos de download
+  const handleDownloadProgress = useCallback((data) => {
+    setDownloadJobs(prev => prev.map(job => 
+      job.id === data.job_id 
+        ? { ...job, progress: data.progress, status: 'downloading' }
+        : job
+    ));
+  }, []);
+  
+  const handleDownloadComplete = useCallback((data) => {
+    setDownloadJobs(prev => prev.map(job => 
+      job.id === data.job_id 
+        ? { ...job, status: 'completed', progress: 100 }
+        : job
+    ));
+  }, []);
+  
+  const handleDownloadFailed = useCallback((data) => {
+    setDownloadJobs(prev => prev.map(job => 
+      job.id === data.job_id 
+        ? { ...job, status: 'failed', error_message: data.error }
+        : job
+    ));
+  }, []);
+  
+  const handleDownloadStarted = useCallback((data) => {
+    setDownloadJobs(prev => prev.map(job => 
+      job.id === data.job_id 
+        ? { ...job, status: 'downloading', progress: 0 }
+        : job
+    ));
+  }, []);
+  
+  // Handlers para eventos de scan
+  const handleScanProgress = useCallback((data) => {
+    setScanJobs(prev => prev.map(scan => 
+      scan.id === data.scan_id 
+        ? { ...scan, status: data.status, processed_files: data.processed_files }
+        : scan
+    ));
+  }, []);
+  
+  const handleScanComplete = useCallback((data) => {
+    setScanJobs(prev => prev.map(scan => 
+      scan.id === data.scan_id 
+        ? { ...scan, status: 'completed' }
+        : scan
+    ));
+  }, []);
+  
+  // Registrar eventos do WebSocket
+  useDownloadEvents(handleDownloadProgress, handleDownloadComplete, handleDownloadFailed, handleDownloadStarted);
+  useScanEvents(handleScanProgress, handleScanComplete);
 
   useEffect(() => {
     loadData();
