@@ -588,20 +588,21 @@ const DatabaseConnections = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-plugin-type">Plugin de Conexão</Label>
+                  <Label htmlFor="edit-plugin-instance">Instância de Plugin</Label>
                   <Select
-                    value={editFormData.plugin_type}
-                    onValueChange={(value) => setEditFormData({ ...editFormData, plugin_type: value, plugin_config: {} })}
+                    value={editFormData.plugin_instance_id}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, plugin_instance_id: value })}
                   >
                     <SelectTrigger data-testid="edit-plugin-select">
-                      <SelectValue placeholder="Selecione o plugin..." />
+                      <SelectValue placeholder="Selecione a instância..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(availablePlugins).map(([type, info]) => (
-                        <SelectItem key={type} value={type}>
+                      {pluginInstances.map((instance) => (
+                        <SelectItem key={instance.id} value={instance.id.toString()}>
                           <div className="flex items-center gap-2">
                             <Plug className="w-4 h-4" />
-                            {info.name}
+                            {instance.name}
+                            <span className="text-xs text-muted-foreground">({instance.plugin_type})</span>
                           </div>
                         </SelectItem>
                       ))}
