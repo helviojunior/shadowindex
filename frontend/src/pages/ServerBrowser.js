@@ -4245,9 +4245,14 @@ const ServerBrowser = () => {
           </Button>
           <div>
             <h1 className="text-xl font-semibold">{server.name}</h1>
-            <p className="text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
               <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{server.ip}</code>
-            </p>
+              {server.plugin_instance_name && (
+                <Badge variant="secondary" className="text-xs">
+                  {server.plugin_instance_name}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
         
