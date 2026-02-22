@@ -54,6 +54,16 @@ const scanStatusConfig = {
   failed: { label: 'Falhou', color: 'text-red-500', icon: XCircle },
 };
 
+// Status config para OCR Jobs
+const ocrStatusConfig = {
+  pending: { label: 'Pendente', color: 'text-yellow-500', icon: Clock },
+  running: { label: 'Executando', color: 'text-blue-500', icon: Loader2 },
+  completed: { label: 'Concluído', color: 'text-green-500', icon: CheckCircle },
+  failed: { label: 'Falhou', color: 'text-red-500', icon: XCircle },
+  skipped: { label: 'Ignorado', color: 'text-gray-500', icon: SkipForward },
+  cancelled: { label: 'Cancelado', color: 'text-orange-500', icon: StopCircle },
+};
+
 const Downloads = () => {
   const [downloadJobs, setDownloadJobs] = useState([]);
   const [scanJobs, setScanJobs] = useState([]);
