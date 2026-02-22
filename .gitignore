@@ -102,6 +102,10 @@ backend/data/storage/
 backend/backups/
 /data/backups/
 
+# Deleted server data
+backend/storage_deleted/
+/data/storage_deleted/
+
 # GitLeaks output
 backend/data/gitleaks/
 
