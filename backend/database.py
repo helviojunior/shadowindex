@@ -69,8 +69,9 @@ class DatabaseConnection(Base):
     last_verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     # Plugin configuration
-    plugin_type = Column(String, default="soap_api")  # Type of plugin to use
-    plugin_config = Column(JSON, nullable=True)  # Plugin-specific configuration
+    plugin_instance_id = Column(Integer, ForeignKey("plugin_instances.id"), nullable=True)
+    plugin_type = Column(String, default="soap_api")  # Deprecated - use plugin_instance_id
+    plugin_config = Column(JSON, nullable=True)  # Deprecated - use plugin_instance_id
 
 
 class SqlPreset(Base):
