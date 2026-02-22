@@ -3895,16 +3895,52 @@ const ServerBrowser = () => {
                       )}
                     </div>
                 
-                    {/* Content */}
+                    {/* Content with line numbers */}
                     {beautified ? (
-                      <pre 
-                        className="p-4 bg-zinc-900 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto"
-                        dangerouslySetInnerHTML={{ __html: typeof fileContent === 'object' ? fileContent.content : fileContent }}
-                      />
+                      <div className="bg-zinc-900 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                        <div className="flex">
+                          {/* Line numbers */}
+                          <div className="flex-shrink-0 bg-zinc-800 text-zinc-500 text-xs font-mono py-4 px-2 select-none border-r border-zinc-700 text-right">
+                            {(() => {
+                              const content = typeof fileContent === 'object' ? fileContent.content : fileContent;
+                              const lines = (content || '').split('\n');
+                              return lines.map((_, idx) => (
+                                <div key={idx} className="leading-5 h-5">{idx + 1}</div>
+                              ));
+                            })()}
+                          </div>
+                          {/* Content */}
+                          <pre 
+                            className="flex-1 p-4 text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto"
+                            dangerouslySetInnerHTML={{ __html: typeof fileContent === 'object' ? fileContent.content : fileContent }}
+                          />
+                        </div>
+                      </div>
                     ) : (
-                      <pre className="p-4 bg-muted/50 rounded-lg text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto">
-                        {typeof fileContent === 'object' ? fileContent.content : fileContent}
-                      </pre>
+                      <div className="bg-muted/50 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                        <div className="flex">
+                          {/* Line numbers */}
+                          <div className="flex-shrink-0 bg-muted text-muted-foreground/50 text-xs font-mono py-4 px-2 select-none border-r border-border text-right">
+                            {(() => {
+                              const content = typeof fileContent === 'object' ? fileContent.content : fileContent;
+                              const lines = (content || '').split('\n');
+                              return lines.map((_, idx) => (
+                                <div key={idx} className="leading-5 h-5">{idx + 1}</div>
+                              ));
+                            })()}
+                          </div>
+                          {/* Content */}
+                          <pre className="flex-1 p-4 text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto">
+                            {(() => {
+                              const content = typeof fileContent === 'object' ? fileContent.content : fileContent;
+                              const lines = (content || '').split('\n');
+                              return lines.map((line, idx) => (
+                                <div key={idx} className="leading-5 h-5">{line || ' '}</div>
+                              ));
+                            })()}
+                          </pre>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ) : (
