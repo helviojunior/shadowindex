@@ -1296,10 +1296,24 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
             existing.file_size = file_size
             existing.mimetype = mimetype
             existing.downloaded_at = datetime.now(timezone.utc)
-            if ocr_text:
-                existing.ocr_text = ocr_text
             await db.commit()
             await db.refresh(existing)
+            
+            # Atualizar OCR na versão do arquivo
+            if ocr_text:
+                version_result = await db.execute(
+                    select(FileVersion).where(
+                        FileVersion.server_guid == server.guid,
+                        FileVersion.file_path == item.full_path,
+                        FileVersion.is_current == True
+                    )
+                )
+                current_version = version_result.scalar_one_or_none()
+                if current_version:
+                    current_version.ocr_content = ocr_text
+                    current_version.ocr_processed = True
+                    current_version.ocr_processed_at = datetime.now(timezone.utc)
+                    await db.commit()
             
             return {
                 "success": True,
@@ -1315,11 +1329,27 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
             # Atualizar registro já criado
             downloaded_file.sanitized_path = sanitized_path
             downloaded_file.mimetype = mimetype
-            if ocr_text:
-                downloaded_file.ocr_text = ocr_text
             server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
             await db.commit()
             await db.refresh(downloaded_file)
+            
+            # Criar versão do arquivo com OCR
+            file_version = FileVersion(
+                server_guid=server.guid,
+                share_name=item.share_name,
+                file_path=item.full_path,
+                version_number=1,
+                sha1_hash=sha1_hash,
+                file_size=file_size,
+                mimetype=mimetype,
+                local_path=local_path,
+                is_current=True,
+                ocr_content=ocr_text if ocr_text else None,
+                ocr_processed=ocr_status == "completed",
+                ocr_processed_at=datetime.now(timezone.utc) if ocr_status == "completed" else None
+            )
+            db.add(file_version)
+            await db.commit()
             
             return {
                 "success": True,
