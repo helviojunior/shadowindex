@@ -3900,6 +3900,15 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
     import os
     import mimetypes
     
+    # Tentar importar python-magic, fallback para mimetypes
+    try:
+        import magic
+        has_libmagic = True
+        mime_detector = magic.Magic(mime=True)
+    except (ImportError, Exception):
+        has_libmagic = False
+        mime_detector = None
+    
     # Carregar lista de extensões excluídas
     excluded_result = await db.execute(
         select(AppSettings).where(AppSettings.key == 'auto_ocr_excluded_extensions')
@@ -3930,9 +3939,21 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
             skip_reason = f'Extensão {file_ext} está na lista de exclusão'
             skipped_by_ext += 1
         
-        # Verificar mimetype text/* (hard-coded) usando mimetypes
-        if not skip_reason and job.local_path:
-            file_mimetype, _ = mimetypes.guess_type(job.local_path)
+        # Verificar mimetype text/* (hard-coded)
+        if not skip_reason and job.local_path and os.path.exists(job.local_path):
+            file_mimetype = None
+            
+            # Tentar com libmagic primeiro
+            if has_libmagic and mime_detector:
+                try:
+                    file_mimetype = mime_detector.from_file(job.local_path)
+                except Exception:
+                    pass
+            
+            # Fallback para mimetypes
+            if not file_mimetype:
+                file_mimetype, _ = mimetypes.guess_type(job.local_path)
+            
             if file_mimetype and file_mimetype.startswith('text/'):
                 skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
                 skipped_by_mime += 1
@@ -3950,7 +3971,8 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
         "skipped_by_extension": skipped_by_ext,
         "skipped_by_mimetype": skipped_by_mime,
         "message": f"{total_skipped} jobs marcados como skipped",
-        "excluded_extensions": excluded_extensions
+        "excluded_extensions": excluded_extensions,
+        "using_libmagic": has_libmagic
     }
 
 
