@@ -420,87 +420,93 @@ async def list_shares(
     db: AsyncSession = Depends(get_db)
 ):
     """Lista todos os compartilhamentos do servidor"""
-    from soap_service import get_default_soap_service
+    from plugins.factory import get_plugin_for_server
     import xml.etree.ElementTree as ET
     
     server = await get_server_or_404(db, server_id)
     
     if refresh:
-        # Buscar shares via SOAP
         try:
-            soap_service = await get_default_soap_service(db)
-            params = {"s1": server.ip}
-            result_str = await soap_service.call_soap_operation(db, "Shares", params, ignore_cache=True)
+            # Obter o plugin correto para o servidor
+            plugin = await get_plugin_for_server(db, server)
             
-            if result_str:
+            # Chamar list_shares do plugin
+            shares_result = await plugin.list_shares(server.ip)
+            
+            if shares_result.success and shares_result.data:
                 shares_data = []
                 
-                # Tentar parsear como XML (formato diffgram)
-                try:
-                    # O result_str pode ser o XML completo ou apenas o conteúdo interno
-                    # Adicionar root tag se necessário
-                    xml_content = result_str
-                    if not xml_content.strip().startswith('<'):
-                        # Não é XML, tentar formato linha por linha
-                        raise ValueError("Not XML format")
-                    
-                    # Parsear XML
-                    root = ET.fromstring(xml_content)
-                    
-                    # Procurar elementos Result dentro do diffgram
-                    # Os elementos Result estão dentro de DocumentElement sem namespace
-                    
-                    # Procurar todos os elementos Result (podem estar em DocumentElement ou diretamente)
-                    results = root.findall('.//Result') or root.findall('.//{urn:schemas-microsoft-com:xml-diffgram-v1}Result')
-                    
-                    if not results:
-                        # Tentar encontrar dentro de DocumentElement
-                        doc_elem = root.find('.//DocumentElement')
-                        if doc_elem is not None:
-                            results = doc_elem.findall('Result')
-                    
-                    for result in results:
-                        # host = result.findtext('host', '').strip()  # Não usado, já sabemos o IP do servidor
-                        name = result.findtext('name', '').strip()
-                        share_type = result.findtext('type', 'Disk').strip()
-                        remark = result.findtext('remark', '').strip()
-                        
-                        if not name:
+                # Processar resultado baseado no formato retornado pelo plugin
+                if isinstance(shares_result.data, list):
+                    # Plugin já retornou lista de shares
+                    for share in shares_result.data:
+                        share_name = share.get('name', share.get('share_name', ''))
+                        if not share_name:
                             continue
                         
                         # Ignorar shares especiais (exceto C$, D$, E$)
-                        if name.endswith('$') and name not in ['C$', 'D$', 'E$']:
+                        if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
                             continue
                         
                         shares_data.append({
-                            'share_name': name,
-                            'share_type': share_type,
-                            'remark': remark
+                            'share_name': share_name,
+                            'share_type': share.get('type', share.get('share_type', 'Disk')),
+                            'remark': share.get('remark', share.get('comment', ''))
                         })
+                elif isinstance(shares_result.data, str):
+                    # Plugin retornou string (XML ou texto) - processar como antes
+                    result_str = shares_result.data
                     
-                    logger.info(f"Parsed {len(shares_data)} shares from XML for server {server.ip}")
-                    
-                except (ET.ParseError, ValueError) as parse_error:
-                    logger.debug(f"XML parsing failed, trying line format: {parse_error}")
-                    # Fallback: tentar formato linha por linha (nome|tipo|remark)
-                    for line in result_str.strip().split('\n'):
-                        if not line.strip():
-                            continue
-                        parts = line.split('|')
-                        if len(parts) >= 2:
-                            share_name = parts[0].strip()
-                            share_type = parts[1].strip() if len(parts) > 1 else 'Disk'
-                            remark = parts[2].strip() if len(parts) > 2 else ''
+                    # Tentar parsear como XML (formato diffgram)
+                    try:
+                        xml_content = result_str
+                        if not xml_content.strip().startswith('<'):
+                            raise ValueError("Not XML format")
+                        
+                        root = ET.fromstring(xml_content)
+                        results = root.findall('.//Result') or root.findall('.//{urn:schemas-microsoft-com:xml-diffgram-v1}Result')
+                        
+                        if not results:
+                            doc_elem = root.find('.//DocumentElement')
+                            if doc_elem is not None:
+                                results = doc_elem.findall('Result')
+                        
+                        for result in results:
+                            name = result.findtext('name', '').strip()
+                            share_type = result.findtext('type', 'Disk').strip()
+                            remark = result.findtext('remark', '').strip()
                             
-                            # Ignorar shares especiais
-                            if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
+                            if not name:
                                 continue
-                                
+                            
+                            if name.endswith('$') and name not in ['C$', 'D$', 'E$']:
+                                continue
+                            
                             shares_data.append({
-                                'share_name': share_name,
+                                'share_name': name,
                                 'share_type': share_type,
                                 'remark': remark
                             })
+                        
+                    except (ET.ParseError, ValueError) as parse_error:
+                        logger.debug(f"XML parsing failed, trying line format: {parse_error}")
+                        for line in result_str.strip().split('\n'):
+                            if not line.strip():
+                                continue
+                            parts = line.split('|')
+                            if len(parts) >= 2:
+                                share_name = parts[0].strip()
+                                share_type = parts[1].strip() if len(parts) > 1 else 'Disk'
+                                remark = parts[2].strip() if len(parts) > 2 else ''
+                                
+                                if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
+                                    continue
+                                    
+                                shares_data.append({
+                                    'share_name': share_name,
+                                    'share_type': share_type,
+                                    'remark': remark
+                                })
                 
                 # Atualizar banco
                 for share_data in shares_data:
@@ -526,7 +532,10 @@ async def list_shares(
                         db.add(share)
                 
                 await db.commit()
-                logger.info(f"Updated {len(shares_data)} shares in database for server {server.ip}")
+                logger.info(f"Updated {len(shares_data)} shares in database for server {server.ip} using plugin {server.plugin_type}")
+            
+            elif not shares_result.success:
+                logger.error(f"Error listing shares: {shares_result.error}")
                 
         except Exception as e:
             logger.error(f"Error refreshing shares: {e}")
