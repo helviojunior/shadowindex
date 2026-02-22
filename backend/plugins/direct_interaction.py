@@ -810,12 +810,480 @@ class DirectInteractionPlugin(BasePlugin):
         ignore_cache: bool = False
     ) -> SqlResult:
         """
-        Execute a SQL query on a database.
+        Execute a SQL query on a database with SOCKS proxy support.
         
-        NOT IMPLEMENTED - Use SOAP API Plugin or direct database connection.
+        Args:
+            connection_string: Database connection string or JSON config:
+                - For simple: "db_type://user:pass@host:port/database"
+                - For JSON: '{"db_type": "mssql", "host": "...", "port": 1433, "database": "...", "user": "...", "password": "..."}'
+            query: SQL query to execute
+            timeout: Query timeout in seconds
+            ignore_cache: Skip cache lookup if True
+            
+        Returns:
+            SqlResult with columns and rows
+            
+        Supported database types:
+        - mssql: Microsoft SQL Server (pymssql)
+        - mysql/mariadb: MySQL/MariaDB (pymysql)
+        - postgres: PostgreSQL (psycopg2)
+        - oracle: Oracle Database (oracledb)
+        - sqlite: SQLite (sqlite3)
+        - mongodb: MongoDB (pymongo) - for find queries only
         """
-        raise NotImplementedException(
-            "sql_request",
-            "Direct Interaction Plugin",
-            "Execução SQL direta não implementada. Use SOAP API Plugin."
-        )
+        import json
+        
+        # Parse connection config
+        config = self._parse_connection_config(connection_string)
+        db_type = config.get("db_type", "").lower()
+        
+        if not db_type:
+            raise PluginException("Tipo de banco de dados não especificado")
+        
+        # Check cache
+        cache_params = {
+            "db_type": db_type,
+            "host": config.get("host"),
+            "database": config.get("database"),
+            "query": query
+        }
+        
+        if not ignore_cache:
+            cached = await self.cache.get("direct_sql", cache_params)
+            if cached:
+                logger.debug(f"SQL cache hit for query on {db_type}")
+                return SqlResult(**cached)
+        
+        loop = asyncio.get_event_loop()
+        
+        # Setup SOCKS proxy if configured
+        proxy_config = None
+        if self.proxy_url and self.proxy_url.startswith("socks"):
+            proxy_config = self._parse_proxy_url(self.proxy_url)
+        
+        # Execute query based on database type
+        try:
+            if db_type == "mssql":
+                result = await loop.run_in_executor(
+                    None, 
+                    lambda: self._execute_mssql(config, query, timeout, proxy_config)
+                )
+            elif db_type in ("mysql", "mariadb"):
+                result = await loop.run_in_executor(
+                    None, 
+                    lambda: self._execute_mysql(config, query, timeout, proxy_config)
+                )
+            elif db_type == "postgres":
+                result = await loop.run_in_executor(
+                    None, 
+                    lambda: self._execute_postgres(config, query, timeout, proxy_config)
+                )
+            elif db_type == "oracle":
+                result = await loop.run_in_executor(
+                    None, 
+                    lambda: self._execute_oracle(config, query, timeout, proxy_config)
+                )
+            elif db_type == "sqlite":
+                result = await loop.run_in_executor(
+                    None, 
+                    lambda: self._execute_sqlite(config, query, timeout)
+                )
+            elif db_type == "mongodb":
+                result = await loop.run_in_executor(
+                    None, 
+                    lambda: self._execute_mongodb(config, query, timeout, proxy_config)
+                )
+            else:
+                raise PluginException(f"Tipo de banco de dados não suportado: {db_type}")
+            
+            # Cache result
+            await self.cache.set("direct_sql", cache_params, result.__dict__, ttl_hours=1)
+            
+            logger.info(f"SQL query executed on {db_type}: {len(result.rows)} rows returned")
+            return result
+            
+        except Exception as e:
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f"SQL execution failed on {db_type}: {e}\n{error_traceback}")
+            raise PluginException(f"Erro ao executar SQL: {str(e)}")
+    
+    def _parse_connection_config(self, connection_string: str) -> Dict[str, Any]:
+        """Parse connection string or JSON config into a dict."""
+        import json
+        import re
+        
+        # Try JSON first
+        try:
+            if connection_string.strip().startswith("{"):
+                return json.loads(connection_string)
+        except json.JSONDecodeError:
+            pass
+        
+        # Parse URL format: db_type://user:pass@host:port/database
+        pattern = r'^(\w+)://(?:([^:]+):([^@]+)@)?([^:/]+)(?::(\d+))?(?:/(.+))?$'
+        match = re.match(pattern, connection_string)
+        
+        if match:
+            return {
+                "db_type": match.group(1),
+                "user": match.group(2) or "",
+                "password": match.group(3) or "",
+                "host": match.group(4),
+                "port": int(match.group(5)) if match.group(5) else None,
+                "database": match.group(6) or ""
+            }
+        
+        raise PluginException(f"Formato de connection string inválido: {connection_string}")
+    
+    def _parse_proxy_url(self, proxy_url: str) -> Dict[str, Any]:
+        """Parse SOCKS proxy URL into config dict."""
+        config = {
+            "type": "socks5",
+            "host": None,
+            "port": 1080,
+            "user": None,
+            "password": None
+        }
+        
+        url = proxy_url
+        if url.startswith("socks5://"):
+            config["type"] = "socks5"
+            url = url[9:]
+        elif url.startswith("socks4://"):
+            config["type"] = "socks4"
+            url = url[9:]
+        
+        if "@" in url:
+            auth, host_part = url.rsplit("@", 1)
+            if ":" in auth:
+                config["user"], config["password"] = auth.split(":", 1)
+        else:
+            host_part = url
+        
+        if ":" in host_part:
+            config["host"], port_str = host_part.rsplit(":", 1)
+            config["port"] = int(port_str)
+        else:
+            config["host"] = host_part
+        
+        return config
+    
+    def _setup_socks_proxy(self, proxy_config: Dict[str, Any]):
+        """Setup SOCKS proxy for socket connections."""
+        if not proxy_config:
+            return
+        
+        try:
+            import socks
+            import socket
+            
+            proxy_type = socks.SOCKS5 if proxy_config["type"] == "socks5" else socks.SOCKS4
+            
+            socks.set_default_proxy(
+                proxy_type,
+                proxy_config["host"],
+                proxy_config["port"],
+                rdns=True,
+                username=proxy_config.get("user"),
+                password=proxy_config.get("password")
+            )
+            socket.socket = socks.socksocket
+            logger.info(f"SOCKS proxy configured: {proxy_config['host']}:{proxy_config['port']}")
+        except ImportError:
+            logger.warning("PySocks not installed, proxy not configured")
+    
+    def _reset_socket(self):
+        """Reset socket to default after proxy use."""
+        try:
+            import socks
+            import socket
+            socks.set_default_proxy()
+            socket.socket = socks.socksocket.__bases__[0]
+        except Exception:
+            pass
+    
+    def _execute_mssql(self, config: Dict, query: str, timeout: int, proxy_config: Dict = None) -> SqlResult:
+        """Execute SQL on Microsoft SQL Server using pymssql."""
+        try:
+            import pymssql
+        except ImportError:
+            raise PluginException("pymssql não está instalado. Execute: pip install pymssql")
+        
+        try:
+            if proxy_config:
+                self._setup_socks_proxy(proxy_config)
+            
+            conn = pymssql.connect(
+                server=config.get("host"),
+                port=config.get("port", 1433),
+                user=config.get("user"),
+                password=config.get("password"),
+                database=config.get("database"),
+                timeout=timeout,
+                login_timeout=timeout
+            )
+            
+            cursor = conn.cursor()
+            cursor.execute(query)
+            
+            # Get column names
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            
+            # Get rows
+            rows = []
+            for row in cursor.fetchall():
+                rows.append([self._serialize_value(v) for v in row])
+            
+            cursor.close()
+            conn.close()
+            
+            return SqlResult(columns=columns, rows=rows, row_count=len(rows))
+            
+        finally:
+            if proxy_config:
+                self._reset_socket()
+    
+    def _execute_mysql(self, config: Dict, query: str, timeout: int, proxy_config: Dict = None) -> SqlResult:
+        """Execute SQL on MySQL/MariaDB using pymysql."""
+        try:
+            import pymysql
+        except ImportError:
+            raise PluginException("pymysql não está instalado. Execute: pip install pymysql")
+        
+        try:
+            if proxy_config:
+                self._setup_socks_proxy(proxy_config)
+            
+            conn = pymysql.connect(
+                host=config.get("host"),
+                port=config.get("port", 3306),
+                user=config.get("user"),
+                password=config.get("password"),
+                database=config.get("database"),
+                connect_timeout=timeout,
+                read_timeout=timeout
+            )
+            
+            cursor = conn.cursor()
+            cursor.execute(query)
+            
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            rows = []
+            for row in cursor.fetchall():
+                rows.append([self._serialize_value(v) for v in row])
+            
+            cursor.close()
+            conn.close()
+            
+            return SqlResult(columns=columns, rows=rows, row_count=len(rows))
+            
+        finally:
+            if proxy_config:
+                self._reset_socket()
+    
+    def _execute_postgres(self, config: Dict, query: str, timeout: int, proxy_config: Dict = None) -> SqlResult:
+        """Execute SQL on PostgreSQL using psycopg2."""
+        try:
+            import psycopg2
+        except ImportError:
+            raise PluginException("psycopg2 não está instalado. Execute: pip install psycopg2-binary")
+        
+        try:
+            if proxy_config:
+                self._setup_socks_proxy(proxy_config)
+            
+            conn = psycopg2.connect(
+                host=config.get("host"),
+                port=config.get("port", 5432),
+                user=config.get("user"),
+                password=config.get("password"),
+                database=config.get("database"),
+                connect_timeout=timeout
+            )
+            
+            cursor = conn.cursor()
+            cursor.execute(query)
+            
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            rows = []
+            for row in cursor.fetchall():
+                rows.append([self._serialize_value(v) for v in row])
+            
+            cursor.close()
+            conn.close()
+            
+            return SqlResult(columns=columns, rows=rows, row_count=len(rows))
+            
+        finally:
+            if proxy_config:
+                self._reset_socket()
+    
+    def _execute_oracle(self, config: Dict, query: str, timeout: int, proxy_config: Dict = None) -> SqlResult:
+        """Execute SQL on Oracle using oracledb."""
+        try:
+            import oracledb
+        except ImportError:
+            try:
+                import cx_Oracle as oracledb
+            except ImportError:
+                raise PluginException("oracledb não está instalado. Execute: pip install oracledb")
+        
+        try:
+            if proxy_config:
+                self._setup_socks_proxy(proxy_config)
+            
+            # Build DSN
+            host = config.get("host")
+            port = config.get("port", 1521)
+            service = config.get("database") or config.get("service_name")
+            
+            dsn = f"{host}:{port}/{service}"
+            
+            conn = oracledb.connect(
+                user=config.get("user"),
+                password=config.get("password"),
+                dsn=dsn
+            )
+            
+            cursor = conn.cursor()
+            cursor.execute(query)
+            
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            rows = []
+            for row in cursor.fetchall():
+                rows.append([self._serialize_value(v) for v in row])
+            
+            cursor.close()
+            conn.close()
+            
+            return SqlResult(columns=columns, rows=rows, row_count=len(rows))
+            
+        finally:
+            if proxy_config:
+                self._reset_socket()
+    
+    def _execute_sqlite(self, config: Dict, query: str, timeout: int) -> SqlResult:
+        """Execute SQL on SQLite."""
+        import sqlite3
+        
+        db_path = config.get("database") or config.get("path") or ":memory:"
+        
+        conn = sqlite3.connect(db_path, timeout=timeout)
+        cursor = conn.cursor()
+        cursor.execute(query)
+        
+        columns = [desc[0] for desc in cursor.description] if cursor.description else []
+        rows = []
+        for row in cursor.fetchall():
+            rows.append([self._serialize_value(v) for v in row])
+        
+        cursor.close()
+        conn.close()
+        
+        return SqlResult(columns=columns, rows=rows, row_count=len(rows))
+    
+    def _execute_mongodb(self, config: Dict, query: str, timeout: int, proxy_config: Dict = None) -> SqlResult:
+        """Execute query on MongoDB using pymongo."""
+        try:
+            from pymongo import MongoClient
+        except ImportError:
+            raise PluginException("pymongo não está instalado. Execute: pip install pymongo")
+        
+        import json
+        
+        try:
+            if proxy_config:
+                self._setup_socks_proxy(proxy_config)
+            
+            # Build connection URI
+            host = config.get("host", "localhost")
+            port = config.get("port", 27017)
+            user = config.get("user")
+            password = config.get("password")
+            database = config.get("database", "test")
+            
+            if user and password:
+                uri = f"mongodb://{user}:{password}@{host}:{port}/{database}"
+            else:
+                uri = f"mongodb://{host}:{port}/{database}"
+            
+            client = MongoClient(uri, serverSelectionTimeoutMS=timeout * 1000)
+            db = client[database]
+            
+            # Parse query - expects JSON format: {"collection": "...", "operation": "find", "filter": {...}}
+            try:
+                query_config = json.loads(query)
+            except json.JSONDecodeError:
+                raise PluginException("Query MongoDB deve ser JSON: {\"collection\": \"...\", \"operation\": \"find\", \"filter\": {}}")
+            
+            collection_name = query_config.get("collection")
+            operation = query_config.get("operation", "find")
+            filter_doc = query_config.get("filter", {})
+            projection = query_config.get("projection")
+            limit = query_config.get("limit", 100)
+            
+            if not collection_name:
+                raise PluginException("Nome da collection não especificado")
+            
+            collection = db[collection_name]
+            
+            if operation == "find":
+                cursor = collection.find(filter_doc, projection).limit(limit)
+                docs = list(cursor)
+                
+                if docs:
+                    columns = list(docs[0].keys())
+                    rows = []
+                    for doc in docs:
+                        rows.append([self._serialize_value(doc.get(col)) for col in columns])
+                else:
+                    columns = []
+                    rows = []
+                
+            elif operation == "count":
+                count = collection.count_documents(filter_doc)
+                columns = ["count"]
+                rows = [[count]]
+                
+            elif operation == "aggregate":
+                pipeline = query_config.get("pipeline", [])
+                cursor = collection.aggregate(pipeline)
+                docs = list(cursor)
+                
+                if docs:
+                    columns = list(docs[0].keys())
+                    rows = []
+                    for doc in docs:
+                        rows.append([self._serialize_value(doc.get(col)) for col in columns])
+                else:
+                    columns = []
+                    rows = []
+            else:
+                raise PluginException(f"Operação MongoDB não suportada: {operation}")
+            
+            client.close()
+            
+            return SqlResult(columns=columns, rows=rows, row_count=len(rows))
+            
+        finally:
+            if proxy_config:
+                self._reset_socket()
+    
+    def _serialize_value(self, value) -> Any:
+        """Serialize a database value to JSON-safe format."""
+        if value is None:
+            return None
+        if isinstance(value, (int, float, str, bool)):
+            return value
+        if isinstance(value, bytes):
+            try:
+                return value.decode('utf-8')
+            except UnicodeDecodeError:
+                return value.hex()
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if hasattr(value, '__dict__'):
+            return str(value)
+        # ObjectId, Decimal, etc.
+        return str(value)
