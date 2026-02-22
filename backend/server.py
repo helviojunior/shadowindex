@@ -4062,6 +4062,7 @@ class ScanDirectoryRequest(BaseModel):
     max_depth: Optional[int] = 5
     max_file_size_bytes: Optional[int] = None
     apply_filters: bool = True  # Se False, ignora filtros de tamanho e extensão
+    critical_only: bool = False  # Se True, busca apenas arquivos críticos
 
 
 @api_router.post("/downloads/scan")
