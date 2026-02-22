@@ -337,6 +337,18 @@ class GitleaksService:
     async def start_scan(self, target_path: str, server_id: Optional[int] = None) -> GitleaksJob:
         """Inicia um scan do GitLeaks em background"""
         
+        # Se um server_id foi fornecido, verificar se o servidor existe no banco
+        if server_id is not None:
+            from database import async_session_maker, Server
+            from sqlalchemy import select
+            
+            async with async_session_maker() as db:
+                result = await db.execute(select(Server).where(Server.id == server_id))
+                server = result.scalar_one_or_none()
+                
+                if not server:
+                    raise ValueError(f"Servidor {server_id} não encontrado no banco de dados")
+        
         # Verificar se o caminho existe
         if not os.path.exists(target_path):
             raise FileNotFoundError(f"Caminho não encontrado: {target_path}")
