@@ -197,10 +197,13 @@ class DownloadedFile(Base):
     __tablename__ = "downloaded_files"
     
     id = Column(Integer, primary_key=True, index=True)
+    server_id = Column(Integer, ForeignKey("servers.id"), nullable=True, index=True)
     server_guid = Column(String, nullable=False, index=True)
     share_name = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
+    file_name = Column(String, nullable=True)  # Nome do arquivo
     sanitized_path = Column(String, nullable=False)
+    local_path = Column(String, nullable=True)  # Caminho local completo do arquivo
     file_size = Column(Integer, nullable=True)
     sha1_hash = Column(String(40), nullable=True)  # SHA1 hash do arquivo
     mimetype = Column(String, nullable=True)  # MIME type do arquivo (calculado via libmagic)
