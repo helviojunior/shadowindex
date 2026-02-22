@@ -251,6 +251,73 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
     return plugin
 
 
+async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> BasePlugin:
+    """
+    Get a plugin configured from a specific plugin instance.
+    
+    Args:
+        db: Database session
+        plugin_instance_id: ID of the plugin instance to load
+        
+    Returns:
+        Configured plugin instance
+        
+    Raises:
+        ValueError: If plugin instance not found or not properly configured
+    """
+    from database import PluginInstance, Credential
+    from .exceptions import CredentialNotSetException
+    
+    # Load plugin instance from database
+    result = await db.execute(
+        select(PluginInstance).where(PluginInstance.id == plugin_instance_id)
+    )
+    instance = result.scalar_one_or_none()
+    
+    if not instance:
+        raise ValueError(f"Instância de plugin {plugin_instance_id} não encontrada")
+    
+    if not instance.is_active:
+        raise ValueError(f"Instância de plugin '{instance.name}' está desativada")
+    
+    plugin_type = instance.plugin_type
+    plugin_config = instance.config or {}
+    
+    # Get proxy URL
+    proxy_url = await get_active_proxy_url(db)
+    
+    # Validate SOAP URL for SOAP plugins
+    if plugin_type == "soap_api" and "soap_url" not in plugin_config:
+        raise ValueError(
+            f"URL do SOAP não configurada na instância '{instance.name}'. "
+            "Edite a instância e configure a URL do WebService."
+        )
+    
+    # Create the plugin instance
+    plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
+    
+    # For direct_interaction plugin, load and set the credential
+    if plugin_type == "direct_interaction":
+        credential_id = plugin_config.get("credential_id")
+        
+        if credential_id:
+            cred_result = await db.execute(
+                select(Credential).where(Credential.id == credential_id)
+            )
+            credential = cred_result.scalar_one_or_none()
+            
+            if credential:
+                plugin.set_credential({
+                    "id": credential.id,
+                    "username": credential.username,
+                    "password": credential.get_password() if hasattr(credential, 'get_password') else credential.password,
+                    "domain": credential.domain,
+                    "ntlm_hash": credential.ntlm_hash if hasattr(credential, 'ntlm_hash') else None
+                })
+    
+    return plugin
+
+
 async def get_default_soap_plugin(db: AsyncSession) -> SoapApiPlugin:
     """
     Get the default SOAP plugin (for backwards compatibility).
