@@ -122,6 +122,11 @@ const ServerBrowser = () => {
   const [fileInQueue, setFileInQueue] = useState(null); // {inQueue: bool, status: 'pending'|'downloading'}
   const processingClickRef = useRef(false); // Ref para evitar cliques duplos na tree
   
+  // Estados para visualização de PDF
+  const [pdfNumPages, setPdfNumPages] = useState(null);
+  const [pdfPageNumber, setPdfPageNumber] = useState(1);
+  const [pdfScale, setPdfScale] = useState(1.0);
+  
   // Estados para OCR
   const [ocrData, setOcrData] = useState(null); // {ocr_processed, ocr_content, ocr_metadata, ocr_error}
   const [ocrLoading, setOcrLoading] = useState(false);
