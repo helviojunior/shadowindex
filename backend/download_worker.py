@@ -233,24 +233,33 @@ class DownloadWorker:
                 job.error_message = f"Credencial não configurada: {e.message}"
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
+                # Emitir evento WebSocket de falha
+                ws_manager = get_websocket_manager()
+                await ws_manager.emit_download_failed(job.id, job.file_path, job.error_message)
                 raise
             except AccessDeniedException:
                 job.status = 'failed'
                 job.error_message = "Acesso negado"
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
+                ws_manager = get_websocket_manager()
+                await ws_manager.emit_download_failed(job.id, job.file_path, job.error_message)
                 raise
             except ItemNotFoundException:
                 job.status = 'failed'
                 job.error_message = "Arquivo não encontrado"
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
+                ws_manager = get_websocket_manager()
+                await ws_manager.emit_download_failed(job.id, job.file_path, job.error_message)
                 raise
             except Exception as e:
                 job.status = 'failed'
                 job.error_message = str(e)
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
+                ws_manager = get_websocket_manager()
+                await ws_manager.emit_download_failed(job.id, job.file_path, str(e))
                 raise
     
     async def _download_direct_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
