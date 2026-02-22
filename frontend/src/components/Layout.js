@@ -23,7 +23,10 @@ import {
   Wrench,
   FileCode,
   Network,
-  Plug
+  Plug,
+  AlertTriangle,
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -44,6 +47,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
+import { useConnectionStatus } from '@/contexts/ConnectionStatusContext';
 
 // Menu structure with multi-level support
 const menuStructure = [
