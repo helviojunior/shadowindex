@@ -259,7 +259,7 @@ class DirectoryScanner:
         
         # Obter plugin usando a instância configurada no servidor
         try:
-            plugin = await get_plugin_for_server(db, server.id)
+            plugin = await get_plugin_for_server(db, server)
             if not plugin:
                 print(f"=== SCANNER: Could not get plugin for server {server.name} ===", flush=True)
                 return
