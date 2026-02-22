@@ -838,7 +838,7 @@ const Leaks = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeleteFinding(finding.Fingerprint)}
+                                onClick={() => confirmDeleteFinding(finding.Fingerprint)}
                                 title="Remover finding"
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
