@@ -66,6 +66,7 @@ function App() {
                     <Route path="/soap-apis" element={<SoapApis />} />
                     <Route path="/soap-operations" element={<SoapOperations />} />
                     <Route path="/settings" element={<GeneralSettings />} />
+                    <Route path="/settings/critical-search" element={<CriticalSearchSettings />} />
                     <Route path="/plugins/soap" element={<PluginSoapConfig />} />
                     <Route path="/plugins/direct" element={<PluginDirectConfig />} />
                     <Route path="/beautify-test" element={<BeautifyTest />} />
