@@ -2397,6 +2397,14 @@ const ServerBrowser = () => {
         const fileId = response.data.file_id;
         const filename = selectedItem.name;
         
+        console.log('DEBUG after download:', {
+          filename,
+          fileId,
+          isPdf: isPdfFile(filename),
+          isImage: isImageFile(filename),
+          isCert: isCertificateFile(filename)
+        });
+        
         setTimeout(async () => {
           try {
             setLoadingContent(true);
