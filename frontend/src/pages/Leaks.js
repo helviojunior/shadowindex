@@ -590,12 +590,20 @@ const Leaks = () => {
                       // Dados do banco de dados
                       const serverName = finding.server_name || '-';
                       const serverIp = finding.server_ip || '';
-                      const fileName = finding.file_name || finding.original_file?.split('/').pop() || 'Arquivo';
-                      const serverPath = finding.server_path || finding.original_file || finding.File;
+                      
+                      // Extrair nome do arquivo e diretório do path
+                      const fullPath = finding.server_path || finding.original_file || finding.File || '';
+                      // Separar por \ ou / para pegar o nome do arquivo
+                      const pathParts = fullPath.replace(/\//g, '\\').split('\\');
+                      const extractedFileName = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Arquivo';
+                      // Diretório é tudo exceto o último componente
+                      const directoryPath = pathParts.length > 1 ? pathParts.slice(0, -1).join('\\') : '';
+                      
+                      // Usar o nome do arquivo do banco ou extraído do path
+                      const fileName = finding.file_name || extractedFileName || 'Arquivo';
                       
                       // Versão do arquivo (V1, V2, etc.)
                       const fileVersion = finding.extracted_version ? `V${finding.extracted_version}` : '';
-                      const fileNameWithVersion = fileVersion ? `${fileName} (${fileVersion})` : fileName;
                       
                       return (
                         <TableRow key={`${file.file}-${fIndex}`} className="hover:bg-muted/30">
@@ -625,11 +633,14 @@ const Leaks = () => {
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <p className="font-medium text-sm text-cyan-400 truncate max-w-[280px]" title={fileNameWithVersion}>
-                                  {fileNameWithVersion}
+                                <p className="font-medium text-sm text-cyan-400 truncate max-w-[280px]" title={fileName}>
+                                  {fileName}
+                                  {fileVersion && (
+                                    <span className="text-xs text-muted-foreground ml-1">({fileVersion})</span>
+                                  )}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate max-w-[280px]" title={serverPath}>
-                                  {serverPath}
+                                <p className="text-xs text-muted-foreground truncate max-w-[280px]" title={directoryPath}>
+                                  {directoryPath || fullPath}
                                 </p>
                               </div>
                             </div>
