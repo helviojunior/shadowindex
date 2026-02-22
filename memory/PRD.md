@@ -4,10 +4,11 @@
 Build a web dashboard to manage credentials, database connections, proxy servers, and SOAP API URLs. The application integrates with an external SOAP web service for various operations (Resolve, Shares, Exec, etc.), implements a 24-hour caching mechanism for SOAP responses, and supports an offline mode. Includes a server management feature with an interactive file browser that dynamically loads data from the SOAP API.
 
 ## Tech Stack
-- **Frontend:** React, Tailwind CSS, Shadcn/UI
+- **Frontend:** React, Tailwind CSS, Shadcn/UI, react-pdf
 - **Backend:** FastAPI, SQLAlchemy
 - **Database:** SQLite with Alembic migrations
 - **Real-time:** WebSocket para atualizações em tempo real
+- **DB Drivers:** pymssql, pymysql, psycopg2, oracledb, pymongo
 
 ## Core Requirements
 - Web panel with dark mode layout and collapsible left sidebar
@@ -28,6 +29,30 @@ Portuguese (pt-BR)
 ---
 
 ## Completed Features
+
+### 2026-02-22 (Session 40 - SQL Execution & Bug Fixes)
+- [x] **Execute SQL no Plugin de Interação Direta:**
+  - Implementado suporte completo a múltiplos bancos de dados
+  - MSSQL (pymssql), MySQL/MariaDB (pymysql), PostgreSQL (psycopg2)
+  - Oracle (oracledb), SQLite (sqlite3), MongoDB (pymongo)
+  - Suporte a proxy SOCKS para todas as conexões
+  - Connection string em formato URL ou JSON
+- [x] **Correção de visualização de PDF:**
+  - Substituído iframe por react-pdf para compatibilidade com Chrome
+  - Adicionados controles de navegação de páginas
+  - Adicionados controles de zoom (50% a 200%)
+- [x] **Correção da aba Objetos no Share:**
+  - Corrigido problema com `share_name` vs `shareName` que impedia exibição dos itens
+- [x] **Edição do nome do servidor:**
+  - Adicionado botão de edição ao lado do nome do servidor
+  - Permite edição inline com Enter para salvar e Escape para cancelar
+- [x] **Atualização do .gitignore:**
+  - Adicionados paths `backend/storage_deleted/` e `/data/storage_deleted/`
+- [x] **Configuração de Critical Search:**
+  - Adicionados: `id_rsa`, `credentials` em nomes exatos
+  - Adicionados: `.ppk`, `.kdbx`, `.psafe`, `.psafe3` em extensões
+  - Adicionados: `cofre`, `safe` em palavras-chave
+  - Adicionado: `.txt` em extensões de log
 
 ### 2026-02-22 (Session 39 - Bug Fixes & Critical Search)
 - [x] **Correção da rota DELETE /api/servers/{id}:**
