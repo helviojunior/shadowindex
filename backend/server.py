@@ -27,7 +27,7 @@ from database import (
     init_db, get_db, get_db_readonly,
     Credential, DatabaseConnection, ProxyServer, SoapApiUrl, SoapCache, AppConfig,
     Server, ServerShare, DownloadedFile, ServerItem, SqlPreset, SqlQueryHistory, DatabaseType,
-    FileVersion, PfxPassword, DownloadJob, AppSettings, PluginInstance
+    FileVersion, PfxPassword, DownloadJob, AppSettings, PluginInstance, GitleaksFinding
 )
 from soap_service import SoapService, get_default_soap_service
 import uuid
