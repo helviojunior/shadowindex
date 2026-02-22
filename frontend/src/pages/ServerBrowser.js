@@ -4750,60 +4750,7 @@ const ServerBrowser = () => {
             Voltar
           </Button>
           <div>
-            <div className="flex items-center gap-2">
-              {editingServerName ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={newServerName}
-                    onChange={(e) => setNewServerName(e.target.value)}
-                    className="h-8 w-64"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveServerName();
-                      if (e.key === 'Escape') {
-                        setEditingServerName(false);
-                        setNewServerName(server.name);
-                      }
-                    }}
-                  />
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-8 w-8"
-                    onClick={handleSaveServerName}
-                  >
-                    <Check className="w-4 h-4 text-green-500" />
-                  </Button>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-8 w-8"
-                    onClick={() => {
-                      setEditingServerName(false);
-                      setNewServerName(server.name);
-                    }}
-                  >
-                    <X className="w-4 h-4 text-red-500" />
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <h1 className="text-xl font-semibold">{server.name}</h1>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-6 w-6"
-                    onClick={() => {
-                      setNewServerName(server.name);
-                      setEditingServerName(true);
-                    }}
-                    title="Editar nome do servidor"
-                  >
-                    <Pencil className="w-3 h-3" />
-                  </Button>
-                </>
-              )}
-            </div>
+            <h1 className="text-xl font-semibold">{server.name}</h1>
             <div className="flex items-center gap-2">
               <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{server.ip}</code>
               {server.plugin_instance_name && (
