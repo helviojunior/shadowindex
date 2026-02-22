@@ -261,9 +261,24 @@ const Downloads = () => {
     pollingPausedRef.current = false;
     errorCountRef.current = 0;
     setLoading(true);
-    loadDownloadJobs();
+    setLoadedStatuses(new Set(['downloading', 'pending']));
+    loadStats();
+    loadActiveJobs();
     loadScanJobs();
-  }, [loadDownloadJobs, loadScanJobs]);
+  }, [loadStats, loadActiveJobs, loadScanJobs]);
+
+  // Handler para clique no filtro - carrega sob demanda
+  const handleFilterClick = useCallback((status) => {
+    if (activeFilter === status) {
+      setActiveFilter(null);
+    } else {
+      setActiveFilter(status);
+      // Carregar jobs desse status se ainda não foram carregados
+      if (!loadedStatuses.has(status)) {
+        loadJobsByStatus(status);
+      }
+    }
+  }, [activeFilter, loadedStatuses, loadJobsByStatus]);
 
   // Cancel scan job
   const cancelScanJob = async (scanId) => {
@@ -301,7 +316,9 @@ const Downloads = () => {
     
     const loadData = async () => {
       if (!isMounted) return;
-      await loadDownloadJobs();
+      await loadStats();
+      if (!isMounted) return;
+      await loadActiveJobs();
       if (!isMounted) return;
       await loadScanJobs();
     };
