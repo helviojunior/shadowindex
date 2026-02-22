@@ -187,7 +187,6 @@ const Gitleaks = () => {
   const handleCancelJob = async (jobId) => {
     try {
       await axios.post(`${API}/gitleaks/jobs/${jobId}/cancel`);
-      toast.success('Job cancelado');
       loadJobs();
     } catch (error) {
       toast.error('Erro ao cancelar job');
@@ -197,8 +196,7 @@ const Gitleaks = () => {
   // Limpar jobs finalizados
   const handleClearFinished = async () => {
     try {
-      const response = await axios.delete(`${API}/gitleaks/jobs/clear-finished`);
-      toast.success(`${response.data.cleared} jobs removidos`);
+      await axios.delete(`${API}/gitleaks/jobs/clear-finished`);
       loadJobs();
     } catch (error) {
       toast.error('Erro ao limpar jobs');
