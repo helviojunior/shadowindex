@@ -68,6 +68,10 @@ const Downloads = () => {
     skipped: 0
   });
   
+  // Cache de jobs carregados por status
+  const [loadedStatuses, setLoadedStatuses] = useState(new Set(['downloading', 'pending']));
+  const [loadingStatus, setLoadingStatus] = useState(null);
+  
   // Controle de erros - para polling após muitos erros
   const errorCountRef = useRef(0);
   const pollingPausedRef = useRef(false);
@@ -76,48 +80,77 @@ const Downloads = () => {
   // WebSocket para atualizações em tempo real
   const { isConnected } = useWebSocket();
 
-  // Load download jobs - definido cedo para ser usado por handlers
-  const loadDownloadJobs = useCallback(async () => {
-    // Se polling está pausado por muitos erros, não tentar
-    if (pollingPausedRef.current) {
-      return;
+  // Carregar estatísticas (contagens) - leve, não carrega dados completos
+  const loadStats = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/downloads/stats`);
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error loading stats:', error);
     }
+  }, []);
+
+  // Carregar jobs ativos (downloading + pending) - sempre carrega
+  const loadActiveJobs = useCallback(async () => {
+    if (pollingPausedRef.current) return;
     
     try {
-      const response = await axios.get(`${API}/downloads`);
-      const jobs = response.data || [];
-      setDownloadJobs(jobs);
+      const response = await axios.get(`${API}/downloads?status=downloading,pending&limit=100`);
+      const activeJobs = response.data || [];
       
-      // Reset error count on success
       errorCountRef.current = 0;
       
-      // Calculate stats
-      const newStats = {
-        total: jobs.length,
-        pending: jobs.filter(j => j.status === 'pending').length,
-        downloading: jobs.filter(j => j.status === 'downloading').length,
-        completed: jobs.filter(j => j.status === 'completed').length,
-        failed: jobs.filter(j => j.status === 'failed').length,
-        cancelled: jobs.filter(j => j.status === 'cancelled').length,
-        skipped: jobs.filter(j => j.status === 'skipped').length,
-      };
-      setStats(newStats);
+      setDownloadJobs(prev => {
+        // Manter jobs de outros status, atualizar apenas ativos
+        const otherJobs = prev.filter(j => !['downloading', 'pending'].includes(j.status));
+        return [...activeJobs, ...otherJobs];
+      });
       
       // Auto-expand servers with active downloads
       const serversWithActive = {};
-      jobs.forEach(job => {
-        if (job.status === 'downloading' || job.status === 'pending') {
-          serversWithActive[job.server_id] = true;
-        }
+      activeJobs.forEach(job => {
+        serversWithActive[job.server_id] = true;
       });
       setExpandedServers(prev => ({ ...prev, ...serversWithActive }));
       
     } catch (error) {
       errorCountRef.current += 1;
-      console.error('Error loading downloads:', error);
+      console.error('Error loading active downloads:', error);
       
-      // Após 3 erros consecutivos, pausar polling
       if (errorCountRef.current >= 3) {
+        pollingPausedRef.current = true;
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Carregar jobs por status específico (sob demanda)
+  const loadJobsByStatus = useCallback(async (status) => {
+    if (loadedStatuses.has(status) && status !== 'downloading' && status !== 'pending') {
+      return; // Já carregado
+    }
+    
+    setLoadingStatus(status);
+    
+    try {
+      const response = await axios.get(`${API}/downloads?status=${status}&limit=200`);
+      const jobs = response.data || [];
+      
+      setDownloadJobs(prev => {
+        // Remover jobs antigos desse status e adicionar novos
+        const otherJobs = prev.filter(j => j.status !== status);
+        return [...otherJobs, ...jobs];
+      });
+      
+      setLoadedStatuses(prev => new Set([...prev, status]));
+      
+    } catch (error) {
+      console.error(`Error loading ${status} downloads:`, error);
+    } finally {
+      setLoadingStatus(null);
+    }
+  }, [loadedStatuses]);
         pollingPausedRef.current = true;
         console.log('Polling paused due to consecutive errors');
       }
