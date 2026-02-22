@@ -33,13 +33,12 @@ const DatabaseConnections = () => {
   const navigate = useNavigate();
   const [connections, setConnections] = useState([]);
   const [dbTypes, setDbTypes] = useState([]);
-  const [availablePlugins, setAvailablePlugins] = useState({});
+  const [pluginInstances, setPluginInstances] = useState([]);
   const [formData, setFormData] = useState({ 
     name: '', 
     db_type_id: '', 
     connection_string: '',
-    plugin_type: 'soap_api',
-    plugin_config: {}
+    plugin_instance_id: ''
   });
   const [loading, setLoading] = useState(false);
   const [testingConnectionId, setTestingConnectionId] = useState(null);
@@ -54,15 +53,14 @@ const DatabaseConnections = () => {
     name: '', 
     db_type_id: '', 
     connection_string: '',
-    plugin_type: 'soap_api',
-    plugin_config: {}
+    plugin_instance_id: ''
   });
   const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     loadConnections();
     loadDbTypes();
-    loadAvailablePlugins();
+    loadPluginInstances();
   }, []);
 
   const loadConnections = async () => {
