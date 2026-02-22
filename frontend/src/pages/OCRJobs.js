@@ -242,7 +242,7 @@ const OCRJobs = () => {
   };
 
   return (
-    <div className="space-y-6" data-testid="ocr-jobs-page">
+    <div className="space-y-6 p-6" data-testid="ocr-jobs-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -259,15 +259,47 @@ const OCRJobs = () => {
             <span className={`w-2 h-2 rounded-full mr-1.5 ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}></span>
             {isConnected ? 'Tempo real' : 'Offline'}
           </Badge>
-          <Button variant="outline" onClick={() => { loadJobs(); loadStats(); }} disabled={loading}>
+          <Button variant="outline" onClick={() => { loadJobs(); loadStats(); loadTikaStatus(); }} disabled={loading}>
             <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
             Atualizar
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+      {/* Tika Server Status Card + Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
+        {/* Tika Server Status */}
+        <Card className={cn(
+          "border-l-4",
+          tikaStatus.online === null ? "border-l-gray-500" :
+          tikaStatus.online ? "border-l-green-500" : "border-l-red-500"
+        )}>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg font-bold">
+                  {tikaStatus.online === null ? 'Verificando...' :
+                   tikaStatus.online ? 'Online' : 'Offline'}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase">Tika Server</p>
+                {tikaStatus.error && (
+                  <p className="text-xs text-red-500 mt-1 truncate" title={tikaStatus.error}>
+                    {tikaStatus.error}
+                  </p>
+                )}
+              </div>
+              {tikaStatus.online === null ? (
+                <Loader2 className="w-6 h-6 text-gray-500 opacity-60 animate-spin" />
+              ) : tikaStatus.online ? (
+                <Wifi className="w-6 h-6 text-green-500 opacity-60" />
+              ) : (
+                <WifiOff className="w-6 h-6 text-red-500 opacity-60" />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Cards */}
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center justify-between">
