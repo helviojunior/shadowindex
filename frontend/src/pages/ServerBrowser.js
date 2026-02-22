@@ -158,6 +158,51 @@ const ServerBrowser = () => {
   const [activeDownloads, setActiveDownloads] = useState(0);
   const downloadPollingRef = useRef(null);
 
+  // WebSocket para atualizações em tempo real do status dos arquivos
+  useFileStatusEvents((data) => {
+    // Atualizar status do arquivo na tree view quando receber evento
+    if (data.server_id === parseInt(serverId)) {
+      // Atualizar lista de arquivos baixados
+      if (data.status === 'downloaded' && data.file_id) {
+        setDownloadedFiles(prev => {
+          if (!prev.includes(data.file_path)) {
+            return [...prev, data.file_path];
+          }
+          return prev;
+        });
+      }
+    }
+  });
+
+  // WebSocket para eventos de download (progresso e conclusão)
+  useDownloadEvents(
+    // onProgress
+    (data) => {
+      if (data.file_name) {
+        setSingleDownloadProgress(Math.round(data.progress));
+      }
+    },
+    // onComplete
+    (data) => {
+      setSingleDownloadProgress(null);
+      // Recarregar arquivos baixados quando download completar
+      loadDownloadedFiles();
+    },
+    // onFailed
+    (data) => {
+      setSingleDownloadProgress(null);
+      if (data.error) {
+        toast.error(`Download falhou: ${data.error}`);
+      }
+    },
+    // onStarted
+    (data) => {
+      if (data.file_name) {
+        setSingleDownloadProgress(0);
+      }
+    }
+  );
+
   // Carregar configurações gerais para os valores default dos combos
   useEffect(() => {
     const loadGeneralSettings = async () => {
