@@ -1485,6 +1485,37 @@ const ServerBrowser = () => {
         return;
       }
       
+      // Verificar se é erro estruturado 500
+      if (error.response?.status === 500 && error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        let errorMessage = detail.message || 'Erro ao carregar compartilhamentos';
+        let description = '';
+        
+        switch (detail.error) {
+          case 'credential_error':
+            description = 'Verifique as credenciais configuradas no plugin.';
+            break;
+          case 'connection_error':
+            description = 'Verifique se o servidor está acessível na rede.';
+            break;
+          case 'timeout_error':
+            description = 'Servidor demorou muito para responder.';
+            break;
+          case 'config_error':
+            description = 'Verifique as configurações do plugin (URL, credenciais, etc).';
+            break;
+          default:
+            description = 'Verifique os logs para mais detalhes.';
+        }
+        
+        toast.error(errorMessage, {
+          duration: 6000,
+          description
+        });
+        setLoadingShares(false);
+        return;
+      }
+      
       // Fallback para API V2 com refresh
       try {
         const fallbackResponse = await axios.get(`${API_V2}/servers/${serverId}/shares?refresh=${ignoreCache}`);
@@ -1497,8 +1528,17 @@ const ServerBrowser = () => {
             duration: 6000,
             description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
           });
+        } else if (fallbackError.response?.status === 500 && fallbackError.response?.data?.detail) {
+          const detail = fallbackError.response.data.detail;
+          toast.error(detail.message || 'Erro ao carregar compartilhamentos', {
+            duration: 6000,
+            description: 'Verifique os logs do servidor para mais detalhes.'
+          });
         } else {
-          toast.error('Erro ao carregar compartilhamentos');
+          toast.error('Erro ao carregar compartilhamentos', {
+            duration: 4000,
+            description: fallbackError.message || 'Erro desconhecido'
+          });
         }
       }
     } finally {
