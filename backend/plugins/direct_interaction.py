@@ -519,7 +519,7 @@ class DirectInteractionPlugin(BasePlugin):
                         
                         shares.append(ShareInfo(
                             name=share_name,
-                            type=type_str,
+                            share_type=type_str,
                             remark=remark
                         ))
                     except Exception as share_err:
