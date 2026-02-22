@@ -160,8 +160,8 @@ class WebSocketManager:
     async def emit_download_stats(self, stats: Dict[str, int]):
         """Emite estatísticas de downloads (para notificação sonora)"""
         await self.broadcast({
-            "type": "download_stats",
-            **stats,
+            "type": "downloads_stats_updated",
+            "data": stats,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
