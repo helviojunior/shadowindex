@@ -325,13 +325,13 @@ const Downloads = () => {
     
     loadData();
     
-    // Polling menos frequente quando WebSocket está conectado
-    // WebSocket cuida das atualizações em tempo real
-    const pollInterval = isConnected ? 10000 : 3000;
+    // Polling apenas para jobs ativos e stats
+    const pollInterval = isConnected ? 10000 : 5000;
     
     const interval = setInterval(() => {
       if (isMounted) {
-        loadDownloadJobs();
+        loadStats();
+        loadActiveJobs();
         loadScanJobs();
       }
     }, pollInterval);
@@ -340,13 +340,14 @@ const Downloads = () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [loadDownloadJobs, loadScanJobs, isConnected]);
+  }, [loadStats, loadActiveJobs, loadScanJobs, isConnected]);
 
   // Cancel single job
   const cancelJob = async (jobId) => {
     try {
       await axios.post(`${API}/downloads/${jobId}/cancel`);
-      loadDownloadJobs();
+      loadStats();
+      loadActiveJobs();
     } catch (error) {
       console.error('Error cancelling job:', error);
       toast.error('Erro ao cancelar download');
@@ -357,7 +358,8 @@ const Downloads = () => {
   const cancelAllJobs = async () => {
     try {
       await axios.post(`${API}/downloads/cancel-all`);
-      loadDownloadJobs();
+      loadStats();
+      loadActiveJobs();
     } catch (error) {
       console.error('Error cancelling all jobs:', error);
       toast.error('Erro ao cancelar downloads');
