@@ -1424,19 +1424,27 @@ const ServerBrowser = () => {
       }
     }
     
+    // Buscar o ID real do item nos filhos do último diretório
+    const finalNodeChildren = await getNodeChildren();
+    const parentChildren = finalNodeChildren[parentNodeId] || [];
+    const fileName = result.name;
+    const realItem = parentChildren.find(child => 
+      child.name === fileName || child.fullPath === result.full_path
+    );
+    
     // 3. Selecionar o item (abre as abas de detalhes)
     const selectedItemData = {
-      id: result.id,
+      id: realItem?.id || result.id,
       name: result.name,
       fullPath: result.full_path,
       serverPath: result.full_path,
       shareName: shareName,
       itemType: result.item_type,
       type: result.item_type,
-      size: result.size,
-      modified: result.modified,
-      sha1_hash: result.sha1_hash,
-      is_downloaded: result.is_downloaded
+      size: realItem?.size || result.size,
+      modified: realItem?.modified || result.modified,
+      sha1_hash: realItem?.sha1_hash || result.sha1_hash,
+      is_downloaded: realItem?.is_downloaded || result.is_downloaded
     };
     setSelectedItem(selectedItemData);
     
