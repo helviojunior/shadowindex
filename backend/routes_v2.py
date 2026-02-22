@@ -3287,6 +3287,8 @@ async def start_gitleaks_scan(request: GitleaksScanRequest):
         }
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Erro ao iniciar scan GitLeaks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
