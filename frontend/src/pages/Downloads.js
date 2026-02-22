@@ -151,13 +151,6 @@ const Downloads = () => {
       setLoadingStatus(null);
     }
   }, [loadedStatuses]);
-        pollingPausedRef.current = true;
-        console.log('Polling paused due to consecutive errors');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   // Load scan jobs
   const loadScanJobs = useCallback(async () => {
