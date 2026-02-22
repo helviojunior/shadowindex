@@ -28,6 +28,31 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 30 - Plugin Instance Architecture Update)
+- [x] **Alteração nas Conexões SQL para usar Instâncias de Plugin:**
+  - Formulário de criação/edição agora usa `plugin_instance_id` ao invés de `plugin_type`
+  - Dropdown mostra nome da instância e tipo do plugin (ex: "SOAP Padrão (soap_api)")
+  - Tabela de conexões exibe o nome da instância de plugin associada
+- [x] **Alteração na Importação de Servidores para usar Instâncias de Plugin:**
+  - Combobox de plugin começa vazio (sem seleção padrão)
+  - Validação obrigatória: erro ao tentar importar sem selecionar instância
+  - Label alterada de "Plugin" para "Instância"
+  - Botão de importar desabilitado se nenhuma instância selecionada
+- [x] **Bloqueio de operações em servidores sem instância de plugin:**
+  - Banner de alerta amarelo no ServerBrowser quando `plugin_instance_id` é null
+  - Botão "Configurar" que leva para a página de Servidores
+  - Toast de erro quando tenta carregar shares sem instância configurada
+  - Operações de listagem e download bloqueadas até configurar instância
+- [x] **Migração de banco de dados:**
+  - Coluna `plugin_instance_id` adicionada à tabela `database_connections`
+- [x] **Arquivos modificados:**
+  - `frontend/src/pages/DatabaseConnections.js` - Formulário e listagem atualizados
+  - `frontend/src/pages/ImportServers.js` - Seletor de instâncias implementado
+  - `frontend/src/pages/ServerBrowser.js` - Banner de alerta e verificação adicionados
+  - `backend/server.py` - Schemas atualizados com plugin_instance_id
+  - `backend/routes_v2.py` - Endpoint de importação atualizado
+  - `backend/database.py` - Modelo DatabaseConnection atualizado
+
 ### 2026-02-22 (Session 29 - Plugin-Aware Download Fix)
 - [x] **Bug Fix P1: Download/Sync usando plugin errado:**
   - Corrigidos 4 endpoints em `routes_v2.py` que usavam `get_default_soap_service()` em vez de `get_plugin_for_server()`
