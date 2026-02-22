@@ -274,9 +274,33 @@ const PluginInstances = () => {
               </div>
 
               {/* Config fields based on plugin type */}
+              {formData.plugin_type === 'soap_api' && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h4 className="font-medium">Configurações do Plugin SOAP</h4>
+                  <div className="grid gap-4 md:grid-cols-1">
+                    <div className="space-y-2">
+                      <Label>URL do WebService SOAP *</Label>
+                      <Input
+                        data-testid="soap-url-input"
+                        placeholder="http://servidor/soap/api.asmx"
+                        value={formData.config?.soap_url || ''}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          config: { ...formData.config, soap_url: e.target.value } 
+                        })}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        URL completa do endpoint SOAP (ex: http://servidor/soap/api.asmx)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {formData.plugin_type === 'direct_interaction' && (
                 <div className="space-y-4 pt-4 border-t">
-                  <h4 className="font-medium">Configurações do Plugin</h4>
+                  <h4 className="font-medium">Configurações do Plugin Interação Direta</h4>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Credencial de Acesso *</Label>
