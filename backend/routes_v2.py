@@ -3394,6 +3394,19 @@ async def get_gitleaks_findings(
     else:
         findings = service.get_all_findings()
     
+    # Deduplicar por Fingerprint
+    seen_fingerprints = set()
+    unique_findings = []
+    for f in findings:
+        fingerprint = f.get('Fingerprint')
+        if fingerprint and fingerprint not in seen_fingerprints:
+            seen_fingerprints.add(fingerprint)
+            unique_findings.append(f)
+        elif not fingerprint:
+            unique_findings.append(f)
+    
+    findings = unique_findings
+    
     # Cache de servidores e arquivos para evitar múltiplas queries
     servers_cache = {}
     files_cache = {}
