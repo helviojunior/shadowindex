@@ -9,11 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Usar diretório local (pwd) para o banco de dados
-# O caminho será ./data/ops_integration.db (relativo ao diretório do backend)
+# O caminho será ./data/shadowindex.db (relativo ao diretório do backend)
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 os.makedirs(DATA_DIR, exist_ok=True)  # Garantir que o diretório existe
 
-DATABASE_PATH = os.path.join(DATA_DIR, "ops_integration.db")
+DATABASE_PATH = os.path.join(DATA_DIR, "shadowindex.db")
 DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
 DATABASE_URL_READONLY = f"sqlite+aiosqlite:///{DATABASE_PATH}?mode=ro"
 
