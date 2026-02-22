@@ -370,7 +370,8 @@ const Downloads = () => {
   const forceDownload = async (jobId) => {
     try {
       await axios.post(`${API}/downloads/${jobId}/force`);
-      loadDownloadJobs();
+      loadStats();
+      loadActiveJobs();
     } catch (error) {
       console.error('Error forcing download:', error);
       toast.error('Erro ao forçar download');
@@ -381,7 +382,8 @@ const Downloads = () => {
   const retryDownload = async (jobId) => {
     try {
       await axios.post(`${API}/downloads/${jobId}/retry`);
-      loadDownloadJobs();
+      loadStats();
+      loadActiveJobs();
     } catch (error) {
       console.error('Error retrying download:', error);
       toast.error('Erro ao reiniciar download');
@@ -392,7 +394,10 @@ const Downloads = () => {
   const clearFinished = async () => {
     try {
       await axios.post(`${API}/downloads/clear-finished`);
-      loadDownloadJobs();
+      loadStats();
+      // Resetar cache de status finalizados
+      setLoadedStatuses(new Set(['downloading', 'pending']));
+      setDownloadJobs(prev => prev.filter(j => ['downloading', 'pending'].includes(j.status)));
     } catch (error) {
       console.error('Error clearing finished:', error);
       toast.error('Erro ao limpar histórico');
@@ -403,7 +408,8 @@ const Downloads = () => {
   const retryAllFailed = async () => {
     try {
       await axios.post(`${API}/downloads/retry-all-failed`);
-      loadDownloadJobs();
+      loadStats();
+      loadActiveJobs();
     } catch (error) {
       console.error('Error retrying all failed:', error);
       toast.error('Erro ao recolocar downloads na fila');
