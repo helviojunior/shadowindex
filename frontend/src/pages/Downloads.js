@@ -170,6 +170,8 @@ const Downloads = () => {
 
   // Load scan jobs
   const loadScanJobs = useCallback(async () => {
+    if (pollingPausedRef.current) return;
+    
     try {
       const response = await axios.get(`${API}/scans`);
       setScanJobs(response.data || []);
@@ -177,6 +179,14 @@ const Downloads = () => {
       console.error('Error loading scan jobs:', error);
     }
   }, []);
+
+  // Função para retomar polling manualmente
+  const resumePolling = useCallback(() => {
+    pollingPausedRef.current = false;
+    errorCountRef.current = 0;
+    loadDownloadJobs();
+    loadScanJobs();
+  }, [loadDownloadJobs, loadScanJobs]);
 
   // Cancel scan job
   const cancelScanJob = async (scanId) => {
