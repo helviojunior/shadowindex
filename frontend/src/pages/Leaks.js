@@ -574,10 +574,6 @@ const Leaks = () => {
               <Button variant="outline" size="sm" onClick={loadFindings}>
                 <RefreshCw className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={handleReload}>
-                <Download className="w-4 h-4 mr-1" />
-                Disco
-              </Button>
               {totalFindings > 0 && (
                 <Button variant="destructive" size="sm" onClick={handleClearFindings}>
                   <Trash2 className="w-4 h-4 mr-1" />
