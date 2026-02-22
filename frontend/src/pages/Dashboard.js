@@ -98,12 +98,12 @@ const Dashboard = () => {
       const totalDownloads = (servers.data || []).reduce((acc, server) => acc + (server.downloaded_files_count || 0), 0);
 
       setStats({
-        credentials: creds.data.length,
-        dbConnections: dbs.data.length,
-        proxyServers: proxies.data.length,
-        soapApis: soaps.data.length,
-        cacheEntries: cache.data.total_entries || 0,
-        servers: servers.data.length,
+        credentials: (creds.data || []).length,
+        dbConnections: (dbs.data || []).length,
+        proxyServers: (proxies.data || []).length,
+        soapApis: (soaps.data || []).length,
+        cacheEntries: cache.data?.total_entries || 0,
+        servers: (servers.data || []).length,
         downloadedFiles: totalDownloads
       });
 
