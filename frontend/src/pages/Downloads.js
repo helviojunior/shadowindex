@@ -210,14 +210,17 @@ const Downloads = () => {
 
   // Load download jobs
   const loadDownloadJobs = useCallback(async () => {
-    const isInitialLoad = !lastErrorRef.current && errorCountRef.current === 0;
+    // Se polling está pausado por muitos erros, não tentar
+    if (pollingPausedRef.current) {
+      return;
+    }
     
     try {
       const response = await axios.get(`${API}/downloads`);
       const jobs = response.data || [];
       setDownloadJobs(jobs);
       
-      // Reset error tracking on success
+      // Reset error count on success
       errorCountRef.current = 0;
       
       // Calculate stats
@@ -242,9 +245,14 @@ const Downloads = () => {
       setExpandedServers(prev => ({ ...prev, ...serversWithActive }));
       
     } catch (error) {
-      // Silenciosamente ignorar erros durante polling
-      // Só logar no console, sem toast para evitar spam
-      console.error('Error loading download jobs:', error);
+      errorCountRef.current += 1;
+      console.error('Error loading downloads:', error);
+      
+      // Após 3 erros consecutivos, pausar polling
+      if (errorCountRef.current >= 3) {
+        pollingPausedRef.current = true;
+        console.log('Polling paused due to consecutive errors');
+      }
     } finally {
       setLoading(false);
     }
