@@ -255,6 +255,18 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
     
     # Add proxy credentials to plugin config for direct_interaction
     if plugin_type == "direct_interaction" and proxy_config:
+        proxy_type = proxy_config.get("proxy_type", "http")
+        proxy_name = proxy_config.get("proxy_name", "Unknown")
+        instance_name = instance.name if instance else "Interação Direta"
+        
+        # Validate proxy type - direct_interaction only supports SOCKS proxies
+        if proxy_type not in ("socks5", "socks4"):
+            raise ValueError(
+                f"Proxy selecionado '{proxy_name}' não suportado para '{instance_name}'. "
+                f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
+                f"Tipo atual: {proxy_type}"
+            )
+        
         plugin_config["proxy_user"] = proxy_config.get("proxy_user")
         plugin_config["proxy_pass"] = proxy_config.get("proxy_pass")
     
