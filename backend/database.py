@@ -15,45 +15,80 @@ os.makedirs(DATA_DIR, exist_ok=True)  # Garantir que o diretório existe
 
 DATABASE_PATH = os.path.join(DATA_DIR, "ops_integration.db")
 DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
+DATABASE_URL_READONLY = f"sqlite+aiosqlite:///{DATABASE_PATH}?mode=ro"
 
-# Configurações para melhor concorrência no SQLite
-# - pool_size=1: SQLite não suporta conexões concorrentes de escrita
-# - pool_timeout=30: Tempo de espera para obter uma conexão do pool
-# - connect_args: busy_timeout para esperar em caso de lock
+# Engine principal para escrita (pool menor para evitar locks)
 engine = create_async_engine(
     DATABASE_URL, 
     echo=False,
-    pool_size=5,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=3600,
+    pool_size=1,  # SQLite só permite 1 escritor por vez
+    max_overflow=2,
+    pool_timeout=60,
+    pool_recycle=1800,
     connect_args={
-        "timeout": 30,  # busy_timeout em segundos para aiosqlite
+        "timeout": 60,
         "check_same_thread": False
     }
 )
 
-# Configurar pragmas do SQLite para melhor performance
+# Engine de somente leitura para consultas pesadas (dashboard, listagens)
+engine_readonly = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_size=5,  # Pode ter múltiplos leitores
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=1800,
+    connect_args={
+        "timeout": 30,
+        "check_same_thread": False
+    }
+)
+
+# Configurar pragmas do SQLite - WAL mode para melhor concorrência
 @event.listens_for(engine.sync_engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    """Configura pragmas do SQLite para melhor performance"""
+def set_sqlite_pragma_write(dbapi_connection, connection_record):
+    """Configura pragmas do SQLite para engine de escrita"""
     cursor = dbapi_connection.cursor()
-    # Journal em memória (máxima performance)
-    cursor.execute("PRAGMA journal_mode=MEMORY")
-    # Sincronização desligada (máxima performance)
+    # WAL mode - permite leituras durante escritas
+    cursor.execute("PRAGMA journal_mode=WAL")
+    # Sincronização normal para segurança
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    # Tabelas temporárias em memória
+    cursor.execute("PRAGMA temp_store=MEMORY")
+    # Cache size em KB (negativo) - 32MB
+    cursor.execute("PRAGMA cache_size=-32768")
+    # Tempo de espera em ms quando o banco está bloqueado (60 segundos)
+    cursor.execute("PRAGMA busy_timeout=60000")
+    cursor.close()
+
+@event.listens_for(engine_readonly.sync_engine, "connect")
+def set_sqlite_pragma_read(dbapi_connection, connection_record):
+    """Configura pragmas do SQLite para engine de leitura"""
+    cursor = dbapi_connection.cursor()
+    # WAL mode
+    cursor.execute("PRAGMA journal_mode=WAL")
+    # Query only - otimização para leitura
+    cursor.execute("PRAGMA query_only=ON")
+    # Sincronização desligada (só leitura, não precisa)
     cursor.execute("PRAGMA synchronous=OFF")
     # Tabelas temporárias em memória
     cursor.execute("PRAGMA temp_store=MEMORY")
-    # Cache size em KB (negativo) - 64MB
+    # Cache maior para leituras - 64MB
     cursor.execute("PRAGMA cache_size=-65536")
-    # Tempo de espera em ms quando o banco está bloqueado (30 segundos)
-    cursor.execute("PRAGMA busy_timeout=30000")
+    # Tempo de espera menor para leituras
+    cursor.execute("PRAGMA busy_timeout=10000")
     cursor.close()
 
+# Session para escrita
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+# Session para leitura (usar para consultas pesadas)
+AsyncSessionReadonly = sessionmaker(engine_readonly, class_=AsyncSession, expire_on_commit=False)
 
 # Alias para uso mais limpo
 async_session_maker = AsyncSessionLocal
+async_session_readonly = AsyncSessionReadonly
 
 Base = declarative_base()
 
