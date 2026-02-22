@@ -593,6 +593,10 @@ const Leaks = () => {
                       const fileName = finding.file_name || finding.original_file?.split('/').pop() || 'Arquivo';
                       const serverPath = finding.server_path || finding.original_file || finding.File;
                       
+                      // Versão do arquivo (V1, V2, etc.)
+                      const fileVersion = finding.extracted_version ? `V${finding.extracted_version}` : '';
+                      const fileNameWithVersion = fileVersion ? `${fileName} (${fileVersion})` : fileName;
+                      
                       return (
                         <TableRow key={`${file.file}-${fIndex}`} className="hover:bg-muted/30">
                           {/* Coluna Servidor */}
@@ -621,8 +625,8 @@ const Leaks = () => {
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <p className="font-medium text-sm text-cyan-400 truncate max-w-[280px]" title={fileName}>
-                                  {fileName}
+                                <p className="font-medium text-sm text-cyan-400 truncate max-w-[280px]" title={fileNameWithVersion}>
+                                  {fileNameWithVersion}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate max-w-[280px]" title={serverPath}>
                                   {serverPath}
