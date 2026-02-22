@@ -129,10 +129,6 @@ const ServerBrowser = () => {
   const [pdfPageNumber, setPdfPageNumber] = useState(1);
   const [pdfScale, setPdfScale] = useState(1.0);
   
-  // Estados para edição do nome do servidor
-  const [editingServerName, setEditingServerName] = useState(false);
-  const [newServerName, setNewServerName] = useState('');
-  
   // Estados para OCR
   const [ocrData, setOcrData] = useState(null); // {ocr_processed, ocr_content, ocr_metadata, ocr_error}
   const [ocrLoading, setOcrLoading] = useState(false);
