@@ -14,22 +14,44 @@ export const ConnectionBridge = ({ children }) => {
   const { markConnected, markDisconnected, isConnected } = useConnectionStatus();
   const healthCheckIntervalRef = useRef(null);
   const failedChecksRef = useRef(0);
+  const wsDisconnectTimeoutRef = useRef(null);
 
   useEffect(() => {
     // Registrar callback no WebSocket para atualizar status de conexão
     setConnectionStatusCallback(({ connected, message }) => {
       if (connected) {
+        // Cancelar timeout de desconexão se reconectou
+        if (wsDisconnectTimeoutRef.current) {
+          clearTimeout(wsDisconnectTimeoutRef.current);
+          wsDisconnectTimeoutRef.current = null;
+        }
         failedChecksRef.current = 0;
         markConnected();
       } else {
-        markDisconnected(message);
+        // Só reportar desconexão após 10 segundos
+        if (!wsDisconnectTimeoutRef.current) {
+          wsDisconnectTimeoutRef.current = setTimeout(() => {
+            markDisconnected(message);
+            wsDisconnectTimeoutRef.current = null;
+          }, 10000);
+        }
       }
     });
+
+    return () => {
+      if (wsDisconnectTimeoutRef.current) {
+        clearTimeout(wsDisconnectTimeoutRef.current);
+      }
+    };
   }, [setConnectionStatusCallback, markConnected, markDisconnected]);
 
   // Sincronizar estado inicial
   useEffect(() => {
     if (wsConnected) {
+      if (wsDisconnectTimeoutRef.current) {
+        clearTimeout(wsDisconnectTimeoutRef.current);
+        wsDisconnectTimeoutRef.current = null;
+      }
       failedChecksRef.current = 0;
       markConnected();
     }
