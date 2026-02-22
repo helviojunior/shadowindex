@@ -1388,6 +1388,16 @@ const ServerBrowser = () => {
   };
 
   const loadShares = async () => {
+    // Verificar se o servidor tem uma instância de plugin configurada
+    if (!server?.plugin_instance_id) {
+      toast.error('Instância de plugin não configurada', {
+        duration: 6000,
+        description: 'Configure uma instância de plugin nas configurações do servidor antes de navegar nos arquivos.'
+      });
+      setLoadingShares(false);
+      return;
+    }
+
     setLoadingShares(true);
     try {
       // Usar API V2 que retorna shares com filhos do banco
