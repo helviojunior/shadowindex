@@ -13,6 +13,14 @@ import logging
 import asyncio
 import urllib3
 
+# Importar socks para suporte a proxies SOCKS5/SOCKS4
+try:
+    import socks
+    import socket
+    SOCKS_AVAILABLE = True
+except ImportError:
+    SOCKS_AVAILABLE = False
+
 # Desabilitar warnings de SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
