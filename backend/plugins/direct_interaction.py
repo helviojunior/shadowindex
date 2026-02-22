@@ -397,13 +397,21 @@ class DirectInteractionPlugin(BasePlugin):
             # Create SMB connection
             smb_conn = SMBConnection(server_ip, server_ip, timeout=30)
             
-            # Authenticate
-            if nthash:
-                # Use NTLM hash authentication
+            # Authenticate - priority: password > NTLM hash
+            if password:
+                # Use password authentication (priority)
+                logger.info(f"Using password authentication for {domain}\\{username}")
+                smb_conn.login(username, password, domain)
+            elif nthash:
+                # Fallback to NTLM hash authentication
+                logger.info(f"Using NTLM hash authentication for {domain}\\{username}")
                 smb_conn.login(username, "", domain, lmhash, nthash)
             else:
-                # Use password authentication
-                smb_conn.login(username, password, domain)
+                raise CredentialNotSetException(
+                    operation="SMB",
+                    plugin_name=self.PLUGIN_NAME,
+                    message="Credencial inválida: senha ou hash NTLM não configurado."
+                )
             
             logger.info(f"SMB authentication successful for {domain}\\{username}")
             return smb_conn
