@@ -19,6 +19,7 @@ import SqlPresets from "@/pages/SqlPresets";
 import Downloads from "@/pages/Downloads";
 import OCRJobs from "@/pages/OCRJobs";
 import GeneralSettings from "@/pages/GeneralSettings";
+import CriticalSearchSettings from "@/pages/CriticalSearchSettings";
 import PluginSoapConfig from "@/pages/PluginSoapConfig";
 import PluginDirectConfig from "@/pages/PluginDirectConfig";
 import { Toaster } from "@/components/ui/sonner";
