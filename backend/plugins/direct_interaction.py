@@ -31,7 +31,8 @@ from .exceptions import (
     ConnectionException,
     AuthenticationFailureException,
     NotImplementedException,
-    AccessDeniedException
+    AccessDeniedException,
+    CredentialNotSetException
 )
 from .cache import get_cache
 
