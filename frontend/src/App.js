@@ -20,7 +20,6 @@ import Downloads from "@/pages/Downloads";
 import GeneralSettings from "@/pages/GeneralSettings";
 import PluginSoapConfig from "@/pages/PluginSoapConfig";
 import PluginDirectConfig from "@/pages/PluginDirectConfig";
-import PluginInstances from "@/pages/PluginInstances";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 
@@ -60,7 +59,6 @@ function App() {
               <Route path="/settings" element={<GeneralSettings />} />
               <Route path="/plugins/soap" element={<PluginSoapConfig />} />
               <Route path="/plugins/direct" element={<PluginDirectConfig />} />
-              <Route path="/plugins/instances" element={<PluginInstances />} />
               <Route path="/beautify-test" element={<BeautifyTest />} />
             </Routes>
           </Layout>
