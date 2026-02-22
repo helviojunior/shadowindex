@@ -552,6 +552,9 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Divisor */}
+      <div className="h-px bg-border/50 my-2" />
+
       {/* Linha 3: Leaks vs. Tempo (linha inteira) */}
       <Card>
         <CardHeader className="pb-2">
