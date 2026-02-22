@@ -2669,9 +2669,17 @@ const ServerBrowser = () => {
     // Se há um foco e este nó é o focado, mostrar apenas ele
     const isFocusedNode = focusedNodeId && nodeId === focusedNodeId;
     
+    // Calcular o path correto para este item
+    // Para shares: construir a partir do IP e nome do share
+    // Para outros: usar fullPath ou full_path ou construir a partir do parentPath
     const path = isShare 
       ? buildPath(server.ip, item.share_name)
-      : item.fullPath;
+      : (item.fullPath || item.full_path || (item.parentPath ? `${item.parentPath}\\${item.name}` : item.name));
+    
+    // Log para debug de paths incorretos (comentar em produção)
+    // if (!isShare && !item.fullPath && !item.full_path) {
+    //   console.warn('[renderTreeNode] Item sem fullPath:', item.name, 'parentPath:', item.parentPath);
+    // }
     
     const currentShareName = isShare ? item.share_name : shareName;
     
