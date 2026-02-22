@@ -353,6 +353,13 @@ class GitleaksService:
                                     finding['detection_source'] = file_info['source']
                                     finding['File'] = file_info['original_file']
                                     
+                                    # Extrair IDs do caminho físico
+                                    ids = extract_ids_from_path(file_info['original_file'])
+                                    if ids:
+                                        finding['extracted_server_id'] = ids[0]
+                                        finding['extracted_file_id'] = ids[1]
+                                        finding['extracted_version'] = ids[2]
+                                    
                                     self._findings.append(finding)
                                     loaded_count += 1
                 except Exception as e:
