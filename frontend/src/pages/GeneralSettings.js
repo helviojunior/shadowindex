@@ -310,6 +310,7 @@ const GeneralSettings = () => {
               <li>• Arquivos com essas extensões serão automaticamente ignorados no download em batch (botão "Enviar para Fila")</li>
               <li>• Downloads manuais pelo botão Sync baixam qualquer arquivo, sem aplicar filtros</li>
               <li>• Use para evitar baixar arquivos de log, temporários ou backups</li>
+              <li>• <strong>Wildcards:</strong> Use <code className="bg-orange-500/20 px-1 rounded">.log.*</code> para ignorar .log.1, .log.2, etc.</li>
             </ul>
           </div>
         </CardContent>
