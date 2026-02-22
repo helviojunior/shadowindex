@@ -75,6 +75,24 @@ Portuguese (pt-BR)
   - Badges coloridas diferenciando SMB (azul) de bancos de dados (verde)
   - Link direto da página de importação para as configurações de portas
 
+### 2026-02-22 (Session 24 - Manual Leak Identification & Auto PFX Detection)
+- [x] **Identificação Manual de Credenciais:**
+  - Novo botão "Identificar Credencial" no painel de visualização de arquivo
+  - Modal com seleção de tipo: Senha, Token, API Key, Chave Privada, SSH Key, Certificado com Chave, String de Conexão, Outro
+  - Campos: tipo, texto/padrão encontrado, número da linha, descrição
+  - Endpoint `POST /api/v2/gitleaks/manual-leak` para registro
+  - Endpoint `GET /api/v2/gitleaks/leak-types` para listar tipos disponíveis
+  - Endpoint `DELETE /api/v2/gitleaks/findings/{fingerprint}` para remover leak
+- [x] **Detecção Automática de PFX com Chave Privada:**
+  - Ao parsear um arquivo PFX/P12 que contém chave privada, um leak é registrado automaticamente
+  - Finding inclui: thumbprint do certificado, common name, severidade "critical"
+  - Tag "Auto-PFX" para diferenciar de detecções manuais e do GitLeaks
+  - Campo `leak_registered` adicionado à resposta do endpoint de certificado
+- [x] **Melhorias na Página de Leaks:**
+  - Nova tag "Manual" (amarelo) para leaks identificados manualmente
+  - Nova tag "Auto-PFX" (laranja) para leaks de certificados detectados automaticamente
+  - Campo `detection_source` utilizado para diferenciação visual
+
 ### 2026-02-22 (Session 20 - GitLeaks Integration Complete)
 - [x] **Dockerfile atualizado para GitLeaks dinâmico:**
   - Download automático da última versão do GitLeaks no build
