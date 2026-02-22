@@ -293,11 +293,11 @@ class DirectoryScanner:
             dirs_added = 0
             
             for item in items:
-                # DirectoryItem tem: name, item_type, size, path, etc.
+                # DirectoryItem tem: name, item_type, size, full_path, etc.
                 item_type = item.item_type  # 'File' ou 'Directory'
                 item_name = item.name
                 item_size = item.size or 0
-                item_full_path = item.path or f"{full_path}\\{item_name}"
+                item_full_path = item.full_path or f"{full_path}\\{item_name}"
                 
                 if item_type == 'Directory':
                     # Adicionar subdiretório à fila de scan
