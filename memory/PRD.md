@@ -29,6 +29,25 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 39 - Bug Fixes & Improvements)
+- [x] **Correção da rota DELETE /api/servers/{id}:**
+  - Corrigido acesso ao atributo `credential_type` (era `auth_type`)
+  - Corrigido acesso ao `credential_id` via plugin config (não é campo direto do PluginInstance)
+- [x] **Handler global de erros 500:**
+  - Novo exception handler que captura exceções não tratadas
+  - Retorna JSON estruturado com error_id, message, type, path, method
+  - Log completo com stack trace no backend
+- [x] **Botão "Cancelar Todos" na página OCR:**
+  - Novo endpoint `POST /api/v2/ocr/cancel-all`
+  - Cancela todos os jobs pendentes ou em execução de uma vez
+  - Botão com estilo laranja na UI
+- [x] **Ícone estático no card "Executando" (OCR):**
+  - Substituído Loader2 animado por ícone Play estático
+- [x] **Espaçamento na página Downloads:**
+  - Adicionado `mb-6` nos botões de ação para separar do card abaixo
+- [x] **Atualização do .gitignore:**
+  - Adicionados paths `backend/backups/` e `/data/backups/`
+
 ### 2026-02-22 (Session 38 - OCR Jobs Page & Sound Notifications)
 - [x] **Sistema de Notificação Sonora Global:**
   - Hook `useJobCompletionSFX.js` para tocar som quando jobs completam
