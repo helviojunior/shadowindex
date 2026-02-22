@@ -28,6 +28,25 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 33 - GitLeaks Manual Leak Fix & Deduplication)
+- [x] **Bug Fix: Botão "Abrir Arquivo" não aparecia para leaks manuais:**
+  - Problema: O botão só aparecia quando `extracted_file_id` existia
+  - Para leaks manuais sem arquivo baixado, esse campo é `null`
+  - Solução: Alterada condição para também mostrar quando existe `server_id` + (`server_path` ou `File`)
+  - Arquivos modificados: `frontend/src/pages/Leaks.js`
+- [x] **Suporte a navegação por caminho (`path`) no ServerBrowser:**
+  - Adicionado parâmetro de URL `path=` para navegar diretamente para um arquivo
+  - Útil para leaks manuais que não têm `extracted_file_id`
+  - Nova função `navigateToFilePath()` converte caminho de servidor em navegação na árvore
+  - Arquivos modificados: `frontend/src/pages/ServerBrowser.js`
+- [x] **Botão "Abrir Arquivo" no modal de detalhes do finding:**
+  - Adicionado botão de navegação direta no modal de detalhes
+  - Permite navegar para o arquivo do leak a partir da visualização detalhada
+- [x] **Verificação de deduplicação do GitLeaks:**
+  - Confirmado que `save_finding_to_db` verifica fingerprint antes de salvar
+  - Confirmado que `register_manual_leak` verifica duplicatas no cache
+  - Teste: criação de leak duplicado é rejeitada com mensagem apropriada
+
 ### 2026-02-22 (Session 32 - GitLeaks Enhancement & UI Improvements)
 - [x] **Bug Fix: Erro `'str' object has no attribute 'isoformat'` ao navegar diretórios:**
   - O cache de plugins serializa `datetime` como string via JSON
