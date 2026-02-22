@@ -308,6 +308,16 @@ const Downloads = () => {
             Limpar Concluídos
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={retryAllFailed}
+            disabled={stats.failed === 0}
+            data-testid="retry-all-failed"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refazer Falhados
+          </Button>
+          <Button
             variant="destructive"
             size="sm"
             onClick={cancelAllJobs}
