@@ -1471,16 +1471,26 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
                 file_ext = ('.' + item.name.rsplit('.', 1)[-1]).lower() if '.' in item.name else ''
                 mime_lower = (mimetype or '').lower()
                 
+                logger.info(f"Auto OCR check: file={item.name}, ext={file_ext}, mime={mime_lower}")
+                logger.info(f"Auto OCR config: extensions={auto_ocr_extensions}, mimetypes={auto_ocr_mimetypes}")
+                
                 # Verificar por extensão
-                if file_ext and any(file_ext == ext or file_ext.endswith(ext) for ext in auto_ocr_extensions):
-                    should_ocr = True
+                if file_ext and auto_ocr_extensions:
+                    for ext in auto_ocr_extensions:
+                        if file_ext == ext or file_ext.endswith(ext):
+                            should_ocr = True
+                            logger.info(f"Auto OCR match by extension: {file_ext} matches {ext}")
+                            break
                 
                 # Verificar por mimetype (match parcial)
-                if not should_ocr and mime_lower:
+                if not should_ocr and mime_lower and auto_ocr_mimetypes:
                     for mime_pattern in auto_ocr_mimetypes:
                         if mime_pattern in mime_lower:
                             should_ocr = True
+                            logger.info(f"Auto OCR match by mimetype: {mime_lower} matches {mime_pattern}")
                             break
+                
+                logger.info(f"Auto OCR decision: should_ocr={should_ocr}")
                 
                 if should_ocr:
                     from ocr_worker import queue_ocr_job
