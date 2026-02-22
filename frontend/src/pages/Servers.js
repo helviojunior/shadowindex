@@ -559,6 +559,58 @@ const Servers = () => {
                         )}
                       </td>
                       <td className="p-3 text-center">
+                        {editingPluginServer === server.id ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <Select
+                              value={editPluginType}
+                              onValueChange={setEditPluginType}
+                            >
+                              <SelectTrigger className="w-32 h-8 text-xs">
+                                <SelectValue placeholder="Plugin" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(availablePlugins).map(([type, info]) => (
+                                  <SelectItem key={type} value={type}>
+                                    {info.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                              onClick={() => handleSavePlugin(server.id)}
+                            >
+                              <Check className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              onClick={handleCancelPluginEdit}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            <Badge variant="outline" className="text-xs">
+                              <Plug className="w-3 h-3 mr-1" />
+                              {availablePlugins[server.plugin_type]?.name || server.plugin_type || 'soap_api'}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleEditPlugin(server)}
+                            >
+                              <Pencil className="w-2.5 h-2.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
                         <Badge variant="outline">{server.shares_count}</Badge>
                       </td>
                       <td className="p-3 text-center">
