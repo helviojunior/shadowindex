@@ -2311,11 +2311,12 @@ const ServerBrowser = () => {
         setDownloadedFiles(prev => [...prev, filePath]);
       }
       
-      // Atualizar info do arquivo
+      // Atualizar info do arquivo - IMPORTANTE: incluir o id para o loadFileContent funcionar
       setDownloadedFilesInfo(prev => ({
         ...prev,
         [filePath]: {
           ...prev[filePath],
+          id: response.data.file_id,
           sha1_hash: sha1_hash,
           file_size: response.data.size,
           downloaded_at: new Date().toISOString()
