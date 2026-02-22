@@ -29,7 +29,7 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2026-02-22 (Session 39 - Bug Fixes & Improvements)
+### 2026-02-22 (Session 39 - Bug Fixes & Critical Search)
 - [x] **Correção da rota DELETE /api/servers/{id}:**
   - Corrigido acesso ao atributo `credential_type` (era `auth_type`)
   - Corrigido acesso ao `credential_id` via plugin config (não é campo direto do PluginInstance)
@@ -47,6 +47,15 @@ Portuguese (pt-BR)
   - Adicionado `mb-6` nos botões de ação para separar do card abaixo
 - [x] **Atualização do .gitignore:**
   - Adicionados paths `backend/backups/` e `/data/backups/`
+- [x] **Funcionalidade "Critical Search" (Busca Crítica):**
+  - Nova página de configuração `/settings/critical-search`
+  - Regras configuráveis: palavras-chave, extensões, nomes exatos, MIME types
+  - Regras de tamanho (min/max bytes)
+  - Detecção de diretórios de log (ignora automaticamente)
+  - Auto GitLeaks após scan crítico
+  - Botão "Busca Crítica" na Tree View (ServerBrowser)
+  - Lógica de filtragem implementada no `directory_scanner.py`
+  - Encadeamento automático com GitLeaks ao final do scan
 
 ### 2026-02-22 (Session 38 - OCR Jobs Page & Sound Notifications)
 - [x] **Sistema de Notificação Sonora Global:**
