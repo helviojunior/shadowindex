@@ -274,7 +274,7 @@ class DirectInteractionPlugin(BasePlugin):
             raise ConnectionException(f"Custom DNS resolution failed for {hostname}: {e}")
     
     async def _resolve_through_socks(self, hostname: str) -> str:
-        """Resolve DNS through SOCKS proxy."""
+        """Resolve DNS through SOCKS proxy using remote DNS resolution (rdns)."""
         try:
             import socks
         except ImportError:
@@ -282,7 +282,7 @@ class DirectInteractionPlugin(BasePlugin):
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, socket.gethostbyname, hostname)
         
-        # Parse proxy URL and resolve
+        # Parse proxy URL
         proxy_url = self.proxy_url
         proxy_type = socks.SOCKS5
         proxy_host = None
@@ -309,28 +309,55 @@ class DirectInteractionPlugin(BasePlugin):
         else:
             proxy_host = host_part
         
+        logger.info(f"Resolving {hostname} through SOCKS proxy {proxy_host}:{proxy_port}")
+        
         try:
             loop = asyncio.get_event_loop()
             
             def resolve_via_socks():
-                s = socks.socksocket()
-                s.set_proxy(proxy_type, proxy_host, proxy_port, rdns=True,
-                           username=proxy_user, password=proxy_pass)
+                # Create a SOCKS socket with remote DNS resolution enabled
+                s = socks.socksocket(socket.AF_INET, socket.SOCK_STREAM)
+                s.set_proxy(
+                    proxy_type, 
+                    proxy_host, 
+                    proxy_port, 
+                    rdns=True,  # Enable remote DNS - proxy will resolve the hostname
+                    username=proxy_user, 
+                    password=proxy_pass
+                )
                 s.settimeout(30)
+                
                 try:
+                    # Connect to the hostname - the SOCKS proxy will resolve it remotely
+                    # We use port 80 as a common port that should be open
                     s.connect((hostname, 80))
+                    # Get the resolved IP from the connection
                     peer = s.getpeername()
+                    resolved_ip = peer[0]
                     s.close()
-                    return peer[0]
-                except Exception:
+                    logger.info(f"SOCKS resolved {hostname} -> {resolved_ip}")
+                    return resolved_ip
+                except socks.SOCKS5Error as e:
                     s.close()
+                    logger.warning(f"SOCKS5 error resolving {hostname}: {e}")
+                    # Fallback to local DNS if SOCKS fails
+                    return socket.gethostbyname(hostname)
+                except socks.GeneralProxyError as e:
+                    s.close()
+                    logger.warning(f"SOCKS proxy error resolving {hostname}: {e}")
+                    return socket.gethostbyname(hostname)
+                except Exception as e:
+                    s.close()
+                    logger.warning(f"Error resolving {hostname} via SOCKS: {e}")
                     return socket.gethostbyname(hostname)
             
             return await loop.run_in_executor(None, resolve_via_socks)
+            
         except Exception as e:
             import traceback
             error_traceback = traceback.format_exc()
             logger.error(f"SOCKS DNS resolution failed: {e}\n{error_traceback}")
+            # Final fallback to direct DNS
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, socket.gethostbyname, hostname)
     
