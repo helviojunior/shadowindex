@@ -533,6 +533,8 @@ const Downloads = () => {
         {Object.entries(statusConfig).map(([status, config]) => {
           const count = stats[status] || 0;
           const isActive = activeFilter === status;
+          const isLoading = loadingStatus === status;
+          const isLoaded = loadedStatuses.has(status);
           const Icon = config.icon;
           
           return (
@@ -542,14 +544,23 @@ const Downloads = () => {
                 "cursor-pointer transition-all hover:shadow-md border-2 relative",
                 isActive ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
               )}
-              onClick={() => setActiveFilter(isActive ? null : status)}
+              onClick={() => handleFilterClick(status)}
               data-testid={`filter-${status}`}
             >
               <CardContent className="p-4 pt-4">
-                <Icon className={cn("w-5 h-5 absolute top-3 right-3", config.textColor)} />
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 absolute top-3 right-3 animate-spin text-muted-foreground" />
+                ) : (
+                  <Icon className={cn("w-5 h-5 absolute top-3 right-3", config.textColor)} />
+                )}
                 <div>
                   <p className="text-2xl font-bold">{count}</p>
-                  <p className={cn("text-sm font-medium", config.textColor)}>{config.label}</p>
+                  <p className={cn("text-sm font-medium", config.textColor)}>
+                    {config.label}
+                    {!isLoaded && !['downloading', 'pending'].includes(status) && count > 0 && (
+                      <span className="text-xs text-muted-foreground ml-1">(clique p/ ver)</span>
+                    )}
+                  </p>
                 </div>
               </CardContent>
             </Card>
