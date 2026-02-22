@@ -48,6 +48,14 @@ Portuguese (pt-BR)
   - Coluna "Leaks" mostrando quantidade de leaks encontrados
   - Ordenação habilitada para: Risco, Leaks, Shares, Downloads
   - Backend calcula risk_score baseado em: leaks (peso maior), shares e downloads
+- [x] **Extensões excluídas na Busca Crítica:**
+  - Adicionada opção para excluir extensões (ex: .exe, .msi, .dll, binários, mídia)
+  - UI com badges vermelhos e campo de input para adicionar novas exclusões
+  - Backend filtra arquivos com extensões excluídas antes de verificar critérios
+  - Padrão inclui: executáveis, bibliotecas, mídia, imagens, arquivos compactados
+- [x] **Sistema de notificação sonora (já implementado):**
+  - Som toca apenas quando TODOS os jobs de um tipo finalizam (Downloads, OCR, GitLeaks)
+  - Hook `useJobCompletionSFX` monitora transição de >0 para 0 jobs ativos
 
 ### 2026-02-22 (Session 40 - SQL Execution & Bug Fixes)
 - [x] **Execute SQL no Plugin de Interação Direta:**
