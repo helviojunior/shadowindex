@@ -126,7 +126,8 @@ class DownloadWorker:
     async def _execute_download(self, job_id: int):
         """Executa o download de um arquivo"""
         from database import DownloadJob, Server, AsyncSessionLocal
-        from soap_service import get_default_soap_service
+        from plugins.factory import get_plugin_for_server
+        from plugins.exceptions import CredentialNotSetException, AccessDeniedException, ItemNotFoundException
         
         async with AsyncSessionLocal() as db:
             # Carregar job
@@ -157,8 +158,9 @@ class DownloadWorker:
                         await db.commit()
                         return
                 
-                # Obter serviço SOAP
-                soap_service = await get_default_soap_service(db)
+                # Obter o plugin correto para o servidor
+                plugin = await get_plugin_for_server(db, server)
+                logger.info(f"Downloading job {job_id} using plugin {server.plugin_type}")
                 
                 # Preparar path para download
                 # O file_path já deve ser relativo ao share, não incluir o caminho UNC completo
@@ -171,13 +173,13 @@ class DownloadWorker:
                     # Caso contrário, construir o caminho completo
                     full_path = f"\\\\{server.ip}\\{job.share_name}\\{file_path}"
                 
-                # Fazer download
+                # Fazer download usando o plugin
                 if job.file_size and job.file_size > CHUNK_SIZE:
                     # Download em chunks
-                    await self._download_chunked(db, job, soap_service, full_path, server)
+                    await self._download_chunked_via_plugin(db, job, plugin, full_path, server)
                 else:
                     # Download direto
-                    await self._download_direct(db, job, soap_service, full_path, server)
+                    await self._download_direct_via_plugin(db, job, plugin, full_path, server)
                 
                 # Marcar como concluído
                 job.status = 'completed'
@@ -186,7 +188,25 @@ class DownloadWorker:
                 await db.commit()
                 
                 logger.info(f"Download completed: {job.file_path}")
-                
+            
+            except CredentialNotSetException as e:
+                job.status = 'failed'
+                job.error_message = f"Credencial não configurada: {e.message}"
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+                raise
+            except AccessDeniedException:
+                job.status = 'failed'
+                job.error_message = "Acesso negado"
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+                raise
+            except ItemNotFoundException:
+                job.status = 'failed'
+                job.error_message = "Arquivo não encontrado"
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+                raise
             except Exception as e:
                 job.status = 'failed'
                 job.error_message = str(e)
@@ -194,64 +214,52 @@ class DownloadWorker:
                 await db.commit()
                 raise
     
-    async def _download_direct(self, db: AsyncSession, job, soap_service, full_path: str, server):
-        """Download direto (arquivo pequeno)"""
-        params = {"s1": full_path, "l1": "0", "l2": "0"}
-        result = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
+    async def _download_direct_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
+        """Download direto usando o plugin (arquivo pequeno)"""
+        file_content = await plugin.download_file(full_path, ignore_cache=True)
         
-        if not result:
-            raise Exception("Empty response from SOAP")
-        
-        # Verificar erros
-        result_lower = result.lower() if result else ""
-        if "access" in result_lower and "denied" in result_lower:
-            raise Exception("Access Denied")
-        if "not found" in result_lower or "cannot find" in result_lower:
-            raise Exception("File not found")
+        if not file_content or not file_content.data:
+            raise Exception("Empty response from plugin")
         
         # Salvar arquivo
-        await self._save_file_content(db, job, result, server)
+        await self._save_file_content_bytes(db, job, file_content.data, server)
     
-    async def _download_chunked(self, db: AsyncSession, job, soap_service, full_path: str, server):
-        """Download em chunks (arquivo grande)"""
+    async def _download_chunked_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
+        """Download em chunks usando o plugin (arquivo grande)"""
         total_size = job.file_size or 0
         downloaded = 0
         chunks = []
         
         while downloaded < total_size:
-            chunk_end = min(downloaded + CHUNK_SIZE, total_size)
+            file_content = await plugin.download_file(
+                full_path, 
+                offset=downloaded, 
+                length=CHUNK_SIZE, 
+                ignore_cache=True
+            )
             
-            params = {
-                "s1": full_path,
-                "l1": str(downloaded),
-                "l2": str(CHUNK_SIZE)
-            }
-            
-            result = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
-            
-            if not result:
+            if not file_content or not file_content.data:
                 break
             
-            # Verificar erros
-            result_lower = result.lower()
-            if "access" in result_lower and "denied" in result_lower:
-                raise Exception("Access Denied")
-            
-            chunks.append(result)
-            downloaded = chunk_end
+            chunks.append(file_content.data)
+            downloaded += len(file_content.data)
             
             # Atualizar progresso
             job.downloaded_bytes = downloaded
             job.total_bytes = total_size
             job.progress = int((downloaded / total_size) * 100)
             await db.commit()
+            
+            # Se o plugin indicou que é o último chunk, parar
+            if file_content.is_complete or len(file_content.data) < CHUNK_SIZE:
+                break
         
         # Concatenar chunks e salvar
-        full_content = ''.join(chunks)
-        await self._save_file_content(db, job, full_content, server)
+        full_content = b''.join(chunks)
+        await self._save_file_content_bytes(db, job, full_content, server)
     
-    async def _save_file_content(self, db: AsyncSession, job, content: str, server):
-        """Salva o conteúdo do arquivo no storage"""
+    async def _save_file_content_bytes(self, db: AsyncSession, job, content: bytes, server):
+        """Salva o conteúdo do arquivo (bytes) no storage"""
         from database import DownloadedFile
         from storage_utils import get_server_storage_path
         import magic
@@ -259,8 +267,7 @@ class DownloadWorker:
         try:
             logger.info(f"Saving file content for job {job.id}: {job.file_path}")
             
-            # Decodificar base64 e salvar
-            file_bytes = base64.b64decode(content)
+            file_bytes = content
             
             # Calcular hash
             sha1_hash = hashlib.sha1(file_bytes).hexdigest()
