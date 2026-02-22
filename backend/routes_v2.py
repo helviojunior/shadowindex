@@ -4469,34 +4469,8 @@ async def auto_register_private_key_leak(
 DEFAULT_CRITICAL_SEARCH_CONFIG = {
     "enabled": True,
     
-    # Arquivos texto pequenos (até 1KB)
-    "text_files": {
-        "enabled": True,
-        "max_size_bytes": 1024,  # 1KB
-        "extensions": [".txt"],
-        "mime_types": ["text/"]  # Prefixo para todos os text/*
-    },
-    
-    # Arquivos office (até 1MB)
-    "office_files": {
-        "enabled": True,
-        "max_size_bytes": 1048576,  # 1MB
-        "extensions": [
-            ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-            ".odt", ".ods", ".odp", ".rtf", ".csv"
-        ],
-        "mime_types": [
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument",
-            "application/vnd.ms-excel",
-            "application/vnd.ms-powerpoint",
-            "application/vnd.oasis.opendocument"
-        ]
-    },
-    
-    # Palavras-chave no nome do arquivo
-    "keyword_files": {
-        "enabled": True,
+    # Regras de arquivo
+    "file_rules": {
         "keywords": [
             "senha", "password", "pwd", "pass",
             "acesso", "access", "login", "auth",
@@ -4509,22 +4483,10 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             "conexao", "connection", "conn",
             "usuario", "user", "admin"
         ],
-        "case_sensitive": False
-    },
-    
-    # Arquivos KeePass
-    "keepass_files": {
-        "enabled": True,
-        "extensions": [".kdbx", ".kdb", ".key"],
-        "mime_types": []
-    },
-    
-    # Arquivos de configuração e scripts críticos
-    "critical_extensions": {
-        "enabled": True,
         "extensions": [
             ".pfx", ".p12", ".jks", ".keystore",  # Certificados e keystores
             ".pem", ".crt", ".cer", ".der",  # Certificados
+            ".kdbx", ".kdb",  # KeePass
             ".cmd", ".bat", ".sh", ".ps1", ".psm1",  # Scripts
             ".conf", ".ini", ".env", ".yml", ".yaml",  # Configurações
             ".properties", ".cfg", ".config",  # Mais configurações
@@ -4534,11 +4496,31 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             ".aws", ".boto",  # AWS configs
             ".ssh", ".gnupg"  # SSH/GPG
         ],
+        "exact_names": [
+            ".env",
+            ".env.local",
+            ".env.production",
+            "web.config",
+            "app.config",
+            "appsettings.json",
+            "settings.py",
+            "config.py",
+            "secrets.yaml",
+            "credentials.json",
+            "service-account.json"
+        ],
         "mime_types": [
             "application/x-pkcs12",
             "application/x-x509-ca-cert",
             "application/x-pem-file"
         ]
+    },
+    
+    # Regras de tamanho
+    "size_rules": {
+        "enabled": True,
+        "min_bytes": 10,  # Mínimo 10 bytes (ignora arquivos vazios)
+        "max_bytes": 52428800  # 50MB
     },
     
     # Configurações de detecção de logs
@@ -4558,6 +4540,8 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
     "auto_gitleaks": {
         "enabled": True,
         "delay_seconds": 5  # Delay antes de iniciar
+    }
+}
     }
 }
 
