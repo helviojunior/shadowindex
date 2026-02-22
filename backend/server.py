@@ -1973,13 +1973,18 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
             "downloaded_at": file.downloaded_at.isoformat() if file.downloaded_at else None
         })
     
-    # Buscar findings do GitLeaks (por server_id ou extracted_server_id)
-    from sqlalchemy import or_
+    # Buscar findings do GitLeaks (por server_id, extracted_server_id ou nome/IP)
+    from sqlalchemy import or_, and_
     findings_result = await db.execute(
         select(GitleaksFinding).where(
             or_(
                 GitleaksFinding.server_id == server.id,
-                GitleaksFinding.extracted_server_id == server.id
+                GitleaksFinding.extracted_server_id == server.id,
+                # Fallback: buscar por nome E IP para findings antigos sem server_id
+                and_(
+                    GitleaksFinding.server_name == server.name,
+                    GitleaksFinding.server_ip == server.ip
+                )
             )
         )
     )
