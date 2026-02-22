@@ -301,11 +301,6 @@ class SoapApiPlugin(BasePlugin):
                     
                     # Try diffgram format first (Microsoft DataSet format)
                     # Look for Result elements in diffgram
-                    namespaces = {
-                        'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1',
-                        'msdata': 'urn:schemas-microsoft-com:xml-msdata'
-                    }
-                    
                     # Find all Result elements (diffgram format)
                     result_elements = root.findall('.//Result')
                     
