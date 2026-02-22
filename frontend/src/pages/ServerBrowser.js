@@ -2525,12 +2525,17 @@ const ServerBrowser = () => {
           server_id: parseInt(serverId),
           share_name: shareName,
           path: path,
-          max_depth: maxDepth
+          max_depth: maxDepth,
+          max_file_size_mb: Math.round(maxSizeBytes / (1024 * 1024))
         }
       });
       
       toast.success(response.data.message);
       toast.info('Acompanhe o progresso em Arquivos > Downloads');
+      
+      // Forçar atualização do estado de downloads ativos para iniciar polling
+      // Isso garante que o frontend comece a verificar os jobs criados no backend
+      setActiveDownloads(prev => prev + 1);
       
     } catch (error) {
       console.error('Error starting bulk download:', error);
