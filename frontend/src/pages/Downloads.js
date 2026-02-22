@@ -180,10 +180,11 @@ const Downloads = () => {
     }
   }, []);
 
-  // Função para retomar polling manualmente
-  const resumePolling = useCallback(() => {
+  // Função para retomar polling manualmente (definida após loadDownloadJobs e loadScanJobs)
+  const handleRefresh = useCallback(() => {
     pollingPausedRef.current = false;
     errorCountRef.current = 0;
+    setLoading(true);
     loadDownloadJobs();
     loadScanJobs();
   }, [loadDownloadJobs, loadScanJobs]);
