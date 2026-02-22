@@ -1007,6 +1007,32 @@ const Leaks = () => {
           })()}
         </DialogContent>
       </Dialog>
+      
+      {/* Diálogo de Confirmação */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDialog.action === 'clearAll' ? 'Limpar Todos os Findings' : 'Excluir Finding'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.action === 'clearAll' 
+                ? 'Tem certeza que deseja limpar todos os findings? Esta ação não pode ser desfeita.'
+                : 'Tem certeza que deseja excluir este finding? Esta ação não pode ser desfeita.'
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeConfirmedAction}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {confirmDialog.action === 'clearAll' ? 'Limpar Tudo' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
