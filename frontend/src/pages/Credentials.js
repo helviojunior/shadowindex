@@ -493,93 +493,93 @@ const Credentials = () => {
               <CardContent>
                 {typeCreds.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">Nenhuma credencial deste tipo</p>
-              ) : (
-                <div className="space-y-3">
-                  {typeCreds.map((cred) => (
-                    <div
-                      key={cred.id}
-                      data-testid={`credential-item-${cred.id}`}
-                      className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      {editingId === cred.id ? (
-                        // Edit mode - simplified for now
-                        <div className="flex-1 space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <Input
-                              value={editData.name || ''}
-                              onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                              placeholder="Nome"
-                            />
-                            {type === 'user_password' && (
-                              <>
-                                <Input
-                                  value={editData.domain || ''}
-                                  onChange={(e) => setEditData({ ...editData, domain: e.target.value })}
-                                  placeholder="Domínio"
-                                />
-                                <Input
-                                  value={editData.username || ''}
-                                  onChange={(e) => setEditData({ ...editData, username: e.target.value })}
-                                  placeholder="Usuário"
-                                />
-                                <Input
-                                  type="password"
-                                  value={editData.password || ''}
-                                  onChange={(e) => setEditData({ ...editData, password: e.target.value })}
-                                  placeholder="Nova senha"
-                                />
-                              </>
-                            )}
-                            {type === 'token' && (
-                              <Textarea
-                                value={editData.token || ''}
-                                onChange={(e) => setEditData({ ...editData, token: e.target.value })}
-                                placeholder="Token"
-                                className="col-span-2"
+                ) : (
+                  <div className="space-y-3">
+                    {typeCreds.map((cred) => (
+                      <div
+                        key={cred.id}
+                        data-testid={`credential-item-${cred.id}`}
+                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        {editingId === cred.id ? (
+                          // Edit mode - simplified for now
+                          <div className="flex-1 space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <Input
+                                value={editData.name || ''}
+                                onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                                placeholder="Nome"
                               />
-                            )}
+                              {type === 'user_password' && (
+                                <>
+                                  <Input
+                                    value={editData.domain || ''}
+                                    onChange={(e) => setEditData({ ...editData, domain: e.target.value })}
+                                    placeholder="Domínio"
+                                  />
+                                  <Input
+                                    value={editData.username || ''}
+                                    onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                                    placeholder="Usuário"
+                                  />
+                                  <Input
+                                    type="password"
+                                    value={editData.password || ''}
+                                    onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                                    placeholder="Nova senha"
+                                  />
+                                </>
+                              )}
+                              {type === 'token' && (
+                                <Textarea
+                                  value={editData.token || ''}
+                                  onChange={(e) => setEditData({ ...editData, token: e.target.value })}
+                                  placeholder="Token"
+                                  className="col-span-2"
+                                />
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => saveEdit(cred.id)}>
+                                <Check className="w-4 h-4 mr-1" /> Salvar
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                                <X className="w-4 h-4 mr-1" /> Cancelar
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={() => saveEdit(cred.id)}>
-                              <Check className="w-4 h-4 mr-1" /> Salvar
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                              <X className="w-4 h-4 mr-1" /> Cancelar
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {renderCredentialDisplay(cred)}
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => startEdit(cred)}
-                              data-testid={`edit-credential-${cred.id}`}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(cred.id)}
-                              data-testid={`delete-credential-${cred.id}`}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
+                        ) : (
+                          <>
+                            {renderCredentialDisplay(cred)}
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => startEdit(cred)}
+                                data-testid={`edit-credential-${cred.id}`}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(cred.id)}
+                                data-testid={`delete-credential-${cred.id}`}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
