@@ -718,7 +718,27 @@ const Leaks = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
-                              {/* Botão para abrir o arquivo no navegador */}
+                              {/* View */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedFinding(finding)}
+                                title="Ver detalhes"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {/* Copy */}
+                              {finding.Secret && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCopy(finding.Secret)}
+                                  title="Copiar secret"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {/* Abrir arquivo */}
                               {finding.extracted_server_id && finding.extracted_file_id && (
                                 <Button
                                   variant="ghost"
@@ -728,23 +748,7 @@ const Leaks = () => {
                                   }}
                                   title="Abrir arquivo no navegador"
                                 >
-                                  <File className="w-4 h-4" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSelectedFinding(finding)}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {finding.Secret && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleCopy(finding.Secret)}
-                                >
-                                  <Copy className="w-4 h-4" />
+                                  <ExternalLink className="w-4 h-4" />
                                 </Button>
                               )}
                             </div>
