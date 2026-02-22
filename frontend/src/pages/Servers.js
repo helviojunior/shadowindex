@@ -44,6 +44,10 @@ const Servers = () => {
   const [editingPluginServer, setEditingPluginServer] = useState(null);
   const [editPluginInstanceId, setEditPluginInstanceId] = useState('');
   
+  // Estados para edição do nome
+  const [editingNameServer, setEditingNameServer] = useState(null);
+  const [editName, setEditName] = useState('');
+  
   // Estados para busca e ordenação
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
