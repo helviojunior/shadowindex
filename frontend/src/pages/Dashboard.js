@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Database, Server, Globe, FileText, Wifi, WifiOff, HardDrive, Download,
-  AlertTriangle, Shield, Activity, Search, RefreshCw, Play
+  AlertTriangle, Shield, Activity, Search, RefreshCw, Play, FileWarning
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -24,7 +24,12 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar
 } from 'recharts';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -43,6 +48,7 @@ const Dashboard = () => {
     downloadedFiles: 0
   });
   const [gitleaksStats, setGitleaksStats] = useState(null);
+  const [extensionStats, setExtensionStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scanningAll, setScanningAll] = useState(false);
 
@@ -52,14 +58,15 @@ const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [creds, dbs, proxies, soaps, cache, servers, gitleaks] = await Promise.all([
+      const [creds, dbs, proxies, soaps, cache, servers, gitleaks, findings] = await Promise.all([
         axios.get(`${API}/credentials`),
         axios.get(`${API}/db-connections`),
         axios.get(`${API}/proxy-servers`),
         axios.get(`${API}/soap-apis`),
         axios.get(`${API}/cache/stats`),
         axios.get(`${API}/servers`),
-        axios.get(`${API_V2}/gitleaks/stats`).catch(() => ({ data: null }))
+        axios.get(`${API_V2}/gitleaks/stats`).catch(() => ({ data: null })),
+        axios.get(`${API_V2}/gitleaks/findings`).catch(() => ({ data: { files: [] } }))
       ]);
 
       const totalDownloads = servers.data.reduce((acc, server) => acc + (server.downloaded_files_count || 0), 0);
@@ -76,6 +83,31 @@ const Dashboard = () => {
 
       if (gitleaks.data) {
         setGitleaksStats(gitleaks.data);
+      }
+
+      // Processar extensões de arquivos com vulnerabilidades
+      if (findings.data && findings.data.files) {
+        const extensionCounts = {};
+        findings.data.files.forEach(file => {
+          const filePath = file.file || '';
+          const ext = filePath.split('.').pop()?.toLowerCase() || 'other';
+          const extension = ext.length <= 10 ? `.${ext}` : 'other';
+          extensionCounts[extension] = (extensionCounts[extension] || 0) + (file.findings?.length || 1);
+        });
+
+        // Converter para formato do radar chart e pegar top 8
+        const extensionData = Object.entries(extensionCounts)
+          .map(([ext, count]) => ({ extension: ext, vulnerabilities: count, fullMark: 100 }))
+          .sort((a, b) => b.vulnerabilities - a.vulnerabilities)
+          .slice(0, 8);
+
+        // Normalizar para o radar (máximo = maior valor)
+        const maxVal = Math.max(...extensionData.map(e => e.vulnerabilities), 1);
+        extensionData.forEach(e => {
+          e.fullMark = maxVal;
+        });
+
+        setExtensionStats(extensionData);
       }
 
       setLoading(false);
@@ -132,7 +164,7 @@ const Dashboard = () => {
     { name: 'Info', value: gitleaksStats.severity_counts.info, color: '#3B82F6' },
   ].filter(item => item.value > 0) : [];
 
-  // Dados simulados para o gráfico de Risk vs Time (usando dados reais quando disponíveis)
+  // Dados para o gráfico de Risk vs Time
   const riskOverTimeData = [
     { date: '01/02', risk: 0 },
     { date: '05/02', risk: gitleaksStats?.total_findings || 0 },
@@ -142,7 +174,7 @@ const Dashboard = () => {
     { date: 'Hoje', risk: gitleaksStats?.total_findings || 0 },
   ];
 
-  // Calcular Risk Score (baseado em findings)
+  // Calcular Risk Score
   const calculateRiskScore = () => {
     if (!gitleaksStats) return 0;
     const { severity_counts } = gitleaksStats;
@@ -181,7 +213,7 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      {/* Top Stats Cards - Similar ao Sn1per */}
+      {/* Linha 1: Top Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-l-4 border-l-cyan-500">
           <CardContent className="pt-6">
@@ -232,50 +264,11 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Risk vs Time + Overall Risk Score */}
+      {/* Linha 2: Overall Risk Score + Risk by Severity + Extensions Spider */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Risk vs Time Area Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Risk vs. Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={riskOverTimeData}>
-                  <defs>
-                    <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#22C55E" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="date" stroke="#666" fontSize={12} />
-                  <YAxis stroke="#666" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1a1a1a', 
-                      border: '1px solid #333',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="risk" 
-                    stroke="#22C55E" 
-                    fill="url(#riskGradient)"
-                    strokeWidth={2}
-                    dot={{ fill: '#22C55E', strokeWidth: 2 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Overall Risk Score Card - Verde como no Sn1per */}
+        {/* Overall Risk Score Card */}
         <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white">
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle className="text-lg text-white/90 flex items-center gap-2">
               <Activity className="w-5 h-5" />
               Overall Risk Score
@@ -303,16 +296,115 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Risk by Severity Donut Chart */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Risk by Severity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px]">
+              {severityData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={severityData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {severityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1a1a1a', 
+                        border: '1px solid #333',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Legend 
+                      verticalAlign="bottom" 
+                      height={36}
+                      formatter={(value) => (
+                        <span style={{ color: '#999', fontSize: '12px' }}>{value}</span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <Shield className="w-10 h-10 mb-2 opacity-30" />
+                  <p className="text-sm">Nenhum leak detectado</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Extensions Spider/Radar Chart */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileWarning className="w-5 h-5 text-red-500" />
+              Vulnerabilities by Extension
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px]">
+              {extensionStats.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={extensionStats}>
+                    <PolarGrid stroke="#333" />
+                    <PolarAngleAxis 
+                      dataKey="extension" 
+                      tick={{ fill: '#999', fontSize: 10 }}
+                    />
+                    <PolarRadiusAxis 
+                      angle={30} 
+                      domain={[0, 'auto']}
+                      tick={{ fill: '#666', fontSize: 9 }}
+                    />
+                    <Radar
+                      name="Vulnerabilities"
+                      dataKey="vulnerabilities"
+                      stroke="#EF4444"
+                      fill="#EF4444"
+                      fillOpacity={0.5}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1a1a1a', 
+                        border: '1px solid #333',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value) => [`${value} leaks`, 'Vulnerabilities']}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <FileWarning className="w-10 h-10 mb-2 opacity-30" />
+                  <p className="text-sm">Sem dados de extensões</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Scan Status + Risk by Severity */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* Linha 3: Status do Scan + Risk vs. Time (lado a lado) */}
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Scan Status Card */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
+        <Card>
+          <CardHeader className="pb-2">
             <CardTitle className="text-lg">Status do Scan</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
             <div className="text-center">
               <p className="text-5xl font-bold text-green-500">{scanProgress}%</p>
               <Progress value={scanProgress} className="mt-4 h-3" />
@@ -348,67 +440,53 @@ const Dashboard = () => {
                 )}
                 Escanear Todos os Servidores
               </Button>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Escaneia arquivos já baixados em busca de secrets
-              </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Risk by Severity Donut Chart */}
+        {/* Risk vs Time Area Chart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Risk by Severity</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Risk vs. Time</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[250px]">
-              {severityData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={severityData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {severityData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1a1a1a', 
-                        border: '1px solid #333',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Legend 
-                      verticalAlign="bottom" 
-                      height={36}
-                      formatter={(value, entry) => (
-                        <span style={{ color: '#999' }}>{value}</span>
-                      )}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <Shield className="w-12 h-12 mb-4 opacity-30" />
-                  <p>Nenhum leak detectado</p>
-                  <p className="text-sm">Execute um scan para ver os resultados</p>
-                </div>
-              )}
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={riskOverTimeData}>
+                  <defs>
+                    <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#22C55E" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                  <YAxis stroke="#666" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1a1a1a', 
+                      border: '1px solid #333',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="risk" 
+                    stroke="#22C55E" 
+                    fill="url(#riskGradient)"
+                    strokeWidth={2}
+                    dot={{ fill: '#22C55E', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Changes / Quick Stats */}
+      {/* Resumo / Quick Stats */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="text-lg">Resumo</CardTitle>
         </CardHeader>
         <CardContent>
