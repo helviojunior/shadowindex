@@ -68,9 +68,10 @@ const Downloads = () => {
     skipped: 0
   });
   
-  // Controle de erros para evitar spam de toasts
-  const lastErrorRef = useRef(null);
+  // Controle de erros - para polling após muitos erros
   const errorCountRef = useRef(0);
+  const pollingPausedRef = useRef(false);
+  const pollIntervalRef = useRef(null);
 
   // WebSocket para atualizações em tempo real
   const { isConnected } = useWebSocket();
