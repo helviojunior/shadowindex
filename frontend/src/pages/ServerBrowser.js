@@ -2226,13 +2226,48 @@ const ServerBrowser = () => {
       
       const items = response.data.items || [];
       
-      // Atualizar o ícone azul na árvore (marcar como fetched)
-      const nodeId = path === `\\\\${server?.ip}\\${shareName}` 
-        ? `share-${shareName}` 
-        : String(items[0]?.id || path).replace(/[^a-zA-Z0-9]/g, '_');
+      // Determinar o nodeId do diretório pai para atualizar a árvore
+      let nodeId;
+      if (path === `\\\\${server?.ip}\\${shareName}`) {
+        // É o share raiz
+        nodeId = `share-${shareName}`;
+      } else {
+        // É um subdiretório - buscar o ID do item pai no nodeChildren existente
+        // Primeiro, encontrar o pai deste path
+        const pathParts = path.split('\\').filter(p => p);
+        const parentPath = pathParts.slice(0, -1).join('\\');
+        const currentDirName = pathParts[pathParts.length - 1];
+        
+        // Buscar o ID do diretório atual nos nodeChildren do pai
+        let foundId = null;
+        
+        // Iterar sobre todos os nodeChildren para encontrar o item com este fullPath
+        for (const [parentNodeId, children] of Object.entries(nodeChildren)) {
+          const matchingChild = children.find(c => 
+            c.fullPath === path || 
+            c.full_path === path ||
+            (c.name === currentDirName && (c.fullPath?.includes(parentPath) || c.full_path?.includes(parentPath)))
+          );
+          if (matchingChild && matchingChild.id) {
+            foundId = matchingChild.id;
+            break;
+          }
+        }
+        
+        // Usar o ID encontrado ou fallback para o path sanitizado
+        nodeId = foundId ? String(foundId) : path.replace(/[^a-zA-Z0-9]/g, '_');
+      }
       
-      // Atualizar nodeChildren para mostrar na árvore
-      setNodeChildren(prev => ({ ...prev, [nodeId]: items }));
+      // Atualizar nodeChildren preservando os dados existentes
+      setNodeChildren(prev => {
+        const existingChildren = prev[nodeId] || [];
+        // Preservar o estado dos filhos (expandedNodes, etc) mesclando com novos dados
+        const mergedItems = items.map(newItem => {
+          const existing = existingChildren.find(e => e.id === newItem.id || e.fullPath === newItem.fullPath);
+          return existing ? { ...existing, ...newItem } : newItem;
+        });
+        return { ...prev, [nodeId]: mergedItems };
+      });
       
       // Marcar share como fetched se for o nível raiz
       if (currentDepth === 1) {
