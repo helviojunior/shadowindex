@@ -29,6 +29,16 @@ Portuguese (pt-BR)
 ## Completed Features
 
 ### 2026-02-22 (Session 30 - Plugin Instance Architecture Update)
+- [x] **Validação backend para plugin_instance_id:**
+  - Função `get_plugin_for_server()` agora requer `plugin_instance_id`
+  - Retorna erro 422 com mensagem clara: "Servidor não possui instância de plugin configurada"
+  - Removido fallback para `plugin_type` (arquitetura legacy)
+- [x] **Bug fix: Árvore de arquivos perdendo filhos após download:**
+  - Removido `loadShares()` do polling de downloads concluídos
+  - Apenas `loadDownloadedFiles()` é chamado, preservando a estrutura da árvore
+- [x] **Configuração do Tika corrigida:**
+  - URL padrão alterada de `http://localhost:9998` para `http://tika:9998`
+  - Compatível com o hostname do container Docker
 - [x] **Alteração nas Conexões SQL para usar Instâncias de Plugin:**
   - Formulário de criação/edição agora usa `plugin_instance_id` ao invés de `plugin_type`
   - Dropdown mostra nome da instância e tipo do plugin (ex: "SOAP Padrão (soap_api)")
