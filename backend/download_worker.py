@@ -97,54 +97,6 @@ class DownloadWorker:
         except Exception as e:
             logger.error(f"Error resetting stale jobs: {e}")
     
-    async def _stale_check_loop(self):
-        """Loop que verifica periodicamente por jobs travados"""
-        from database import async_session_maker, DownloadJob
-        from sqlalchemy import update
-        
-        while self.running:
-            try:
-                await asyncio.sleep(STALE_CHECK_INTERVAL)
-                
-                if not self.running:
-                    break
-                
-                # Verificar jobs com status 'downloading' há mais de DOWNLOAD_TIMEOUT_MINUTES
-                timeout_threshold = datetime.now(timezone.utc) - timedelta(minutes=DOWNLOAD_TIMEOUT_MINUTES)
-                
-                async with async_session_maker() as db:
-                    result = await db.execute(
-                        update(DownloadJob)
-                        .where(
-                            and_(
-                                DownloadJob.status == 'downloading',
-                                DownloadJob.started_at < timeout_threshold
-                            )
-                        )
-                        .values(
-                            status='failed',
-                            error_message=f'Timeout: download excedeu {DOWNLOAD_TIMEOUT_MINUTES} minutos',
-                            completed_at=datetime.now(timezone.utc)
-                        )
-                    )
-                    await db.commit()
-                    
-                    if result.rowcount > 0:
-                        logger.warning(f"Marked {result.rowcount} timed-out download jobs as failed")
-                        
-                        # Emitir evento WebSocket para atualizar a UI
-                        ws_manager = get_websocket_manager()
-                        await ws_manager.broadcast({
-                            "type": "downloads_cleanup",
-                            "timed_out_count": result.rowcount,
-                            "timestamp": datetime.now(timezone.utc).isoformat()
-                        })
-            
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Error in stale check loop: {e}")
-    
     async def stop(self):
         """Para o worker"""
         self.running = False
@@ -152,12 +104,6 @@ class DownloadWorker:
             self._task.cancel()
             try:
                 await self._task
-            except asyncio.CancelledError:
-                pass
-        if self._stale_check_task:
-            self._stale_check_task.cancel()
-            try:
-                await self._stale_check_task
             except asyncio.CancelledError:
                 pass
         logger.info("Download worker stopped")
