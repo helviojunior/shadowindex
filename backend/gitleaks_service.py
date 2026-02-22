@@ -451,21 +451,30 @@ class GitleaksService:
         return count
     
     async def delete_finding_from_db(self, fingerprint: str) -> bool:
-        """Remove um finding do banco de dados"""
+        """Remove um finding do banco de dados e do cache"""
         from database import async_session_maker, GitleaksFinding
         from sqlalchemy import delete
         
         try:
+            # Primeiro remover do cache em memória
+            original_count = len(self._findings)
+            self._findings = [f for f in self._findings if f.get('Fingerprint') != fingerprint]
+            removed_from_cache = len(self._findings) < original_count
+            
+            # Depois remover do banco de dados
             async with async_session_maker() as db:
-                await db.execute(
+                result = await db.execute(
                     delete(GitleaksFinding).where(GitleaksFinding.fingerprint == fingerprint)
                 )
                 await db.commit()
+                removed_from_db = result.rowcount > 0
                 
-                # Remover também do cache em memória
-                self._findings = [f for f in self._findings if f.get('Fingerprint') != fingerprint]
-                logger.info(f"Finding {fingerprint} removido do banco")
+            if removed_from_cache or removed_from_db:
+                logger.info(f"Finding {fingerprint} removido (cache: {removed_from_cache}, db: {removed_from_db})")
                 return True
+            else:
+                logger.warning(f"Finding {fingerprint} não encontrado")
+                return False
         except Exception as e:
             logger.error(f"Erro ao remover finding {fingerprint}: {e}")
             return False
