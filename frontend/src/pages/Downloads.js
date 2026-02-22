@@ -384,7 +384,20 @@ const Downloads = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Downloads</h1>
-          <p className="text-muted-foreground">Gerencie os downloads de arquivos dos servidores</p>
+          <p className="text-muted-foreground flex items-center gap-2">
+            Gerencie os downloads de arquivos dos servidores
+            {isConnected ? (
+              <span className="flex items-center gap-1 text-xs text-green-500">
+                <Wifi className="w-3 h-3" />
+                Tempo real
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs text-yellow-500">
+                <WifiOff className="w-3 h-3" />
+                Offline
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
