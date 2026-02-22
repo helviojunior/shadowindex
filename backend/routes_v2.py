@@ -1201,6 +1201,12 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         if not file_content or not file_content.data:
             raise HTTPException(status_code=500, detail="Resposta vazia do servidor")
         
+        # ===== AÇÕES PÓS-DOWNLOAD =====
+        
+        # 1. Atualizar status do item (sucesso no download)
+        item.access_denied = False
+        item.error_message = None
+        
         # Verificar se já existe no banco
         existing_result = await db.execute(
             select(DownloadedFile).where(
@@ -1247,6 +1253,42 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         mimetype = get_file_mimetype(local_path)
         sanitized_path = f"{server.id}/{file_id}/{version}"
         
+        # 2. OCR - Processar arquivo para extração de texto (se aplicável)
+        ocr_text = None
+        ocr_status = "not_applicable"
+        try:
+            from ocr_service import OCRService
+            ocr_service = OCRService()
+            
+            if ocr_service.is_available():
+                # Verificar se o tipo de arquivo suporta OCR
+                ocr_supported_mimes = [
+                    'application/pdf',
+                    'image/png', 'image/jpeg', 'image/gif', 'image/bmp', 'image/tiff',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'text/plain', 'text/html', 'text/xml'
+                ]
+                
+                if mimetype and any(m in mimetype for m in ocr_supported_mimes):
+                    logger.info(f"Processing OCR for file {item.full_path}")
+                    ocr_result = await ocr_service.extract_text(local_path)
+                    if ocr_result and ocr_result.get('success'):
+                        ocr_text = ocr_result.get('text', '')
+                        ocr_status = "completed"
+                        logger.info(f"OCR completed for {item.full_path}: {len(ocr_text)} chars")
+                    else:
+                        ocr_status = "failed"
+                else:
+                    ocr_status = "not_applicable"
+            else:
+                ocr_status = "service_unavailable"
+        except Exception as ocr_error:
+            logger.warning(f"OCR failed for {item.full_path}: {ocr_error}")
+            ocr_status = "failed"
+        
         if existing:
             # Atualizar existente
             existing.sanitized_path = sanitized_path
@@ -1254,6 +1296,8 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
             existing.file_size = file_size
             existing.mimetype = mimetype
             existing.downloaded_at = datetime.now(timezone.utc)
+            if ocr_text:
+                existing.ocr_text = ocr_text
             await db.commit()
             await db.refresh(existing)
             
@@ -1264,12 +1308,15 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
                 "status": "updated",
                 "sha1_hash": sha1_hash,
                 "size": file_size,
-                "size_formatted": format_size(file_size)
+                "size_formatted": format_size(file_size),
+                "ocr_status": ocr_status
             }
         else:
             # Atualizar registro já criado
             downloaded_file.sanitized_path = sanitized_path
             downloaded_file.mimetype = mimetype
+            if ocr_text:
+                downloaded_file.ocr_text = ocr_text
             server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
             await db.commit()
             await db.refresh(downloaded_file)
@@ -1281,7 +1328,8 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
                 "status": "new",
                 "sha1_hash": sha1_hash,
                 "size": file_size,
-                "size_formatted": format_size(file_size)
+                "size_formatted": format_size(file_size),
+                "ocr_status": ocr_status
             }
     
     except CredentialNotSetException as e:
@@ -1297,13 +1345,31 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         )
         
     except AccessDeniedException as e:
+        # Atualizar status do item (acesso negado)
         item.access_denied = True
         item.error_message = "Acesso negado"
         await db.commit()
-        raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+        raise HTTPException(
+            status_code=403, 
+            detail={
+                "error": "access_denied",
+                "message": "Acesso negado ao arquivo",
+                "file_path": item.full_path
+            }
+        )
         
     except ItemNotFoundException as e:
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
+        # Atualizar status do item (não encontrado)
+        item.error_message = "Arquivo não encontrado"
+        await db.commit()
+        raise HTTPException(
+            status_code=404, 
+            detail={
+                "error": "not_found",
+                "message": "Arquivo não encontrado no servidor",
+                "file_path": item.full_path
+            }
+        )
             
     except HTTPException:
         raise
@@ -1311,6 +1377,11 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         import traceback
         error_traceback = traceback.format_exc()
         logger.error(f"Error downloading item {item_id}: {e}\n{error_traceback}")
+        
+        # Atualizar status do item (erro genérico)
+        item.error_message = str(e)[:255]  # Limitar tamanho do erro
+        await db.commit()
+        
         raise HTTPException(status_code=500, detail=str(e))
 
 
