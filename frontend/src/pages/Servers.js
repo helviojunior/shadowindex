@@ -39,6 +39,10 @@ const Servers = () => {
   const [availablePlugins, setAvailablePlugins] = useState({});
   const [soapApiUrl, setSoapApiUrl] = useState('');
   
+  // Estados para edição do plugin
+  const [editingPluginServer, setEditingPluginServer] = useState(null);
+  const [editPluginType, setEditPluginType] = useState('');
+  
   // Estados para busca e ordenação
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
