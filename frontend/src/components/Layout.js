@@ -156,7 +156,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
     setIsRetrying(true);
     try {
       // Testar conexão com o backend
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/api/health`);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/api/`);
       if (response.ok) {
         resetConnection();
       }
