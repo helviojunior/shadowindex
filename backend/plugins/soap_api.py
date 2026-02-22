@@ -363,45 +363,116 @@ class SoapApiPlugin(BasePlugin):
             if result and result.strip():
                 try:
                     # Parse XML response
-                    root = ET.fromstring(f"<root>{result}</root>")
+                    # The result may be the full SOAP envelope or just the inner content
+                    xml_content = result.strip()
                     
-                    for item_elem in root.findall('.//Table'):
-                        name = item_elem.findtext('cFileName', '')
-                        item_type = item_elem.findtext('type', 'File')
-                        
-                        if name and name not in ('.', '..'):
-                            # Parse size
-                            size = 0
-                            size_str = item_elem.findtext('nFileSizeLow', '0')
-                            try:
-                                size = int(size_str)
-                            except ValueError:
-                                pass
+                    # Handle full SOAP envelope
+                    if '<soap:Envelope' in xml_content or '<Envelope' in xml_content:
+                        # Parse full SOAP envelope
+                        root = ET.fromstring(xml_content)
+                        # Find ListDirectoryResult content
+                        result_elem = root.find('.//{http://test/}ListDirectoryResult')
+                        if result_elem is None:
+                            # Try without namespace
+                            result_elem = root.find('.//ListDirectoryResult')
+                        if result_elem is not None and result_elem.text:
+                            xml_content = result_elem.text
+                    
+                    # Wrap in root if needed for parsing
+                    if not xml_content.startswith('<root>') and not xml_content.startswith('<?xml'):
+                        xml_content = f"<root>{xml_content}</root>"
+                    
+                    root = ET.fromstring(xml_content)
+                    
+                    # Try diffgram format first (Microsoft DataSet format)
+                    # Look for Result elements in diffgram/DocumentElement
+                    result_elements = root.findall('.//Result')
+                    
+                    if result_elements:
+                        # diffgram format: type, name, length, s_length, lastwritetime, fullname
+                        for item_elem in result_elements:
+                            name = item_elem.findtext('name', '')
+                            item_type = item_elem.findtext('type', 'File')  # "Directory" or "File"
                             
-                            # Parse dates
-                            created = None
-                            modified = None
+                            if name and name not in ('.', '..'):
+                                # Parse size
+                                size = 0
+                                size_str = item_elem.findtext('length', '0')
+                                try:
+                                    size = int(size_str)
+                                except ValueError:
+                                    pass
+                                
+                                # Parse dates - format: "2025-06-27 10:26:30Z"
+                                modified = None
+                                lastwritetime = item_elem.findtext('lastwritetime', '')
+                                if lastwritetime:
+                                    try:
+                                        # Handle format "2025-06-27 10:26:30Z"
+                                        lastwritetime = lastwritetime.replace('Z', '').strip()
+                                        modified = datetime.strptime(lastwritetime, '%Y-%m-%d %H:%M:%S')
+                                    except ValueError:
+                                        try:
+                                            modified = datetime.fromisoformat(lastwritetime)
+                                        except ValueError:
+                                            pass
+                                
+                                # Get fullname from response or build it
+                                full_path = item_elem.findtext('fullname', '')
+                                if not full_path:
+                                    full_path = f"{path}\\{name}" if not path.endswith('\\') else f"{path}{name}"
+                                
+                                # Get extension for files
+                                extension = ""
+                                if item_type == "File" and '.' in name:
+                                    extension = name.rsplit('.', 1)[-1].lower()
+                                
+                                items.append(DirectoryItem(
+                                    name=name,
+                                    item_type=item_type,
+                                    full_path=full_path,
+                                    size=size,
+                                    created=None,
+                                    modified=modified,
+                                    extension=extension
+                                ))
+                    else:
+                        # Fallback: Try legacy Table format
+                        for item_elem in root.findall('.//Table'):
+                            name = item_elem.findtext('cFileName', '')
+                            item_type = item_elem.findtext('type', 'File')
                             
-                            # Determine full path
-                            full_path = f"{path}\\{name}" if not path.endswith('\\') else f"{path}{name}"
-                            
-                            # Get extension for files
-                            extension = ""
-                            if item_type == "File" and '.' in name:
-                                extension = name.rsplit('.', 1)[-1].lower()
-                            
-                            items.append(DirectoryItem(
-                                name=name,
-                                item_type=item_type,
-                                full_path=full_path,
-                                size=size,
-                                created=created,
-                                modified=modified,
-                                extension=extension
-                            ))
+                            if name and name not in ('.', '..'):
+                                # Parse size
+                                size = 0
+                                size_str = item_elem.findtext('nFileSizeLow', '0')
+                                try:
+                                    size = int(size_str)
+                                except ValueError:
+                                    pass
+                                
+                                # Determine full path
+                                full_path = f"{path}\\{name}" if not path.endswith('\\') else f"{path}{name}"
+                                
+                                # Get extension for files
+                                extension = ""
+                                if item_type == "File" and '.' in name:
+                                    extension = name.rsplit('.', 1)[-1].lower()
+                                
+                                items.append(DirectoryItem(
+                                    name=name,
+                                    item_type=item_type,
+                                    full_path=full_path,
+                                    size=size,
+                                    created=None,
+                                    modified=None,
+                                    extension=extension
+                                ))
                             
                 except ET.ParseError as e:
-                    logger.warning(f"Could not parse directory response as XML: {e}")
+                    import traceback
+                    error_traceback = traceback.format_exc()
+                    logger.warning(f"Could not parse directory response as XML: {e}\n{error_traceback}")
                     
                     # Check for access denied in response
                     if "Access" in result and "denied" in result.lower():
@@ -416,12 +487,14 @@ class SoapApiPlugin(BasePlugin):
         except ConnectionException:
             raise
         except Exception as e:
+            import traceback
+            error_traceback = traceback.format_exc()
             error_msg = str(e).lower()
             if "access" in error_msg and "denied" in error_msg:
                 raise AccessDeniedException(path)
             if "not found" in error_msg or "does not exist" in error_msg:
                 raise ItemNotFoundException(path)
-            logger.error(f"Error listing directory: {e}")
+            logger.error(f"Error listing directory: {e}\n{error_traceback}")
             raise PluginException(f"Failed to list directory: {e}")
     
     async def download_file(
