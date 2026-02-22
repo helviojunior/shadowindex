@@ -38,6 +38,7 @@ import {
   HardDrive,
   Loader2,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   FolderOpen,
   Copy,
