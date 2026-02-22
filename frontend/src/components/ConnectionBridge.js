@@ -5,94 +5,62 @@ import { useConnectionStatus } from '@/contexts/ConnectionStatusContext';
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 /**
- * Componente bridge que conecta o WebSocket ao ConnectionStatus
- * e também monitora falhas de API HTTP
- * Deve ser renderizado dentro de ambos os providers
+ * Componente bridge que monitora a conexão com o backend via health check HTTP
+ * O WebSocket é usado apenas para dados em tempo real, não para status de conexão
  */
 export const ConnectionBridge = ({ children }) => {
-  const { setConnectionStatusCallback, isConnected: wsConnected } = useWebSocket();
+  const { isConnected: wsConnected } = useWebSocket();
   const { markConnected, markDisconnected, isConnected } = useConnectionStatus();
   const healthCheckIntervalRef = useRef(null);
-  const failedChecksRef = useRef(0);
-  const wsDisconnectTimeoutRef = useRef(null);
+  const consecutiveFailuresRef = useRef(0);
+  const consecutiveSuccessRef = useRef(0);
 
-  useEffect(() => {
-    // Registrar callback no WebSocket para atualizar status de conexão
-    setConnectionStatusCallback(({ connected, message }) => {
-      if (connected) {
-        // Cancelar timeout de desconexão se reconectou
-        if (wsDisconnectTimeoutRef.current) {
-          clearTimeout(wsDisconnectTimeoutRef.current);
-          wsDisconnectTimeoutRef.current = null;
-        }
-        failedChecksRef.current = 0;
-        markConnected();
-      } else {
-        // Só reportar desconexão após 10 segundos
-        if (!wsDisconnectTimeoutRef.current) {
-          wsDisconnectTimeoutRef.current = setTimeout(() => {
-            markDisconnected(message);
-            wsDisconnectTimeoutRef.current = null;
-          }, 10000);
-        }
-      }
-    });
-
-    return () => {
-      if (wsDisconnectTimeoutRef.current) {
-        clearTimeout(wsDisconnectTimeoutRef.current);
-      }
-    };
-  }, [setConnectionStatusCallback, markConnected, markDisconnected]);
-
-  // Sincronizar estado inicial
-  useEffect(() => {
-    if (wsConnected) {
-      if (wsDisconnectTimeoutRef.current) {
-        clearTimeout(wsDisconnectTimeoutRef.current);
-        wsDisconnectTimeoutRef.current = null;
-      }
-      failedChecksRef.current = 0;
-      markConnected();
-    }
-  }, [wsConnected, markConnected]);
-
-  // Health check periódico para detectar problemas de API HTTP
+  // Health check periódico via HTTP - única fonte de verdade para status de conexão
   useEffect(() => {
     const checkApiHealth = async () => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         
         const response = await fetch(`${API_URL}/api/`, {
           method: 'GET',
-          signal: controller.signal
+          signal: controller.signal,
+          cache: 'no-store'
         });
         
         clearTimeout(timeoutId);
         
         if (response.ok) {
-          failedChecksRef.current = 0;
-          if (!isConnected) {
+          consecutiveFailuresRef.current = 0;
+          consecutiveSuccessRef.current += 1;
+          
+          // Precisa de 2 sucessos consecutivos para marcar como conectado
+          // Isso evita falsos positivos durante instabilidade
+          if (!isConnected && consecutiveSuccessRef.current >= 2) {
             markConnected();
           }
         } else {
-          failedChecksRef.current += 1;
-          if (failedChecksRef.current >= 2) {
+          consecutiveSuccessRef.current = 0;
+          consecutiveFailuresRef.current += 1;
+          
+          // Só marca como desconectado após 3 falhas consecutivas (30 segundos)
+          if (consecutiveFailuresRef.current >= 3) {
             markDisconnected('Erro na comunicação com a API');
           }
         }
       } catch (error) {
-        failedChecksRef.current += 1;
-        // Só marca como desconectado após 2 falhas consecutivas
-        if (failedChecksRef.current >= 2) {
+        consecutiveSuccessRef.current = 0;
+        consecutiveFailuresRef.current += 1;
+        
+        // Só marca como desconectado após 3 falhas consecutivas
+        if (consecutiveFailuresRef.current >= 3) {
           markDisconnected('Servidor não está respondendo');
         }
       }
     };
 
-    // Check inicial após 2 segundos
-    const initialTimeout = setTimeout(checkApiHealth, 2000);
+    // Check inicial após 3 segundos
+    const initialTimeout = setTimeout(checkApiHealth, 3000);
     
     // Check periódico a cada 10 segundos
     healthCheckIntervalRef.current = setInterval(checkApiHealth, 10000);
@@ -104,6 +72,17 @@ export const ConnectionBridge = ({ children }) => {
       }
     };
   }, [markConnected, markDisconnected, isConnected]);
+
+  // Se o WebSocket conectar, resetar contador de falhas (sinal positivo)
+  useEffect(() => {
+    if (wsConnected) {
+      consecutiveFailuresRef.current = 0;
+      consecutiveSuccessRef.current = 2; // Força reconexão imediata se WS conectou
+      if (!isConnected) {
+        markConnected();
+      }
+    }
+  }, [wsConnected, isConnected, markConnected]);
 
   return children;
 };
