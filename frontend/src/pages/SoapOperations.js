@@ -91,7 +91,7 @@ const SoapOperations = () => {
         fromCache: response.data.from_cache && !ignoreCache
       });
       
-      toast.success(`Operação ${operation} executada com sucesso`);
+      // Operação executada (sem toast de sucesso)
     } catch (error) {
       console.error('Error executing SOAP operation:', error);
       const errorMsg = error.response?.data?.detail || 'Erro ao executar operação SOAP';
