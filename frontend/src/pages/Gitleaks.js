@@ -429,14 +429,27 @@ const Gitleaks = () => {
                           Cancelar
                         </Button>
                       )}
-                      {job.status === 'completed' && job.findings_count > 0 && (
-                        <Button 
-                          variant="default" 
-                          size="sm"
-                          onClick={() => window.location.href = '/leaks'}
-                        >
-                          Ver Findings
-                        </Button>
+                      {job.status === 'completed' && (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => loadJobReport(job.job_id)}
+                            title="Ver JSON do relatório"
+                          >
+                            <FileJson className="w-4 h-4 mr-1" />
+                            Ver JSON
+                          </Button>
+                          {job.findings_count > 0 && (
+                            <Button 
+                              variant="default" 
+                              size="sm"
+                              onClick={() => window.location.href = '/leaks'}
+                            >
+                              Ver Findings
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
