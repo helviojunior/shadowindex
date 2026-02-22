@@ -28,7 +28,7 @@ import os
 
 from database import (
     get_db, Server, ServerShare, ServerItem, DownloadedFile, FileVersion, 
-    DownloadJob, PfxPassword
+    DownloadJob, PfxPassword, PluginInstance
 )
 
 logger = logging.getLogger(__name__)
