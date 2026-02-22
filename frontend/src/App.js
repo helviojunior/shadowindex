@@ -38,37 +38,39 @@ function App() {
 
   return (
     <div className="App">
-      <WebSocketProvider>
-        <AppProvider>
-          <BrowserRouter>
-            <Layout darkMode={darkMode} setDarkMode={setDarkMode}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/servers" element={<Servers />} />
-                <Route path="/servers/import" element={<ImportServers />} />
-                <Route path="/servers/:serverId" element={<ServerBrowser />} />
-                <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
-                <Route path="/files/browse" element={<FileNavigation />} />
-                <Route path="/downloads" element={<Downloads />} />
-                <Route path="/leaks" element={<Leaks />} />
-              <Route path="/credentials" element={<Credentials />} />
-              <Route path="/sql" element={<DatabaseConnections />} />
-              <Route path="/sql/presets" element={<SqlPresets />} />
-              <Route path="/sql/execute/:connectionId" element={<SqlExecutor />} />
-              <Route path="/db-connections" element={<DatabaseConnections />} />
-              <Route path="/proxy-servers" element={<ProxyServers />} />
-              <Route path="/soap-apis" element={<SoapApis />} />
-              <Route path="/soap-operations" element={<SoapOperations />} />
-              <Route path="/settings" element={<GeneralSettings />} />
-              <Route path="/plugins/soap" element={<PluginSoapConfig />} />
-              <Route path="/plugins/direct" element={<PluginDirectConfig />} />
-              <Route path="/beautify-test" element={<BeautifyTest />} />
-            </Routes>
-          </Layout>
-        </BrowserRouter>
-        <Toaster position="top-right" richColors />
-      </AppProvider>
-      </WebSocketProvider>
+      <ConnectionStatusProvider>
+        <WebSocketProvider>
+          <AppProvider>
+            <BrowserRouter>
+              <Layout darkMode={darkMode} setDarkMode={setDarkMode}>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/servers" element={<Servers />} />
+                  <Route path="/servers/import" element={<ImportServers />} />
+                  <Route path="/servers/:serverId" element={<ServerBrowser />} />
+                  <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
+                  <Route path="/files/browse" element={<FileNavigation />} />
+                  <Route path="/downloads" element={<Downloads />} />
+                  <Route path="/leaks" element={<Leaks />} />
+                <Route path="/credentials" element={<Credentials />} />
+                <Route path="/sql" element={<DatabaseConnections />} />
+                <Route path="/sql/presets" element={<SqlPresets />} />
+                <Route path="/sql/execute/:connectionId" element={<SqlExecutor />} />
+                <Route path="/db-connections" element={<DatabaseConnections />} />
+                <Route path="/proxy-servers" element={<ProxyServers />} />
+                <Route path="/soap-apis" element={<SoapApis />} />
+                <Route path="/soap-operations" element={<SoapOperations />} />
+                <Route path="/settings" element={<GeneralSettings />} />
+                <Route path="/plugins/soap" element={<PluginSoapConfig />} />
+                <Route path="/plugins/direct" element={<PluginDirectConfig />} />
+                <Route path="/beautify-test" element={<BeautifyTest />} />
+              </Routes>
+            </Layout>
+          </BrowserRouter>
+          <Toaster position="top-right" richColors />
+        </AppProvider>
+        </WebSocketProvider>
+      </ConnectionStatusProvider>
     </div>
   );
 }
