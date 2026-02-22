@@ -3405,6 +3405,17 @@ const ServerBrowser = () => {
                     <Download className="w-4 h-4 mr-2" />
                     Enviar para Fila
                   </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="h-7 border-red-500/50 text-red-500 hover:bg-red-500/10"
+                    onClick={startCriticalSearch}
+                    data-testid="critical-search-button"
+                    title="Buscar arquivos sensíveis (ignora logs, foca em arquivos críticos)"
+                  >
+                    <Shield className="w-4 h-4 mr-2" />
+                    Busca Crítica
+                  </Button>
                 </div>
               ) : (
                 <Button 
