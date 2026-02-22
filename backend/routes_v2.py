@@ -1163,10 +1163,12 @@ async def browse_item(
 
 @router.post("/servers/{server_id}/items/{item_id}/download")
 async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends(get_db)):
-    """Download direto de um arquivo via SOAP"""
-    from soap_service import get_default_soap_service
-    from storage_utils import save_downloaded_file, format_size
+    """Download direto de um arquivo usando o plugin configurado para o servidor"""
+    from plugins.factory import get_plugin_for_server
+    from plugins.exceptions import CredentialNotSetException, AccessDeniedException, ItemNotFoundException
+    from storage_utils import format_size
     from server import get_file_mimetype
+    import hashlib
     
     server = await get_server_or_404(db, server_id)
     item = await get_item_or_404(db, server, item_id)
@@ -1174,26 +1176,17 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
     if item.item_type != "File":
         raise HTTPException(status_code=400, detail="Item não é um arquivo")
     
-    # Chamar SOAP Exec5 para download
-    soap_service = await get_default_soap_service(db)
-    params = {"s1": item.full_path, "s2": "", "l1": 0, "l2": 0}
+    logger.info(f"Downloading item {item.full_path} for server {server.ip} using plugin {server.plugin_type}")
     
     try:
-        result_str = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
+        # Obter o plugin correto para o servidor
+        plugin = await get_plugin_for_server(db, server)
         
-        if not result_str:
+        # Chamar download_file do plugin
+        file_content = await plugin.download_file(item.full_path, ignore_cache=True)
+        
+        if not file_content or not file_content.data:
             raise HTTPException(status_code=500, detail="Resposta vazia do servidor")
-        
-        # Verificar erros
-        result_lower = result_str.lower()
-        if "access" in result_lower and "denied" in result_lower:
-            item.access_denied = True
-            item.error_message = "Acesso negado"
-            await db.commit()
-            raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
-        
-        if "not found" in result_lower or "cannot find" in result_lower:
-            raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
         
         # Verificar se já existe no banco
         existing_result = await db.execute(
@@ -1204,16 +1197,42 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         )
         existing = existing_result.scalar_one_or_none()
         
-        # Salvar arquivo
-        full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
-            server.guid,
-            item.share_name,
-            item.full_path,
-            result_str,
-            1
+        # Calcular hash e salvar arquivo
+        content_bytes = file_content.data
+        sha1_hash = hashlib.sha1(content_bytes).hexdigest()
+        file_size = len(content_bytes)
+        
+        # Salvar usando estrutura baseada em IDs
+        from storage_utils import save_file_by_id
+        
+        if existing:
+            file_id = existing.id
+            version = 1
+        else:
+            # Criar novo registro primeiro para obter o ID
+            downloaded_file = DownloadedFile(
+                server_guid=server.guid,
+                share_name=item.share_name,
+                file_path=item.full_path,
+                sanitized_path="",
+                file_size=file_size,
+                sha1_hash=sha1_hash,
+                mimetype=None
+            )
+            db.add(downloaded_file)
+            await db.flush()
+            file_id = downloaded_file.id
+            version = 1
+        
+        local_path, sha1_hash, file_size = save_file_by_id(
+            server.id,
+            file_id,
+            content_bytes,
+            version
         )
         
-        mimetype = get_file_mimetype(full_path)
+        mimetype = get_file_mimetype(local_path)
+        sanitized_path = f"{server.id}/{file_id}/{version}"
         
         if existing:
             # Atualizar existente
@@ -1235,17 +1254,9 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
                 "size_formatted": format_size(file_size)
             }
         else:
-            # Criar novo
-            downloaded_file = DownloadedFile(
-                server_guid=server.guid,
-                share_name=item.share_name,
-                file_path=item.full_path,
-                sanitized_path=sanitized_path,
-                file_size=file_size,
-                sha1_hash=sha1_hash,
-                mimetype=mimetype
-            )
-            db.add(downloaded_file)
+            # Atualizar registro já criado
+            downloaded_file.sanitized_path = sanitized_path
+            downloaded_file.mimetype = mimetype
             server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
             await db.commit()
             await db.refresh(downloaded_file)
@@ -1259,11 +1270,34 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
                 "size": file_size,
                 "size_formatted": format_size(file_size)
             }
+    
+    except CredentialNotSetException as e:
+        logger.warning(f"Credential not set for server {server.ip}: {e.message}")
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "credential_not_set",
+                "message": e.message,
+                "operation": e.operation,
+                "plugin_name": e.plugin_name
+            }
+        )
+        
+    except AccessDeniedException as e:
+        item.access_denied = True
+        item.error_message = "Acesso negado"
+        await db.commit()
+        raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+        
+    except ItemNotFoundException as e:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
             
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error downloading item {item_id}: {e}")
+        import traceback
+        error_traceback = traceback.format_exc()
+        logger.error(f"Error downloading item {item_id}: {e}\n{error_traceback}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
