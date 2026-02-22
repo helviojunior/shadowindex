@@ -255,6 +255,13 @@ class GitleaksService:
                                     # Atualizar o File para mostrar o arquivo original
                                     finding['File'] = file_info['original_file']
                                     
+                                    # Extrair IDs do caminho físico para posterior enriquecimento
+                                    ids = extract_ids_from_path(file_info['original_file'])
+                                    if ids:
+                                        finding['extracted_server_id'] = ids[0]
+                                        finding['extracted_file_id'] = ids[1]
+                                        finding['extracted_version'] = ids[2]
+                                    
                                     self._findings.append(finding)
                             else:
                                 job.findings_count = 0
