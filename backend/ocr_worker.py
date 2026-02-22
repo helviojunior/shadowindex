@@ -183,7 +183,7 @@ async def stop_ocr_worker():
 async def queue_ocr_job(
     db: AsyncSession,
     file_id: int,
-    version_id: int,
+    version_id: Optional[int],
     server_id: int,
     file_path: str,
     file_name: str,
@@ -200,16 +200,28 @@ async def queue_ocr_job(
     from database import OCRJob
     
     # Verificar se já existe job pendente para este arquivo/versão
-    existing = await db.execute(
-        select(OCRJob).where(
-            and_(
-                OCRJob.version_id == version_id,
-                OCRJob.status.in_(['pending', 'running'])
+    if version_id:
+        existing = await db.execute(
+            select(OCRJob).where(
+                and_(
+                    OCRJob.version_id == version_id,
+                    OCRJob.status.in_(['pending', 'running'])
+                )
             )
         )
-    )
+    else:
+        # Se não tem version_id, verificar por file_id
+        existing = await db.execute(
+            select(OCRJob).where(
+                and_(
+                    OCRJob.file_id == file_id,
+                    OCRJob.status.in_(['pending', 'running'])
+                )
+            )
+        )
+    
     if existing.scalar_one_or_none():
-        logger.info(f"OCR job already exists for version {version_id}")
+        logger.info(f"OCR job already exists for file {file_id}/version {version_id}")
         return -1
     
     # Criar job
