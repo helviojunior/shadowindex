@@ -60,7 +60,8 @@ import {
   FileText,
   ScanText,
   ShieldAlert,
-  Shield
+  Shield,
+  Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
