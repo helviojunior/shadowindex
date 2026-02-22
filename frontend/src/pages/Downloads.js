@@ -177,7 +177,6 @@ const Downloads = () => {
   const cancelScanJob = async (scanId) => {
     try {
       await axios.post(`${API}/scans/${scanId}/cancel`);
-      toast.success('Scan cancelado');
       loadScanJobs();
     } catch (error) {
       toast.error('Erro ao cancelar scan');
@@ -187,8 +186,7 @@ const Downloads = () => {
   // Cancel all scans
   const cancelAllScans = async () => {
     try {
-      const response = await axios.post(`${API}/scans/cancel-all`);
-      toast.success(`${response.data.cancelled} scans cancelados`);
+      await axios.post(`${API}/scans/cancel-all`);
       loadScanJobs();
     } catch (error) {
       toast.error('Erro ao cancelar scans');
@@ -198,8 +196,7 @@ const Downloads = () => {
   // Clear finished scans (completed, cancelled, failed)
   const clearFinishedScans = async () => {
     try {
-      const response = await axios.post(`${API}/scans/clear-finished`);
-      toast.success(`${response.data.cleared} scans removidos`);
+      await axios.post(`${API}/scans/clear-finished`);
       loadScanJobs();
     } catch (error) {
       toast.error('Erro ao limpar scans');
