@@ -176,28 +176,6 @@ const Downloads = () => {
       console.error('Error loading scan jobs:', error);
     }
   }, []);
-
-  // Load OCR jobs
-  const loadOcrJobs = useCallback(async () => {
-    if (pollingPausedRef.current) return;
-    
-    try {
-      const response = await axios.get(`${API}/v2/ocr/jobs?limit=100`);
-      setOcrJobs(response.data || []);
-    } catch (error) {
-      console.error('Error loading OCR jobs:', error);
-    }
-  }, []);
-
-  // Load OCR stats
-  const loadOcrStats = useCallback(async () => {
-    try {
-      const response = await axios.get(`${API}/v2/ocr/stats`);
-      setOcrStats(response.data || {});
-    } catch (error) {
-      console.error('Error loading OCR stats:', error);
-    }
-  }, []);
   
   // Handler para progresso de download
   const handleDownloadProgress = useCallback((data) => {
