@@ -344,6 +344,37 @@ class ProxyServerResponse(BaseModel):
     username: Optional[str] = None
     created_at: datetime
 
+
+# ==================== Plugin Instance Models ====================
+
+class PluginInstanceCreate(BaseModel):
+    name: str
+    plugin_type: str  # "soap_api" ou "direct_interaction"
+    description: Optional[str] = None
+    config: Optional[dict] = None
+    is_default: Optional[bool] = False
+
+class PluginInstanceUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    config: Optional[dict] = None
+    is_default: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+class PluginInstanceResponse(BaseModel):
+    id: int
+    name: str
+    plugin_type: str
+    description: Optional[str] = None
+    config: Optional[dict] = None
+    is_default: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+# ==================== End Plugin Instance Models ====================
+
+
 class SoapApiUrlCreate(BaseModel):
     name: str
     uri: str
