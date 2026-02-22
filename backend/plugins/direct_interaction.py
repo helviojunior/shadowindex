@@ -72,10 +72,16 @@ class DirectInteractionPlugin(BasePlugin):
         self.dns_mode = config.get("dns_mode", "system")  # 'system' or 'custom'
         self.dns_servers = config.get("dns_servers", [])  # List of DNS server IPs
         
+        # Proxy authentication (from plugin config, not URL)
+        self.proxy_user = config.get("proxy_user")
+        self.proxy_pass = config.get("proxy_pass")
+        
         self.cache = get_cache()
         
         if proxy_url:
             logger.info(f"DirectInteractionPlugin initialized with proxy: {proxy_url}")
+            if self.proxy_user:
+                logger.info(f"Proxy authentication configured for user: {self.proxy_user}")
         
         logger.info(f"DirectInteractionPlugin initialized: dns_mode={self.dns_mode}, "
                    f"dns_servers={self.dns_servers}, credential_id={self.credential_id}")
