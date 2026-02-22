@@ -1182,7 +1182,7 @@ async def delete_plugin_instance(instance_id: int, db: AsyncSession = Depends(ge
 @api_router.post("/plugin-instances/{instance_id}/health")
 async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depends(get_db)):
     """Check health of a plugin instance"""
-    from plugins.factory import PluginFactory, get_active_proxy_url
+    from plugins.factory import PluginFactory, get_active_proxy_config
     
     result = await db.execute(select(PluginInstance).where(PluginInstance.id == instance_id))
     instance = result.scalar_one_or_none()
@@ -1191,7 +1191,8 @@ async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depe
         raise HTTPException(status_code=404, detail="Instância de plugin não encontrada")
     
     try:
-        proxy_url = await get_active_proxy_url(db)
+        proxy_config = await get_active_proxy_config(db)
+        proxy_url = proxy_config.get("proxy_url") if proxy_config else None
         config = instance.config or {}
         
         # For SOAP API, validate URL is in config
@@ -1208,6 +1209,24 @@ async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depe
                         "message": "URL do SOAP não configurada na instância",
                         "details": {"missing": "soap_url"}
                     }
+        
+        # For direct_interaction, validate proxy type and add credentials
+        if instance.plugin_type == "direct_interaction" and proxy_config:
+            proxy_type = proxy_config.get("proxy_type", "http")
+            proxy_name = proxy_config.get("proxy_name", "Unknown")
+            
+            # Validate proxy type - direct_interaction only supports SOCKS proxies
+            if proxy_type not in ("socks5", "socks4"):
+                return {
+                    "healthy": False,
+                    "message": f"Proxy selecionado '{proxy_name}' não suportado para '{instance.name}'. "
+                               f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
+                               f"Tipo atual: {proxy_type}",
+                    "details": {"proxy_type": proxy_type, "required": ["socks4", "socks5"]}
+                }
+            
+            config["proxy_user"] = proxy_config.get("proxy_user")
+            config["proxy_pass"] = proxy_config.get("proxy_pass")
         
         plugin = PluginFactory.create_plugin(instance.plugin_type, config, proxy_url)
         health = await plugin.health_check()
