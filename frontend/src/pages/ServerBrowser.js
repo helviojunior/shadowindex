@@ -5009,7 +5009,8 @@ const ServerBrowser = () => {
                         setFocusedItem(null);
                         // Scroll para o objeto selecionado após sair do modo foco
                         setTimeout(() => {
-                          const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
+                          const shareNameForId = selectedItem.share_name || selectedItem.shareName || selectedItem.name;
+                          const nodeId = String(selectedItem.id || `share-${shareNameForId}`);
                           const safeId = nodeId.replace(/\$/g, '_dollar_');
                           const element = document.querySelector(`[data-testid="tree-node-${safeId}"]`);
                           if (element) {
@@ -5017,9 +5018,10 @@ const ServerBrowser = () => {
                           }
                         }, 100);
                       } else {
-                        const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
+                        const shareNameForId = selectedItem.share_name || selectedItem.shareName || selectedItem.name;
+                        const nodeId = String(selectedItem.id || `share-${shareNameForId}`);
                         const shareName = selectedItem.itemType === 'share' 
-                          ? selectedItem.share_name 
+                          ? (selectedItem.share_name || selectedItem.shareName || selectedItem.name)
                           : selectedItem.shareName;
                         setFocusedItem({
                           nodeId,
