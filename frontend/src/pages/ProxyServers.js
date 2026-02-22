@@ -328,35 +328,22 @@ const ProxyServers = () => {
                           data-testid={`edit-port-${proxy.id}`}
                         />
                         <Select 
-                          value={editData.auth_type} 
-                          onValueChange={(value) => setEditData({ ...editData, auth_type: value, username: value === 'none' ? '' : editData.username, password: '' })}
+                          value={editData.credential_id} 
+                          onValueChange={(value) => setEditData({ ...editData, credential_id: value })}
                         >
-                          <SelectTrigger data-testid={`edit-auth-type-${proxy.id}`}>
+                          <SelectTrigger data-testid={`edit-credential-${proxy.id}`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">Sem autenticação</SelectItem>
-                            <SelectItem value="user_password">Usuário e Senha</SelectItem>
+                            {credentials.map((cred) => (
+                              <SelectItem key={cred.id} value={cred.id.toString()}>
+                                {cred.name || `${cred.domain ? cred.domain + '\\' : ''}${cred.username}`}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      {editData.auth_type === 'user_password' && (
-                        <div className="grid grid-cols-2 gap-3">
-                          <Input
-                            value={editData.username}
-                            onChange={(e) => setEditData({ ...editData, username: e.target.value })}
-                            placeholder="Usuário"
-                            data-testid={`edit-username-${proxy.id}`}
-                          />
-                          <Input
-                            type="password"
-                            value={editData.password}
-                            onChange={(e) => setEditData({ ...editData, password: e.target.value })}
-                            placeholder="Nova senha (deixe em branco para manter)"
-                            data-testid={`edit-password-${proxy.id}`}
-                          />
-                        </div>
-                      )}
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => saveEdit(proxy.id)} data-testid={`save-edit-${proxy.id}`}>
                           <Check className="w-4 h-4 mr-1" /> Salvar
