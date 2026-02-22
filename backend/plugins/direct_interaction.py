@@ -348,6 +348,15 @@ class DirectInteractionPlugin(BasePlugin):
                 message="Credencial não configurada. Selecione uma credencial válida nas configurações do servidor."
             )
         
+        # Validate credential has required fields
+        username = self._credential.get("username")
+        if not username:
+            raise CredentialNotSetException(
+                operation="SMB",
+                plugin_name=self.PLUGIN_NAME,
+                message="Credencial inválida: username não configurado."
+            )
+        
         try:
             from impacket.smbconnection import SMBConnection
             from impacket.nmb import NetBIOSError
