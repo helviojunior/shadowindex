@@ -422,6 +422,7 @@ async def list_shares(
     """Lista todos os compartilhamentos do servidor"""
     from plugins.factory import get_plugin_for_server
     from plugins.base import ShareInfo
+    from plugins.exceptions import CredentialNotSetException
     import xml.etree.ElementTree as ET
     
     server = await get_server_or_404(db, server_id)
@@ -480,6 +481,18 @@ async def list_shares(
             
             await db.commit()
             logger.info(f"Updated {len(shares_data)} shares in database for server {server.ip} using plugin {server.plugin_type}")
+        
+        except CredentialNotSetException as e:
+            logger.warning(f"Credential not set for server {server.ip}: {e.message}")
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "credential_not_set",
+                    "message": e.message,
+                    "operation": e.operation,
+                    "plugin_name": e.plugin_name
+                }
+            )
                 
         except Exception as e:
             logger.error(f"Error refreshing shares for server {server.ip}: {e}")
