@@ -3923,20 +3923,55 @@ async def register_manual_leak(leak: ManualLeakCreate, db: AsyncSession = Depend
     extracted_file_id = None
     extracted_version = None
     
-    # Tentar extrair IDs do caminho
-    ids = extract_ids_from_path(leak.file_path)
-    if ids:
-        extracted_server_id, extracted_file_id, extracted_version = ids
-        
-        # Buscar arquivo no banco
-        file_result = await db.execute(
-            select(DownloadedFile).where(DownloadedFile.id == extracted_file_id)
+    # Primeiro, tentar buscar o arquivo pelo caminho do servidor (para leaks manuais)
+    if leak.server_id:
+        # Buscar arquivo por file_path (caminho no servidor)
+        server_result2 = await db.execute(
+            select(Server).where(Server.id == leak.server_id)
         )
-        downloaded_file = file_result.scalar_one_or_none()
-        if downloaded_file:
-            file_name = downloaded_file.file_name
-            server_path = downloaded_file.file_path
-            share_name = downloaded_file.share_name
+        server_for_file = server_result2.scalar_one_or_none()
+        if server_for_file:
+            file_result = await db.execute(
+                select(DownloadedFile).where(
+                    DownloadedFile.server_guid == server_for_file.guid,
+                    DownloadedFile.file_path == leak.file_path
+                )
+            )
+            downloaded_file = file_result.scalar_one_or_none()
+            if downloaded_file:
+                extracted_file_id = downloaded_file.id
+                file_name = downloaded_file.file_name
+                server_path = downloaded_file.file_path
+                share_name = downloaded_file.share_name
+                
+                # Buscar a versão mais recente
+                from database import FileVersion
+                version_result = await db.execute(
+                    select(FileVersion).where(
+                        FileVersion.server_guid == server_for_file.guid,
+                        FileVersion.file_path == leak.file_path,
+                        FileVersion.is_current == True
+                    )
+                )
+                current_version = version_result.scalar_one_or_none()
+                if current_version:
+                    extracted_version = current_version.version_number
+    
+    # Se não encontrou, tentar extrair IDs do caminho de storage
+    if not extracted_file_id:
+        ids = extract_ids_from_path(leak.file_path)
+        if ids:
+            extracted_server_id_from_path, extracted_file_id, extracted_version = ids
+            
+            # Buscar arquivo no banco
+            file_result = await db.execute(
+                select(DownloadedFile).where(DownloadedFile.id == extracted_file_id)
+            )
+            downloaded_file = file_result.scalar_one_or_none()
+            if downloaded_file:
+                file_name = downloaded_file.file_name
+                server_path = downloaded_file.file_path
+                share_name = downloaded_file.share_name
     
     # Criar finding no formato GitLeaks
     finding = {
