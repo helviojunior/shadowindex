@@ -195,6 +195,34 @@ const Servers = () => {
     setEditIp('');
   };
 
+  const handleEditPlugin = (server) => {
+    setEditingPluginServer(server.id);
+    setEditPluginType(server.plugin_type || 'soap_api');
+  };
+
+  const handleCancelPluginEdit = () => {
+    setEditingPluginServer(null);
+    setEditPluginType('');
+  };
+
+  const handleSavePlugin = async (serverId) => {
+    if (!editPluginType) {
+      toast.error('Selecione um plugin');
+      return;
+    }
+
+    try {
+      await axios.patch(`${API}/servers/${serverId}`, { plugin_type: editPluginType });
+      toast.success('Plugin atualizado com sucesso');
+      setEditingPluginServer(null);
+      setEditPluginType('');
+      loadServers();
+    } catch (error) {
+      console.error('Error updating server plugin:', error);
+      toast.error('Erro ao atualizar plugin');
+    }
+  };
+
   const handleSaveIp = async (serverId) => {
     if (!editIp.trim()) {
       toast.error('IP não pode estar vazio');
