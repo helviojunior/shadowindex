@@ -28,6 +28,21 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 27 - Credential Verification & Proxy Credentials)
+- [x] **Flag `verified` em Credenciais:**
+  - Campo `verified`, `last_verified_at`, `verification_error` no modelo Credential
+  - Serviço `credential_verification.py` com funções `mark_credential_verified` e `mark_credential_failed`
+  - Credencial marcada como verificada após comunicação SMB bem sucedida (plugin Direct Interaction)
+  - Credencial do proxy marcada como verificada após comunicação SOAP bem sucedida
+  - UI de Credenciais já exibe status "Verificada" / "Não verificada"
+- [x] **Combo de Autenticação em Proxy Servers:**
+  - Novo campo `credential_id` na tabela `proxy_servers`
+  - Dropdown mostra "Sem autenticação" + lista de credenciais do tipo `user_password`
+  - Migração SQL aplicada: `ALTER TABLE proxy_servers ADD COLUMN credential_id INTEGER`
+- [x] **Correção de bugs:**
+  - Import `Key` adicionado em `Credentials.js`
+  - Import `CredentialKeyIcon` corrigido em `ProxyServers.js`
+
 ### 2026-02-22 (Session 26 - Dashboard Layout & CredentialNotSetException)
 - [x] **Layout do Dashboard já implementado:**
   - 3 linhas de widgets funcionando corretamente
