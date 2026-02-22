@@ -94,6 +94,15 @@ export const WebSocketProvider = ({ children }) => {
           const allListeners = listenersRef.current.get('all') || [];
           allListeners.forEach(callback => callback(message));
           
+          // Emitir eventos globais para o sistema de notificação sonora
+          if (message.type === 'downloads_stats_updated') {
+            window.dispatchEvent(new CustomEvent('ws_downloads_stats', { detail: message }));
+          } else if (message.type === 'gitleaks_stats_updated') {
+            window.dispatchEvent(new CustomEvent('ws_gitleaks_stats', { detail: message }));
+          } else if (message.type === 'ocr_stats_updated') {
+            window.dispatchEvent(new CustomEvent('ws_ocr_stats', { detail: message }));
+          }
+          
         } catch (e) {
           console.error('Error parsing WebSocket message:', e);
         }
