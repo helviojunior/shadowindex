@@ -2725,41 +2725,32 @@ async def queue_directory_scan_v2(
     share_name: str,
     path: str,
     max_depth: int = 10,
+    max_file_size_mb: int = 100,
     db: AsyncSession = Depends(get_db)
 ):
-    """Adiciona um scan de diretório à fila"""
-    from database import ScanJob
+    """Adiciona um scan de diretório à fila do DirectoryScanner"""
+    from directory_scanner import get_directory_scanner
     
     server = await get_server_or_404(db, server_id)
     
-    # Verificar se já existe scan para este path
-    existing = await db.execute(
-        select(ScanJob).where(
-            ScanJob.server_guid == server.guid,
-            ScanJob.share_name == share_name,
-            ScanJob.path == path,
-            ScanJob.status.in_(['pending', 'running'])
-        )
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Scan já em andamento para este diretório")
+    # Converter MB para bytes
+    max_file_size_bytes = max_file_size_mb * 1024 * 1024
     
-    # Criar job de scan
-    scan_job = ScanJob(
-        server_guid=server.guid,
+    # Usar o DirectoryScanner para adicionar o job
+    scanner = get_directory_scanner()
+    job_id = await scanner.add_scan_job(
+        server_id=server.id,
         share_name=share_name,
         path=path,
         max_depth=max_depth,
-        status='pending'
+        max_file_size_bytes=max_file_size_bytes,
+        apply_filters=True
     )
-    db.add(scan_job)
-    await db.commit()
-    await db.refresh(scan_job)
     
     return {
         "success": True,
-        "scan_id": scan_job.id,
-        "message": "Scan adicionado à fila"
+        "scan_id": job_id,
+        "message": f"Scan adicionado à fila (job: {job_id})"
     }
 
 
