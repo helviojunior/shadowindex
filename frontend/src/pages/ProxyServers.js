@@ -51,13 +51,13 @@ const ProxyServers = () => {
         ip: formData.ip,
         port: parseInt(formData.port),
         proxy_type: formData.proxy_type,
-        username: formData.username || null,
-        password: formData.password || null
+        username: formData.auth_type === 'user_password' ? formData.username : null,
+        password: formData.auth_type === 'user_password' ? formData.password : null
       };
       
       await axios.post(`${API}/proxy-servers`, payload);
       toast.success('Proxy server cadastrado com sucesso');
-      setFormData({ name: '', ip: '', port: '', proxy_type: 'http', username: '', password: '' });
+      setFormData({ name: '', ip: '', port: '', proxy_type: 'http', auth_type: 'none', username: '', password: '' });
       setShowAddForm(false);
       loadProxies();
     } catch (error) {
