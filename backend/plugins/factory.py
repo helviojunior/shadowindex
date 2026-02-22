@@ -145,27 +145,44 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
     Raises:
         CredentialNotSetException: If plugin requires credential but none configured
     """
-    from database import SoapApiUrl, Credential
+    from database import SoapApiUrl, Credential, PluginInstance
     from .exceptions import CredentialNotSetException
     
     # Get proxy URL
     proxy_url = await get_active_proxy_url(db)
     
-    # Get plugin type from server (default to soap_api)
-    plugin_type = getattr(server, 'plugin_type', 'soap_api') or 'soap_api'
-    
-    # Get plugin config from server
+    plugin_type = None
     plugin_config = {}
-    server_plugin_config = getattr(server, 'plugin_config', None)
-    if server_plugin_config:
-        if isinstance(server_plugin_config, dict):
-            plugin_config = server_plugin_config
-        elif isinstance(server_plugin_config, str):
-            import json
-            try:
-                plugin_config = json.loads(server_plugin_config)
-            except json.JSONDecodeError:
-                pass
+    
+    # Check if server has plugin_instance_id (new way)
+    plugin_instance_id = getattr(server, 'plugin_instance_id', None)
+    
+    if plugin_instance_id:
+        # Load plugin instance from database
+        result = await db.execute(
+            select(PluginInstance).where(PluginInstance.id == plugin_instance_id)
+        )
+        instance = result.scalar_one_or_none()
+        
+        if instance:
+            plugin_type = instance.plugin_type
+            plugin_config = instance.config or {}
+        else:
+            logger.warning(f"Plugin instance {plugin_instance_id} not found, falling back to legacy config")
+    
+    # Fallback to legacy config if no instance
+    if not plugin_type:
+        plugin_type = getattr(server, 'plugin_type', 'soap_api') or 'soap_api'
+        server_plugin_config = getattr(server, 'plugin_config', None)
+        if server_plugin_config:
+            if isinstance(server_plugin_config, dict):
+                plugin_config = server_plugin_config
+            elif isinstance(server_plugin_config, str):
+                import json
+                try:
+                    plugin_config = json.loads(server_plugin_config)
+                except json.JSONDecodeError:
+                    pass
     
     # For SOAP API plugin, get URL from SoapApiUrl table if not in config
     if plugin_type == "soap_api" and "soap_url" not in plugin_config:
