@@ -636,6 +636,16 @@ const ServerBrowser = () => {
     const filename = selectedItem.name;
     const filePath = selectedItem.fullPath || selectedItem.serverPath;
     
+    // DEBUG: Log para identificar problema de visualização de PDF
+    console.log('[loadFileContent] Starting:', {
+      filename,
+      filePath,
+      isPdf: isPdfFile(filename),
+      isImage: isImageFile(filename),
+      isCert: isCertificateFile(filename),
+      isText: isTextFile(filename)
+    });
+    
     // Obter file_id do downloadedFilesInfo ou buscar via API
     let fileId = downloadedFilesInfo[filePath]?.id;
     if (!fileId) {
