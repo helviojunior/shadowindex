@@ -52,7 +52,7 @@ const Credentials = () => {
       setCredentials(response.data);
     } catch (error) {
       console.error('Error loading credentials:', error);
-      toast.error('Erro ao carregar credenciais');
+      // Não mostrar toast - a barra de conexão já informa
     }
   };
 
