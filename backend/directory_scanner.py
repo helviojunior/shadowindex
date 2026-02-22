@@ -394,7 +394,7 @@ class DirectoryScanner:
         auto_gitleaks = critical_config.get('auto_gitleaks', {})
         
         if not auto_gitleaks.get('enabled', True):
-            print(f"=== SCANNER: Auto GitLeaks disabled, skipping ===", flush=True)
+            print("=== SCANNER: Auto GitLeaks disabled, skipping ===", flush=True)
             return
         
         # Calcular total de arquivos críticos encontrados
@@ -404,7 +404,7 @@ class DirectoryScanner:
                 total_critical += completed.critical_files_found
         
         if total_critical == 0:
-            print(f"=== SCANNER: No critical files found, skipping GitLeaks ===", flush=True)
+            print("=== SCANNER: No critical files found, skipping GitLeaks ===", flush=True)
             return
         
         print(f"=== SCANNER: Critical scan complete! Found {total_critical} critical files. Starting GitLeaks... ===", flush=True)
@@ -498,7 +498,7 @@ class DirectoryScanner:
             critical_config = None
             if scan_job.critical_only:
                 critical_config = await get_critical_search_config()
-                print(f"=== SCANNER: Critical search mode, config loaded ===", flush=True)
+                print("=== SCANNER: Critical search mode, config loaded ===", flush=True)
             
             for item in items:
                 # DirectoryItem tem: name, item_type, size, full_path, etc.
