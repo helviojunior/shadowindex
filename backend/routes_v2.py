@@ -2243,8 +2243,19 @@ async def get_downloaded_file_by_id(file_id: int, db: AsyncSession = Depends(get
     if not file:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado")
     
+    # Buscar o server_id pelo guid
+    server_id = None
+    if file.server_guid:
+        server_result = await db.execute(
+            select(Server).where(Server.guid == file.server_guid)
+        )
+        server = server_result.scalar_one_or_none()
+        if server:
+            server_id = server.id
+    
     return {
         "id": file.id,
+        "server_id": server_id,
         "server_guid": file.server_guid,
         "file_path": file.file_path,
         "file_name": file.file_name,
