@@ -1744,6 +1744,55 @@ async def get_certificate_info(
         
         thumbprint = cert.fingerprint(hashes.SHA1()).hex().upper()
         
+        # Se o PFX tem chave privada, registrar automaticamente como leak
+        has_private_key = private_key is not None
+        leak_registered = False
+        
+        if has_private_key and file_ext in ['.pfx', '.p12']:
+            try:
+                from gitleaks_service import get_gitleaks_service
+                from datetime import datetime, timezone
+                import hashlib
+                
+                service = get_gitleaks_service()
+                
+                # Criar fingerprint único
+                fingerprint_source = f"{file.file_path}:pfx_private_key:{thumbprint}"
+                fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
+                
+                # Verificar se já existe
+                existing = [f for f in service._findings if f.get('Fingerprint') == f"auto_pfx_{fingerprint}"]
+                
+                if not existing:
+                    # Criar finding
+                    finding = {
+                        "RuleID": "auto-pfx-private-key",
+                        "Description": f"Certificado PFX com chave privada: {subject_parts.get('commonName', 'Unknown')}",
+                        "File": file.file_path,
+                        "StartLine": 1,
+                        "EndLine": 1,
+                        "Match": f"[PFX com chave privada - Thumbprint: {thumbprint}]",
+                        "Secret": f"Certificado: {subject_parts.get('commonName', 'Unknown')}",
+                        "Fingerprint": f"auto_pfx_{fingerprint}",
+                        "Tags": ["certificate", "private-key", "pfx", "auto-detected"],
+                        "Severity": "critical",
+                        
+                        # Metadados adicionais
+                        "job_id": "auto-pfx",
+                        "server_id": server_id,
+                        "scanned_at": datetime.now(timezone.utc).isoformat(),
+                        "original_file": file.file_path,
+                        "scanned_file": file.file_path,
+                        "detection_source": "auto-pfx"
+                    }
+                    
+                    service._findings.append(finding)
+                    leak_registered = True
+                    logger.info(f"Leak auto-registrado para PFX com chave privada: {file.file_path}")
+                    
+            except Exception as e:
+                logger.warning(f"Erro ao registrar leak de PFX: {e}")
+        
         return {
             "success": True,
             "file_id": file_id,
@@ -1753,8 +1802,9 @@ async def get_certificate_info(
             "not_before": cert.not_valid_before_utc.isoformat(),
             "not_after": cert.not_valid_after_utc.isoformat(),
             "thumbprint": thumbprint,
-            "has_private_key": private_key is not None,
-            "version": cert.version.value
+            "has_private_key": has_private_key,
+            "version": cert.version.value,
+            "leak_registered": leak_registered
         }
         
     except HTTPException:
