@@ -29,6 +29,23 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 35 - Connection Status Alert Bar)
+- [x] **Barra de alerta global para erros de conexão:**
+  - Novo contexto `ConnectionStatusContext.js` para gerenciar estado de conexão
+  - Componente `ConnectionBridge.js` que conecta WebSocket ao contexto de status
+  - Barra vermelha no topo da aplicação quando há falha de comunicação
+  - Botão "Tentar novamente" com animação de loading
+  - Botão "X" para dispensar o alerta manualmente
+  - Health check periódico (10s) para detectar problemas de API HTTP
+  - Auto-recuperação quando a conexão é restabelecida
+  - Requer 2 falhas consecutivas antes de exibir alerta (evita falsos positivos)
+  - Arquivos criados/modificados:
+    - `frontend/src/contexts/ConnectionStatusContext.js` (NEW)
+    - `frontend/src/components/ConnectionBridge.js` (NEW)
+    - `frontend/src/hooks/useWebSocket.js` (MODIFIED - added setConnectionStatusCallback)
+    - `frontend/src/components/Layout.js` (MODIFIED - added alert bar rendering)
+    - `frontend/src/App.js` (MODIFIED - added providers)
+
 ### 2026-02-22 (Session 34 - WebSocket Implementation)
 - [x] **WebSocket para atualizações em tempo real:**
   - Backend: `websocket_manager.py` com gerenciador centralizado de conexões
