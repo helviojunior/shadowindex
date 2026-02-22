@@ -1,1 +1,1 @@
-export { default as ShieldKeyIcon } from './ShieldKeyIcon';
+export { default as ShieldKeyIcon, CredentialKeyIcon } from './ShieldKeyIcon';
