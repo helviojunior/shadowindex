@@ -364,6 +364,7 @@ class DirectInteractionPlugin(BasePlugin):
                 message="Credencial inválida: username não configurado."
             )
         
+        # At least one auth method required (password or NTLM hash)
         if not password and not ntlm_hash:
             raise CredentialNotSetException(
                 operation="SMB",
