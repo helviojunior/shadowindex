@@ -920,6 +920,20 @@ const ServerBrowser = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading file:', error);
+      // Handle blob error response
+      let errorMessage = 'Erro ao baixar arquivo';
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const parsed = JSON.parse(text);
+          errorMessage = parsed.detail || errorMessage;
+        } catch (e) {
+          // Ignore parse errors
+        }
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+      toast.error(errorMessage);
     }
   };
 
