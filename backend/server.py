@@ -1798,7 +1798,7 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
                 export_data["credential"] = {
                     "id": credential.id,
                     "name": credential.name,
-                    "auth_type": credential.auth_type,
+                    "credential_type": credential.credential_type,
                     "username": credential.username,
                     # Não exportar dados sensíveis como password/ntlm_hash
                 }
