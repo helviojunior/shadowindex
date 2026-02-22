@@ -752,10 +752,12 @@ class DirectInteractionPlugin(BasePlugin):
         except (AuthenticationFailureException, ConnectionException, AccessDeniedException):
             raise
         except Exception as e:
+            import traceback
+            error_traceback = traceback.format_exc()
             error_msg = str(e).lower()
             if "access_denied" in error_msg or "status_access_denied" in error_msg:
                 raise AccessDeniedException(path=path)
-            logger.error(f"Failed to download file {path}: {e}")
+            logger.error(f"Failed to download file {path}: {e}\n{error_traceback}")
             raise ConnectionException(
                 server=server_ip,
                 message=f"Erro ao baixar arquivo: {str(e)}",
