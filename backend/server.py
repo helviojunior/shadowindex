@@ -3952,6 +3952,13 @@ async def startup_event():
     await init_db()
     print("=== STARTUP: Database initialized ===", flush=True)
     
+    # Criar instâncias padrão de plugins se não existirem
+    try:
+        await create_default_plugin_instances()
+        print("=== STARTUP: Default plugin instances checked/created ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP WARNING: Error creating default plugin instances: {e} ===", flush=True)
+    
     # Inicializar serviço OCR/Tika
     try:
         from ocr_service import initialize_tika
@@ -3978,6 +3985,48 @@ async def startup_event():
         print("=== STARTUP: Directory scanner started successfully ===", flush=True)
     except Exception as e:
         print(f"=== STARTUP ERROR: Failed to start directory scanner: {e} ===", flush=True)
+
+
+async def create_default_plugin_instances():
+    """
+    Cria instâncias padrão de plugins se não existir nenhuma instância.
+    Cada plugin terá uma instância padrão sem autenticação.
+    """
+    from database import async_session_maker
+    
+    async with async_session_maker() as db:
+        # Verificar se existem instâncias
+        result = await db.execute(select(PluginInstance))
+        existing_instances = result.scalars().all()
+        
+        if len(existing_instances) > 0:
+            print(f"=== STARTUP: Found {len(existing_instances)} existing plugin instances ===", flush=True)
+            return
+        
+        # Criar instância padrão para SOAP API
+        soap_instance = PluginInstance(
+            name="SOAP Padrão",
+            plugin_type="soap_api",
+            description="Instância padrão do plugin SOAP (sem URL configurada)",
+            config={},  # Sem URL configurada
+            is_default=True,
+            is_active=True
+        )
+        db.add(soap_instance)
+        
+        # Criar instância padrão para Interação Direta
+        direct_instance = PluginInstance(
+            name="Interação Direta Padrão",
+            plugin_type="direct_interaction",
+            description="Instância padrão do plugin de Interação Direta (sem autenticação)",
+            config={"credential_id": None},  # Sem credencial
+            is_default=True,
+            is_active=True
+        )
+        db.add(direct_instance)
+        
+        await db.commit()
+        print("=== STARTUP: Created default plugin instances (SOAP and Direct Interaction) ===", flush=True)
 
 @app.on_event("shutdown")
 async def shutdown_event():
