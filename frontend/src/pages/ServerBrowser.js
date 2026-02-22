@@ -4341,7 +4341,20 @@ const ServerBrowser = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col" data-testid="server-browser-page">
+    <div className="h-[calc(100vh-120px)] flex flex-col relative" data-testid="server-browser-page">
+      {/* Overlay de Loading para navegação da busca */}
+      {navigatingToResult && (
+        <div 
+          className="absolute inset-0 z-50 flex items-center justify-center bg-background/10 backdrop-blur-[1px]"
+          style={{ pointerEvents: 'all' }}
+        >
+          <div className="flex flex-col items-center gap-3 bg-card/90 px-6 py-4 rounded-lg shadow-lg border border-border">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Navegando até o item...</span>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-4">
