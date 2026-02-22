@@ -54,6 +54,254 @@ class OCRWorker:
             await self._ocr_service.initialize()
         return self._ocr_service
     
+    async def _extract_certificate_text(self, file_path: str, file_ext: str, db) -> tuple:
+        """
+        Extrai informações de certificados digitais em formato texto.
+        
+        Args:
+            file_path: Caminho do arquivo do certificado
+            file_ext: Extensão do arquivo (.pfx, .p12, .cer, .crt, .pem)
+            db: Sessão do banco de dados
+            
+        Returns:
+            Tuple (text, metadata, error)
+        """
+        from cryptography import x509
+        from cryptography.hazmat.primitives import serialization, hashes
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives.serialization import pkcs12
+        from database import PfxPassword
+        from sqlalchemy import select
+        
+        try:
+            with open(file_path, 'rb') as f:
+                cert_data = f.read()
+            
+            cert = None
+            private_key = None
+            chain = None
+            password_used = None
+            
+            if file_ext in ['.pfx', '.p12']:
+                # Tentar sem senha primeiro
+                passwords_to_try = [None, b'', b'password', b'123456', b'changeit']
+                
+                # Buscar senhas salvas no banco
+                try:
+                    # Extrair informações do path para buscar senha
+                    saved_result = await db.execute(
+                        select(PfxPassword)
+                    )
+                    saved_passwords = saved_result.scalars().all()
+                    for saved in saved_passwords:
+                        if saved.password:
+                            passwords_to_try.insert(1, saved.password.encode())
+                except Exception:
+                    pass
+                
+                # Tentar cada senha
+                for pwd in passwords_to_try:
+                    try:
+                        private_key, cert, chain = pkcs12.load_key_and_certificates(
+                            cert_data, pwd, default_backend()
+                        )
+                        password_used = pwd
+                        break
+                    except Exception:
+                        continue
+                
+                if not cert:
+                    return None, None, "Não foi possível abrir o certificado PFX/P12 (senha incorreta?)"
+                    
+            elif file_ext in ['.cer', '.crt', '.pem']:
+                try:
+                    cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+                except Exception:
+                    try:
+                        cert = x509.load_der_x509_certificate(cert_data, default_backend())
+                    except Exception as e:
+                        return None, None, f"Não foi possível carregar o certificado: {e}"
+            
+            if not cert:
+                return None, None, "Não foi possível extrair informações do certificado"
+            
+            # Extrair informações do certificado
+            lines = []
+            lines.append("=" * 60)
+            lines.append("INFORMAÇÕES DO CERTIFICADO DIGITAL")
+            lines.append("=" * 60)
+            lines.append("")
+            
+            # Thumbprint/Fingerprint
+            thumbprint = cert.fingerprint(hashes.SHA1()).hex().upper()
+            thumbprint_formatted = ':'.join(thumbprint[i:i+2] for i in range(0, len(thumbprint), 2))
+            lines.append(f"Thumbprint (SHA1): {thumbprint_formatted}")
+            lines.append("")
+            
+            # Subject (Assunto)
+            lines.append("-" * 40)
+            lines.append("SUBJECT (Assunto)")
+            lines.append("-" * 40)
+            for attr in cert.subject:
+                attr_name = attr.oid._name
+                attr_value = attr.value
+                # Traduzir nomes comuns
+                name_map = {
+                    'commonName': 'Common Name (CN)',
+                    'organizationName': 'Organization (O)',
+                    'organizationalUnitName': 'Organizational Unit (OU)',
+                    'countryName': 'Country (C)',
+                    'stateOrProvinceName': 'State (ST)',
+                    'localityName': 'Locality (L)',
+                    'emailAddress': 'Email',
+                    'serialNumber': 'Serial Number',
+                }
+                display_name = name_map.get(attr_name, attr_name)
+                lines.append(f"  {display_name}: {attr_value}")
+            lines.append("")
+            
+            # Issuer (Emissor)
+            lines.append("-" * 40)
+            lines.append("ISSUER (Emissor)")
+            lines.append("-" * 40)
+            for attr in cert.issuer:
+                attr_name = attr.oid._name
+                attr_value = attr.value
+                name_map = {
+                    'commonName': 'Common Name (CN)',
+                    'organizationName': 'Organization (O)',
+                    'organizationalUnitName': 'Organizational Unit (OU)',
+                    'countryName': 'Country (C)',
+                    'stateOrProvinceName': 'State (ST)',
+                    'localityName': 'Locality (L)',
+                    'emailAddress': 'Email',
+                }
+                display_name = name_map.get(attr_name, attr_name)
+                lines.append(f"  {display_name}: {attr_value}")
+            lines.append("")
+            
+            # Validade
+            lines.append("-" * 40)
+            lines.append("VALIDADE")
+            lines.append("-" * 40)
+            lines.append(f"  Válido de: {cert.not_valid_before_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            lines.append(f"  Válido até: {cert.not_valid_after_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            
+            # Verificar se está expirado
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            if now > cert.not_valid_after_utc:
+                lines.append(f"  Status: EXPIRADO")
+            elif now < cert.not_valid_before_utc:
+                lines.append(f"  Status: AINDA NÃO VÁLIDO")
+            else:
+                days_left = (cert.not_valid_after_utc - now).days
+                lines.append(f"  Status: VÁLIDO ({days_left} dias restantes)")
+            lines.append("")
+            
+            # Informações técnicas
+            lines.append("-" * 40)
+            lines.append("INFORMAÇÕES TÉCNICAS")
+            lines.append("-" * 40)
+            lines.append(f"  Versão: {cert.version.name} (v{cert.version.value + 1})")
+            lines.append(f"  Número de Série: {cert.serial_number}")
+            lines.append(f"  Algoritmo de Assinatura: {cert.signature_algorithm_oid._name}")
+            lines.append("")
+            
+            # Chave privada
+            lines.append("-" * 40)
+            lines.append("CHAVE PRIVADA")
+            lines.append("-" * 40)
+            if private_key is not None:
+                lines.append("  Contém chave privada: SIM")
+                lines.append("  *** ATENÇÃO: Este arquivo contém a chave privada! ***")
+                # Tipo da chave
+                key_type = type(private_key).__name__
+                lines.append(f"  Tipo da chave: {key_type}")
+            else:
+                lines.append("  Contém chave privada: NÃO")
+            lines.append("")
+            
+            # Chain de certificados (se PFX)
+            if chain:
+                lines.append("-" * 40)
+                lines.append(f"CADEIA DE CERTIFICADOS ({len(chain)} certificados)")
+                lines.append("-" * 40)
+                for i, chain_cert in enumerate(chain, 1):
+                    chain_cn = None
+                    for attr in chain_cert.subject:
+                        if attr.oid._name == 'commonName':
+                            chain_cn = attr.value
+                            break
+                    lines.append(f"  [{i}] {chain_cn or 'Unknown'}")
+                lines.append("")
+            
+            # Extensões (se houver)
+            try:
+                extensions = cert.extensions
+                if extensions:
+                    lines.append("-" * 40)
+                    lines.append("EXTENSÕES")
+                    lines.append("-" * 40)
+                    for ext in extensions:
+                        ext_name = ext.oid._name
+                        lines.append(f"  {ext_name}: {ext.critical and '[CRÍTICA]' or ''}")
+                        # Algumas extensões comuns
+                        if ext_name == 'keyUsage':
+                            usages = []
+                            if ext.value.digital_signature:
+                                usages.append("Digital Signature")
+                            if ext.value.key_encipherment:
+                                usages.append("Key Encipherment")
+                            if ext.value.data_encipherment:
+                                usages.append("Data Encipherment")
+                            if hasattr(ext.value, 'key_cert_sign') and ext.value.key_cert_sign:
+                                usages.append("Certificate Signing")
+                            if hasattr(ext.value, 'crl_sign') and ext.value.crl_sign:
+                                usages.append("CRL Signing")
+                            lines.append(f"    Usos: {', '.join(usages)}")
+                        elif ext_name == 'subjectAltName':
+                            for name in ext.value:
+                                lines.append(f"    {type(name).__name__}: {name.value}")
+                    lines.append("")
+            except Exception:
+                pass
+            
+            lines.append("=" * 60)
+            lines.append("FIM DO CERTIFICADO")
+            lines.append("=" * 60)
+            
+            text = '\n'.join(lines)
+            
+            # Metadata
+            metadata = {
+                'type': 'certificate',
+                'format': file_ext,
+                'thumbprint': thumbprint,
+                'has_private_key': private_key is not None,
+                'subject_cn': None,
+                'issuer_cn': None,
+                'not_before': cert.not_valid_before_utc.isoformat(),
+                'not_after': cert.not_valid_after_utc.isoformat(),
+            }
+            
+            # Extrair CN
+            for attr in cert.subject:
+                if attr.oid._name == 'commonName':
+                    metadata['subject_cn'] = attr.value
+                    break
+            for attr in cert.issuer:
+                if attr.oid._name == 'commonName':
+                    metadata['issuer_cn'] = attr.value
+                    break
+            
+            print(f"=== OCR WORKER: Certificate extracted successfully ===", flush=True)
+            return text, metadata, None
+            
+        except Exception as e:
+            logger.error(f"Error extracting certificate: {e}")
+            return None, None, f"Erro ao extrair certificado: {str(e)}"
+    
     async def _process_loop(self):
         """Loop principal de processamento"""
         from database import AsyncSessionLocal
