@@ -440,7 +440,7 @@ DEFAULT_SETTINGS = {
     'auto_ocr_enabled': ('true', 'Habilita OCR automático após download'),
     'auto_ocr_extensions': ('.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.pfx,.p12,.cer,.crt,.pem', 'Extensões de arquivo para OCR automático'),
     'auto_ocr_mimetypes': ('application/pdf,image/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument,application/x-pkcs12,application/x-x509-ca-cert', 'MIME types para OCR automático (parcial match)'),
-    'auto_ocr_excluded_extensions': ('.svg,.jpeg,.jpg,.png,.gif,.ico,.css,.html,.htm,.ttf,.woff,.woff2,.pyc,.exe,.dll,.msi,.emf,.bdb,.vox,.bin,.dat,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc', 'Extensões excluídas do OCR automático (precedência sobre inclusão)'),
+    'auto_ocr_excluded_extensions': ('.svg,.jpeg,.jpg,.png,.gif,.ico,.css,.html,.htm,.ttf,.woff,.woff2,.pyc,.exe,.dll,.msi,.emf,.bdb,.vox,.bin,.dat,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc,.ascx', 'Extensões excluídas do OCR automático (precedência sobre inclusão)'),
 }
 
 
