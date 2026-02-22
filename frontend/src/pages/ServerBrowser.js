@@ -1892,6 +1892,7 @@ const ServerBrowser = () => {
       const items = response.data.items.map((item, idx) => ({
         ...item,
         id: item.id || `${nodeId}-${idx}`,  // Preservar ID do banco se existir
+        fullPath: item.fullPath || item.full_path || `${path}\\${item.name}`,  // Normalizar fullPath
         parentPath: path,
         shareName: shareName,
         childrenFetched: item.children_fetched || false  // Flag do banco para diretórios visitados
