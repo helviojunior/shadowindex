@@ -53,6 +53,46 @@ const Gitleaks = () => {
   const [scanMode, setScanMode] = useState('server'); // 'server' or 'custom'
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);
+  
+  // Estado para modal de visualização do JSON
+  const [reportModal, setReportModal] = useState({ open: false, jobId: null, data: null, loading: false });
+
+  // Função para carregar o relatório JSON do job
+  const loadJobReport = async (jobId) => {
+    setReportModal({ open: true, jobId, data: null, loading: true });
+    try {
+      const response = await axios.get(`${API}/gitleaks/jobs/${jobId}/report`);
+      setReportModal({ open: true, jobId, data: response.data, loading: false });
+    } catch (error) {
+      console.error('Error loading job report:', error);
+      toast.error('Erro ao carregar relatório: ' + (error.response?.data?.detail || error.message));
+      setReportModal({ open: false, jobId: null, data: null, loading: false });
+    }
+  };
+
+  // Copiar JSON para clipboard
+  const copyJsonToClipboard = () => {
+    if (reportModal.data?.report) {
+      navigator.clipboard.writeText(JSON.stringify(reportModal.data.report, null, 2));
+      toast.success('JSON copiado para a área de transferência');
+    }
+  };
+
+  // Download do JSON
+  const downloadJson = () => {
+    if (reportModal.data?.report) {
+      const blob = new Blob([JSON.stringify(reportModal.data.report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gitleaks_report_${reportModal.jobId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Download iniciado');
+    }
+  };
 
   // Carregar status do GitLeaks
   const loadStatus = useCallback(async () => {
