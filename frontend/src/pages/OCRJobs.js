@@ -20,7 +20,10 @@ import {
   Play,
   FileText,
   Server,
-  SkipForward
+  SkipForward,
+  Wifi,
+  WifiOff,
+  RotateCcw
 } from 'lucide-react';
 import {
   Select,
