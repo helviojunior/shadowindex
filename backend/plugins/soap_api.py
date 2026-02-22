@@ -617,11 +617,6 @@ class SoapApiPlugin(BasePlugin):
                 raise ItemNotFoundException(path)
             logger.error(f"Error downloading file: {e}")
             raise PluginException(f"Failed to download file: {e}")
-                raise AccessDeniedException(path)
-            if "not found" in error_msg:
-                raise ItemNotFoundException(path)
-            logger.error(f"Error downloading file: {e}")
-            raise PluginException(f"Failed to download file: {e}")
     
     async def resolve_address(self, hostname: str, ignore_cache: bool = False) -> str:
         """Resolve hostname to IP via SOAP"""
