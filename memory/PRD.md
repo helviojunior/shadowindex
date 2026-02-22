@@ -30,6 +30,16 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 41 - SOCKS Proxy Validation)
+- [x] **Validação de tipo de proxy para plugin de Interação Direta:**
+  - Plugin agora valida que o proxy ativo seja do tipo SOCKS (SOCKS4 ou SOCKS5)
+  - Retorna erro claro quando um proxy HTTP é usado com o plugin de Interação Direta
+  - Mensagem: "Proxy selecionado '{nome}' não suportado para '{instância}'. O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5)."
+- [x] **Credenciais do proxy vindas exclusivamente do objeto Credential:**
+  - Função `get_active_proxy_config` busca username/password apenas do `Credential` vinculado
+  - Campos deprecated `username/password` no modelo `ProxyServer` são ignorados
+  - Credenciais do proxy são passadas para o plugin via `proxy_user` e `proxy_pass` no config
+
 ### 2026-02-22 (Session 40 - SQL Execution & Bug Fixes)
 - [x] **Execute SQL no Plugin de Interação Direta:**
   - Implementado suporte completo a múltiplos bancos de dados
