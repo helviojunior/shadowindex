@@ -2995,3 +2995,95 @@ async def delete_leak_finding(fingerprint: str):
     else:
         return {"success": False, "message": "Leak não encontrado"}
 
+
+
+# ==========================================
+# Auto-detection of Private Keys (SSH, RSA, PPK)
+# ==========================================
+
+# Patterns for private key detection
+PRIVATE_KEY_PATTERNS = [
+    # SSH Private Keys (OpenSSH)
+    ("-----BEGIN OPENSSH PRIVATE KEY-----", "ssh-openssh", "Chave Privada SSH (OpenSSH)"),
+    ("-----BEGIN RSA PRIVATE KEY-----", "ssh-rsa", "Chave Privada RSA"),
+    ("-----BEGIN DSA PRIVATE KEY-----", "ssh-dsa", "Chave Privada DSA"),
+    ("-----BEGIN EC PRIVATE KEY-----", "ssh-ec", "Chave Privada EC"),
+    ("-----BEGIN PRIVATE KEY-----", "pkcs8", "Chave Privada PKCS#8"),
+    ("-----BEGIN ENCRYPTED PRIVATE KEY-----", "pkcs8-encrypted", "Chave Privada PKCS#8 Criptografada"),
+    
+    # PuTTY PPK
+    ("PuTTY-User-Key-File-", "ppk", "Chave Privada PuTTY (PPK)"),
+]
+
+
+def detect_private_key_type(content: str) -> tuple:
+    """
+    Detecta se o conteúdo contém uma chave privada SSH/RSA/PPK.
+    Retorna (tipo, descricao) ou (None, None) se não encontrar.
+    """
+    for pattern, key_type, description in PRIVATE_KEY_PATTERNS:
+        if pattern in content:
+            return key_type, description
+    return None, None
+
+
+async def auto_register_private_key_leak(
+    file_path: str,
+    content: str,
+    server_id: int,
+    key_type: str,
+    description: str
+) -> dict:
+    """
+    Registra automaticamente um leak para chave privada detectada.
+    Retorna informações do leak registrado ou None se já existir.
+    """
+    from gitleaks_service import get_gitleaks_service
+    from datetime import datetime, timezone
+    import hashlib
+    
+    service = get_gitleaks_service()
+    
+    # Gerar fingerprint único baseado no arquivo e tipo
+    fingerprint_source = f"{file_path}:auto_private_key:{key_type}"
+    fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
+    full_fingerprint = f"auto_key_{fingerprint}"
+    
+    # Verificar se já existe
+    existing = [f for f in service._findings if f.get('Fingerprint') == full_fingerprint]
+    if existing:
+        return {"already_exists": True, "finding": existing[0]}
+    
+    # Extrair um preview do início da chave
+    preview_lines = content.split('\n')[:3]
+    preview = '\n'.join(preview_lines)
+    if len(preview) > 100:
+        preview = preview[:100] + "..."
+    
+    # Criar finding
+    finding = {
+        "RuleID": f"auto-{key_type}",
+        "Description": f"Chave privada detectada automaticamente: {description}",
+        "File": file_path,
+        "StartLine": 1,
+        "EndLine": 1,
+        "Match": f"[{description}]",
+        "Secret": preview,
+        "Fingerprint": full_fingerprint,
+        "Tags": ["private-key", key_type, "auto-detected"],
+        "Severity": "critical",
+        
+        # Metadados adicionais
+        "job_id": "auto-key",
+        "server_id": server_id,
+        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "original_file": file_path,
+        "scanned_file": file_path,
+        "detection_source": "auto-key"
+    }
+    
+    service._findings.append(finding)
+    logger.info(f"Leak auto-registrado para chave privada: {file_path} ({key_type})")
+    
+    return {"already_exists": False, "finding": finding}
+
