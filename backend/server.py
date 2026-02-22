@@ -1602,7 +1602,7 @@ async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)
     return db_server
 
 @api_router.get("/servers", response_model=List[ServerResponse])
-async def get_servers(db: AsyncSession = Depends(get_db)):
+async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
     from database import PluginInstance
     
     result = await db.execute(select(Server))
