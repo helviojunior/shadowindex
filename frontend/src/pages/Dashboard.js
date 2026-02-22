@@ -291,7 +291,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="text-center">
               <p className="text-6xl font-bold">{riskScore}</p>
-              <p className="text-white/70 mt-2">RISK</p>
+              <p className="text-white/70 mt-2">RISCO</p>
             </div>
             
             {/* Mini sparkline */}
