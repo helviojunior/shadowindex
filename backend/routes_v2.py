@@ -3398,6 +3398,166 @@ async def get_gitleaks_stats(db: AsyncSession = Depends(get_db)):
 # Manual Leak Registration
 # ==========================================
 
+# ==========================================
+# OCR Background Jobs Endpoints
+# ==========================================
+
+@router.post("/ocr/queue")
+async def queue_ocr_job_endpoint(
+    file_id: int,
+    version_id: Optional[int] = None,
+    ocr_language: str = "eng+por",
+    priority: int = 0,
+    db: AsyncSession = Depends(get_db)
+):
+    """Adiciona um arquivo à fila de OCR em background"""
+    from database import DownloadedFile, FileVersion
+    from ocr_worker import queue_ocr_job
+    
+    # Buscar arquivo
+    file_result = await db.execute(
+        select(DownloadedFile).where(DownloadedFile.id == file_id)
+    )
+    downloaded_file = file_result.scalar_one_or_none()
+    
+    if not downloaded_file:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    
+    # Buscar versão atual se não especificada
+    if not version_id:
+        version_result = await db.execute(
+            select(FileVersion).where(
+                FileVersion.file_id == file_id,
+                FileVersion.is_current == True
+            )
+        )
+        version = version_result.scalar_one_or_none()
+        version_id = version.id if version else None
+    
+    # Verificar se tem local_path
+    if not downloaded_file.local_path:
+        raise HTTPException(status_code=400, detail="Arquivo não possui caminho local definido")
+    
+    # Adicionar à fila
+    job_id = await queue_ocr_job(
+        db=db,
+        file_id=file_id,
+        version_id=version_id,
+        server_id=downloaded_file.server_id,
+        file_path=downloaded_file.file_path,
+        file_name=downloaded_file.file_name,
+        local_path=downloaded_file.local_path,
+        ocr_language=ocr_language,
+        priority=priority
+    )
+    
+    if job_id == -1:
+        return {"success": True, "message": "Job já existe na fila", "job_id": None}
+    
+    return {
+        "success": True,
+        "message": "Arquivo adicionado à fila de OCR",
+        "job_id": job_id
+    }
+
+
+@router.get("/ocr/jobs")
+async def list_ocr_jobs(
+    server_id: Optional[int] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista jobs de OCR"""
+    from database import OCRJob
+    
+    query = select(OCRJob).order_by(OCRJob.created_at.desc())
+    
+    if server_id:
+        query = query.where(OCRJob.server_id == server_id)
+    if status:
+        query = query.where(OCRJob.status == status)
+    
+    query = query.limit(limit)
+    
+    result = await db.execute(query)
+    jobs = result.scalars().all()
+    
+    return [
+        {
+            "id": job.id,
+            "file_id": job.file_id,
+            "version_id": job.version_id,
+            "server_id": job.server_id,
+            "file_path": job.file_path,
+            "file_name": job.file_name,
+            "ocr_language": job.ocr_language,
+            "status": job.status,
+            "error_message": job.error_message,
+            "priority": job.priority,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            "has_text": bool(job.ocr_text)
+        }
+        for job in jobs
+    ]
+
+
+@router.get("/ocr/jobs/{job_id}")
+async def get_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Obtém detalhes de um job de OCR incluindo o texto extraído"""
+    from database import OCRJob
+    
+    result = await db.execute(select(OCRJob).where(OCRJob.id == job_id))
+    job = result.scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    
+    return {
+        "id": job.id,
+        "file_id": job.file_id,
+        "version_id": job.version_id,
+        "server_id": job.server_id,
+        "file_path": job.file_path,
+        "file_name": job.file_name,
+        "local_path": job.local_path,
+        "ocr_language": job.ocr_language,
+        "status": job.status,
+        "ocr_text": job.ocr_text,
+        "ocr_metadata": job.ocr_metadata,
+        "error_message": job.error_message,
+        "priority": job.priority,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "started_at": job.started_at.isoformat() if job.started_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None
+    }
+
+
+@router.get("/ocr/stats")
+async def get_ocr_stats(db: AsyncSession = Depends(get_db)):
+    """Retorna estatísticas dos jobs de OCR"""
+    from database import OCRJob
+    from sqlalchemy import func
+    
+    # Contagem por status
+    status_result = await db.execute(
+        select(OCRJob.status, func.count(OCRJob.id))
+        .group_by(OCRJob.status)
+    )
+    status_counts = dict(status_result.all())
+    
+    return {
+        "total": sum(status_counts.values()),
+        "pending": status_counts.get('pending', 0),
+        "running": status_counts.get('running', 0),
+        "completed": status_counts.get('completed', 0),
+        "failed": status_counts.get('failed', 0),
+        "skipped": status_counts.get('skipped', 0)
+    }
+
+
 class ManualLeakCreate(BaseModel):
     """Modelo para criação de leak manual"""
     file_path: str
