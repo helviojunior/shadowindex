@@ -294,7 +294,7 @@ class OCRWorker:
                     metadata['issuer_cn'] = attr.value
                     break
             
-            print(f"=== OCR WORKER: Certificate extracted successfully ===", flush=True)
+            print("=== OCR WORKER: Certificate extracted successfully ===", flush=True)
             return text, metadata, None
             
         except Exception as e:
