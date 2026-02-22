@@ -310,6 +310,28 @@ class ScanJob(Base):
     completed_at = Column(DateTime, nullable=True)
 
 
+class OCRJob(Base):
+    """Jobs de OCR em background"""
+    __tablename__ = "ocr_jobs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_id = Column(Integer, ForeignKey("downloaded_files.id"), nullable=False)
+    version_id = Column(Integer, ForeignKey("file_versions.id"), nullable=True)
+    server_id = Column(Integer, nullable=False)
+    file_path = Column(String, nullable=False)
+    file_name = Column(String, nullable=False)
+    local_path = Column(String, nullable=True)  # Caminho local do arquivo baixado
+    ocr_language = Column(String, default="eng+por")
+    status = Column(String, default='pending')  # pending, running, completed, failed, skipped
+    ocr_text = Column(Text, nullable=True)
+    ocr_metadata = Column(JSON, nullable=True)
+    error_message = Column(String, nullable=True)
+    priority = Column(Integer, default=0)  # Higher = more priority
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+
 class AppSettings(Base):
     """Configurações gerais da aplicação"""
     __tablename__ = "app_settings"
