@@ -963,6 +963,45 @@ async def browse_path(
         # Verificar erros de acesso
         error_str = str(e).lower()
         if "access" in error_str and "denied" in error_str:
+            # Salvar status de acesso negado no banco
+            # Verificar se é um share ou um diretório
+            path_parts = path.replace('/', '\\').split('\\')
+            path_parts = [p for p in path_parts if p]  # Remove vazios
+            
+            if len(path_parts) == 2:
+                # É um share (formato: IP\ShareName)
+                share_name_from_path = path_parts[1]
+                share_result = await db.execute(
+                    select(ServerShare).where(
+                        ServerShare.server_guid == server.guid,
+                        ServerShare.share_name == share_name_from_path
+                    )
+                )
+                share = share_result.scalar_one_or_none()
+                if share:
+                    share.access_denied = True
+                    share.error_message = "Acesso negado"
+                    share.children_fetched = True
+                    share.has_children = False
+                    await db.commit()
+                    logger.info(f"Marked share {share_name_from_path} as access_denied=True")
+            else:
+                # É um diretório - buscar e atualizar o item
+                item_result = await db.execute(
+                    select(ServerItem).where(
+                        ServerItem.server_guid == server.guid,
+                        ServerItem.full_path == path
+                    )
+                )
+                item = item_result.scalar_one_or_none()
+                if item:
+                    item.access_denied = True
+                    item.error_message = "Acesso negado"
+                    item.children_fetched = True
+                    item.has_children = False
+                    await db.commit()
+                    logger.info(f"Marked item {path} as access_denied=True")
+            
             return {
                 "success": False,
                 "accessDenied": True,
