@@ -104,12 +104,12 @@ const ProxyServers = () => {
         ip: editData.ip,
         port: parseInt(editData.port),
         proxy_type: editData.proxy_type,
-        username: editData.username || null,
-        password: editData.password || undefined  // Only send if changed
+        username: editData.auth_type === 'user_password' ? (editData.username || null) : null,
+        password: editData.auth_type === 'user_password' ? (editData.password || undefined) : null
       };
       
-      // Don't send password if empty (keep existing)
-      if (!editData.password) {
+      // Don't send password if empty and auth is user_password (keep existing)
+      if (editData.auth_type === 'user_password' && !editData.password) {
         delete payload.password;
       }
       
