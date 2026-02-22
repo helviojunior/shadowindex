@@ -16,7 +16,7 @@ services:
       - "9090:8001"
     volumes:
       - ./backend:/app
-      - ./ops_integration_data:/app/data
+      - ./shadowindex_data:/app/data
     environment:
       - CORS_ORIGINS=*
       - TIKA_SERVER_URL=http://tika:9998
