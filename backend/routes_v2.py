@@ -2546,6 +2546,91 @@ async def get_ocr_status():
     }
 
 
+@router.get("/ocr/tika-status")
+async def get_tika_server_status():
+    """Verifica status do servidor Tika em tempo real (faz teste de conexão)"""
+    from ocr_service import get_tika_service
+    import requests
+    
+    service = get_tika_service()
+    
+    try:
+        # Fazer teste de conexão real
+        response = await asyncio.to_thread(
+            requests.get,
+            f"{service.server_url}/tika",
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            return {
+                "online": True,
+                "server_url": service.server_url,
+                "status_code": response.status_code
+            }
+        else:
+            return {
+                "online": False,
+                "server_url": service.server_url,
+                "status_code": response.status_code,
+                "error": f"Status code: {response.status_code}"
+            }
+    except requests.exceptions.ConnectionError as e:
+        return {
+            "online": False,
+            "server_url": service.server_url,
+            "error": "Connection refused"
+        }
+    except requests.exceptions.Timeout:
+        return {
+            "online": False,
+            "server_url": service.server_url,
+            "error": "Timeout"
+        }
+    except Exception as e:
+        return {
+            "online": False,
+            "server_url": service.server_url,
+            "error": str(e)
+        }
+
+
+@router.post("/ocr/retry-failed")
+async def retry_failed_ocr_jobs(db: AsyncSession = Depends(get_db)):
+    """Reexecuta todos os jobs de OCR que falharam"""
+    from database import OCRJob
+    from ocr_worker import queue_ocr_job
+    from datetime import datetime, timezone
+    
+    # Buscar jobs falhados
+    result = await db.execute(
+        select(OCRJob).where(OCRJob.status == 'failed')
+    )
+    failed_jobs = result.scalars().all()
+    
+    if not failed_jobs:
+        return {"message": "Nenhum job falhado encontrado", "retried": 0}
+    
+    retried = 0
+    for job in failed_jobs:
+        try:
+            # Resetar o job para pending
+            job.status = 'pending'
+            job.error_message = None
+            job.started_at = None
+            job.completed_at = None
+            retried += 1
+        except Exception as e:
+            logger.error(f"Error resetting job {job.id}: {e}")
+    
+    await db.commit()
+    
+    return {
+        "message": f"{retried} jobs reenfileirados para processamento",
+        "retried": retried
+    }
+
+
 @router.post("/servers/{server_id}/files/{file_id}/process-ocr")
 async def process_file_ocr_endpoint(
     server_id: int,
