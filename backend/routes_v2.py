@@ -763,7 +763,9 @@ async def browse_share(
         )
         
     except Exception as e:
-        logger.error(f"Error browsing share {share_id}: {e}")
+        import traceback
+        error_traceback = traceback.format_exc()
+        logger.error(f"Error browsing share {share_id}: {e}\n{error_traceback}")
         
         # Verificar erros de acesso
         error_str = str(e).lower()
@@ -779,7 +781,28 @@ async def browse_share(
                 "items": []
             }
         
-        raise HTTPException(status_code=500, detail=str(e))
+        # Determinar tipo de erro
+        error_message = str(e)
+        if "Credencial" in error_message or "credential" in error_message.lower():
+            error_type = "credential_error"
+        elif "conexão" in error_message.lower() or "connection" in error_message.lower():
+            error_type = "connection_error"
+        elif "timeout" in error_message.lower():
+            error_type = "timeout_error"
+        elif "URL" in error_message or "url" in error_message.lower() or "SOAP" in error_message:
+            error_type = "config_error"
+        else:
+            error_type = "plugin_error"
+        
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "error": error_type,
+                "message": f"Erro ao navegar compartilhamento: {error_message}",
+                "server_ip": server.ip,
+                "share_name": share.share_name
+            }
+        )
 
 
 # ==========================================
