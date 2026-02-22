@@ -754,83 +754,123 @@ const Leaks = () => {
               <AlertTriangle className="w-5 h-5 text-red-500" />
               Detalhes do Finding
             </DialogTitle>
-            <DialogDescription>
-              {selectedFinding?.RuleID}
-            </DialogDescription>
           </DialogHeader>
           
-          {selectedFinding && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Regra</p>
-                  <Badge className="font-mono">{selectedFinding.RuleID}</Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Linha</p>
-                  <p className="font-mono">
-                    {selectedFinding.StartLine || 'N/A'}
-                    {selectedFinding.EndLine && selectedFinding.EndLine !== selectedFinding.StartLine 
-                      ? ` - ${selectedFinding.EndLine}` 
-                      : ''}
-                  </p>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-xs text-muted-foreground">Arquivo Original</p>
-                  {selectedFinding.detection_source && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      {selectedFinding.detection_source === 'ocr' ? 'Detectado via OCR' : 'Detectado via Metadata'}
-                    </Badge>
+          {selectedFinding && (() => {
+            // Extrair informações do arquivo
+            const fullPath = selectedFinding.server_path || selectedFinding.original_file || selectedFinding.File || '';
+            const pathParts = fullPath.replace(/\//g, '\\').split('\\').filter(p => p);
+            const fileName = selectedFinding.file_name || (pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Arquivo');
+            const startIndex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(pathParts[0]) ? 1 : 0;
+            const directoryPath = pathParts.length > 1 ? pathParts.slice(startIndex, -1).join('\\') : '';
+            
+            return (
+              <div className="space-y-5">
+                {/* Header com informações principais */}
+                <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <Badge className="bg-red-600 text-white font-mono text-sm px-3 py-1">
+                        {selectedFinding.RuleID}
+                      </Badge>
+                      {selectedFinding.detection_source && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {selectedFinding.detection_source === 'ocr' ? 'OCR' : 'Metadata'}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-muted-foreground">Linha</span>
+                      <p className="font-mono text-lg font-bold text-orange-400">
+                        {selectedFinding.StartLine || 'N/A'}
+                        {selectedFinding.EndLine && selectedFinding.EndLine !== selectedFinding.StartLine 
+                          ? `-${selectedFinding.EndLine}` 
+                          : ''}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {selectedFinding.Description && (
+                    <p className="text-sm text-muted-foreground mt-3 italic">
+                      {selectedFinding.Description}
+                    </p>
                   )}
                 </div>
-                <p className="font-mono text-sm break-all bg-muted p-2 rounded">
-                  {selectedFinding.original_file || selectedFinding.File}
-                </p>
-                {selectedFinding.detection_source && selectedFinding.scanned_file && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Arquivo de análise: <span className="font-mono">{selectedFinding.scanned_file}</span>
-                  </p>
-                )}
-              </div>
-              
-              {selectedFinding.Description && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Descrição</p>
-                  <p className="text-sm">{selectedFinding.Description}</p>
-                </div>
-              )}
-              
-              {selectedFinding.Secret && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Secret Detectado</p>
-                  <div className="flex items-start gap-2">
-                    <code className="flex-1 text-xs bg-red-500/10 p-3 rounded border border-red-500/30 font-mono break-all">
-                      {selectedFinding.Secret}
-                    </code>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(selectedFinding.Secret)}
-                    >
-                      {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                    </Button>
+                
+                {/* Informações do Arquivo */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-cyan-400" />
+                    Localização
+                  </h4>
+                  
+                  <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm">
+                    {selectedFinding.server_name && (
+                      <>
+                        <span className="text-muted-foreground">Servidor:</span>
+                        <span className="font-medium text-emerald-400">{selectedFinding.server_name}</span>
+                      </>
+                    )}
+                    <span className="text-muted-foreground">Arquivo:</span>
+                    <span className="font-medium text-cyan-400">{fileName}</span>
+                    
+                    {directoryPath && (
+                      <>
+                        <span className="text-muted-foreground">Diretório:</span>
+                        <span className="font-mono text-xs text-muted-foreground">{directoryPath}</span>
+                      </>
+                    )}
                   </div>
                 </div>
-              )}
-              
-              {selectedFinding.Match && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Match</p>
-                  <code className="block text-xs bg-muted p-3 rounded font-mono break-all">
-                    {selectedFinding.Match}
-                  </code>
-                </div>
-              )}
-            </div>
-          )}
+                
+                {/* Secret Detectado */}
+                {selectedFinding.Secret && (
+                  <div className="border border-red-500/30 rounded-lg p-4 bg-red-500/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-red-400 flex items-center gap-2">
+                        <Key className="w-4 h-4" />
+                        Secret Detectado
+                      </h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleCopy(selectedFinding.Secret)}
+                      >
+                        {copied ? <CheckCircle className="w-3 h-3 mr-1 text-green-500" /> : <Copy className="w-3 h-3 mr-1" />}
+                        {copied ? 'Copiado!' : 'Copiar'}
+                      </Button>
+                    </div>
+                    <code className="block text-sm bg-black/30 p-3 rounded font-mono break-all text-red-300 border border-red-500/20">
+                      {selectedFinding.Secret}
+                    </code>
+                  </div>
+                )}
+                
+                {/* Match - só mostrar se for diferente do Secret */}
+                {selectedFinding.Match && selectedFinding.Match !== selectedFinding.Secret && (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground">Contexto (Match)</h4>
+                    <code className="block text-xs bg-muted p-3 rounded font-mono break-all">
+                      {selectedFinding.Match}
+                    </code>
+                  </div>
+                )}
+                
+                {/* Tags */}
+                {selectedFinding.Tags && selectedFinding.Tags.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">Tags:</span>
+                    {selectedFinding.Tags.map((tag, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
