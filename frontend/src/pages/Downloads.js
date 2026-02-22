@@ -67,6 +67,10 @@ const Downloads = () => {
     cancelled: 0,
     skipped: 0
   });
+  
+  // Controle de erros para evitar spam de toasts
+  const lastErrorRef = useRef(null);
+  const errorCountRef = useRef(0);
 
   // WebSocket para atualizações em tempo real
   const { isConnected } = useWebSocket();
