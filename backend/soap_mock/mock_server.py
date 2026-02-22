@@ -155,6 +155,34 @@ def escape_xml(text: str) -> str:
             .replace("'", "&apos;"))
 
 
+def build_network_error_response(operation: str, server: str, error_code: int = 53) -> str:
+    """Build SOAP response for network errors (e.g., server offline, firewall blocking)"""
+    error_messages = {
+        53: f"NetShareEnum failed with code: 53",  # Network path not found
+        5: f"Access denied to server",  # Access denied
+        1326: f"Logon failure: unknown user name or bad password",  # Logon failure
+        67: f"Network name cannot be found",  # Network name not found
+        1219: f"Multiple connections to a server not allowed",  # Multiple connections
+    }
+    
+    message = error_messages.get(error_code, f"Network error with code: {error_code}")
+    stacktrace = f"""   at Test.ShareListerNet35.ListShares(String server, Boolean hideSpecial)
+   at Test.Test.ListShares(String host, String key)"""
+    
+    result_element = f'''<Result diffgr:id="Result1" msdata:rowOrder="0" diffgr:hasChanges="inserted"><message>{escape_xml(message)}</message><stacktrace>{escape_xml(stacktrace)}</stacktrace></Result>'''
+    
+    return f'''<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><soap:Body><{operation}Response xmlns="http://test/"><{operation}Result><xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"><xs:element name="NewDataSet" msdata:IsDataSet="true" msdata:MainDataTable="Result" msdata:UseCurrentLocale="true"><xs:complexType><xs:choice minOccurs="0" maxOccurs="unbounded"><xs:element name="Result"><xs:complexType><xs:sequence><xs:element name="message" type="xs:string" minOccurs="0" /><xs:element name="stacktrace" type="xs:string" minOccurs="0" /></xs:sequence></xs:complexType></xs:element></xs:choice></xs:complexType></xs:element></xs:schema><diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1"><DocumentElement xmlns="">{result_element}</DocumentElement></diffgr:diffgram></{operation}Result></{operation}Response></soap:Body></soap:Envelope>'''
+
+
+def is_offline_server(host: str) -> bool:
+    """Check if the host should simulate an offline/unreachable server"""
+    if not host:
+        return False
+    host_lower = host.lower()
+    return any(offline.lower() in host_lower or host_lower in offline.lower() 
+               for offline in OFFLINE_SERVERS)
+
+
 def build_shares_response(host_ip: str = None) -> str:
     """Build ListShares SOAP response"""
     # Use the requested host or default mock IP
