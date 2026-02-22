@@ -354,10 +354,10 @@ class DirectInteractionPlugin(BasePlugin):
         except ImportError:
             raise PluginException("impacket não está instalado. Execute: pip install impacket")
         
-        domain = self._credential.get("domain", "")
-        username = self._credential.get("username", "")
-        password = self._credential.get("password", "")
-        ntlm_hash = self._credential.get("ntlm_hash", "")
+        domain = self._credential.get("domain") or ""
+        username = self._credential.get("username") or ""
+        password = self._credential.get("password") or ""
+        ntlm_hash = self._credential.get("ntlm_hash") or ""
         
         # Parse NTLM hash (LM:NT or just NT)
         lmhash = ""
