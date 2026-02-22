@@ -357,6 +357,7 @@ class GitleaksService:
                             findings = json.load(f)
                             if findings:
                                 job.findings_count = len(findings)
+                                saved_count = 0
                                 # Adicionar ao cache global com metadata
                                 for finding in findings:
                                     # Normalizar caminho do arquivo (tratar .ocr e .metadata)
@@ -381,7 +382,14 @@ class GitleaksService:
                                         finding['extracted_file_id'] = ids[1]
                                         finding['extracted_version'] = ids[2]
                                     
+                                    # Adicionar ao cache em memória
                                     self._findings.append(finding)
+                                    
+                                    # Salvar no banco de dados (persistência)
+                                    if await save_finding_to_db(finding):
+                                        saved_count += 1
+                                
+                                logger.info(f"Salvos {saved_count} novos findings no banco de dados")
                             else:
                                 job.findings_count = 0
                     except json.JSONDecodeError:
