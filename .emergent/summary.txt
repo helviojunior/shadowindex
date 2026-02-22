@@ -15,131 +15,141 @@ O usuário solicitou inicialmente um painel web para gerenciar credenciais, cone
 - A capacidade de persistir os resultados do GitLeaks no banco de dados.
 - Busca expandida para incluir metadados de arquivos, conteúdo de OCR e findings do GitLeaks.
 - A UI não deve travar durante o carregamento de dados e deve ser resiliente a falhas de backend.
+- Um painel de monitoramento de jobs em tempo real no Dashboard.
+- Notificações sonoras globais para a finalização de todos os jobs de um tipo (Downloads, GitLeaks).
 
 **User's preferred language**: Portuguese. O próximo agente DEVE responder em português.
 
 **what currently exists?**
-Uma aplicação full-stack (FastAPI + React) robusta chamada ShadowIndex. A sessão atual focou em resolver problemas críticos de performance e usabilidade. Foi implementada uma solução abrangente para os erros de database is locked do SQLite, habilitando o modo WAL e criando pools de conexão separados para leitura e escrita. O frontend foi refatorado para ser mais resiliente, eliminando loops infinitos e spam de notificações toast quando o backend está offline, e substituindo telas de carregamento que travavam a UI por indicadores mais sutis. Funcionalidades de WebSocket foram expandidas para o Dashboard e a Tree View, e diversas melhorias de configuração foram adicionadas, como a lista de exclusão de OCR e a edição de hash NTLM.
+Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. A sessão atual focou em implementar novas funcionalidades e otimizar a performance. Foi adicionado um painel de Monitoramento de Jobs em tempo real no Dashboard. Foram feitas otimizações críticas de performance nas páginas de Dashboard e Downloads, que agora carregam dados sob demanda para evitar lentidão e travamentos com grandes volumes de jobs. Diversos bugs foram corrigidos, incluindo a lógica de exclusão do OCR, a conexão WebSocket (agora estável em ), e toasts duplicados na UI. A lógica de parsing do GitLeaks foi aprimorada para priorizar leaks de arquivos originais sobre os de OCR. Uma nova funcionalidade de notificação sonora global foi iniciada.
 
 **Last working item**:
-- **Last item agent was working:** O agente finalizou a implementação de um mecanismo robusto de tratamento de erros para chamadas AJAX em todo o frontend. O objetivo era impedir que a UI entrasse em loops infinitos ou travasse quando o backend estivesse inacessível.
-- **Status:** USER VERIFICATION PENDING
-- **Agent Testing Done:** Y
-- **Which testing method agent to use?** Frontend testing. O agente deve solicitar ao usuário que teste a aplicação, especificamente as páginas de Downloads, Leaks e Dashboard, enquanto o backend está offline para confirmar que a UI permanece responsiva, não trava e não faz requisições em loop.
+- **Last item agent was working:** Implementação de um sistema de notificação sonora global para alertar o usuário quando todos os jobs de Download ou GitLeaks forem concluídos. O agente adicionou a lógica de backend para emitir estatísticas de jobs via WebSocket e criou um hook React () e um arquivo de som no frontend.
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** Both. O agente precisa finalizar a implementação e então testar o fluxo de ponta a ponta: iniciar jobs (downloads e gitleaks), aguardar a finalização e verificar se o som é tocado corretamente em qualquer página da aplicação.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P1):** A persistência do estado da tree view (cores para acesso negado e visitado) não funciona corretamente após o refresh da página.
-- **Issue 2 (P2):** A UI de Downloads exibe um número incorreto de downloads simultâneos, embora o backend limite as operações. A causa raiz do travamento dos jobs não foi investigada.
+- **Issue 1 (P0):** A navegação fica travada na página de Downloads quando há uma lista grande de arquivos (>500) e outros jobs de scan estão em execução.
+- **Issue 2 (P2):** A UI de Downloads exibe um número incorreto de downloads simultâneos, e a causa raiz de jobs que ficam travados no estado downloading não foi totalmente resolvida.
 
 **Issues Detail:**
-- **Issue 1: A persistência do estado da tree view não funciona corretamente.**
-    - **Attempted fixes:** Nenhuma nesta sessão.
+- **Issue 1: Travamento da navegação na página de Downloads sob carga.**
+    - **Attempted fixes:** O agente refatorou a página para carregar dados sob demanda (inicialmente carrega apenas estatísticas e os 50 jobs mais recentes) para melhorar a performance. Também adicionou lógica para cancelar requisições pendentes ao desmontar componentes ( ref), visando aumentar a estabilidade.
     - **Next debug checklist:**
-        1.  Revisar como o estado de visitado e acesso negado é armazenado (se é que é).
-        2.  Considerar usar  ou uma tabela no banco de dados para persistir o estado dos nós da árvore entre as sessões.
-        3.  Implementar a lógica para carregar esse estado ao montar o componente .
-    - **Why fix this issue and what will be achieved with the fix?** Melhorar a usabilidade da navegação de arquivos, permitindo que o usuário continue de onde parou e veja facilmente quais diretórios já foram explorados.
-    - **Status:** NOT STARTED
+        1.  Verificar se as otimizações implementadas resolveram o problema no ambiente do usuário sob a carga especificada.
+        2.  Usar as ferramentas de profiling do navegador para identificar gargalos de CPU ou memória na página de Downloads durante a navegação.
+        3.  Investigar se o polling contínuo, mesmo que otimizado, ainda interfere com o roteador do React sob certas condições.
+    - **Why fix this issue and what will be achieved with the fix?** Corrigir este bug é crítico para a usabilidade da aplicação, garantindo que a interface permaneça responsiva mesmo com muitos jobs em processamento.
+    - **Status:** IN PROGRESS
     - **Is recurring issue?** Y
     - **Should Test frontend/backend/both after fix?** Frontend.
 
-- **Issue 2: A UI de Downloads exibe um número incorreto de downloads simultâneos.**
-    - **Attempted fixes:** Uma solução paliativa (resetar jobs na inicialização) foi implementada em uma sessão anterior, mas a causa raiz persiste.
+- **Issue 2: Contador de downloads incorreto e jobs travados.**
+    - **Attempted fixes:** Em sessões anteriores, foi adicionada uma lógica para resetar jobs travados na inicialização. Nesta sessão, o usuário pediu para remover um timeout automático que havia sido implementado, pois alguns downloads podem ser demorados. A otimização da página de downloads pode ter mascarado o problema do contador, mas a causa raiz dos jobs travados persiste.
     - **Next debug checklist:**
-        1.  Investigar a lógica do  para entender como os jobs podem ficar presos no estado downloading.
-        2.  Revisar a lógica do frontend na página  que conta e exibe os downloads ativos.
-        3.  Analisar a comunicação via WebSocket para garantir que as atualizações de status de jobs (concluído, falhado) estão sendo enviadas e recebidas corretamente.
-    - **Why fix this issue and what will be achieved with the fix?** Fornecer ao usuário uma informação precisa sobre o andamento dos downloads e corrigir a causa raiz de jobs travados.
-    - **Status:** NOT STARTED
+        1.  Revisar o  para encontrar cenários (ex: exceções não tratadas, falhas de comunicação com plugins) onde um job pode permanecer no estado downloading indefinidamente.
+        2.  Adicionar logging mais detalhado no ciclo de vida de um job de download.
+        3.  Considerar implementar um mecanismo de heartbeat ou um timeout configurável pelo usuário para detectar jobs genuinamente travados.
+    - **Why fix this issue and what will be achieved with the fix?** Resolver a causa raiz aumentará a confiabilidade do sistema de downloads e garantirá que a UI sempre reflita o estado real dos jobs.
+    - **Status:** NOT STARTED (nesta sessão)
     - **Is recurring issue?** Y
     - **Should Test frontend/backend/both after fix?** Both.
 
 **In progress Task List**:
-Nenhum.
+- **Task 1: Finalizar o sistema de notificação sonora global (P1).**
+    - **Where to resume:**
+        - **Frontend:** O hook  precisa ser integrado em um componente global que não é desmontado durante a navegação, como  ou . A lógica interna do hook precisa ser finalizada para:
+            1. Manter o estado anterior do número de jobs ativos.
+            2. Comparar o estado anterior com o novo estado recebido via WebSocket.
+            3. Tocar o som () somente quando o número de jobs ativos de um tipo (downloads ou gitleaks) vai de >0 para 0.
+        - **Backend:** Verificar se as chamadas para  e  estão sendo feitas em todos os pontos onde um job pode terminar (ex: , , , ).
+    - **What will be achieved with this?** O usuário receberá uma notificação sonora útil indicando a conclusão de tarefas em segundo plano, melhorando a experiência de usuário multitarefa.
+    - **Status:** IN PROGRESS
+    - **Should Test frontend/backend/both after fix?** Both.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-  - (P1) Validar completamente a funcionalidade de proxy SOCKS5, que está implementada mas requer um servidor SOCKS5 real para um teste de ponta a ponta.
-  - (P2) Realizar um teste completo do fluxo de OCR, garantindo a comunicação com o servidor Tika e a extração correta de dados de diferentes tipos de arquivo.
+  - (P1) Validar completamente a funcionalidade de proxy SOCKS5, que está implementada e teve a lógica de credenciais corrigida, mas requer um teste de ponta a ponta com um servidor SOCKS5 real.
+  - (P2) Realizar um teste completo do fluxo de OCR, garantindo a comunicação com o servidor Tika e a extração correta de dados.
 - **Future Tasks:**
   - (P2) Evoluir a arquitetura de plugins, definindo exceções padronizadas e funções base obrigatórias.
   - (P3) Melhorar o servidor mock SOAP para cobrir mais casos de uso.
 
 **Completed work in this session**
-- **Correção Crítica de Banco de Dados (SQLite):** Resolvido o problema recorrente de database is locked através da:
-    - Habilitação do modo **WAL (Write-Ahead Logging)**.
-    - Criação de **pools de conexão separados para leitura e escrita** em .
-    - Refatoração de todas as rotas GET de listagem (Dashboard, Downloads, Servidores, etc.) para usar a conexão de **somente leitura**, reduzindo a contenção.
-    - Aplicação de PRAGMAs para otimização de performance (, , etc.).
-- **Robustez da Interface (UI):**
-    - **Eliminação de Loops Infinitos:** Refatoradas as páginas com polling (Downloads, Leaks) para parar de fazer requisições após 3 falhas consecutivas, impedindo o travamento do navegador.
-    - **Remoção de Toast Spam:** Removidas notificações toast de sucesso desnecessárias e de erro repetitivas. A barra de status global agora é a única fonte para erros de conexão.
-    - **Indicadores de Carregamento Não-Bloqueantes:** Substituídas as telas de loading que travavam a UI por indicadores sutis que permitem a interação do usuário enquanto os dados são carregados em segundo plano.
+- **Painel de Monitoramento de Jobs:** Adicionado um novo painel ao Dashboard que exibe em tempo real o status dos jobs de Download, Scan de Diretório, OCR e GitLeaks.
+- **Otimização Crítica de Performance:**
+    - **Página de Downloads:** Refatorada para carregar apenas estatísticas e os 50 jobs mais recentes na carga inicial. O restante dos jobs é carregado sob demanda ao clicar nos filtros, tornando a página extremamente mais rápida.
+    - **Dashboard:** Otimizado para carregar apenas jobs ativos ou recentes, melhorando o tempo de carregamento.
+- **Correções de Bugs:**
+    - **Conexão WebSocket:** Corrigido o endpoint do WebSocket para  no frontend e backend, resolvendo o problema do indicador Offline persistente.
+    - **Lógica do OCR Worker:** O worker agora respeita a lista de exclusão de extensões e ignora arquivos com mimetype , com um fallback para a biblioteca  caso  não esteja disponível.
+    - **Toasts Duplicados:** Removidos toasts de notificação duplicados ao enfileirar downloads.
 - **Melhorias de Funcionalidade:**
-    - **Configuração de OCR:** Implementada a UI e lógica de backend para uma **lista de exclusão de extensões** do OCR (ex: , , ), que tem precedência sobre a lista de inclusão.
-    - **Downloads em Lote:** Adicionado suporte a wildcards (ex: ) na configuração de exclusões de arquivos para downloads em lote.
-    - **Credenciais SMB:** Alterada a lógica de autenticação para priorizar a **senha sobre o hash NTLM**.
-    - **Edição de Credenciais:** Adicionado um campo para editar o **hash NTLM** na tela de credenciais.
-- **Melhorias no WebSocket:**
-    - A lógica da barra de status de conexão foi ajustada para depender apenas de um health check HTTP, tornando-a menos sensível a reconexões breves do WebSocket e eliminando falsos positivos.
-    - **Dashboard e Tree View** agora recebem atualizações de estado em tempo real via WebSocket.
+    - **Precedência de Leaks do GitLeaks:** A lógica de análise agora prioriza leaks do arquivo original em detrimento dos encontrados em arquivos , evitando duplicatas.
+    - **Melhoria Visual no Dashboard:** Adicionados divisores visuais entre as seções do dashboard para melhorar a legibilidade.
 
 **Earlier issues found/mentioned but not fixed**
-- A causa raiz dos jobs de download ficarem presos no estado downloading não foi investigada. Uma solução paliativa (resetar na inicialização) foi implementada em uma sessão anterior, mas o problema fundamental permanece.
+- **Persistência do estado da Tree View:** A persistência de estado visual (cores para nós visitado ou acesso negado) na árvore de arquivos entre recargas de página ainda não foi implementada. O usuário pediu para remover da fila desta sessão, mas o problema permanece em aberto para o futuro.
 
 **Known issue recurrence from previous fork**
-- **Estado da Tree View:** Problemas de persistência de estado (cores de nós visitados) ainda não foram totalmente resolvidos.
-- **Contador de Downloads:** A UI pode exibir um número incorreto de downloads simultâneos.
+- **Estado da Tree View:** A falta de persistência de estado é um problema conhecido de uma sessão anterior e não foi abordado.
+- **Contador de Downloads / Jobs Travados:** Este é um problema recorrente. Embora a performance da UI tenha sido melhorada, a causa raiz que leva os jobs a ficarem presos no estado downloading não foi resolvida.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **SQLite Concorrência com WAL e Pools Separados:** A solução para os erros database is locked foi habilitar o modo WAL e criar, em SQLAlchemy, dois  separados: um para escrita (com poucas conexões) e um para leitura (com mais conexões e  via PRAGMA). As rotas da API foram então refatoradas para usar a sessão apropriada ( ou ).
-- **Polling Resiliente no Frontend:** Implementado um padrão em React usando  para contar falhas consecutivas de API. Após um limite (ex: 3 falhas), o polling é interrompido para evitar sobrecarga e travamento da UI. A reativação é manual (botão Tentar Novamente) ou automática quando a conexão é restaurada.
-- **Precedência de Configuração:** A lógica de OCR agora verifica primeiro a lista de exclusão de extensões antes de verificar a lista de inclusão, garantindo que as exclusões sempre tenham prioridade.
+- **Carregamento Sob Demanda (On-Demand Loading):** A página de Downloads foi refatorada para carregar uma quantidade mínima de dados inicialmente e buscar o restante apenas sob interação do usuário. Este padrão é crucial para a performance da aplicação.
+- **Estado Global via WebSocket:** O backend agora envia ativamente estatísticas de jobs (, ) via WebSocket. O objetivo é usar esses eventos para acionar ações globais na UI (como notificações sonoras) de forma eficiente.
+- **Fallback de Dependência:** O worker de OCR implementa uma estratégia de fallback: tenta usar a biblioteca  para detecção de mimetype e, em caso de falha (ex:  não instalado), recorre à biblioteca nativa  do Python para evitar que a aplicação quebre.
+- **Cancelamento de Efeitos em React:** Foi implementado um padrão com um  () para verificar se um componente ainda está montado antes de atualizar seu estado dentro de  com dependências assíncronas. Isso previne erros e memory leaks durante a navegação rápida entre páginas que fazem polling.
 
 **key DB schema**
-- **app_settings:**  - Armazena configurações globais, incluindo as novas  e .
-- **credentials:** 
+- **app_settings:**  - Armazena configurações globais, incluindo .
 - **download_jobs:** 
+- **ocr_jobs:** 
+- **gitleaks_jobs:** 
+- **findings:** 
 
 **All files of reference**
-- : Arquivo mais crítico. Define a nova estratégia de conexão com o banco de dados (WAL, pools de leitura/escrita).
-- : Exemplo principal da nova lógica de polling resiliente e remoção de toast spam.
-- : Contém a lógica centralizada e aprimorada para detectar o status da conexão com o backend.
--  e : Mostram como as rotas GET foram atualizadas para usar a dependência .
-- : Contém a nova UI para gerenciar as extensões excluídas do OCR e os padrões de arquivos ignorados no download.
+- : Exemplo principal da nova arquitetura de carregamento sob demanda para performance.
+- : Contém o novo painel de monitoramento de jobs.
+- : Arquivo central da funcionalidade de notificação sonora (inacabada).
+- , , : Workers principais que foram modificados para corrigir bugs e adicionar emissão de stats.
+- : Centraliza a lógica de envio de mensagens WebSocket para o frontend.
 
 **Critical Info for New Agent**
-- **Padrão de Acesso ao Banco de Dados:** É crucial manter o padrão de usar a sessão de banco de dados correta. Para qualquer nova rota GET que apenas lê dados, use . Para rotas que modificam dados (POST, PUT, DELETE), use . Isso é essencial para evitar os erros de database is locked.
-- **Resiliência da UI:** A UI foi tornada significativamente mais estável. Evite reintroduzir padrões que possam causar loops ou travar o navegador, como polling agressivo sem tratamento de falhas ou telas de carregamento que bloqueiam toda a interface.
-- **Sensibilidade do Usuário:** O usuário é muito sensível a problemas de performance (locks de DB), travamentos da UI e notificações excessivas. Priorize a estabilidade e uma experiência de usuário fluida.
+- **Performance é Prioridade:** O usuário enfrenta problemas de lentidão e travamento com grandes volumes de dados. Continue aplicando o padrão de carregamento sob demanda e otimização de queries em novas funcionalidades ou ao refatorar páginas existentes.
+- **Finalizar Notificação Sonora:** A tarefa de notificação sonora está pela metade. O próximo passo é integrar o hook  em  e completar sua lógica para tocar o som apenas na transição de jobs ativos ativos = 0.
+- **Verificação de Navegação:** O bug de travamento na página de Downloads precisa de verificação no ambiente do usuário, pois não foi reproduzível no ambiente de desenvolvimento após as otimizações.
 
 **documents and test reports created in this job**
--  foi atualizado.
+-  (atualizado)
+-  (novo)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **DONE:** Pediu para corrigir o comportamento de loop infinito do frontend quando as chamadas AJAX falham.
-2.  **DONE:** Reportou que a tela de downloads continua mostrando múltiplos toasts de erro e travando o navegador quando o backend está fora.
-3.  **DONE:** Solicitou adicionar a exclusão de extensões com wildcard (ex: ) para o download em lote.
-4.  **DONE:** Pediu para verificar se a tela de configuração e os workers estavam respeitando a exclusão de extensões do OCR.
-5.  **DONE:** Reportou a persistência de erros de database is locked.
-6.  **DONE:** Pediu para remover toasts de sucesso como X scans removidos.
-7.  **DONE:** Pediu para a UI não travar durante o carregamento de dados e exibir um indicador.
-8.  **DONE:** Reportou que a barra de conexão offline aparecia com muita frequência devido a desconexões momentâneas do WebSocket.
-9.  **DONE:** Solicitou a capacidade de alterar o hash NTLM na tela de edição de usuário e adicionar  à lista de exclusão de OCR.
-10. **DONE:** Pediu para adicionar PRAGMAs específicos (, ) ao SQLite para melhorar a performance.
+1.  **DONE:** Solicitação para adicionar contadores de jobs de OCR e GitLeaks no painel de monitoramento do Dashboard.
+2.  **DONE:** Pedido para remover um toast de notificação duplicado ao enfileirar um download.
+3.  **DONE:** Reportou que o indicador de WebSocket estava Offline na página de Downloads, mesmo com a página funcionando. (Resolvido corrigindo o endpoint do WS para ).
+4.  **DONE:** Reportou que o OCR worker não estava ignorando as extensões da lista de configuração.
+5.  **DONE:** Pedido para adicionar mais extensões à lista de exclusão do OCR e implementar uma regra para sempre ignorar mimetypes .
+6.  **DONE:** Solicitação para que a lib  seja mantida, usando a outra biblioteca () apenas como fallback.
+7.  **DONE:** Pedido para ajustar a lógica de parsing do GitLeaks para dar precedência a leaks do arquivo original sobre os do arquivo OCR, sem considerar o número da linha na comparação.
+8.  **DONE:** Reportou que os toasts duplicados ainda apareciam em outro fluxo na tree view.
+9.  **IN PROGRESS:** Reportou que a navegação trava na página de Downloads quando há muitos arquivos (>500) e scans em execução.
+10. **IN PROGRESS:** Pedido para adicionar uma notificação sonora global para quando todos os jobs de Download e GitLeaks finalizarem.
 
 **Project Health Check:**
 - **Broken:**
-  - A persistência do estado da tree view entre sessões.
-  - A contagem de downloads simultâneos na UI ainda pode ser imprecisa, e a causa raiz de jobs travados não foi resolvida.
+  - A navegação a partir da página de Downloads pode travar sob carga pesada. As otimizações foram implementadas, mas o problema precisa ser verificado pelo usuário.
+- **Mocked:** N/A.
 - **Needs Verification:**
-  - A funcionalidade de proxy SOCKS5, que está implementada mas não foi testada de ponta a ponta com um servidor real.
-  - A eficácia das correções do banco de dados sob carga pesada e contínua.
-  - A nova lógica de polling resiliente em todas as páginas afetadas.
+    - A solução para o travamento da navegação.
+    - O funcionamento da lógica de exclusão do OCR com as novas regras.
+    - A lógica de precedência do GitLeaks.
+    - A performance da página de Downloads com a nova arquitetura de carregamento sob demanda.
 
 **3rd Party Integrations**
 - **Apache Tika:** Para OCR.
@@ -154,11 +164,10 @@ Nenhum.
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** N/A
-- **Known regressions:** Nenhuma nova regressão identificada. As melhorias de estabilidade provavelmente corrigiram regressões não intencionais de sessões anteriores.
+- **Known regressions:** Nenhuma identificada. As otimizações de performance e correções de bugs melhoraram a estabilidade geral.
 
 **Credentials to test flow:**
-Não há credenciais estáticas. Crie servidores, credenciais e instâncias de plugin através da UI.
+Não há credenciais estáticas. A aplicação permite criar servidores, credenciais e instâncias de plugin através da UI.
 
 **What agent forgot to execute**
-- O agente não investigou a causa raiz dos jobs de download que ficam travados no estado downloading, um problema recorrente.
-- O agente não abordou a falta de persistência do estado da tree view (nós visitados/com falha) entre as recargas de página.</analysis>
+- O agente não finalizou a implementação da notificação sonora. O hook React foi criado, mas não foi integrado à aplicação nem teve sua lógica interna completada para tocar o som nas condições corretas.</analysis>
