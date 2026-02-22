@@ -334,7 +334,7 @@ const ServerBrowser = () => {
       
       try {
         // Buscar informações do arquivo baixado
-        const response = await axios.get(`${API}/downloads/${pendingFileNavigation}`);
+        const response = await axios.get(`${API_V2}/downloads/${pendingFileNavigation}`);
         const fileInfo = response.data;
         
         if (fileInfo && fileInfo.file_path) {
