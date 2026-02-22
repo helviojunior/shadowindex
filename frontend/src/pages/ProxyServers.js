@@ -135,6 +135,13 @@ const ProxyServers = () => {
     return type === 'socks5' ? <Shield className="w-4 h-4" /> : <Globe className="w-4 h-4" />;
   };
 
+  const getCredentialName = (credentialId) => {
+    if (!credentialId) return null;
+    const cred = credentials.find(c => c.id === credentialId);
+    if (!cred) return `ID: ${credentialId}`;
+    return cred.name || `${cred.domain ? cred.domain + '\\' : ''}${cred.username}`;
+  };
+
   return (
     <div className="space-y-6" data-testid="proxy-servers-page">
       <div className="flex items-center justify-between">
