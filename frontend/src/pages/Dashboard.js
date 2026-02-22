@@ -39,6 +39,7 @@ const API_V2 = `${BACKEND_URL}/api/v2`;
 
 const Dashboard = () => {
   const { offlineMode, setOfflineMode } = useApp();
+  const { isConnected: wsConnected } = useWebSocket();
   const [stats, setStats] = useState({
     credentials: 0,
     dbConnections: 0,
@@ -52,6 +53,23 @@ const Dashboard = () => {
   const [extensionStats, setExtensionStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scanningAll, setScanningAll] = useState(false);
+
+  // WebSocket para atualizações em tempo real
+  useStatsEvents((data) => {
+    // Atualizar estatísticas quando receber evento do WebSocket
+    if (data.servers !== undefined) {
+      setStats(prev => ({ ...prev, servers: data.servers }));
+    }
+    if (data.downloadedFiles !== undefined) {
+      setStats(prev => ({ ...prev, downloadedFiles: data.downloadedFiles }));
+    }
+    if (data.credentials !== undefined) {
+      setStats(prev => ({ ...prev, credentials: data.credentials }));
+    }
+    if (data.gitleaks) {
+      setGitleaksStats(data.gitleaks);
+    }
+  });
 
   useEffect(() => {
     loadData();
