@@ -4000,6 +4000,40 @@ async def cancel_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.post("/ocr/cancel-all")
+async def cancel_all_ocr_jobs(db: AsyncSession = Depends(get_db)):
+    """Cancela todos os jobs de OCR pendentes ou em execução"""
+    from database import OCRJob
+    from datetime import datetime, timezone
+    from sqlalchemy import update
+    
+    # Atualizar todos os jobs pendentes ou em execução para cancelled
+    result = await db.execute(
+        update(OCRJob)
+        .where(OCRJob.status.in_(['pending', 'running']))
+        .values(
+            status='cancelled',
+            error_message='Cancelado pelo usuário (cancel-all)',
+            completed_at=datetime.now(timezone.utc)
+        )
+    )
+    await db.commit()
+    
+    # Emitir estatísticas atualizadas
+    try:
+        from ocr_worker import emit_ocr_stats
+        await emit_ocr_stats()
+    except Exception as e:
+        logger.warning(f"Error emitting OCR stats: {e}")
+    
+    return {
+        "success": True,
+        "cancelled": result.rowcount,
+        "message": f"{result.rowcount} jobs cancelados"
+    }
+
+
+
 @router.get("/ocr/stats")
 async def get_ocr_stats(db: AsyncSession = Depends(get_db_readonly)):
     """Retorna estatísticas dos jobs de OCR"""
