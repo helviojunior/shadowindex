@@ -2857,12 +2857,22 @@ const ServerBrowser = () => {
             {(() => {
               // Se este nó é o focado ou estamos dentro do item focado, mostrar todos os filhos
               if (isFocusedNode || !focusedNodeId) {
-                return children.map((child, index) => {
-                  const isLast = index === children.length - 1;
-                  const newParentLines = [...parentLines, !isLastChild];
-                  // Passar null como focusedNodeId para mostrar todos os descendentes
-                  return renderTreeNode(child, depth + 1, currentShareName, isLast, newParentLines, null);
-                });
+                return children
+                  .filter(child => {
+                    // Evitar loop infinito: não renderizar filho cujo fullPath é igual ao path do pai
+                    const childPath = child.fullPath || child.full_path;
+                    if (childPath && childPath === path) {
+                      console.warn('[renderTreeNode] Skipping child with same path as parent:', childPath);
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((child, index, arr) => {
+                    const isLast = index === arr.length - 1;
+                    const newParentLines = [...parentLines, !isLastChild];
+                    // Passar null como focusedNodeId para mostrar todos os descendentes
+                    return renderTreeNode(child, depth + 1, currentShareName, isLast, newParentLines, null);
+                  });
               }
               
               // Se há um foco mas este não é o item focado, filtrar filhos para mostrar apenas o caminho até o item focado
