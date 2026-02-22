@@ -555,7 +555,7 @@ async def update_credential(credential_id: int, credential: CredentialUpdate, db
 
 
 @api_router.get("/credentials/by-type/{credential_type}", response_model=List[CredentialResponse])
-async def get_credentials_by_type(credential_type: str, db: AsyncSession = Depends(get_db)):
+async def get_credentials_by_type(credential_type: str, db: AsyncSession = Depends(get_db_readonly)):
     """Get credentials filtered by type"""
     if credential_type not in CREDENTIAL_TYPES:
         raise HTTPException(status_code=400, detail=f"Tipo inválido. Use: {', '.join(CREDENTIAL_TYPES)}")
