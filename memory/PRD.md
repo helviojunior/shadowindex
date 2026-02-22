@@ -7,6 +7,7 @@ Build a web dashboard to manage credentials, database connections, proxy servers
 - **Frontend:** React, Tailwind CSS, Shadcn/UI
 - **Backend:** FastAPI, SQLAlchemy
 - **Database:** SQLite with Alembic migrations
+- **Real-time:** WebSocket para atualizações em tempo real
 
 ## Core Requirements
 - Web panel with dark mode layout and collapsible left sidebar
@@ -27,6 +28,26 @@ Portuguese (pt-BR)
 ---
 
 ## Completed Features
+
+### 2026-02-22 (Session 34 - WebSocket Implementation)
+- [x] **WebSocket para atualizações em tempo real:**
+  - Backend: `websocket_manager.py` com gerenciador centralizado de conexões
+  - Endpoint `/ws` para conexões WebSocket
+  - Eventos emitidos: download_progress, download_complete, download_failed, download_started, scan_progress, scan_complete, new_leak, stats_update, file_status_change
+  - Frontend: Hook `useWebSocket.js` com Context Provider
+  - Hooks específicos: useDownloadEvents, useScanEvents, useLeakEvents, useFileStatusEvents, useStatsEvents
+  - Integração na página Downloads com indicador de conexão (Tempo real/Offline)
+  - Atualizações automáticas de progresso sem polling
+- [x] **Botão "Refazer Falhados" inclui Scan Jobs:**
+  - Endpoint `/downloads/retry-all-failed` atualizado
+- [x] **Tree view: Linha de conexão para arquivos:**
+  - Linha horizontal estendida para arquivos (`calc(50% + 20px)`)
+- [x] **Botão de remover Finding individual:**
+  - Endpoint com suporte a fingerprints com caracteres especiais (`{fingerprint:path}`)
+- [x] **Botão "Limpar" remove do banco de dados:**
+  - Método `clear_findings_from_db()` adicionado
+- [x] **Jobs de download travados resetados na inicialização:**
+  - `_reset_stale_downloading_jobs()` no download_worker
 
 ### 2026-02-22 (Session 33 - GitLeaks & OCR Improvements)
 - [x] **Correção: Botão "Abrir Arquivo" para leaks:**
