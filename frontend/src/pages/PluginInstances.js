@@ -476,6 +476,11 @@ const PluginInstances = () => {
                             {instance.description && (
                               <p className="text-sm text-muted-foreground">{instance.description}</p>
                             )}
+                            {instance.plugin_type === 'soap_api' && instance.config?.soap_url && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                URL: {instance.config.soap_url}
+                              </p>
+                            )}
                             {instance.plugin_type === 'direct_interaction' && instance.config?.credential_id && (
                               <p className="text-xs text-muted-foreground mt-1">
                                 Credencial: {getCredentialName(instance.config.credential_id)}
