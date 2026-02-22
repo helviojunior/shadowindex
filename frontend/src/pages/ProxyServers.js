@@ -318,7 +318,7 @@ const ProxyServers = () => {
                   {editingId === proxy.id ? (
                     // Edit mode
                     <div className="flex-1 space-y-3">
-                      <div className="grid grid-cols-4 gap-3">
+                      <div className="grid grid-cols-5 gap-3">
                         <Input
                           value={editData.name}
                           onChange={(e) => setEditData({ ...editData, name: e.target.value })}
@@ -350,13 +350,25 @@ const ProxyServers = () => {
                           placeholder="Porta"
                           data-testid={`edit-port-${proxy.id}`}
                         />
+                        <Select 
+                          value={editData.auth_type} 
+                          onValueChange={(value) => setEditData({ ...editData, auth_type: value, username: value === 'none' ? '' : editData.username, password: '' })}
+                        >
+                          <SelectTrigger data-testid={`edit-auth-type-${proxy.id}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem autenticação</SelectItem>
+                            <SelectItem value="user_password">Usuário e Senha</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      {editData.proxy_type === 'socks5' && (
+                      {editData.auth_type === 'user_password' && (
                         <div className="grid grid-cols-2 gap-3">
                           <Input
                             value={editData.username}
                             onChange={(e) => setEditData({ ...editData, username: e.target.value })}
-                            placeholder="Usuário (opcional)"
+                            placeholder="Usuário"
                             data-testid={`edit-username-${proxy.id}`}
                           />
                           <Input
