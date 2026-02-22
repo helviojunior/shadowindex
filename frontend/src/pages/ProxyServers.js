@@ -377,7 +377,7 @@ const ProxyServers = () => {
                           <div className="font-medium">
                             {proxy.credential_id ? (
                               <span className="text-green-500 flex items-center gap-2">
-                                <CredentialIcon className="w-4 h-4" />
+                                <CredentialKeyIcon className="w-4 h-4" />
                                 {getCredentialName(proxy.credential_id)}
                               </span>
                             ) : proxy.username ? (
