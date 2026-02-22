@@ -259,10 +259,9 @@ const ServerBrowser = () => {
         if (activeDownloads > 0 && active === 0) {
           console.log('[Polling] Downloads completed, refreshing file list...');
           await loadDownloadedFiles();
-          // Também recarregar a árvore de itens para atualizar ícones verdes
-          if (server) {
-            await loadShares();
-          }
+          // Atualizar ícones verdes sem perder os filhos expandidos
+          // Usamos shares-tree que já vem com os filhos do banco
+          // Em vez de recarregar toda a árvore, apenas recarregamos os arquivos baixados
         }
         
         setActiveDownloads(active);
