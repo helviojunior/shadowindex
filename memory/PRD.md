@@ -56,6 +56,9 @@ Portuguese (pt-BR)
 - [x] **Sistema de notificação sonora (já implementado):**
   - Som toca apenas quando TODOS os jobs de um tipo finalizam (Downloads, OCR, GitLeaks)
   - Hook `useJobCompletionSFX` monitora transição de >0 para 0 jobs ativos
+- [x] **Correção: Remoção de findings na exclusão de servidor:**
+  - Adicionado fallback para buscar findings por `server_name` + `server_ip` 
+  - Cobre casos de: `server_id`, `extracted_server_id` e `nome/IP` (para dados antigos)
 
 ### 2026-02-22 (Session 40 - SQL Execution & Bug Fixes)
 - [x] **Execute SQL no Plugin de Interação Direta:**
