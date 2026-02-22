@@ -580,7 +580,18 @@ const ServerBrowser = () => {
         setFileContent(null);
       } catch (error) {
         console.error('Error loading file preview:', error);
-        toast.error('Erro ao carregar preview do arquivo');
+        // Handle blob error response
+        let errorMessage = 'Erro ao carregar preview do arquivo';
+        if (error.response?.data instanceof Blob) {
+          try {
+            const text = await error.response.data.text();
+            const parsed = JSON.parse(text);
+            errorMessage = parsed.detail || errorMessage;
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        toast.error(errorMessage);
         setContentLoadError(true);
       } finally {
         setLoadingContent(false);
