@@ -614,6 +614,180 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
+      {/* Linha 5: Monitoramento de Jobs em Tempo Real */}
+      <Card data-testid="jobs-monitor">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="w-5 h-5 text-blue-500" />
+              Monitoramento de Jobs
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {jobsLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+              <Badge variant="outline" className="text-xs">
+                {downloadJobs.filter(j => j.status === 'downloading').length + scanJobs.filter(s => s.status === 'scanning').length} ativos
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Downloads Ativos */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Download className="w-4 h-4" />
+                Downloads
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  {downloadJobs.filter(j => j.status === 'downloading' || j.status === 'pending').length}
+                </Badge>
+              </div>
+              
+              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                {downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    <Download className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    Nenhum download ativo
+                  </div>
+                ) : (
+                  downloadJobs
+                    .filter(j => ['downloading', 'pending'].includes(j.status))
+                    .slice(0, 5)
+                    .map(job => (
+                      <div 
+                        key={job.id} 
+                        className={cn(
+                          "p-2 rounded border text-sm",
+                          job.status === 'downloading' ? "border-blue-500/50 bg-blue-500/10" : "border-border bg-muted/30"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          {job.status === 'downloading' ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-blue-500 flex-shrink-0" />
+                          ) : (
+                            <Clock className="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                          )}
+                          <span className="truncate flex-1" title={job.file_name || job.file_path}>
+                            {job.file_name || job.file_path?.split('\\').pop() || 'Arquivo'}
+                          </span>
+                        </div>
+                        {job.status === 'downloading' && (
+                          <Progress value={job.progress || 0} className="h-1 mt-1.5" />
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                          {job.server_name || job.server_ip}
+                        </p>
+                      </div>
+                    ))
+                )}
+                {downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length > 5 && (
+                  <p className="text-xs text-center text-muted-foreground pt-1">
+                    +{downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length - 5} mais...
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* Scans Ativos */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <FolderSearch className="w-4 h-4" />
+                Scans de Diretório
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  {scanJobs.filter(s => s.status === 'scanning' || s.status === 'pending').length}
+                </Badge>
+              </div>
+              
+              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                {scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    <FolderSearch className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    Nenhum scan ativo
+                  </div>
+                ) : (
+                  scanJobs
+                    .filter(s => ['scanning', 'pending'].includes(s.status))
+                    .slice(0, 5)
+                    .map(scan => {
+                      const pathParts = (scan.path || '').split('\\');
+                      const displayPath = pathParts.length > 2 
+                        ? `...\\${pathParts.slice(-2).join('\\')}`
+                        : scan.path;
+                      
+                      return (
+                        <div 
+                          key={scan.id} 
+                          className={cn(
+                            "p-2 rounded border text-sm",
+                            scan.status === 'scanning' ? "border-blue-500/50 bg-blue-500/10" : "border-border bg-muted/30"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            {scan.status === 'scanning' ? (
+                              <Loader2 className="w-3 h-3 animate-spin text-blue-500 flex-shrink-0" />
+                            ) : (
+                              <Clock className="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                            )}
+                            <span className="truncate flex-1" title={scan.path}>
+                              {displayPath}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Nível {scan.depth || 0}/{scan.max_depth || 0}
+                            {scan.files_found > 0 && ` • ${scan.files_found} arquivos`}
+                          </p>
+                        </div>
+                      );
+                    })
+                )}
+                {scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length > 5 && (
+                  <p className="text-xs text-center text-muted-foreground pt-1">
+                    +{scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length - 5} mais...
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Jobs Recentes */}
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Jobs Recentes</p>
+            <div className="flex flex-wrap gap-2">
+              {[...downloadJobs, ...scanJobs]
+                .filter(j => ['completed', 'failed'].includes(j.status))
+                .sort((a, b) => new Date(b.completed_at || b.created_at) - new Date(a.completed_at || a.created_at))
+                .slice(0, 8)
+                .map((job, idx) => {
+                  const isDownload = 'file_path' in job;
+                  const name = isDownload 
+                    ? (job.file_name || job.file_path?.split('\\').pop() || 'Arquivo')
+                    : (job.path?.split('\\').pop() || 'Scan');
+                  
+                  return (
+                    <Badge
+                      key={`${isDownload ? 'dl' : 'scan'}-${job.id}-${idx}`}
+                      variant="outline"
+                      className={cn(
+                        "text-xs",
+                        job.status === 'completed' ? "border-green-600/50 text-green-500" : "border-red-600/50 text-red-500"
+                      )}
+                    >
+                      {job.status === 'completed' ? (
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                      ) : (
+                        <XCircle className="w-3 h-3 mr-1" />
+                      )}
+                      <span className="max-w-[100px] truncate">{name}</span>
+                    </Badge>
+                  );
+                })}
+              {[...downloadJobs, ...scanJobs].filter(j => ['completed', 'failed'].includes(j.status)).length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhum job recente</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Resumo / Quick Stats */}
       <Card>
         <CardHeader className="pb-2">
