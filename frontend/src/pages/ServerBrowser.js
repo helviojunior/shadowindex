@@ -2760,6 +2760,45 @@ const ServerBrowser = () => {
     }
   };
 
+  // Iniciar busca crítica (foca em arquivos sensíveis, ignora logs)
+  const startCriticalSearch = async () => {
+    if (!selectedItem) return;
+    
+    const isShare = selectedItem.itemType === 'share';
+    const shareName = isShare ? selectedItem.share_name : selectedItem.shareName;
+    const path = selectedItem.serverPath;
+    const maxSizeBytes = bulkDownloadConfig.maxSize * 1024 * 1024;
+    const maxDepth = bulkDownloadConfig.depth;
+    
+    setLoading(true);
+    
+    try {
+      // Usar o endpoint de scan V2 com critical_only=true
+      const response = await axios.post(`${API_V2}/downloads/scan`, null, {
+        params: {
+          server_id: parseInt(serverId),
+          share_name: shareName,
+          path: path,
+          max_depth: maxDepth,
+          max_file_size_mb: Math.round(maxSizeBytes / (1024 * 1024)),
+          critical_only: true
+        }
+      });
+      
+      toast.success(`${response.data.message}. Busca crítica iniciada - GitLeaks será executado automaticamente ao final.`);
+      
+      // Forçar atualização do estado de downloads ativos para iniciar polling
+      setActiveDownloads(prev => prev + 1);
+      
+    } catch (error) {
+      console.error('Error starting critical search:', error);
+      const errorMsg = error.response?.data?.detail || 'Erro ao iniciar busca crítica';
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Iniciar download em massa (versão incremental - LEGADO)
   const startBulkDownload = async () => {
     if (!selectedItem) return;
