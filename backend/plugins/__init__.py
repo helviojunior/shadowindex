@@ -12,7 +12,8 @@ from .exceptions import (
     AccessDeniedException,
     ConnectionException,
     AuthenticationException,
-    TimeoutException
+    TimeoutException,
+    CredentialNotSetException
 )
 from .cache import PluginCache
 from .factory import PluginFactory, get_plugin_for_server
@@ -26,6 +27,7 @@ __all__ = [
     'ConnectionException',
     'AuthenticationException',
     'TimeoutException',
+    'CredentialNotSetException',
     'PluginCache',
     'PluginFactory',
     'get_plugin_for_server'
