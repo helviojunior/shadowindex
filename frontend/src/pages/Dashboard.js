@@ -416,6 +416,9 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Divisor */}
+      <div className="h-px bg-border/50 my-2" />
+
       {/* Linha 2: Overall Risk Score + Risk by Severity + Extensions Spider */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Overall Risk Score Card */}
