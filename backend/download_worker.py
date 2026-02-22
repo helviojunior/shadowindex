@@ -333,6 +333,14 @@ class DownloadWorker:
     
     async def _download_direct_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
         """Download direto usando o plugin (arquivo pequeno)"""
+        # Emitir evento de início
+        ws_manager = get_websocket_manager()
+        await ws_manager.emit_download_started(
+            job_id=job.id,
+            file_path=job.file_path,
+            file_name=job.file_name or full_path.split('\\')[-1]
+        )
+        
         file_content = await plugin.download_file(full_path, ignore_cache=True)
         
         if not file_content or not file_content.data:
