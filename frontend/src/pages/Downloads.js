@@ -629,7 +629,7 @@ const Downloads = () => {
       {activeTab === 'downloads' && (
         <div className="space-y-4">
           {/* Action buttons */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap mb-6">
             <Button
               variant="outline"
               size="sm"
@@ -819,7 +819,7 @@ const Downloads = () => {
       {activeTab === 'scans' && (
         <div className="space-y-4">
           {/* Action buttons for scans */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap mb-6">
             {scanJobs.filter(s => s.status === 'completed' || s.status === 'cancelled' || s.status === 'failed').length > 0 && (
               <Button
                 size="sm"
