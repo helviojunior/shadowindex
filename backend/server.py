@@ -160,6 +160,40 @@ def parse_exec4_directory_listing(xml_result: str) -> List[dict]:
 # Create the main app
 app = FastAPI(title="ShadowIndex API")
 
+# Global exception handler for 500 errors
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import traceback
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Handler global para exceções não tratadas.
+    Retorna JSON com detalhes do erro e loga o stack trace completo.
+    """
+    error_id = str(uuid.uuid4())[:8]
+    stack_trace = traceback.format_exc()
+    
+    # Log completo do erro com stack trace
+    logger.error(
+        f"[{error_id}] Unhandled exception at {request.method} {request.url.path}:\n"
+        f"Error: {type(exc).__name__}: {str(exc)}\n"
+        f"Stack trace:\n{stack_trace}"
+    )
+    
+    # Resposta JSON com informações do erro
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "internal_server_error",
+            "error_id": error_id,
+            "message": str(exc),
+            "type": type(exc).__name__,
+            "path": request.url.path,
+            "method": request.method
+        }
+    )
+
 # WebSocket endpoint
 from websocket_manager import get_websocket_manager
 
