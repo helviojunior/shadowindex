@@ -1169,7 +1169,7 @@ async def browse_path(
 
 
 @router.get("/servers/{server_id}/items/{item_id}", response_model=ItemResponse)
-async def get_item(server_id: int, item_id: int, db: AsyncSession = Depends(get_db)):
+async def get_item(server_id: int, item_id: int, db: AsyncSession = Depends(get_db_readonly)):
     """Obtém informações de um item"""
     server = await get_server_or_404(db, server_id)
     item = await get_item_or_404(db, server, item_id)
@@ -1177,7 +1177,7 @@ async def get_item(server_id: int, item_id: int, db: AsyncSession = Depends(get_
 
 
 @router.get("/servers/{server_id}/items/{item_id}/children", response_model=List[ItemResponse])
-async def get_item_children(server_id: int, item_id: int, db: AsyncSession = Depends(get_db)):
+async def get_item_children(server_id: int, item_id: int, db: AsyncSession = Depends(get_db_readonly)):
     """Obtém filhos de um item (diretório) do cache"""
     server = await get_server_or_404(db, server_id)
     item = await get_item_or_404(db, server, item_id)
