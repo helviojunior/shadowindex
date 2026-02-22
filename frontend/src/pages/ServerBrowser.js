@@ -2705,19 +2705,34 @@ const ServerBrowser = () => {
     
     // Handler para clique no item - seleciona e expande se for diretório
     const handleNodeClick = async () => {
-      // Selecionar o item
-      if (isShare) {
-        handleSelectItem(item, 'share', path, item.share_name);
-      } else {
-        handleSelectItem(item, item.type, path, currentShareName);
+      // Proteção contra cliques duplos/rápidos
+      if (processingClickRef.current) {
+        console.log('[handleNodeClick] Ignoring - already processing');
+        return;
       }
       
-      // Se for diretório/share e não estiver expandido, expandir
-      if (isDirectory && !isExpanded) {
-        setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
-        if (!nodeChildren[nodeId] || ignoreCache) {
-          await loadDirectory(nodeId, path, currentShareName);
+      processingClickRef.current = true;
+      
+      try {
+        // Selecionar o item
+        if (isShare) {
+          handleSelectItem(item, 'share', path, item.share_name);
+        } else {
+          handleSelectItem(item, item.type, path, currentShareName);
         }
+        
+        // Se for diretório/share e não estiver expandido, expandir
+        if (isDirectory && !isExpanded) {
+          setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
+          if (!nodeChildren[nodeId] || ignoreCache) {
+            await loadDirectory(nodeId, path, currentShareName);
+          }
+        }
+      } finally {
+        // Liberar após um pequeno delay para evitar cliques muito rápidos
+        setTimeout(() => {
+          processingClickRef.current = false;
+        }, 100);
       }
     };
     
