@@ -421,6 +421,7 @@ async def list_shares(
 ):
     """Lista todos os compartilhamentos do servidor"""
     from plugins.factory import get_plugin_for_server
+    from plugins.base import ShareInfo
     import xml.etree.ElementTree as ET
     
     server = await get_server_or_404(db, server_id)
@@ -430,115 +431,58 @@ async def list_shares(
             # Obter o plugin correto para o servidor
             plugin = await get_plugin_for_server(db, server)
             
-            # Chamar list_shares do plugin
-            shares_result = await plugin.list_shares(server.ip)
+            logger.info(f"Listing shares for server {server.ip} using plugin {server.plugin_type}")
             
-            if shares_result.success and shares_result.data:
-                shares_data = []
-                
-                # Processar resultado baseado no formato retornado pelo plugin
-                if isinstance(shares_result.data, list):
-                    # Plugin já retornou lista de shares
-                    for share in shares_result.data:
-                        share_name = share.get('name', share.get('share_name', ''))
-                        if not share_name:
-                            continue
-                        
-                        # Ignorar shares especiais (exceto C$, D$, E$)
-                        if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
-                            continue
-                        
-                        shares_data.append({
-                            'share_name': share_name,
-                            'share_type': share.get('type', share.get('share_type', 'Disk')),
-                            'remark': share.get('remark', share.get('comment', ''))
-                        })
-                elif isinstance(shares_result.data, str):
-                    # Plugin retornou string (XML ou texto) - processar como antes
-                    result_str = shares_result.data
+            # Chamar list_shares do plugin - retorna List[ShareInfo]
+            shares_list = await plugin.list_shares(server.ip, ignore_cache=True)
+            
+            shares_data = []
+            
+            if shares_list:
+                for share in shares_list:
+                    share_name = share.name if isinstance(share, ShareInfo) else share.get('name', '')
                     
-                    # Tentar parsear como XML (formato diffgram)
-                    try:
-                        xml_content = result_str
-                        if not xml_content.strip().startswith('<'):
-                            raise ValueError("Not XML format")
-                        
-                        root = ET.fromstring(xml_content)
-                        results = root.findall('.//Result') or root.findall('.//{urn:schemas-microsoft-com:xml-diffgram-v1}Result')
-                        
-                        if not results:
-                            doc_elem = root.find('.//DocumentElement')
-                            if doc_elem is not None:
-                                results = doc_elem.findall('Result')
-                        
-                        for result in results:
-                            name = result.findtext('name', '').strip()
-                            share_type = result.findtext('type', 'Disk').strip()
-                            remark = result.findtext('remark', '').strip()
-                            
-                            if not name:
-                                continue
-                            
-                            if name.endswith('$') and name not in ['C$', 'D$', 'E$']:
-                                continue
-                            
-                            shares_data.append({
-                                'share_name': name,
-                                'share_type': share_type,
-                                'remark': remark
-                            })
-                        
-                    except (ET.ParseError, ValueError) as parse_error:
-                        logger.debug(f"XML parsing failed, trying line format: {parse_error}")
-                        for line in result_str.strip().split('\n'):
-                            if not line.strip():
-                                continue
-                            parts = line.split('|')
-                            if len(parts) >= 2:
-                                share_name = parts[0].strip()
-                                share_type = parts[1].strip() if len(parts) > 1 else 'Disk'
-                                remark = parts[2].strip() if len(parts) > 2 else ''
-                                
-                                if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
-                                    continue
-                                    
-                                shares_data.append({
-                                    'share_name': share_name,
-                                    'share_type': share_type,
-                                    'remark': remark
-                                })
-                
-                # Atualizar banco
-                for share_data in shares_data:
-                    existing = await db.execute(
-                        select(ServerShare).where(
-                            ServerShare.server_guid == server.guid,
-                            ServerShare.share_name == share_data['share_name']
-                        )
+                    if not share_name:
+                        continue
+                    
+                    # Ignorar shares especiais (exceto C$, D$, E$)
+                    if share_name.endswith('$') and share_name not in ['C$', 'D$', 'E$']:
+                        continue
+                    
+                    shares_data.append({
+                        'share_name': share_name,
+                        'share_type': share.share_type if isinstance(share, ShareInfo) else share.get('share_type', 'Disk'),
+                        'remark': share.remark if isinstance(share, ShareInfo) else share.get('remark', '')
+                    })
+            
+            # Atualizar banco
+            for share_data in shares_data:
+                existing = await db.execute(
+                    select(ServerShare).where(
+                        ServerShare.server_guid == server.guid,
+                        ServerShare.share_name == share_data['share_name']
                     )
-                    share = existing.scalar_one_or_none()
-                    
-                    if share:
-                        share.share_type = share_data['share_type']
-                        share.remark = share_data['remark']
-                    else:
-                        share = ServerShare(
-                            server_id=server.id,
-                            server_guid=server.guid,
-                            share_name=share_data['share_name'],
-                            share_type=share_data['share_type'],
-                            remark=share_data['remark']
-                        )
-                        db.add(share)
+                )
+                share = existing.scalar_one_or_none()
                 
-                await db.commit()
-                logger.info(f"Updated {len(shares_data)} shares in database for server {server.ip} using plugin {server.plugin_type}")
+                if share:
+                    share.share_type = share_data['share_type']
+                    share.remark = share_data['remark']
+                else:
+                    share = ServerShare(
+                        server_id=server.id,
+                        server_guid=server.guid,
+                        share_name=share_data['share_name'],
+                        share_type=share_data['share_type'],
+                        remark=share_data['remark']
+                    )
+                    db.add(share)
             
-            elif not shares_result.success:
-                logger.error(f"Error listing shares: {shares_result.error}")
+            await db.commit()
+            logger.info(f"Updated {len(shares_data)} shares in database for server {server.ip} using plugin {server.plugin_type}")
                 
         except Exception as e:
-            logger.error(f"Error refreshing shares: {e}")
+            logger.error(f"Error refreshing shares for server {server.ip}: {e}")
             import traceback
             traceback.print_exc()
     
