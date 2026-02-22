@@ -89,9 +89,23 @@ const Dashboard = () => {
       if (findings.data && findings.data.files) {
         const extensionCounts = {};
         findings.data.files.forEach(file => {
-          const filePath = file.file || '';
-          const ext = filePath.split('.').pop()?.toLowerCase() || 'other';
-          const extension = ext.length <= 10 ? `.${ext}` : 'other';
+          // Usar file_name (do banco) ou extrair do server_path (caminho real no servidor)
+          const fileName = file.file_name || '';
+          const serverPath = file.server_path || file.file || '';
+          
+          // Se temos o nome do arquivo, usar ele; senão extrair do path
+          let fileToExtract = fileName;
+          if (!fileToExtract && serverPath) {
+            // Extrair o nome do arquivo do path (último componente)
+            const pathParts = serverPath.replace(/\//g, '\\').split('\\');
+            fileToExtract = pathParts[pathParts.length - 1] || '';
+          }
+          
+          // Extrair extensão do nome do arquivo
+          const ext = fileToExtract.includes('.') 
+            ? fileToExtract.split('.').pop()?.toLowerCase() 
+            : 'sem extensão';
+          const extension = ext && ext.length <= 10 ? `.${ext}` : (ext || 'other');
           extensionCounts[extension] = (extensionCounts[extension] || 0) + (file.findings?.length || 1);
         });
 
