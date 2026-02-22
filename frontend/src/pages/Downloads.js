@@ -302,7 +302,6 @@ const Downloads = () => {
   const clearFinished = async () => {
     try {
       await axios.post(`${API}/downloads/clear-finished`);
-      toast.success('Histórico limpo');
       loadDownloadJobs();
     } catch (error) {
       console.error('Error clearing finished:', error);
@@ -313,8 +312,7 @@ const Downloads = () => {
   // Retry all failed downloads
   const retryAllFailed = async () => {
     try {
-      const response = await axios.post(`${API}/downloads/retry-all-failed`);
-      toast.success(response.data.message || 'Downloads falhados recolocados na fila');
+      await axios.post(`${API}/downloads/retry-all-failed`);
       loadDownloadJobs();
     } catch (error) {
       console.error('Error retrying all failed:', error);
