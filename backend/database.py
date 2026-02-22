@@ -33,21 +33,21 @@ engine = create_async_engine(
     }
 )
 
-# Configurar WAL mode e outras otimizações para o SQLite
+# Configurar pragmas do SQLite para melhor performance
 @event.listens_for(engine.sync_engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    """Configura pragmas do SQLite para melhor concorrência"""
+    """Configura pragmas do SQLite para melhor performance"""
     cursor = dbapi_connection.cursor()
-    # WAL mode permite leituras concorrentes durante escritas
-    cursor.execute("PRAGMA journal_mode=WAL")
-    # Sincronização normal (equilibrio entre performance e segurança)
-    cursor.execute("PRAGMA synchronous=NORMAL")
+    # Journal em memória (máxima performance)
+    cursor.execute("PRAGMA journal_mode=MEMORY")
+    # Sincronização desligada (máxima performance)
+    cursor.execute("PRAGMA synchronous=OFF")
+    # Tabelas temporárias em memória
+    cursor.execute("PRAGMA temp_store=MEMORY")
     # Cache size em KB (negativo) - 64MB
     cursor.execute("PRAGMA cache_size=-65536")
     # Tempo de espera em ms quando o banco está bloqueado (30 segundos)
     cursor.execute("PRAGMA busy_timeout=30000")
-    # Otimização de memória temporária
-    cursor.execute("PRAGMA temp_store=MEMORY")
     cursor.close()
 
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
