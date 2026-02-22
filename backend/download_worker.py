@@ -212,6 +212,20 @@ class DownloadWorker:
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
                 
+                # Emitir evento WebSocket de conclusão
+                ws_manager = get_websocket_manager()
+                await ws_manager.emit_download_complete(
+                    job_id=job.id,
+                    file_path=job.file_path,
+                    file_id=getattr(job, 'downloaded_file_id', None),
+                    success=True
+                )
+                await ws_manager.emit_file_status_change(
+                    file_path=job.file_path,
+                    server_id=job.server_id,
+                    status='downloaded'
+                )
+                
                 logger.info(f"Download completed: {job.file_path}")
             
             except CredentialNotSetException as e:
