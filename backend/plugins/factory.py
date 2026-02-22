@@ -113,6 +113,37 @@ async def get_active_proxy_url(db: AsyncSession) -> Optional[str]:
             
             if proxy:
                 proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
+                
+                # Build proxy URL without credentials (credentials passed separately to plugin)
+                if proxy_type == 'socks5':
+                    return f"socks5://{proxy.ip}:{proxy.port}"
+                else:
+                    return f"http://{proxy.ip}:{proxy.port}"
+        except Exception as e:
+            logger.warning(f"Error loading proxy config: {e}")
+    
+    return None
+
+
+async def get_active_proxy_config(db: AsyncSession) -> Optional[Dict[str, Any]]:
+    """Get the currently active proxy configuration with credentials separated"""
+    from database import AppConfig, ProxyServer, Credential
+    
+    result = await db.execute(
+        select(AppConfig).where(AppConfig.key == "active_proxy_id")
+    )
+    proxy_config = result.scalar_one_or_none()
+    
+    if proxy_config and proxy_config.value and proxy_config.value != "null":
+        try:
+            proxy_id = int(proxy_config.value)
+            result = await db.execute(
+                select(ProxyServer).where(ProxyServer.id == proxy_id)
+            )
+            proxy = result.scalar_one_or_none()
+            
+            if proxy:
+                proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
                 username = None
                 password = None
                 
@@ -133,16 +164,24 @@ async def get_active_proxy_url(db: AsyncSession) -> Optional[str]:
                 if not password:
                     password = getattr(proxy, 'password', None)
                 
-                # Build proxy URL based on type
+                # Build proxy URL without auth
                 if proxy_type == 'socks5':
-                    if username and password:
-                        return f"socks5://{username}:{password}@{proxy.ip}:{proxy.port}"
-                    else:
-                        return f"socks5://{proxy.ip}:{proxy.port}"
+                    proxy_url = f"socks5://{proxy.ip}:{proxy.port}"
                 else:
-                    # HTTP proxy
-                    if username and password:
-                        return f"http://{username}:{password}@{proxy.ip}:{proxy.port}"
+                    proxy_url = f"http://{proxy.ip}:{proxy.port}"
+                
+                return {
+                    "proxy_url": proxy_url,
+                    "proxy_user": username,
+                    "proxy_pass": password,
+                    "proxy_type": proxy_type,
+                    "proxy_host": proxy.ip,
+                    "proxy_port": proxy.port
+                }
+        except Exception as e:
+            logger.warning(f"Error loading proxy config: {e}")
+    
+    return None
                     else:
                         return f"http://{proxy.ip}:{proxy.port}"
         except (ValueError, TypeError) as e:
