@@ -306,6 +306,83 @@ const GeneralSettings = () => {
         </CardContent>
       </Card>
 
+      {/* Import Ports Configuration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Server className="w-5 h-5 text-blue-500" />
+            <CardTitle>Portas de Importação</CardTitle>
+          </div>
+          <CardDescription>
+            Configure quais portas serão consideradas na importação de servidores via Nmap XML. Apenas hosts com essas portas abertas serão importados.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Add new port */}
+          <div className="flex gap-2">
+            <Input
+              placeholder="Porta (ex: 445)"
+              type="number"
+              min="1"
+              max="65535"
+              value={newPort}
+              onChange={(e) => setNewPort(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addPort()}
+              className="w-32"
+              data-testid="new-port-input"
+            />
+            <Button variant="outline" onClick={addPort} data-testid="add-port-btn">
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar
+            </Button>
+          </div>
+
+          {/* Ports list */}
+          <div className="flex flex-wrap gap-2">
+            {getPortsList().map((port) => {
+              const portNum = parseInt(port);
+              const isSMB = portNum === DEFAULT_SMB_PORT;
+              const isDB = DEFAULT_DB_PORTS[portNum];
+              
+              return (
+                <Badge 
+                  key={port} 
+                  variant="secondary" 
+                  className={`px-3 py-1.5 text-sm flex items-center gap-2 ${
+                    isSMB ? 'bg-blue-600/20 border-blue-600/40' : 
+                    isDB ? 'bg-emerald-600/20 border-emerald-600/40' : ''
+                  }`}
+                >
+                  {isSMB ? <Server className="w-3 h-3" /> : <Database className="w-3 h-3" />}
+                  {getPortName(port)}: {port}
+                  <button
+                    onClick={() => removePort(port)}
+                    className="hover:bg-destructive/20 rounded-full p-0.5"
+                    data-testid={`remove-port-${port}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              );
+            })}
+            {getPortsList().length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhuma porta configurada - todos os hosts serão importados</p>
+            )}
+          </div>
+
+          {/* Info Box */}
+          <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-4 mt-4">
+            <h4 className="text-sm font-medium text-blue-400 mb-2">Sobre as Portas de Importação</h4>
+            <ul className="text-xs text-blue-300/80 space-y-1">
+              <li>• <strong>SMB (445):</strong> Compartilhamento de arquivos Windows</li>
+              <li>• <strong>Bancos de Dados:</strong> MSSQL (1433), MySQL (3306), PostgreSQL (5432), Oracle (1521), MongoDB (27017), Redis (6379)</li>
+              <li>• Hosts sem nenhuma dessas portas abertas serão ignorados na importação</li>
+              <li>• Você pode adicionar portas personalizadas conforme necessidade</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Info Box */}
       <Card>
         <CardContent className="p-4 pt-4">
