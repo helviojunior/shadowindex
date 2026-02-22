@@ -353,11 +353,6 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Risk by Severity Donut Chart */}
         <Card>
@@ -365,7 +360,7 @@ const Dashboard = () => {
             <CardTitle className="text-lg">Risk by Severity</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <div className="h-[250px]">
               {severityData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -373,8 +368,8 @@ const Dashboard = () => {
                       data={severityData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
+                      innerRadius={50}
+                      outerRadius={80}
                       paddingAngle={2}
                       dataKey="value"
                     >
