@@ -1014,9 +1014,10 @@ async def browse_item(
     refresh: bool = False,
     db: AsyncSession = Depends(get_db)
 ):
-    """Navega em um diretório via SOAP e atualiza cache"""
-    from soap_service import get_default_soap_service
-    from server import parse_exec4_directory_listing
+    """Navega em um diretório usando o plugin configurado para o servidor"""
+    from plugins.factory import get_plugin_for_server
+    from plugins.base import DirectoryItem as PluginDirectoryItem
+    from plugins.exceptions import CredentialNotSetException, AccessDeniedException
     
     server = await get_server_or_404(db, server_id)
     item = await get_item_or_404(db, server, item_id)
@@ -1024,32 +1025,36 @@ async def browse_item(
     if item.item_type != "Directory":
         raise HTTPException(status_code=400, detail="Item não é um diretório")
     
-    # Chamar SOAP Exec4
-    soap_service = await get_default_soap_service(db)
-    params = {"s1": item.full_path, "s2": ""}
+    logger.info(f"Browsing item {item.full_path} for server {server.ip} using plugin {server.plugin_type}")
     
     try:
-        result_str = await soap_service.call_soap_operation(db, "Exec4", params, refresh)
+        # Obter o plugin correto para o servidor
+        plugin = await get_plugin_for_server(db, server)
+        
+        # Chamar list_directory do plugin
+        directory_items = await plugin.list_directory(item.full_path, ignore_cache=refresh)
         
         items = []
+        parsed_items = []
         
-        # Parsear resultado
-        parsed_items = parse_exec4_directory_listing(result_str)
-        
-        # Verificar erros de acesso
-        if not parsed_items and result_str:
-            result_lower = result_str.lower()
-            if "access" in result_lower and "denied" in result_lower:
-                item.access_denied = True
-                item.error_message = "Acesso negado"
-                await db.commit()
-                return {
-                    "success": False,
-                    "item_id": item_id,
-                    "access_denied": True,
-                    "error_message": "Acesso negado",
-                    "items": []
-                }
+        if directory_items:
+            for dir_item in directory_items:
+                if isinstance(dir_item, PluginDirectoryItem):
+                    parsed_items.append({
+                        "type": dir_item.item_type,
+                        "name": dir_item.name,
+                        "fullPath": dir_item.full_path,
+                        "size": dir_item.size,
+                        "modified": dir_item.modified.isoformat() if dir_item.modified else None
+                    })
+                elif isinstance(dir_item, dict):
+                    parsed_items.append({
+                        "type": dir_item.get("item_type", dir_item.get("type", "File")),
+                        "name": dir_item.get("name", ""),
+                        "fullPath": dir_item.get("full_path", dir_item.get("fullPath", "")),
+                        "size": dir_item.get("size", 0),
+                        "modified": dir_item.get("modified")
+                    })
         
         # Remover itens antigos
         await db.execute(
@@ -1101,6 +1106,30 @@ async def browse_item(
                 for child in items
             ],
             "count": len(items)
+        }
+    
+    except CredentialNotSetException as e:
+        logger.warning(f"Credential not set for server {server.ip}: {e.message}")
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "credential_not_set",
+                "message": e.message,
+                "operation": e.operation,
+                "plugin_name": e.plugin_name
+            }
+        )
+        
+    except AccessDeniedException as e:
+        item.access_denied = True
+        item.error_message = "Acesso negado"
+        await db.commit()
+        return {
+            "success": False,
+            "item_id": item_id,
+            "access_denied": True,
+            "error_message": "Acesso negado",
+            "items": []
         }
         
     except Exception as e:
