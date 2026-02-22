@@ -1128,13 +1128,20 @@ async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depe
         proxy_url = await get_active_proxy_url(db)
         config = instance.config or {}
         
-        # For SOAP API, add the soap_url from config or from SoapApiUrl table
+        # For SOAP API, validate URL is in config
         if instance.plugin_type == "soap_api":
             if "soap_url" not in config:
+                # Fallback to legacy table
                 soap_result = await db.execute(select(SoapApiUrl).limit(1))
                 soap_api = soap_result.scalar_one_or_none()
                 if soap_api:
                     config["soap_url"] = soap_api.uri
+                else:
+                    return {
+                        "healthy": False,
+                        "message": "URL do SOAP não configurada na instância",
+                        "details": {"missing": "soap_url"}
+                    }
         
         plugin = PluginFactory.create_plugin(instance.plugin_type, config, proxy_url)
         health = await plugin.health_check()
