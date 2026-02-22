@@ -1731,7 +1731,7 @@ const ServerBrowser = () => {
             // Encontrou dados em cache no banco
             const items = cachedResponse.data.items.map((item, idx) => ({
               ...item,
-              id: `${nodeId}-${item.id || idx}`,
+              id: item.id || `${nodeId}-${idx}`,  // Preservar ID do banco se existir
               parentPath: path,
               shareName: shareName,
               hasChildren: item.hasChildren,
