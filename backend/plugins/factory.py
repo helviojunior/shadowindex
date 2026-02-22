@@ -144,9 +144,21 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
         
     Raises:
         CredentialNotSetException: If plugin requires credential but none configured
+        ValueError: If server has no plugin_instance_id configured
     """
     from database import Credential, PluginInstance
     from .exceptions import CredentialNotSetException
+    
+    # Check if server has plugin_instance_id configured (required)
+    plugin_instance_id = getattr(server, 'plugin_instance_id', None)
+    
+    if not plugin_instance_id:
+        server_name = getattr(server, 'name', 'Unknown')
+        server_ip = getattr(server, 'ip', 'Unknown')
+        raise ValueError(
+            f"Servidor '{server_name}' ({server_ip}) não possui instância de plugin configurada. "
+            f"Configure uma instância de plugin na página de Servidores."
+        )
     
     # Get proxy URL
     proxy_url = await get_active_proxy_url(db)
@@ -154,20 +166,20 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
     plugin_type = None
     plugin_config = {}
     
-    # Check if server has plugin_instance_id (new way)
-    plugin_instance_id = getattr(server, 'plugin_instance_id', None)
+    # Load plugin instance from database
+    result = await db.execute(
+        select(PluginInstance).where(PluginInstance.id == plugin_instance_id)
+    )
+    instance = result.scalar_one_or_none()
     
-    if plugin_instance_id:
-        # Load plugin instance from database
-        result = await db.execute(
-            select(PluginInstance).where(PluginInstance.id == plugin_instance_id)
-        )
-        instance = result.scalar_one_or_none()
-        
-        if instance:
-            plugin_type = instance.plugin_type
-            plugin_config = instance.config or {}
-        else:
+    if not instance:
+        raise ValueError(f"Instância de plugin ID {plugin_instance_id} não encontrada")
+    
+    if not instance.is_active:
+        raise ValueError(f"Instância de plugin '{instance.name}' está desativada")
+    
+    plugin_type = instance.plugin_type
+    plugin_config = instance.config or {}
             logger.warning(f"Plugin instance {plugin_instance_id} not found, falling back to legacy config")
     
     # Fallback to legacy config if no instance
