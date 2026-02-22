@@ -772,69 +772,53 @@ async def delete_sql_preset(preset_id: int, db: AsyncSession = Depends(get_db)):
 # SQL Execution
 @api_router.post("/sql/execute", response_model=SqlExecuteResponse)
 async def execute_sql(request: SqlExecuteRequest, db: AsyncSession = Depends(get_db)):
-    """Executa uma query SQL usando SOAP Exec"""
+    """Executa uma query SQL usando a instância de plugin configurada na conexão"""
+    from plugins.factory import get_plugin_instance
+    from plugins.exceptions import PluginException
+    
     # Buscar a conexão
     result = await db.execute(select(DatabaseConnection).where(DatabaseConnection.id == request.connection_id))
     conn = result.scalar_one_or_none()
     if not conn:
         raise HTTPException(status_code=404, detail="Connection not found")
     
+    # Verificar se a conexão tem uma instância de plugin configurada
+    if not conn.plugin_instance_id:
+        raise HTTPException(
+            status_code=422, 
+            detail={
+                "error": "plugin_not_configured",
+                "message": "Esta conexão SQL não possui uma instância de plugin configurada. Configure uma instância na página de Conexões SQL."
+            }
+        )
+    
     start_time = time.time()
     
     try:
-        # Chamar SOAP Exec
-        soap_service = await get_default_soap_service(db)
-        params = {"connStr": conn.connection_string, "query": request.query}
+        # Obter a instância de plugin configurada na conexão
+        plugin = await get_plugin_instance(db, conn.plugin_instance_id)
         
-        result_str = await soap_service.call_soap_operation(db, "Exec", params, True)  # Ignorar cache para SQL
+        if not plugin:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "plugin_instance_not_found",
+                    "message": f"Instância de plugin ID {conn.plugin_instance_id} não encontrada."
+                }
+            )
+        
+        # Executar a query SQL usando o plugin
+        sql_result = await plugin.execute_sql(conn.connection_string, request.query)
         
         execution_time = int((time.time() - start_time) * 1000)
         
-        # Parsear resultado XML
-        import xml.etree.ElementTree as ET
+        # Verificar se o resultado é um erro
+        if hasattr(sql_result, 'error') and sql_result.error:
+            raise Exception(sql_result.error_message or "Erro ao executar query SQL")
         
-        columns = []
-        rows = []
-        
-        try:
-            root = ET.fromstring(f"<root>{result_str}</root>")
-            
-            # Verificar erro no formato diffgr (message + stacktrace)
-            for result_elem in root.findall(".//Result"):
-                message_elem = result_elem.find("message")
-                stacktrace_elem = result_elem.find("stacktrace")
-                
-                # Se tem message e stacktrace, é um erro
-                if message_elem is not None and stacktrace_elem is not None:
-                    error_message = message_elem.text or ""
-                    stacktrace = stacktrace_elem.text or ""
-                    full_error = f"{error_message}\n\nStackTrace:\n{stacktrace}" if stacktrace else error_message
-                    raise Exception(full_error)
-                
-                # Verificar erro simples (apenas message com palavras-chave de erro)
-                if message_elem is not None and message_elem.text:
-                    msg_lower = message_elem.text.lower()
-                    if any(keyword in msg_lower for keyword in ["error", "denied", "exception", "failed", "invalid", "cannot", "unable"]):
-                        raise Exception(message_elem.text)
-            
-            # Extrair colunas e dados
-            first_result = root.find(".//Result")
-            if first_result is not None:
-                # Pegar nomes das colunas do primeiro resultado
-                for child in first_result:
-                    columns.append(child.tag)
-                
-                # Extrair todas as linhas
-                for result_elem in root.findall(".//Result"):
-                    row = []
-                    for col in columns:
-                        elem = result_elem.find(col)
-                        row.append(elem.text if elem is not None and elem.text else "")
-                    rows.append(row)
-        except ET.ParseError:
-            # Se não é XML, retorna como string
-            columns = ["Result"]
-            rows = [[result_str]]
+        # Extrair colunas e linhas do resultado
+        columns = sql_result.columns if hasattr(sql_result, 'columns') else []
+        rows = sql_result.rows if hasattr(sql_result, 'rows') else []
         
         # Marcar conexão como verificada
         conn.verified = True
@@ -857,6 +841,27 @@ async def execute_sql(request: SqlExecuteRequest, db: AsyncSession = Depends(get
             "columns": columns,
             "rows": rows,
             "row_count": len(rows),
+            "execution_time_ms": execution_time
+        }
+    
+    except PluginException as e:
+        execution_time = int((time.time() - start_time) * 1000)
+        
+        # Salvar erro no histórico
+        history = SqlQueryHistory(
+            connection_id=conn.id,
+            connection_name=conn.name,
+            query=request.query,
+            success=False,
+            error_message=str(e),
+            execution_time_ms=execution_time
+        )
+        db.add(history)
+        await db.commit()
+        
+        return {
+            "success": False,
+            "error_message": str(e),
             "execution_time_ms": execution_time
         }
     
