@@ -155,22 +155,22 @@ const GeneralSettings = () => {
     handleChange('import_ports', newList);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6" data-testid="general-settings-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Configurações Gerais</h1>
-          <p className="text-muted-foreground mt-2">Configure os parâmetros gerais do sistema</p>
+          <p className="text-muted-foreground mt-2 flex items-center gap-2">
+            Configure os parâmetros gerais do sistema
+            {loading && (
+              <span className="flex items-center gap-1 text-xs">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Carregando...
+              </span>
+            )}
+          </p>
         </div>
-        <Button onClick={handleSave} disabled={saving} data-testid="save-settings-btn">
+        <Button onClick={handleSave} disabled={saving || loading} data-testid="save-settings-btn">
           <Save className="w-4 h-4 mr-2" />
           {saving ? 'Salvando...' : 'Salvar Configurações'}
         </Button>
