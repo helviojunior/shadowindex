@@ -14,13 +14,144 @@ Arquitetura:
 
 import asyncio
 import logging
+import re
+import json
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import uuid
 
 logger = logging.getLogger(__name__)
+
+# Configurações do scanner
+SCANNER_POLL_INTERVAL = 3  # segundos entre verificações
+MAX_DIRS_PER_CYCLE = 50  # máximo de diretórios a processar por ciclo
+
+# Instância global do scanner
+_scanner_instance: Optional['DirectoryScanner'] = None
+
+# Cache da configuração de Critical Search
+_critical_search_config: Optional[Dict[str, Any]] = None
+
+
+async def get_critical_search_config() -> Dict[str, Any]:
+    """Obtém a configuração de Critical Search do banco de dados"""
+    global _critical_search_config
+    
+    from database import AsyncSessionLocal, AppSettings
+    
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(AppSettings).where(AppSettings.key == "critical_search_config")
+        )
+        setting = result.scalar_one_or_none()
+        
+        if setting and setting.value:
+            try:
+                _critical_search_config = json.loads(setting.value)
+                return _critical_search_config
+            except:
+                pass
+    
+    # Retornar config padrão se não encontrar
+    from routes_v2 import DEFAULT_CRITICAL_SEARCH_CONFIG
+    return DEFAULT_CRITICAL_SEARCH_CONFIG
+
+
+def is_critical_file(file_name: str, file_size: int, config: Dict[str, Any]) -> bool:
+    """
+    Verifica se um arquivo é considerado 'crítico' baseado nas regras de configuração.
+    
+    Args:
+        file_name: Nome do arquivo
+        file_size: Tamanho do arquivo em bytes
+        config: Configuração de Critical Search
+    
+    Returns:
+        True se o arquivo é crítico, False caso contrário
+    """
+    file_lower = file_name.lower()
+    
+    file_rules = config.get('file_rules', {})
+    size_rules = config.get('size_rules', {})
+    
+    # 1. Verificar palavras-chave no nome do arquivo
+    keywords = file_rules.get('keywords', [])
+    for keyword in keywords:
+        if keyword.lower() in file_lower:
+            logger.debug(f"Critical match (keyword '{keyword}'): {file_name}")
+            return True
+    
+    # 2. Verificar extensões críticas
+    extensions = file_rules.get('extensions', [])
+    for ext in extensions:
+        if file_lower.endswith(ext.lower()):
+            logger.debug(f"Critical match (extension '{ext}'): {file_name}")
+            return True
+    
+    # 3. Verificar nomes de arquivos exatos
+    exact_names = file_rules.get('exact_names', [])
+    for exact in exact_names:
+        if file_lower == exact.lower():
+            logger.debug(f"Critical match (exact name '{exact}'): {file_name}")
+            return True
+    
+    # 4. Verificar se tamanho está dentro do range crítico (se configurado)
+    if size_rules.get('enabled', True):
+        min_size = size_rules.get('min_bytes', 0)
+        max_size = size_rules.get('max_bytes', 50 * 1024 * 1024)  # 50MB default
+        
+        # Arquivos muito pequenos ou muito grandes geralmente não são sensíveis
+        if file_size < min_size or file_size > max_size:
+            return False
+    
+    return False
+
+
+def is_log_directory(dir_name: str, items: List, config: Dict[str, Any]) -> bool:
+    """
+    Verifica se um diretório parece ser de logs baseado nos padrões de arquivos.
+    
+    Args:
+        dir_name: Nome do diretório
+        items: Lista de itens no diretório
+        config: Configuração de Critical Search
+    
+    Returns:
+        True se parece ser um diretório de logs, False caso contrário
+    """
+    log_detection = config.get('log_detection', {})
+    if not log_detection.get('enabled', True):
+        return False
+    
+    # Verificar se o nome do diretório contém palavras de log
+    dir_lower = dir_name.lower()
+    log_indicators = ['log', 'logs', 'logging', 'audit', 'trace']
+    if any(indicator in dir_lower for indicator in log_indicators):
+        return True
+    
+    # Verificar quantidade de arquivos similares (padrão de logs)
+    min_similar = log_detection.get('min_similar_files', 10)
+    log_patterns = log_detection.get('log_patterns', [])
+    
+    # Contar arquivos que correspondem a padrões de log
+    log_files = 0
+    files = [item for item in items if getattr(item, 'item_type', None) == 'File']
+    
+    for item in files:
+        name = getattr(item, 'name', '')
+        for pattern in log_patterns:
+            if re.match(pattern, name, re.IGNORECASE):
+                log_files += 1
+                break
+    
+    # Se muitos arquivos parecem logs, provavelmente é um diretório de logs
+    if log_files >= min_similar:
+        logger.debug(f"Directory '{dir_name}' detected as log directory ({log_files} log-like files)")
+        return True
+    
+    return False
 
 # Configurações do scanner
 SCANNER_POLL_INTERVAL = 3  # segundos entre verificações
