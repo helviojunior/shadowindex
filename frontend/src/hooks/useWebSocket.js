@@ -8,7 +8,7 @@ const getWebSocketUrl = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL || '';
   // Converter http(s) para ws(s)
   const wsUrl = backendUrl.replace(/^http/, 'ws');
-  return `${wsUrl}/ws`;
+  return `${wsUrl}/api/ws`;
 };
 
 export const WebSocketProvider = ({ children }) => {
