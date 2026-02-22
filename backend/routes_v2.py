@@ -341,7 +341,7 @@ async def quick_search(
     3. Conteúdo OCR
     4. Findings do GitLeaks
     
-    Retorna resultados agrupados por tipo e fonte.
+    Retorna resultados agrupados por tipo.
     """
     from sqlalchemy import or_, and_
     from database import FileVersion, GitleaksFinding
@@ -371,9 +371,9 @@ async def quick_search(
         ).limit(limit)
     )
     downloaded_files = files_result.scalars().all()
+    downloaded_file_ids = {df.id for df in downloaded_files}
     
     # 3. Buscar em conteúdo OCR (FileVersion tem o campo ocr_text)
-    ocr_results = []
     try:
         ocr_query = await db.execute(
             select(FileVersion).where(
@@ -383,35 +383,24 @@ async def quick_search(
         )
         ocr_versions = ocr_query.scalars().all()
         
+        # Buscar os DownloadedFiles correspondentes
         for version in ocr_versions:
-            # Extrair snippet do texto OCR onde a query foi encontrada
-            ocr_text = version.ocr_text or ''
-            idx = ocr_text.lower().find(query_lower)
-            snippet = ""
-            if idx >= 0:
-                start = max(0, idx - 50)
-                end = min(len(ocr_text), idx + len(q) + 50)
-                snippet = ocr_text[start:end]
-                if start > 0:
-                    snippet = "..." + snippet
-                if end < len(ocr_text):
-                    snippet = snippet + "..."
-            
-            ocr_results.append({
-                "id": version.id,
-                "file_path": version.file_path,
-                "name": version.file_path.split('\\')[-1] if '\\' in version.file_path else version.file_path.split('/')[-1],
-                "share_name": version.share_name,
-                "version": version.version_number,
-                "snippet": snippet,
-                "type": "ocr",
-                "source": "OCR"
-            })
+            if version.file_path:
+                # Buscar arquivo correspondente
+                df_result = await db.execute(
+                    select(DownloadedFile).where(
+                        DownloadedFile.server_guid == server.guid,
+                        DownloadedFile.file_path == version.file_path
+                    )
+                )
+                df = df_result.scalar_one_or_none()
+                if df and df.id not in downloaded_file_ids:
+                    downloaded_files.append(df)
+                    downloaded_file_ids.add(df.id)
     except Exception as e:
         logger.warning(f"Error searching OCR: {e}")
     
     # 4. Buscar em findings do GitLeaks
-    gitleaks_results = []
     try:
         gitleaks_query = await db.execute(
             select(GitleaksFinding).where(
@@ -428,18 +417,16 @@ async def quick_search(
         )
         findings = gitleaks_query.scalars().all()
         
+        # Buscar os DownloadedFiles correspondentes
         for finding in findings:
-            gitleaks_results.append({
-                "id": finding.id,
-                "fingerprint": finding.fingerprint,
-                "file_name": finding.file_name,
-                "file_path": finding.server_path or finding.file_path,
-                "rule_id": finding.rule_id,
-                "description": finding.description,
-                "line": finding.start_line,
-                "type": "gitleaks",
-                "source": "GitLeaks"
-            })
+            if finding.extracted_file_id and finding.extracted_file_id not in downloaded_file_ids:
+                df_result = await db.execute(
+                    select(DownloadedFile).where(DownloadedFile.id == finding.extracted_file_id)
+                )
+                df = df_result.scalar_one_or_none()
+                if df:
+                    downloaded_files.append(df)
+                    downloaded_file_ids.add(df.id)
     except Exception as e:
         logger.warning(f"Error searching GitLeaks: {e}")
     
@@ -456,8 +443,7 @@ async def quick_search(
             "share_name": item.share_name,
             "size": item.size,
             "modified": item.modified,
-            "type": "item",
-            "source": "Navegação"
+            "type": "item"
         }
         if item.item_type == 'Directory':
             directories.append(item_data)
@@ -479,8 +465,7 @@ async def quick_search(
                 "sha1_hash": df.sha1_hash,
                 "mimetype": df.mimetype,
                 "downloaded_at": df.downloaded_at.isoformat() if df.downloaded_at else None,
-                "type": "downloaded",
-                "source": "Download"
+                "type": "downloaded"
             })
     
     return {
@@ -488,9 +473,7 @@ async def quick_search(
         "directories": directories,
         "files": files,
         "downloaded": downloaded,
-        "ocr": ocr_results,
-        "gitleaks": gitleaks_results,
-        "total": len(directories) + len(files) + len(downloaded) + len(ocr_results) + len(gitleaks_results)
+        "total": len(directories) + len(files) + len(downloaded)
     }
 
 
