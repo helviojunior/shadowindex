@@ -59,12 +59,12 @@ const ImportServers = () => {
   const loadInitialData = async () => {
     setLoadingConfig(true);
     try {
-      const [pluginsRes, settingsRes] = await Promise.all([
-        axios.get(`${API}/plugins`),
+      const [instancesRes, settingsRes] = await Promise.all([
+        axios.get(`${API}/plugin-instances`),
         axios.get(`${API}/settings`)
       ]);
       
-      setAvailablePlugins(pluginsRes.data);
+      setPluginInstances(instancesRes.data || []);
       
       // Carregar portas configuradas
       const importPorts = settingsRes.data?.import_ports?.value || '445,1433,3306,5432,1521,27017,6379,5984,9200';
