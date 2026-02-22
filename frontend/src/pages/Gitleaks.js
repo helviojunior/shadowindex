@@ -14,6 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   Play, 
   Square, 
@@ -27,7 +34,10 @@ import {
   Server,
   FolderSearch,
   Clock,
-  FileWarning
+  FileWarning,
+  FileJson,
+  Copy,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 
