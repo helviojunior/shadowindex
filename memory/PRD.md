@@ -680,6 +680,9 @@ Portuguese (pt-BR)
 
 ## Pending Issues
 
+### P0 - FIXED (Session 29)
+- ✅ **Bug: Sync/Download usando plugin padrão:** Corrigido! Os endpoints de download agora usam `get_plugin_for_server()` em vez de `get_default_soap_service()` para respeitar a instância de plugin configurada no servidor.
+
 ### User Verification Pending
 - **Sync (Download) button:** Needs end-to-end testing after recent refactorings
 - **Directory highlight persistence:** Needs confirmation that visited directories stay highlighted after page refresh
