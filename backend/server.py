@@ -921,11 +921,28 @@ async def check_plugin_health(
 ):
     """Check plugin health with provided configuration"""
     from plugins.factory import PluginFactory, get_active_proxy_url
+    from credential_verification import mark_credential_verified
     
     try:
         proxy_url = await get_active_proxy_url(db)
         plugin = PluginFactory.create_plugin(plugin_type, config, proxy_url)
         health = await plugin.health_check()
+        
+        # If health check passed and proxy was used, verify the proxy credential
+        if health.get("healthy") and proxy_url:
+            # Get the active proxy to find its credential_id
+            result = await db.execute(select(AppConfig).where(AppConfig.key == "active_proxy_id"))
+            config_entry = result.scalar_one_or_none()
+            if config_entry and config_entry.value:
+                try:
+                    proxy_id = int(config_entry.value)
+                    proxy_result = await db.execute(select(ProxyServer).where(ProxyServer.id == proxy_id))
+                    proxy = proxy_result.scalar_one_or_none()
+                    if proxy and proxy.credential_id:
+                        await mark_credential_verified(db, proxy.credential_id, context="Proxy/Health Check")
+                except Exception as e:
+                    logger.warning(f"Error verifying proxy credential: {e}")
+        
         return health
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
