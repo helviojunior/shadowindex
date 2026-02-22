@@ -1473,12 +1473,33 @@ const ServerBrowser = () => {
       
     } catch (error) {
       console.error('Error loading shares:', error);
+      
+      // Verificar se é erro de credencial não configurada
+      if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
+        const detail = error.response.data.detail;
+        toast.error(detail.message || 'Credencial não configurada para este servidor', {
+          duration: 6000,
+          description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
+        });
+        setLoadingShares(false);
+        return;
+      }
+      
       // Fallback para API V2 com refresh
       try {
         const fallbackResponse = await axios.get(`${API_V2}/servers/${serverId}/shares?refresh=${ignoreCache}`);
         setShares(fallbackResponse.data);
       } catch (fallbackError) {
-        toast.error('Erro ao carregar compartilhamentos');
+        // Verificar se fallback também é erro de credencial
+        if (fallbackError.response?.status === 422 && fallbackError.response?.data?.detail?.error === 'credential_not_set') {
+          const detail = fallbackError.response.data.detail;
+          toast.error(detail.message || 'Credencial não configurada para este servidor', {
+            duration: 6000,
+            description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
+          });
+        } else {
+          toast.error('Erro ao carregar compartilhamentos');
+        }
       }
     } finally {
       setLoadingShares(false);
