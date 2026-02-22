@@ -1030,10 +1030,13 @@ class DirectInteractionPlugin(BasePlugin):
             # Get column names
             columns = [desc[0] for desc in cursor.description] if cursor.description else []
             
-            # Get rows
+            # Get rows as dicts
             rows = []
             for row in cursor.fetchall():
-                rows.append([self._serialize_value(v) for v in row])
+                row_dict = {}
+                for i, col in enumerate(columns):
+                    row_dict[col] = self._serialize_value(row[i])
+                rows.append(row_dict)
             
             cursor.close()
             conn.close()
