@@ -40,7 +40,6 @@ import {
   Trash2,
   RefreshCw,
   File,
-  Key,
   Eye,
   Copy,
   CheckCircle,
@@ -58,6 +57,7 @@ import {
   FileSearch
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ShieldKeyIcon } from '@/components/icons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api/v2`;
