@@ -487,13 +487,23 @@ class DirectInteractionPlugin(BasePlugin):
                             share_type = getattr(share, 'shi1_type', 0) or 0
                             remark = getattr(share, 'shi1_remark', '') or ''
                         
+                        # Convert bytes to string if necessary
+                        if isinstance(share_name, bytes):
+                            share_name = share_name.decode('utf-8', errors='replace')
+                        if isinstance(remark, bytes):
+                            remark = remark.decode('utf-8', errors='replace')
+                        
+                        # Ensure string type
+                        share_name = str(share_name) if share_name else ''
+                        remark = str(remark) if remark else ''
+                        
                         # Clean up share name (remove null terminator if present)
-                        if share_name and share_name.endswith('\x00'):
-                            share_name = share_name[:-1]
+                        if share_name and '\x00' in share_name:
+                            share_name = share_name.split('\x00')[0]
                         
                         # Clean up remark
-                        if remark and remark.endswith('\x00'):
-                            remark = remark[:-1]
+                        if remark and '\x00' in remark:
+                            remark = remark.split('\x00')[0]
                         
                         # Determine share type string
                         type_str = "disk"
@@ -513,7 +523,9 @@ class DirectInteractionPlugin(BasePlugin):
                             remark=remark
                         ))
                     except Exception as share_err:
-                        logger.warning(f"Error parsing share info: {share_err}, share data: {share}")
+                        import traceback
+                        error_traceback = traceback.format_exc()
+                        logger.warning(f"Error parsing share info: {share_err}\n{error_traceback}\nShare data type: {type(share)}")
                         continue
                 
                 return shares
