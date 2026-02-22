@@ -390,6 +390,176 @@ const GeneralSettings = () => {
         </CardContent>
       </Card>
 
+      {/* Auto OCR Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <FileSearch className="w-5 h-5 text-purple-500" />
+            <CardTitle>Auto OCR</CardTitle>
+          </div>
+          <CardDescription>
+            Configure o OCR automático para extrair texto de arquivos após o download
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Enable/Disable Toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="auto_ocr_enabled" className="flex items-center gap-2">
+                {settings.auto_ocr_enabled === 'true' ? (
+                  <Eye className="w-4 h-4 text-green-500" />
+                ) : (
+                  <EyeOff className="w-4 h-4 text-muted-foreground" />
+                )}
+                OCR Automático
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Quando habilitado, arquivos baixados serão automaticamente adicionados à fila de OCR
+              </p>
+            </div>
+            <Switch
+              id="auto_ocr_enabled"
+              checked={settings.auto_ocr_enabled === 'true'}
+              onCheckedChange={(checked) => handleChange('auto_ocr_enabled', checked ? 'true' : 'false')}
+              data-testid="auto-ocr-toggle"
+            />
+          </div>
+
+          {/* OCR Extensions */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <FileX className="w-4 h-4 text-muted-foreground" />
+              Extensões para OCR Automático
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Arquivos com estas extensões serão processados pelo OCR após download
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder=".ext (ex: .pdf)"
+                value={newOcrExtension}
+                onChange={(e) => setNewOcrExtension(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newOcrExtension) {
+                    const ext = newOcrExtension.startsWith('.') ? newOcrExtension : `.${newOcrExtension}`;
+                    const current = settings.auto_ocr_extensions ? settings.auto_ocr_extensions.split(',').filter(e => e) : [];
+                    if (!current.includes(ext.toLowerCase())) {
+                      handleChange('auto_ocr_extensions', [...current, ext.toLowerCase()].join(','));
+                    }
+                    setNewOcrExtension('');
+                  }
+                }}
+                className="max-w-[200px]"
+                data-testid="new-ocr-extension-input"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (newOcrExtension) {
+                    const ext = newOcrExtension.startsWith('.') ? newOcrExtension : `.${newOcrExtension}`;
+                    const current = settings.auto_ocr_extensions ? settings.auto_ocr_extensions.split(',').filter(e => e) : [];
+                    if (!current.includes(ext.toLowerCase())) {
+                      handleChange('auto_ocr_extensions', [...current, ext.toLowerCase()].join(','));
+                    }
+                    setNewOcrExtension('');
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(settings.auto_ocr_extensions || '').split(',').filter(e => e).map((ext, idx) => (
+                <Badge key={idx} variant="secondary" className="gap-1">
+                  {ext}
+                  <button
+                    onClick={() => {
+                      const current = settings.auto_ocr_extensions.split(',').filter(e => e && e !== ext);
+                      handleChange('auto_ocr_extensions', current.join(','));
+                    }}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* OCR MIME Types */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-muted-foreground" />
+              MIME Types para OCR Automático
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              MIME types (parcial) que ativam o OCR automático. Ex: "image/" captura todos os tipos de imagem.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="MIME type (ex: image/)"
+                value={newOcrMimetype}
+                onChange={(e) => setNewOcrMimetype(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newOcrMimetype) {
+                    const current = settings.auto_ocr_mimetypes ? settings.auto_ocr_mimetypes.split(',').filter(m => m) : [];
+                    if (!current.includes(newOcrMimetype.toLowerCase())) {
+                      handleChange('auto_ocr_mimetypes', [...current, newOcrMimetype.toLowerCase()].join(','));
+                    }
+                    setNewOcrMimetype('');
+                  }
+                }}
+                className="max-w-[300px]"
+                data-testid="new-ocr-mimetype-input"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (newOcrMimetype) {
+                    const current = settings.auto_ocr_mimetypes ? settings.auto_ocr_mimetypes.split(',').filter(m => m) : [];
+                    if (!current.includes(newOcrMimetype.toLowerCase())) {
+                      handleChange('auto_ocr_mimetypes', [...current, newOcrMimetype.toLowerCase()].join(','));
+                    }
+                    setNewOcrMimetype('');
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(settings.auto_ocr_mimetypes || '').split(',').filter(m => m).map((mime, idx) => (
+                <Badge key={idx} variant="outline" className="gap-1 text-xs">
+                  {mime}
+                  <button
+                    onClick={() => {
+                      const current = settings.auto_ocr_mimetypes.split(',').filter(m => m && m !== mime);
+                      handleChange('auto_ocr_mimetypes', current.join(','));
+                    }}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div className="rounded-lg bg-purple-500/10 border border-purple-500/30 p-4 mt-4">
+            <h4 className="text-sm font-medium text-purple-400 mb-2">Sobre o Auto OCR</h4>
+            <ul className="text-xs text-purple-300/80 space-y-1">
+              <li>• O OCR é executado em background após o download do arquivo</li>
+              <li>• O texto extraído fica disponível para busca e visualização</li>
+              <li>• Requer Apache Tika configurado e em execução</li>
+              <li>• MIME types são verificados com match parcial (ex: "image/" captura "image/png", "image/jpeg", etc.)</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Info Box */}
       <Card>
         <CardContent className="p-4 pt-4">
