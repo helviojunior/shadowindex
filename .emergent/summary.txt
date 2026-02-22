@@ -4,118 +4,126 @@ O usuário solicitou inicialmente um painel web para gerenciar credenciais, cone
 **PRODUCT REQUIREMENTS:**
 - Um painel web chamado ShadowIndex com um layout moderno em modo escuro.
 - Múltiplos tipos de credenciais (Usuário/Senha/NTLM, Token, Chave SSH).
-- Uma arquitetura de plugins para funcionalidades de comunicação.
-- Uma página para importar servidores a partir de um XML do Nmap, com seleção de plugin e configuração de portas.
-- Integração com GitLeaks, com uma página de Leaks para visualização de resultados e controle de scans.
-- Funcionalidade para identificar leaks manualmente e detectar automaticamente chaves privadas (PFX, SSH, RSA, PPK).
-- Um novo dashboard principal com widgets de visualização de dados (Risk Score, gráficos de risco, status de scans, e um gráfico de extensões vulneráveis).
-- Gerenciamento de plugins por servidor (visualização e edição).
-- Um ícone customizado para credenciais, definido pelo usuário.
+- Uma arquitetura de plugins instanciáveis onde um tipo de plugin (ex: SOAP) pode ter múltiplas configurações (instâncias) e cada servidor se conecta a uma instância específica.
+- Uma página para importar servidores a partir de um XML do Nmap.
+- Integração com GitLeaks para visualização de resultados e controle de scans.
+- Funcionalidade para identificar leaks manualmente e detectar automaticamente chaves privadas.
+- Um dashboard principal com widgets de visualização de dados.
+- Gerenciamento de instâncias de plugins, com configurações específicas (ex: URL para SOAP, credencial para SMB).
+- Uma flag  em credenciais para indicar se foram usadas com sucesso.
 
 **User's preferred language**: Portuguese. O próximo agente DEVE responder em português.
 
 **what currently exists?**
-Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. A aplicação possui um sistema de importação de servidores via Nmap XML, integração com GitLeaks, e um dashboard com gráficos. Recentemente, foram adicionadas funcionalidades críticas: gerenciamento de plugins por servidor (edição e visualização), melhorias na página de importação (seleção de plugin, configuração de portas), identificação manual de leaks e detecção automática de chaves privadas como leaks. Um bug crítico (P0) relacionado ao uso de proxy no plugin SOAP foi corrigido. A UI foi aprimorada com um novo ícone customizado para credenciais, que passou por várias iterações com o usuário.
+Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. O sistema de plugins foi completamente refatorado: agora existem tipos de plugins (SOAP, Interação Direta) e instâncias de plugins. Cada servidor é vinculado a uma instância específica, que contém sua própria configuração (por exemplo, a URL do webservice para uma instância SOAP ou a credencial para uma instância de Interação Direta). A tela de gerenciamento de Proxy foi aprimorada para permitir a associação de credenciais existentes. Foi implementada uma flag  que é automaticamente atribuída a uma credencial após uma comunicação bem-sucedida. Vários bugs foram corrigidos, incluindo um erro de frontend na tela de credenciais e a implementação de um tratamento de erro específico para quando uma credencial não está configurada em um plugin.
 
 **Last working item**:
-- **Last item agent was working:** O usuário solicitou uma reorganização completa do layout do Dashboard principal. O agente estava no processo de alterar a estrutura do arquivo  para acomodar a nova disposição dos gráficos e implementar um novo gráfico do tipo spider para visualizar as extensões de arquivos que mais contêm vulnerabilidades.
-- **Status:** IN PROGRESS
+- **Last item agent was working:** O último trabalho foi uma grande refatoração do sistema de plugins, concluindo a migração das configurações (como a URL do SOAP) para dentro das instâncias de plugin. Com esta tarefa concluída, o próximo item de maior prioridade é validar funcionalidades existentes que estão pendentes de verificação. A tarefa imediata é a verificação completa da funcionalidade de Sync (Download) de arquivos e diretórios.
+- **Status:** NOT STARTED
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** Frontend testing agent ou a ferramenta de screenshot para validar o novo layout, e  para testar o novo endpoint de dados para o gráfico spider.
+- **Which testing method agent to use?** Manual testing. Navegue até o Server Browser de um servidor configurado, selecione um arquivo ou diretório e tente usar a funcionalidade de download/sync para verificar se o processo funciona de ponta a ponta.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0): Reorganizar o layout do Dashboard e adicionar gráfico de extensões.**
-- **Issue 2 (P1): Verificação da funcionalidade Sync (Download).**
-- **Issue 3 (P2): Validação completa da funcionalidade de proxy SOCKS5.**
-- **Issue 4 (P2): Validação completa do fluxo de OCR.**
-- **Issue 5 (P2): Destaque de diretórios visitados não persiste após atualização da página.**
+- **Issue 1 (P0): Verificação da funcionalidade Sync (Download).**
+- **Issue 2 (P1): Validação completa da funcionalidade de proxy SOCKS5.**
+- **Issue 3 (P1): Validação completa do fluxo de OCR.**
+- **Issue 4 (P2): Destaque de diretórios visitados não persiste após atualização da página.**
 
 **Issues Detail:**
-- **Issue 1: Reorganizar o layout do Dashboard e adicionar gráfico de extensões.**
-    - **Attempted fixes:** O agente visualizou o arquivo  e estava prestes a modificar o layout.
+- **Issue 1: Verificação da funcionalidade Sync (Download).**
+    - **Attempted fixes:** Nenhuma tentativa nesta sessão. Esta é uma funcionalidade antiga que precisa de verificação de regressão.
     - **Next debug checklist:**
-        1.  Criar um novo endpoint no backend () que retorne as estatísticas de leaks por extensão de arquivo (ex: ).
-        2.  Modificar o layout em  para a nova estrutura de 3 linhas.
-        3.  Criar um novo componente React para o gráfico spider (RadarChart da biblioteca ), que consumirá o novo endpoint.
-        4.  Integrar o novo componente ao Dashboard.
-        5.  Testar o frontend com a ferramenta de screenshot e o backend com .
-    - **Why fix this issue and what will be achieved with the fix?** Para atender aos requisitos de visualização de dados do usuário, melhorando a usabilidade e a apresentação das informações de segurança no painel principal.
-    - **Status:** IN PROGRESS
-    - **Is recurring issue?** N
+        1.  Navegar até a página de um servidor que tenha compartilhamentos acessíveis.
+        2.  Selecionar um arquivo e/ou um diretório.
+        3.  Acionar a função Sync ou Download.
+        4.  Verificar se o backend processa a solicitação e se o arquivo é baixado corretamente no navegador.
+        5.  Verificar os logs do backend em caso de falha.
+    - **Why fix this issue and what will be achieved with the fix?** Para garantir que uma das funcionalidades centrais da aplicação (extração de dados de servidores) está funcionando corretamente após as recentes refatorações.
+    - **Status:** NOT STARTED
+    - **Is recurring issue?** Y
     - **Should Test frontend/backend/both after fix?** Both.
     - **Blocked on other issue:** None.
-
-- **Issue 2, 3, 4, 5:** Estes são problemas conhecidos de sessões anteriores que ainda aguardam uma verificação completa. O status permanece **USER VERIFICATION PENDING**.
+- **Issue 2, 3, 4:** Estes são problemas conhecidos de sessões anteriores que ainda aguardam uma verificação completa e continuam pendentes.
 
 **In progress Task List**:
-- **Task 1: Implementar o novo layout do Dashboard.**
-    - **Where to resume:** Modificando o arquivo  e criando o novo endpoint de backend para o gráfico spider.
-    - **What will be achieved with this?** Um dashboard com layout atualizado e um novo widget de visualização de dados, conforme especificado pelo usuário.
-    - **Status:** IN PROGRESS
-    - **Should Test frontend/backend/both after fix?** Both.
-    - **Blocked on something:** None.
+Nenhuma. A última tarefa foi concluída.
 
 **Upcoming and Future Tasks**
+- **Upcoming Tasks:**
+    - (P1) Validação completa da funcionalidade de proxy SOCKS5.
+    - (P1) Validação completa do fluxo de OCR.
+    - (P2) Correção da persistência do destaque de diretórios visitados.
 - **Future Tasks:**
   - (P2) Evoluir a arquitetura de plugins (exceptions padronizadas, funções base obrigatórias).
   - (P3) Criar um serviço SOAP mock para permitir testes mais confiáveis do .
-  - (P3) Adicionar uma flag  na UI de credenciais para indicar se a credencial foi usada com sucesso pelo menos uma vez.
 
 **Completed work in this session**
-- **Gerenciamento de Plugins de Servidor:** Implementada a capacidade de exibir e editar o plugin associado a cada servidor diretamente na tabela de servidores.
-- **Correção (P0) do Plugin SOAP:** O botão para testar a conexão do plugin SOAP agora utiliza corretamente o proxy global configurado. O espaçamento da página também foi melhorado.
-- **Melhorias na Página de Importação:**
-    - Adicionado um seletor para vincular um plugin durante a importação.
-    - Removidas as badges de serviço/porta e movida a configuração de portas para as Configurações Gerais.
-    - Melhorado o layout (botões no topo, sem rolagem interna) e adicionado feedback de status de upload.
-- **Identificação de Leaks:**
-    - **Manual:** Adicionado um botão no visualizador de arquivos para registrar manualmente um leak.
-    - **Automática:** Implementada a detecção automática de chaves privadas (PFX, SSH, RSA, PPK) como leaks ao visualizar o conteúdo do arquivo.
-- **Atualização de Ícone:** O ícone de credenciais foi substituído por um SVG customizado fornecido pelo usuário, após várias iterações. O novo ícone foi aplicado em todo o sistema (, , ).
+- **Refatoração do Sistema de Plugins para Instâncias:**
+  - Criado o modelo  no backend e uma nova página de gerenciamento no frontend ().
+  - Os servidores agora são vinculados a uma , permitindo múltiplas configurações para o mesmo tipo de plugin.
+  - Configurações específicas, como a URL do WebService para SOAP, foram movidas para a configuração JSON da instância.
+- **Melhoria na Autenticação de Proxy:**
+  - A UI de configuração de Proxy () foi atualizada para permitir a seleção de uma credencial do tipo  existente, em vez de inserir usuário e senha diretamente.
+- **Implementação da Flag  para Credenciais:**
+  - Uma credencial agora é marcada como  automaticamente no banco de dados após uma primeira comunicação bem-sucedida, seja via plugin  (SMB) ou via um plugin SOAP que utilize um proxy autenticado.
+- **Atualização do Plugin SOAP:**
+  - O parâmetro do método  foi alterado de  para .
+  - A lógica de parsing de XML foi atualizada para ser compatível com o formato  fornecido pelo usuário.
+- **Correções de Bugs:**
+  - **:** Foi criada uma exceção customizada para quando uma credencial não está configurada em um plugin. O backend agora retorna um erro , e o frontend exibe uma notificação (toast) clara para o usuário.
+  - **:** Corrigido um erro de javascript na página de  causado pela falta de importação do ícone  de .
 
 **Earlier issues found/mentioned but not fixed**
-- A dependência  ainda requer um  no código () devido à possível ausência de um pacote no ambiente de execução.
+- A dependência  ainda requer um bloco  no código () devido à possível ausência de um pacote no ambiente de execução.
 
 **Known issue recurrence from previous fork**
-- **Funcionalidade Sync:** Necessita de verificação completa.
-- **Estado do diretório visitado:** A persistência do destaque após a atualização da página necessita de verificação do usuário.
+- **Funcionalidade Sync:** Continua necessitando de verificação completa.
+- **Estado do diretório visitado:** A persistência do destaque após a atualização da página necessita de verificação.
+- **Ambiente Local do Usuário:** O usuário relatou um erro de backend () que correspondia a uma versão antiga do código. Isso indica que o ambiente Docker local do usuário pode não estar sincronizado. Se o usuário reportar erros de backend que não correspondem ao código atual, ele deve ser instruído a reconstruir ou reiniciar seus contêineres Docker.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Component-based UI:** Criação de um componente de ícone SVG customizado () para garantir consistência visual e atender a um requisito específico do usuário.
-- **Backend API Extension:** Adição e modificação de múltiplos endpoints em FastAPI para suportar novas funcionalidades do frontend, como edição de plugins e registro de leaks.
-- **Dynamic Content Analysis:** Lógica implementada no backend para analisar o conteúdo de arquivos em tempo real, detectar padrões de chaves privadas e registrar leaks automaticamente.
-- **User-driven UI Iteration:** O desenvolvimento do ícone demonstrou um ciclo de feedback rápido, onde o agente implementou diretamente o código SVG fornecido pelo usuário.
+- **Migração Manual de Banco de Dados:** A adição de novas colunas/tabelas ao schema do SQLAlchemy () exigiu a criação de scripts Python manuais para executar comandos  no banco de dados SQLite. A falha em fazer isso fez com que o servidor backend travasse na inicialização.
+- **Plugins como Instâncias:** Uma mudança arquitetônica fundamental de tipos de plugins estáticos para instâncias configuráveis, o que aumenta a reutilização e a flexibilidade. Cada instância tem sua própria configuração JSON.
+- **Tratamento de Exceções Centralizado:** A criação de exceções específicas (ex: ) e seu tratamento nas rotas do FastAPI para fornecer feedback consistente e claro ao frontend através de códigos de status HTTP e mensagens de erro.
 
 **key DB schema**
-- Nenhuma alteração no esquema do banco de dados, mas os campos  e  da coleção  agora são corretamente gerenciados.
+- : {id, name, plugin_type, config (JSON), is_default}
+- : Adicionado FK . Campos  e  foram removidos/depreciados.
+- : Adicionado FK .
+- : Adicionado campo  (boolean).
 
 **All files of reference**
-- **Tarefa Atual:**  (UI),  (para o novo endpoint de estatísticas).
-- **Funcionalidades Chave Recentes:** , , , , .
+-  (Nova UI para gerenciar instâncias de plugins)
+-  (Refatorado para vincular servidores a instâncias de plugins)
+-  (UI de Proxy atualizada para usar credenciais existentes)
+-  (Novos modelos de dados e endpoints para instâncias, proxies e credenciais)
+-  (Lógica central para carregar instâncias de plugins e suas configurações)
+-  (Lógica para marcar credencial como verificada)
+-  (Lógica de parsing de XML atualizada)
 
 **Critical Info for New Agent**
-- **Prioridade Máxima:** Concluir a reorganização do Dashboard. Isso requer modificações no frontend () para o layout e para um novo componente de gráfico spider, além da criação de um novo endpoint no backend para fornecer os dados para este gráfico.
-- **Contexto do Ícone:** O ícone de credenciais () é muito importante para o usuário. Qualquer alteração relacionada a ícones deve ser feita com cuidado, mantendo o SVG exato que foi fornecido por último.
-- **Débito Técnico:** As funcionalidades de Sync/Download, Proxy SOCKS5, OCR e persistência do destaque de diretórios visitados permanecem sem validação completa e devem ser testadas assim que possível.
+- **Refatoração de Plugins:** O sistema de plugins foi completamente alterado. Agora, você gerencia instâncias de plugins. Cada servidor se conecta a uma instância, não a um tipo de plugin. Toda a lógica de configuração (URL, credencial) agora vive dentro da configuração da instância.
+- **Migrações Manuais de DB:** Se você alterar um modelo SQLAlchemy em , o backend provavelmente travará na inicialização. Você DEVE criar e executar um script Python separado para aplicar as alterações () ao arquivo de banco de dados SQLite ().
+- **Ambiente Local do Usuário:** Esteja ciente de que o usuário pode estar executando um ambiente Docker local que pode ficar dessincronizado. Se eles relatarem erros de backend que não fazem sentido com o código atual, a causa provável é o ambiente deles.
 
 **documents and test reports created in this job**
-- O arquivo  foi atualizado consistentemente ao longo da sessão.
+-  foi atualizado.
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **(Done)** Forneceu o SVG final da Font Awesome para ser usado como ícone.
-9.  **(Done)** Forneceu uma versão outline do SVG do ícone.
-8.  **(Done)** Forneceu o SVG exato para o ícone de credenciais.
-7.  **(Done)** Pediu para ver como o ícone customizado ficou nas telas.
-6.  **(Done)** Confirmou que queria substituir o ícone pelo da imagem fornecida.
-5.  **(Done)** Não gostou do primeiro ícone customizado e forneceu uma nova imagem de referência.
-4.  **(Done)** Solicitou a detecção automática de chaves privadas (SSH, RSA, PPK) e a troca do ícone de credencial.
-3.  **(Done)** Pediu para adicionar um combobox de seleção de plugin na tela de importação, remover as badges de porta e mover essa configuração para uma tela de Configurações Gerais.
-2.  **(Done)** Solicitou a implementação da correção do P0 (proxy no plugin SOAP) e melhorias na tela de importação (status de upload, posição dos botões, e ajuste de rolagem).
-1.  **(In Progress)** Solicitou a reorganização do layout do dashboard, movendo gráficos e adicionando um novo gráfico do tipo spider para extensões de arquivos com vulnerabilidades.
+10. **(Done)** Solicitou mover a URL do webservice SOAP para a configuração da instância do plugin, em vez de ser um objeto global.
+9.  **(Done)** Solicitou uma refatoração para que os plugins (SOAP e Interação Direta) sejam tipos, com múltiplas instâncias configuráveis, e os servidores se vinculem a uma instância específica.
+8.  **(Done)** Pediu para atualizar o parsing da resposta XML do plugin SOAP e alterar o nome de um parâmetro de 'ip' para 'host'.
+7.  **(Done)** Solicitou a implementação da flag  em credenciais, para ser ativada após o uso bem-sucedido em um proxy ou no plugin de interação direta.
+6.  **(Done)** Pediu que o combo de autenticação de proxy, em vez de campos de usuário/senha, listasse as credenciais já cadastradas.
+5.  **(Done)** Solicitou adicionar um combo de autenticação (Sem autenticação ou Usuário e Senha) para o cadastro e edição de servidores proxy.
+4.  **(Bug Report)** Relatou um erro de backend e um erro de frontend () ao adicionar uma credencial.
+3.  **(Bug Report)** Relatou um traceback de erro no backend ().
+2.  **(In Progress by user)** Confirmou que a tarefa de tratamento de erro () estava correta e a tela de erro apareceu.
+1.  **(Done)** Solicitou focar na tarefa P0 (Dashboard) e no tratamento da .
 
 **Project Health Check:**
 - **Broken:** Nenhuma funcionalidade está quebrada no momento.
@@ -134,13 +142,13 @@ Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. A aplicação 
 - **Backend:** , , , .
 
 **Testing status**
-- **Testing agent used after significant changes:** NO (o agente usou testes manuais com  e screenshots).
+- **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** N/A nesta sessão.
+- **Test files created:** N/A
 - **Known regressions:** A funcionalidade Sync e o Destaque de Diretório são problemas recorrentes que precisam de verificação.
 
 **Credentials to test flow:**
 Não há credenciais estáticas. Todas as configurações são criadas através da UI.
 
 **What agent forgot to execute**
-O agente não esqueceu, mas foi interrompido no meio da tarefa de reorganizar o Dashboard, que é a tarefa de maior prioridade para a continuação.</analysis>
+O agente não esqueceu de nada, mas as tarefas de verificação de funcionalidades existentes (Sync, Proxy, OCR) foram adiadas por várias sessões e agora devem ser priorizadas para evitar regressões.</analysis>
