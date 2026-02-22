@@ -28,6 +28,29 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 32 - GitLeaks Enhancement & UI Improvements)
+- [x] **Bug Fix: Erro `'str' object has no attribute 'isoformat'` ao navegar diretórios:**
+  - O cache de plugins serializa `datetime` como string via JSON
+  - Adicionado tratamento defensivo em `routes_v2.py` para verificar se `modified` já é string antes de chamar `.isoformat()`
+  - Afeta linhas 719-733, 900-914, 1150-1164
+- [x] **Botão "Forçar Fetch" na árvore de diretórios:**
+  - Botão com ícone `RefreshCw` adicionado em cada nó de diretório/share
+  - Aparece no hover (classe `group` + `group-hover:opacity-100`)
+  - Ignora cache e força nova requisição ao servidor
+  - Exibe toast de confirmação após atualização
+- [x] **Enriquecimento de Leaks com dados do banco:**
+  - Função `extract_ids_from_path()` adicionada ao `gitleaks_service.py`
+  - Extrai `server_id`, `file_id`, `version` do caminho físico do arquivo
+  - IDs são armazenados em `extracted_server_id`, `extracted_file_id`, `extracted_version`
+- [x] **Endpoint `/gitleaks/findings` enriquecido:**
+  - Agora busca dados do banco (Server, DownloadedFile) usando IDs extraídos
+  - Retorna campos adicionais: `server_name`, `server_ip`, `file_name`, `server_path`, `share_name`
+- [x] **Nova coluna "SERVIDOR" na tabela de Leaks:**
+  - Exibe nome do servidor (cor emerald) e IP abaixo
+  - Coluna "ARQUIVO" agora mostra:
+    - Primeira linha: Nome do arquivo (file_name do banco)
+    - Segunda linha: Caminho original no servidor (server_path)
+
 ### 2026-02-23 (Session 31 - Sync Download & Network Error Handling)
 - [x] **Nome da Instância de Plugin no Card do Servidor:**
   - Campo `plugin_instance_name` adicionado ao `ServerResponse` em `server.py`
