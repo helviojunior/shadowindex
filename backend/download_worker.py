@@ -533,7 +533,7 @@ class DownloadWorker:
                     select(FileVersion).where(
                         FileVersion.server_guid == server.guid,
                         FileVersion.file_path == job.file_path,
-                        FileVersion.is_current == True
+                        FileVersion.is_current.is_(True)
                     )
                 )
                 # Contar versões existentes
