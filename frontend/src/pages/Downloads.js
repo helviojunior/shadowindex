@@ -259,14 +259,17 @@ const Downloads = () => {
     loadDownloadJobs();
     loadScanJobs();
     
-    // Poll every 2 seconds for active downloads and scans
+    // Polling menos frequente quando WebSocket está conectado
+    // WebSocket cuida das atualizações em tempo real
+    const pollInterval = isConnected ? 10000 : 3000;
+    
     const interval = setInterval(() => {
       loadDownloadJobs();
       loadScanJobs();
-    }, 2000);
+    }, pollInterval);
     
     return () => clearInterval(interval);
-  }, [loadDownloadJobs, loadScanJobs]);
+  }, [loadDownloadJobs, loadScanJobs, isConnected]);
 
   // Cancel single job
   const cancelJob = async (jobId) => {
