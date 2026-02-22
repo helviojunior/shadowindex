@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Plus, ChevronUp, Globe, Shield, Pencil, X, Check, User, Ban } from 'lucide-react';
 import { toast } from 'sonner';
-import { CredentialIcon } from '@/components/ui/CustomIcons';
+import { CredentialKeyIcon } from '@/components/icons/ShieldKeyIcon';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
