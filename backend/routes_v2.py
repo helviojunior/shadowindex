@@ -4542,8 +4542,6 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
         "delay_seconds": 5  # Delay antes de iniciar
     }
 }
-    }
-}
 
 
 @router.get("/settings/critical-search")
