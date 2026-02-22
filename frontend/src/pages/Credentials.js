@@ -476,12 +476,13 @@ const Credentials = () => {
       )}
 
       {/* List Cards by Type */}
-      {Object.entries(CREDENTIAL_TYPES).map(([type, info]) => {
-        const TypeIcon = info.icon;
-        const typeCreds = getCredentialsByType(type);
-        
-        return (
-          <Card key={type}>
+      <div className="space-y-8">
+        {Object.entries(CREDENTIAL_TYPES).map(([type, info]) => {
+          const TypeIcon = info.icon;
+          const typeCreds = getCredentialsByType(type);
+          
+          return (
+            <Card key={type}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TypeIcon className={`w-5 h-5 ${info.color}`} />
