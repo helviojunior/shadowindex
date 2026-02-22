@@ -12,6 +12,9 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Setup logger for this module
+logger = logging.getLogger(__name__)
+
 # Importar magic com fallback se não disponível
 try:
     import magic
