@@ -4481,12 +4481,13 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             "backup", "dump", "export",
             "private", "privado", "cert",
             "conexao", "connection", "conn",
-            "usuario", "user", "admin"
+            "usuario", "user", "admin",
+            "cofre", "safe"
         ],
         "extensions": [
             ".pfx", ".p12", ".jks", ".keystore",  # Certificados e keystores
             ".pem", ".crt", ".cer", ".der",  # Certificados
-            ".kdbx", ".kdb",  # KeePass
+            ".kdbx", ".kdb", ".psafe", ".psafe3",  # Password managers (KeePass, Password Safe)
             ".cmd", ".bat", ".sh", ".ps1", ".psm1",  # Scripts
             ".conf", ".ini", ".env", ".yml", ".yaml",  # Configurações
             ".properties", ".cfg", ".config",  # Mais configurações
