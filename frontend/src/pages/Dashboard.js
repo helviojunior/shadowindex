@@ -271,7 +271,7 @@ const Dashboard = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg text-white/90 flex items-center gap-2">
               <Activity className="w-5 h-5" />
-              Overall Risk Score
+              Índice de Risco Geral
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -300,7 +300,7 @@ const Dashboard = () => {
         {/* Risk by Severity Donut Chart */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Risk by Severity</CardTitle>
+            <CardTitle className="text-lg">Risco por Severidade</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">
@@ -351,7 +351,7 @@ const Dashboard = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <FileWarning className="w-5 h-5 text-red-500" />
-              Vulnerabilities by Extension
+              Leaks por Extensão
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -413,17 +413,17 @@ const Dashboard = () => {
             <div className="grid grid-cols-3 gap-4 text-center pt-4 border-t">
               <div>
                 <p className="text-2xl font-bold">{gitleaksStats?.jobs?.total || 0}</p>
-                <p className="text-xs text-muted-foreground">Total Scans</p>
+                <p className="text-xs text-muted-foreground">Total de Scans</p>
               </div>
               <div>
                 <Badge variant="outline" className="text-lg px-4 py-1">
                   {gitleaksStats?.jobs?.running || 0}
                 </Badge>
-                <p className="text-xs text-muted-foreground mt-1">Running</p>
+                <p className="text-xs text-muted-foreground mt-1">Executando</p>
               </div>
               <div>
                 <p className="text-2xl font-bold">{gitleaksStats?.jobs?.completed || 0}</p>
-                <p className="text-xs text-muted-foreground">Completed</p>
+                <p className="text-xs text-muted-foreground">Concluídos</p>
               </div>
             </div>
 
@@ -447,7 +447,7 @@ const Dashboard = () => {
         {/* Risk vs Time Area Chart */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Risk vs. Time</CardTitle>
+            <CardTitle className="text-lg">Risco vs. Tempo</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[250px]">
@@ -505,7 +505,7 @@ const Dashboard = () => {
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-2xl font-bold">{stats.proxyServers}</p>
-              <p className="text-xs text-muted-foreground">Proxy Servers</p>
+              <p className="text-xs text-muted-foreground">Servidores Proxy</p>
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-2xl font-bold">{stats.soapApis}</p>
