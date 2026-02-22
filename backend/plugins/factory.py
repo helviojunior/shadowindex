@@ -227,8 +227,9 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
             f"Configure uma instância de plugin na página de Servidores."
         )
     
-    # Get proxy URL
-    proxy_url = await get_active_proxy_url(db)
+    # Get proxy config with credentials
+    proxy_config = await get_active_proxy_config(db)
+    proxy_url = proxy_config.get("proxy_url") if proxy_config else None
     
     plugin_type = None
     plugin_config = {}
