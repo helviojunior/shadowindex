@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
+import { useStatsEvents, useWebSocket } from '@/hooks/useWebSocket';
 import { ShieldKeyIcon } from '@/components/icons';
 import {
   AreaChart,
