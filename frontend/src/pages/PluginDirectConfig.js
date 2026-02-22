@@ -182,38 +182,6 @@ const PluginDirectConfig = () => {
     }
   };
 
-  // Test plugin functionality
-  const testPlugin = async () => {
-    setTesting(true);
-    setTestResult(null);
-    
-    try {
-      const config = {
-        credential_id: testConfig.credential_id && testConfig.credential_id !== 'none' 
-          ? parseInt(testConfig.credential_id) 
-          : null,
-        dns_mode: testConfig.dns_mode,
-        dns_servers: testConfig.dns_mode === 'custom' && testConfig.dns_servers
-          ? testConfig.dns_servers.split(',').map(s => s.trim()).filter(Boolean)
-          : []
-      };
-      
-      const response = await axios.post(`${API}/plugins/direct_interaction/health`, config);
-      setTestResult(response.data);
-      
-      if (response.data.healthy) {
-        toast.success('Plugin funcionando corretamente');
-      } else {
-        toast.error(`Erro: ${response.data.message}`);
-      }
-    } catch (error) {
-      setTestResult({ healthy: false, message: error.message });
-      toast.error(`Erro ao testar: ${error.message}`);
-    } finally {
-      setTesting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
