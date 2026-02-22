@@ -408,7 +408,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
         {/* Connection Error Alert Bar */}
         {!isConnected && (
           <div 
-            className="flex items-center justify-between px-4 py-2 bg-red-600/90 text-white z-[60] animate-in slide-in-from-top duration-300"
+            className="flex items-center justify-between px-4 py-2 bg-red-500/70 text-white z-[60] animate-in slide-in-from-top duration-300"
             data-testid="connection-error-bar"
           >
             <div className="flex items-center gap-3">
