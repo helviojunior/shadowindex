@@ -476,23 +476,23 @@ const Credentials = () => {
       )}
 
       {/* List Cards by Type */}
-      <div className="space-y-8">
+      <div className="space-y-10 mt-8">
         {Object.entries(CREDENTIAL_TYPES).map(([type, info]) => {
           const TypeIcon = info.icon;
           const typeCreds = getCredentialsByType(type);
           
           return (
-            <Card key={type}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TypeIcon className={`w-5 h-5 ${info.color}`} />
-                {info.label}
-              </CardTitle>
-              <CardDescription>{typeCreds.length} credenciais</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {typeCreds.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">Nenhuma credencial deste tipo</p>
+            <Card key={type} className="mt-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TypeIcon className={`w-5 h-5 ${info.color}`} />
+                  {info.label}
+                </CardTitle>
+                <CardDescription>{typeCreds.length} credenciais</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {typeCreds.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">Nenhuma credencial deste tipo</p>
               ) : (
                 <div className="space-y-3">
                   {typeCreds.map((cred) => (
