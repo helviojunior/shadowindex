@@ -417,7 +417,7 @@ const Dashboard = () => {
       </div>
 
       {/* Divisor */}
-      <div className="h-px bg-border/50 my-2" />
+      <div className="h-px bg-zinc-700 my-4" />
 
       {/* Linha 2: Overall Risk Score + Risk by Severity + Extensions Spider */}
       <div className="grid gap-4 lg:grid-cols-3">
@@ -553,7 +553,7 @@ const Dashboard = () => {
       </div>
 
       {/* Divisor */}
-      <div className="h-px bg-border/50 my-2" />
+      <div className="h-px bg-zinc-700 my-4" />
 
       {/* Linha 3: Leaks vs. Tempo (linha inteira) */}
       <Card>
@@ -595,7 +595,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Divisor */}
-      <div className="h-px bg-border/50 my-2" />
+      <div className="h-px bg-zinc-700 my-4" />
 
       {/* Linha 4: Status do Scan (linha inteira) */}
       <Card>
@@ -645,7 +645,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Divisor */}
-      <div className="h-px bg-border/50 my-2" />
+      <div className="h-px bg-zinc-700 my-4" />
 
       {/* Linha 5: Monitoramento de Jobs em Tempo Real */}
       <Card data-testid="jobs-monitor">
@@ -934,7 +934,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Divisor */}
-      <div className="h-px bg-border/50 my-2" />
+      <div className="h-px bg-zinc-700 my-4" />
 
       {/* Resumo / Quick Stats */}
       <Card>
@@ -968,7 +968,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Divisor */}
-      <div className="h-px bg-border/50 my-2" />
+      <div className="h-px bg-zinc-700 my-4" />
 
       {/* System Controls */}
       <div className="grid gap-4 md:grid-cols-2">
