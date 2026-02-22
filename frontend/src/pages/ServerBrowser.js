@@ -4396,6 +4396,121 @@ const ServerBrowser = () => {
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+      
+      {/* Modal de Identificação Manual de Credencial */}
+      <Dialog open={showLeakModal} onOpenChange={setShowLeakModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-yellow-500" />
+              Identificar Credencial
+            </DialogTitle>
+            <DialogDescription>
+              Registre manualmente uma credencial encontrada neste arquivo que não foi detectada automaticamente pelo GitLeaks.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Arquivo */}
+            <div className="space-y-2">
+              <Label>Arquivo</Label>
+              <div className="p-2 bg-muted/50 rounded text-sm font-mono break-all">
+                {selectedItem?.fullPath || selectedItem?.name || 'Nenhum arquivo selecionado'}
+              </div>
+            </div>
+            
+            {/* Tipo de Credencial */}
+            <div className="space-y-2">
+              <Label htmlFor="leak-type">Tipo de Credencial</Label>
+              <Select 
+                value={manualLeak.secret_type} 
+                onValueChange={(value) => setManualLeak(prev => ({ ...prev, secret_type: value }))}
+              >
+                <SelectTrigger id="leak-type">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {leakTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      <div className="flex items-center gap-2">
+                        <span>{type.label}</span>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-[10px] px-1 py-0 ${
+                            type.severity === 'critical' ? 'border-red-500 text-red-500' :
+                            type.severity === 'high' ? 'border-orange-500 text-orange-500' :
+                            type.severity === 'medium' ? 'border-yellow-500 text-yellow-500' :
+                            'border-muted-foreground text-muted-foreground'
+                          }`}
+                        >
+                          {type.severity}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Texto Encontrado */}
+            <div className="space-y-2">
+              <Label htmlFor="match-text">Texto/Padrão Encontrado (opcional)</Label>
+              <Input
+                id="match-text"
+                placeholder="Ex: password=abc123"
+                value={manualLeak.match_text}
+                onChange={(e) => setManualLeak(prev => ({ ...prev, match_text: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Cole o trecho do arquivo onde a credencial foi encontrada
+              </p>
+            </div>
+            
+            {/* Número da Linha */}
+            <div className="space-y-2">
+              <Label htmlFor="line-number">Número da Linha (opcional)</Label>
+              <Input
+                id="line-number"
+                type="number"
+                min="1"
+                placeholder="Ex: 42"
+                value={manualLeak.line_number || ''}
+                onChange={(e) => setManualLeak(prev => ({ ...prev, line_number: e.target.value ? parseInt(e.target.value) : null }))}
+              />
+            </div>
+            
+            {/* Descrição */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição (opcional)</Label>
+              <Textarea
+                id="description"
+                placeholder="Descreva a credencial encontrada..."
+                value={manualLeak.description}
+                onChange={(e) => setManualLeak(prev => ({ ...prev, description: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLeakModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={submitManualLeak} 
+              disabled={submittingLeak || !selectedItem}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              {submittingLeak ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Key className="w-4 h-4 mr-2" />
+              )}
+              Registrar Credencial
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
