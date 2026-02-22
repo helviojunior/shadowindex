@@ -494,6 +494,19 @@ async def list_shares(
                 }
             )
                 
+        except ValueError as e:
+            # Erro de validação (plugin_instance_id não configurado, instância não encontrada, etc.)
+            error_message = str(e)
+            logger.warning(f"Validation error for server {server.ip}: {error_message}")
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "plugin_not_configured",
+                    "message": error_message,
+                    "server_ip": server.ip
+                }
+            )
+                
         except Exception as e:
             import traceback
             error_traceback = traceback.format_exc()
