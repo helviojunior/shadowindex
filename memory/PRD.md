@@ -29,6 +29,12 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 37 - Dashboard Visual Improvements)
+- [x] **Ajustes visuais no Dashboard:**
+  - Removidas barras horizontais entre seções do dashboard
+  - Adicionadas barras verticais cinza entre colunas do "Monitoramento de Jobs"
+  - Aumentada altura do painel de Jobs em ~30% (de 150px para 200px)
+
 ### 2026-02-22 (Session 36 - Download Worker Improvements & Jobs Monitor)
 - [x] **Correção de Jobs de Download Travados:**
   - Reset de jobs "downloading" na inicialização do worker (comportamento existente mantido)
