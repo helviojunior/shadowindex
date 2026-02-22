@@ -30,18 +30,19 @@ const Servers = () => {
   const navigate = useNavigate();
   const { ignoreCache } = useApp();
   const [servers, setServers] = useState([]);
-  const [formData, setFormData] = useState({ name: '', ip: '', plugin_type: 'soap_api', plugin_config: {} });
+  const [formData, setFormData] = useState({ name: '', ip: '', plugin_instance_id: '' });
   const [loading, setLoading] = useState(false);
   const [resolvingIp, setResolvingIp] = useState(false);
   const [editingServer, setEditingServer] = useState(null);
   const [editIp, setEditIp] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [availablePlugins, setAvailablePlugins] = useState({});
+  const [pluginInstances, setPluginInstances] = useState([]);
   const [soapApiUrl, setSoapApiUrl] = useState('');
   
   // Estados para edição do plugin
   const [editingPluginServer, setEditingPluginServer] = useState(null);
-  const [editPluginType, setEditPluginType] = useState('');
+  const [editPluginInstanceId, setEditPluginInstanceId] = useState('');
   
   // Estados para busca e ordenação
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,7 +52,23 @@ const Servers = () => {
     loadServers();
     loadAvailablePlugins();
     loadSoapApiUrls();
+    loadPluginInstances();
   }, []);
+
+  const loadPluginInstances = async () => {
+    try {
+      const response = await axios.get(`${API}/plugin-instances?active_only=true`);
+      setPluginInstances(response.data);
+    } catch (error) {
+      console.error('Error loading plugin instances:', error);
+    }
+  };
+
+  const getPluginInstanceName = (instanceId) => {
+    if (!instanceId) return 'Não configurado';
+    const instance = pluginInstances.find(i => i.id === instanceId);
+    return instance ? instance.name : `ID: ${instanceId}`;
+  };
 
   // Filtrar e ordenar servidores
   const filteredAndSortedServers = useMemo(() => {
