@@ -331,7 +331,7 @@ const OCRJobs = () => {
                 <p className="text-2xl font-bold">{stats.running || 0}</p>
                 <p className="text-xs text-muted-foreground uppercase">Executando</p>
               </div>
-              <Loader2 className={cn("w-6 h-6 text-cyan-500 opacity-60", stats.running > 0 && "animate-spin")} />
+              <Play className="w-6 h-6 text-cyan-500 opacity-60" />
             </div>
           </CardContent>
         </Card>
@@ -417,6 +417,16 @@ const OCRJobs = () => {
                   <RotateCcw className="w-4 h-4 mr-2" />
                 )}
                 Reexecutar Falhados
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setConfirmDialog({ open: true, action: 'cancelAll', jobId: null })}
+                disabled={(stats.pending || 0) + (stats.running || 0) === 0}
+                className="text-orange-500 border-orange-500/50 hover:bg-orange-500/10"
+              >
+                <StopCircle className="w-4 h-4 mr-2" />
+                Cancelar Todos
               </Button>
               <Button 
                 variant="destructive" 
