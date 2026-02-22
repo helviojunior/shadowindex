@@ -1403,8 +1403,21 @@ const ServerBrowser = () => {
       const response = await axios.get(`${API_V2}/servers/${serverId}/shares-tree`);
       const { shares: loadedShares, items_by_path } = response.data;
       
-      // Definir os shares
-      setShares(loadedShares);
+      // Definir os shares com campos mapeados para o formato do frontend
+      const mappedShares = loadedShares.map(share => ({
+        ...share,
+        nodeId: `share-${share.share_name}`,
+        type: 'Share',
+        itemType: 'Share',
+        name: share.share_name,
+        fullPath: `\\\\${server?.ip}\\${share.share_name}`,
+        shareName: share.share_name,
+        hasChildren: share.has_children,
+        childrenFetched: share.children_fetched || false,
+        accessDenied: share.access_denied || false,
+        errorMessage: share.error_message
+      }));
+      setShares(mappedShares);
       
       // Carregar filhos salvos no banco para cada share e subdiretório
       // Isso permite que diretórios previamente visitados apareçam em azul
