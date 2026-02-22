@@ -54,7 +54,8 @@ import {
   XCircle,
   Clock,
   FileText,
-  FileSearch
+  FileSearch,
+  Key
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShieldKeyIcon } from '@/components/icons';
