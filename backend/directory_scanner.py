@@ -374,6 +374,54 @@ class DirectoryScanner:
                     print(f"=== SCANNER ERROR scanning {scan_job.path}: {e} ===", flush=True)
                     logger.error(f"Error scanning directory {scan_job.path}: {e}")
     
+    async def _check_and_trigger_gitleaks(self, root_scan_job: ScanJob):
+        """
+        Verifica se todos os sub-scans de um scan crítico root foram completados.
+        Se sim, inicia o GitLeaks automaticamente.
+        """
+        # Verificar se há sub-scans pendentes
+        async with self._lock:
+            pending_subscans = [
+                j for j in self.scan_queue 
+                if j.parent_id == root_scan_job.id
+            ]
+            if pending_subscans:
+                # Ainda há sub-scans, será chamado novamente quando completarem
+                return
+        
+        # Obter configuração
+        critical_config = await get_critical_search_config()
+        auto_gitleaks = critical_config.get('auto_gitleaks', {})
+        
+        if not auto_gitleaks.get('enabled', True):
+            print(f"=== SCANNER: Auto GitLeaks disabled, skipping ===", flush=True)
+            return
+        
+        # Calcular total de arquivos críticos encontrados
+        total_critical = root_scan_job.critical_files_found
+        for completed in self.completed_scans:
+            if completed.parent_id == root_scan_job.id:
+                total_critical += completed.critical_files_found
+        
+        if total_critical == 0:
+            print(f"=== SCANNER: No critical files found, skipping GitLeaks ===", flush=True)
+            return
+        
+        print(f"=== SCANNER: Critical scan complete! Found {total_critical} critical files. Starting GitLeaks... ===", flush=True)
+        
+        # Aguardar delay configurado
+        delay = auto_gitleaks.get('delay_seconds', 5)
+        await asyncio.sleep(delay)
+        
+        # Iniciar GitLeaks
+        try:
+            from gitleaks_service import start_gitleaks_scan
+            await start_gitleaks_scan(root_scan_job.server_id)
+            print(f"=== SCANNER: GitLeaks scan started for server {root_scan_job.server_id} ===", flush=True)
+        except Exception as e:
+            print(f"=== SCANNER ERROR starting GitLeaks: {e} ===", flush=True)
+            logger.error(f"Error starting GitLeaks after critical scan: {e}")
+    
     async def _scan_directory(self, db: AsyncSession, scan_job: ScanJob):
         """Escaneia um diretório e adiciona arquivos à fila"""
         from database import Server, DownloadJob, AppSettings
