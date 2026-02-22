@@ -459,6 +459,66 @@ const Gitleaks = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal para visualizar JSON do relatório */}
+      <Dialog open={reportModal.open} onOpenChange={(open) => !open && setReportModal({ open: false, jobId: null, data: null, loading: false })}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileJson className="w-5 h-5" />
+              Relatório GitLeaks - Job #{reportModal.jobId}
+            </DialogTitle>
+            <DialogDescription>
+              {reportModal.data && (
+                <span>
+                  {reportModal.data.findings_count} finding(s) encontrado(s) • 
+                  Servidor ID: {reportModal.data.server_id || 'N/A'}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {reportModal.loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <span className="ml-2">Carregando relatório...</span>
+            </div>
+          ) : reportModal.data ? (
+            <div className="space-y-4">
+              {/* Ações */}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={copyJsonToClipboard}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copiar JSON
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadJson}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download JSON
+                </Button>
+              </div>
+              
+              {/* Info do relatório */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="text-muted-foreground">Caminho escaneado:</Label>
+                  <p className="font-mono text-xs truncate">{reportModal.data.target_path}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Arquivo do relatório:</Label>
+                  <p className="font-mono text-xs truncate">{reportModal.data.report_path}</p>
+                </div>
+              </div>
+              
+              {/* JSON */}
+              <ScrollArea className="h-[400px] border rounded-lg">
+                <pre className="p-4 text-xs font-mono bg-muted/30">
+                  {JSON.stringify(reportModal.data.report, null, 2)}
+                </pre>
+              </ScrollArea>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
