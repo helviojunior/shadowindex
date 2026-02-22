@@ -594,6 +594,9 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
+      {/* Divisor */}
+      <div className="h-px bg-border/50 my-2" />
+
       {/* Linha 4: Status do Scan (linha inteira) */}
       <Card>
         <CardHeader className="pb-2">
