@@ -327,6 +327,13 @@ class OCRWorker:
         from database import OCRJob, FileVersion, AppSettings
         import mimetypes
         
+        # Tentar importar python-magic, fallback para mimetypes
+        try:
+            import magic
+            has_libmagic = True
+        except ImportError:
+            has_libmagic = False
+        
         # Buscar próximo job pendente (ordenado por prioridade e data)
         result = await db.execute(
             select(OCRJob)
@@ -365,8 +372,20 @@ class OCRWorker:
         
         # HARD-CODED: Sempre ignorar mimetypes text/* - não faz sentido OCR em texto
         if not is_excluded and job.local_path and os.path.exists(job.local_path):
-            # Usar mimetypes para detecção baseada em extensão (fallback seguro)
-            file_mimetype, _ = mimetypes.guess_type(job.local_path)
+            file_mimetype = None
+            
+            # Tentar com libmagic primeiro (detecção real pelo conteúdo)
+            if has_libmagic:
+                try:
+                    mime = magic.Magic(mime=True)
+                    file_mimetype = mime.from_file(job.local_path)
+                except Exception as e:
+                    logger.warning(f"libmagic failed for {job.file_name}: {e}, trying mimetypes fallback")
+            
+            # Fallback para mimetypes (baseado em extensão)
+            if not file_mimetype:
+                file_mimetype, _ = mimetypes.guess_type(job.local_path)
+            
             if file_mimetype and file_mimetype.startswith('text/'):
                 is_excluded = True
                 skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
