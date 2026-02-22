@@ -239,19 +239,7 @@ const Downloads = () => {
   
   useScanEvents(handleScanProgress, handleScanComplete);
 
-  // Load scan jobs
-  const loadScanJobs = useCallback(async () => {
-    if (pollingPausedRef.current) return;
-    
-    try {
-      const response = await axios.get(`${API}/scans`);
-      setScanJobs(response.data || []);
-    } catch (error) {
-      console.error('Error loading scan jobs:', error);
-    }
-  }, []);
-
-  // Função para retomar polling manualmente (definida após loadDownloadJobs e loadScanJobs)
+  // Função para retomar polling manualmente
   const handleRefresh = useCallback(() => {
     pollingPausedRef.current = false;
     errorCountRef.current = 0;
@@ -289,56 +277,6 @@ const Downloads = () => {
       toast.error('Erro ao limpar scans');
     }
   };
-
-  // Load download jobs
-  const loadDownloadJobs = useCallback(async () => {
-    // Se polling está pausado por muitos erros, não tentar
-    if (pollingPausedRef.current) {
-      return;
-    }
-    
-    try {
-      const response = await axios.get(`${API}/downloads`);
-      const jobs = response.data || [];
-      setDownloadJobs(jobs);
-      
-      // Reset error count on success
-      errorCountRef.current = 0;
-      
-      // Calculate stats
-      const newStats = {
-        total: jobs.length,
-        pending: jobs.filter(j => j.status === 'pending').length,
-        downloading: jobs.filter(j => j.status === 'downloading').length,
-        completed: jobs.filter(j => j.status === 'completed').length,
-        failed: jobs.filter(j => j.status === 'failed').length,
-        cancelled: jobs.filter(j => j.status === 'cancelled').length,
-        skipped: jobs.filter(j => j.status === 'skipped').length,
-      };
-      setStats(newStats);
-      
-      // Auto-expand servers with active downloads
-      const serversWithActive = {};
-      jobs.forEach(job => {
-        if (job.status === 'downloading' || job.status === 'pending') {
-          serversWithActive[job.server_id] = true;
-        }
-      });
-      setExpandedServers(prev => ({ ...prev, ...serversWithActive }));
-      
-    } catch (error) {
-      errorCountRef.current += 1;
-      console.error('Error loading downloads:', error);
-      
-      // Após 3 erros consecutivos, pausar polling
-      if (errorCountRef.current >= 3) {
-        pollingPausedRef.current = true;
-        console.log('Polling paused due to consecutive errors');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   // Initial load and polling
   useEffect(() => {
