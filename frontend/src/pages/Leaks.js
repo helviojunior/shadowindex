@@ -55,7 +55,8 @@ import {
   Clock,
   FileText,
   FileSearch,
-  Key
+  Key,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShieldKeyIcon } from '@/components/icons';
