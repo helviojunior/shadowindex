@@ -35,7 +35,8 @@ const GeneralSettings = () => {
     import_ports: '445,1433,3306,5432,1521,27017,6379,5984,9200',
     auto_ocr_enabled: 'true',
     auto_ocr_extensions: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.odt,.ods,.odp',
-    auto_ocr_mimetypes: 'application/pdf,image/,text/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument'
+    auto_ocr_mimetypes: 'application/pdf,image/,text/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument',
+    auto_ocr_excluded_extensions: '.svg,.jpeg,.jpg,.png,.gif,.ico,.css,.html,.htm,.ttf,.woff,.woff2,.pyc,.exe,.dll,.msi,.emf,.bdb,.vox,.bin,.dat,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,6 +45,7 @@ const GeneralSettings = () => {
   const [newPortName, setNewPortName] = useState('');
   const [newOcrExtension, setNewOcrExtension] = useState('');
   const [newOcrMimetype, setNewOcrMimetype] = useState('');
+  const [newOcrExcludedExtension, setNewOcrExcludedExtension] = useState('');
 
   useEffect(() => {
     loadSettings();
