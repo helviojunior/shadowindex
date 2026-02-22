@@ -28,24 +28,30 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2026-02-22 (Session 33 - GitLeaks Manual Leak Fix & Deduplication)
-- [x] **Bug Fix: Botão "Abrir Arquivo" não aparecia para leaks manuais:**
-  - Problema: O botão só aparecia quando `extracted_file_id` existia
-  - Para leaks manuais sem arquivo baixado, esse campo é `null`
-  - Solução: Alterada condição para também mostrar quando existe `server_id` + (`server_path` ou `File`)
+### 2026-02-22 (Session 33 - GitLeaks & OCR Improvements)
+- [x] **Correção: Botão "Abrir Arquivo" para leaks:**
+  - Botão só aparece quando `extracted_file_id` existe (arquivo foi baixado)
+  - Simplificada lógica - usa diretamente `?file_id=` sem busca extra
   - Arquivos modificados: `frontend/src/pages/Leaks.js`
-- [x] **Suporte a navegação por caminho (`path`) no ServerBrowser:**
-  - Adicionado parâmetro de URL `path=` para navegar diretamente para um arquivo
-  - Útil para leaks manuais que não têm `extracted_file_id`
-  - Nova função `navigateToFilePath()` converte caminho de servidor em navegação na árvore
-  - Arquivos modificados: `frontend/src/pages/ServerBrowser.js`
-- [x] **Botão "Abrir Arquivo" no modal de detalhes do finding:**
-  - Adicionado botão de navegação direta no modal de detalhes
-  - Permite navegar para o arquivo do leak a partir da visualização detalhada
 - [x] **Verificação de deduplicação do GitLeaks:**
-  - Confirmado que `save_finding_to_db` verifica fingerprint antes de salvar
-  - Confirmado que `register_manual_leak` verifica duplicatas no cache
-  - Teste: criação de leak duplicado é rejeitada com mensagem apropriada
+  - Confirmado funcionamento correto de prevenção de duplicatas
+  - `save_finding_to_db` verifica fingerprint antes de salvar
+- [x] **OCR: Removida extensão .txt da lista automática:**
+  - Não faz sentido fazer OCR em arquivos de texto puro
+  - Atualizado em `database.py` (valor padrão) e via API (banco)
+- [x] **OCR: Suporte a certificados digitais (.pfx, .p12, .cer, .crt, .pem):**
+  - Novo método `_extract_certificate_text()` em `ocr_worker.py`
+  - Extrai todas as informações do certificado em formato texto:
+    - Thumbprint (SHA1)
+    - Subject (CN, O, OU, C, ST, L, Email)
+    - Issuer (mesmos campos)
+    - Validade (data início, fim, status, dias restantes)
+    - Informações técnicas (versão, serial, algoritmo)
+    - Indicação de chave privada (com alerta)
+    - Cadeia de certificados (se PFX)
+    - Extensões (Key Usage, Subject Alt Names, etc.)
+  - Salva resultado em arquivo `.ocr` no mesmo diretório
+  - Suporta PFX/P12 com múltiplas tentativas de senha
 
 ### 2026-02-22 (Session 32 - GitLeaks Enhancement & UI Improvements)
 - [x] **Bug Fix: Erro `'str' object has no attribute 'isoformat'` ao navegar diretórios:**
