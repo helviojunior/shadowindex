@@ -382,10 +382,15 @@ class GitleaksService:
                                         finding['extracted_file_id'] = ids[1]
                                         finding['extracted_version'] = ids[2]
                                     
-                                    # Adicionar ao cache em memória
-                                    self._findings.append(finding)
+                                    # Verificar se já existe no cache (por Fingerprint)
+                                    fingerprint = finding.get('Fingerprint')
+                                    already_in_cache = any(f.get('Fingerprint') == fingerprint for f in self._findings)
                                     
-                                    # Salvar no banco de dados (persistência)
+                                    if not already_in_cache:
+                                        # Adicionar ao cache em memória
+                                        self._findings.append(finding)
+                                    
+                                    # Salvar no banco de dados (persistência) - já verifica duplicatas internamente
                                     if await save_finding_to_db(finding):
                                         saved_count += 1
                                 
