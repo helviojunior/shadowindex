@@ -190,9 +190,9 @@ class OCRWorker:
             from datetime import datetime, timezone
             now = datetime.now(timezone.utc)
             if now > cert.not_valid_after_utc:
-                lines.append(f"  Status: EXPIRADO")
+                lines.append("  Status: EXPIRADO")
             elif now < cert.not_valid_before_utc:
-                lines.append(f"  Status: AINDA NÃO VÁLIDO")
+                lines.append("  Status: AINDA NÃO VÁLIDO")
             else:
                 days_left = (cert.not_valid_after_utc - now).days
                 lines.append(f"  Status: VÁLIDO ({days_left} dias restantes)")
