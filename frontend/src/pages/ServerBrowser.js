@@ -1478,50 +1478,6 @@ const ServerBrowser = () => {
     }
   };
 
-  // Navegar para um arquivo pelo seu caminho no servidor (usado por leaks manuais)
-  const navigateToFilePath = async (filePath) => {
-    if (!filePath) return;
-    
-    setNavigatingToResult(true);
-    
-    try {
-      // Parse do caminho: \\server\share\folder\file.txt
-      const pathParts = filePath.replace(/\//g, '\\').split('\\').filter(p => p);
-      
-      if (pathParts.length < 2) {
-        toast.error('Caminho de arquivo inválido');
-        return;
-      }
-      
-      // Extrair nome do share e nome do arquivo
-      const serverIp = pathParts[0];
-      const shareName = pathParts[1];
-      const fileName = pathParts[pathParts.length - 1];
-      
-      // Criar objeto similar ao resultado de busca
-      const item = {
-        name: fileName,
-        full_path: filePath,
-        share_name: shareName,
-        item_type: 'File',
-        itemType: 'File'
-      };
-      
-      // Usar a função de navegação existente
-      await navigateToSearchResult(item);
-      
-    } catch (error) {
-      console.error('Error navigating to file path:', error);
-      toast.error('Erro ao navegar até o arquivo');
-    } finally {
-      setNavigatingToResult(false);
-      
-      // Limpar o parâmetro da URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-    }
-  };
-
   const loadShares = async () => {
     // Verificar se o servidor tem uma instância de plugin configurada
     if (!server?.plugin_instance_id) {
