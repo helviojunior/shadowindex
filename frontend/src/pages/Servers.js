@@ -268,13 +268,21 @@ const Servers = () => {
 
     setResolvingIp(true);
     try {
-      // Usar endpoint que prioriza IPv4
-      const response = await axios.post(`${API}/soap/resolve-ipv4`, {
+      // Preparar payload com plugin_instance_id se selecionado
+      const payload = {
         operation: 'Resolve',
         s1: formData.name,
         s2: '',
         ignore_cache: ignoreCache
-      });
+      };
+      
+      // Adicionar plugin_instance_id se uma instância foi selecionada
+      if (formData.plugin_instance_id && formData.plugin_instance_id !== 'none') {
+        payload.plugin_instance_id = parseInt(formData.plugin_instance_id);
+      }
+      
+      // Usar endpoint que prioriza IPv4
+      const response = await axios.post(`${API}/soap/resolve-ipv4`, payload);
 
       // O backend já retorna o IPv4 prioritário
       const result = response.data.result;
@@ -288,8 +296,20 @@ const Servers = () => {
       }
     } catch (error) {
       console.error('Error resolving IP:', error);
-      const errorMsg = error.response?.data?.detail || 'Erro ao resolver IP. Verifique o nome do servidor.';
-      toast.error(errorMsg);
+      
+      // Tratamento de erro estruturado
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'object') {
+          toast.error(detail.message || 'Erro ao resolver IP', {
+            description: 'Verifique as configurações do plugin selecionado.'
+          });
+        } else {
+          toast.error(detail);
+        }
+      } else {
+        toast.error('Erro ao resolver IP. Verifique o nome do servidor.');
+      }
     } finally {
       setResolvingIp(false);
     }
