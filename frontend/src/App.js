@@ -22,6 +22,7 @@ import PluginSoapConfig from "@/pages/PluginSoapConfig";
 import PluginDirectConfig from "@/pages/PluginDirectConfig";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
+import { WebSocketProvider } from "@/hooks/useWebSocket";
 
 function App() {
   const [darkMode, setDarkMode] = useState(true);
