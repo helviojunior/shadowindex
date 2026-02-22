@@ -160,6 +160,12 @@ class DownloadWorker:
                 await self._task
             except asyncio.CancelledError:
                 pass
+        if self._stale_check_task:
+            self._stale_check_task.cancel()
+            try:
+                await self._stale_check_task
+            except asyncio.CancelledError:
+                pass
         logger.info("Download worker stopped")
     
     async def _run_loop(self):
