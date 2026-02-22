@@ -318,16 +318,18 @@ class ProxyServerCreate(BaseModel):
     ip: str
     port: int
     proxy_type: Optional[str] = "http"  # "http" or "socks5"
-    username: Optional[str] = None
-    password: Optional[str] = None
+    credential_id: Optional[int] = None  # FK para Credential
+    username: Optional[str] = None  # Deprecated
+    password: Optional[str] = None  # Deprecated
 
 class ProxyServerUpdate(BaseModel):
     name: Optional[str] = None
     ip: Optional[str] = None
     port: Optional[int] = None
     proxy_type: Optional[str] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
+    credential_id: Optional[int] = None
+    username: Optional[str] = None  # Deprecated
+    password: Optional[str] = None  # Deprecated
 
 class ProxyServerResponse(BaseModel):
     id: int
@@ -335,6 +337,7 @@ class ProxyServerResponse(BaseModel):
     ip: str
     port: int
     proxy_type: Optional[str] = "http"
+    credential_id: Optional[int] = None
     username: Optional[str] = None
     created_at: datetime
 
