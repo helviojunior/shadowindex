@@ -126,13 +126,13 @@ const OCRJobs = () => {
     
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([loadJobs(), loadStats()]);
+      await Promise.all([loadJobs(), loadStats(), loadTikaStatus()]);
       setLoading(false);
     };
     
     loadData();
     
-    // Polling a cada 5 segundos
+    // Polling a cada 5 segundos para jobs e stats
     const interval = setInterval(() => {
       if (isMounted.current) {
         loadJobs();
@@ -140,11 +140,19 @@ const OCRJobs = () => {
       }
     }, 5000);
     
+    // Polling a cada 30 segundos para status do Tika
+    const tikaInterval = setInterval(() => {
+      if (isMounted.current) {
+        loadTikaStatus();
+      }
+    }, 30000);
+    
     return () => {
       isMounted.current = false;
       clearInterval(interval);
+      clearInterval(tikaInterval);
     };
-  }, [loadJobs, loadStats]);
+  }, [loadJobs, loadStats, loadTikaStatus]);
 
   // Cancelar job
   const cancelJob = async (jobId) => {
