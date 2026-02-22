@@ -3504,7 +3504,8 @@ const ServerBrowser = () => {
                       
                       // Limpar os filhos carregados para forçar re-fetch
                       // Tentar ambos os formatos de nodeId
-                      const nodeIdByName = `share-${selectedItem.share_name}`;
+                      const shareNameForId = selectedItem.share_name || selectedItem.shareName || selectedItem.name;
+                      const nodeIdByName = `share-${shareNameForId}`;
                       const nodeIdById = String(selectedItem.id);
                       
                       setNodeChildren(prev => {
