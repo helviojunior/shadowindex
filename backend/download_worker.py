@@ -6,7 +6,7 @@ Características:
 - Número de downloads simultâneos configurável via AppSettings
 - Processamento em background independente do navegador
 - Suporte a downloads em chunks para arquivos grandes
-- Atualização de progresso em tempo real
+- Atualização de progresso em tempo real via WebSocket
 """
 
 import asyncio
@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from database import FileVersion
+from websocket_manager import get_websocket_manager
 
 logger = logging.getLogger(__name__)
 
