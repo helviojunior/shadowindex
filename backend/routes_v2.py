@@ -3483,16 +3483,23 @@ async def get_gitleaks_findings(
 
 @router.delete("/gitleaks/findings")
 async def clear_gitleaks_findings():
-    """Limpa todos os findings do cache"""
+    """Limpa todos os findings do cache e do banco de dados"""
     from gitleaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
-    count = service.clear_findings()
+    
+    # Limpar do banco de dados
+    db_count = await service.clear_findings_from_db()
+    
+    # Limpar do cache em memória
+    cache_count = service.clear_findings()
+    
+    total_cleared = max(db_count, cache_count)
     
     return {
         "success": True,
-        "cleared": count,
-        "message": f"{count} findings removidos"
+        "cleared": total_cleared,
+        "message": f"{total_cleared} findings removidos"
     }
 
 @router.post("/gitleaks/findings/reload")
