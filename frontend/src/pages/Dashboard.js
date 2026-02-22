@@ -370,7 +370,7 @@ const Dashboard = () => {
                       tick={{ fill: '#666', fontSize: 9 }}
                     />
                     <Radar
-                      name="Vulnerabilities"
+                      name="Leaks"
                       dataKey="vulnerabilities"
                       stroke="#EF4444"
                       fill="#EF4444"
@@ -382,7 +382,7 @@ const Dashboard = () => {
                         border: '1px solid #333',
                         borderRadius: '8px'
                       }}
-                      formatter={(value) => [`${value} leaks`, 'Vulnerabilities']}
+                      formatter={(value) => [`${value} leaks`, 'Leaks']}
                     />
                   </RadarChart>
                 </ResponsiveContainer>
