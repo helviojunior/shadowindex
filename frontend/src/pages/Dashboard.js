@@ -145,13 +145,17 @@ const Dashboard = () => {
   
   const loadJobs = async () => {
     try {
-      const [downloads, scans] = await Promise.all([
+      const [downloads, scans, ocr, gitleaks] = await Promise.all([
         axios.get(`${API}/downloads`).catch(() => ({ data: [] })),
-        axios.get(`${API}/scans`).catch(() => ({ data: [] }))
+        axios.get(`${API}/scans`).catch(() => ({ data: [] })),
+        axios.get(`${API_V2}/ocr/jobs?limit=20`).catch(() => ({ data: [] })),
+        axios.get(`${API_V2}/gitleaks/jobs?active_only=false`).catch(() => ({ data: [] }))
       ]);
       
       setDownloadJobs(downloads.data || []);
       setScanJobs(scans.data || []);
+      setOcrJobs(ocr.data || []);
+      setGitleaksJobs(gitleaks.data || []);
       setJobsLoading(false);
     } catch (error) {
       console.error('Error loading jobs:', error);
