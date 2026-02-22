@@ -144,7 +144,7 @@ const PluginDirectConfig = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <Key className="w-4 h-4" />
+                <ShieldKeyIcon className="w-4 h-4" />
                 Credencial (tipo Usuário/Senha)
               </Label>
               <Select 
