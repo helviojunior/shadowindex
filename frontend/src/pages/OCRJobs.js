@@ -526,11 +526,15 @@ const OCRJobs = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog.action === 'clear' ? 'Limpar Jobs Finalizados' : 'Cancelar Job'}
+              {confirmDialog.action === 'clear' ? 'Limpar Jobs Finalizados' : 
+               confirmDialog.action === 'retry' ? 'Reexecutar Jobs Falhados' :
+               'Cancelar Job'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDialog.action === 'clear' 
                 ? 'Isso removerá todos os jobs concluídos, falhados e ignorados. Esta ação não pode ser desfeita.'
+                : confirmDialog.action === 'retry'
+                ? `Isso reenfileirará ${stats.failed} jobs falhados para processamento novamente.`
                 : 'Tem certeza que deseja cancelar este job?'
               }
             </AlertDialogDescription>
@@ -543,10 +547,12 @@ const OCRJobs = () => {
                   clearFinishedJobs();
                 } else if (confirmDialog.action === 'cancel') {
                   cancelJob(confirmDialog.jobId);
+                } else if (confirmDialog.action === 'retry') {
+                  retryFailedJobs();
                 }
                 setConfirmDialog({ open: false, action: null, jobId: null });
               }}
-              className="bg-red-500 hover:bg-red-600"
+              className={confirmDialog.action === 'retry' ? "bg-blue-500 hover:bg-blue-600" : "bg-red-500 hover:bg-red-600"}
             >
               Confirmar
             </AlertDialogAction>
