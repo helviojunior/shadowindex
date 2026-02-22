@@ -898,10 +898,12 @@ Portuguese (pt-BR)
 ### P0 - FIXED (Session 29)
 - ✅ **Bug: Sync/Download usando plugin padrão:** Corrigido! Os endpoints de download agora usam `get_plugin_for_server()` em vez de `get_default_soap_service()` para respeitar a instância de plugin configurada no servidor.
 
+### P2 - FIXED (Session 36)
+- ✅ **Issue: Contador de Downloads Incorreto / Jobs Travados:** Resolvido com timeout automático (10 min) e loop de verificação periódica (60s) para jobs stale. Jobs travados são marcados como "failed" e UI é atualizada via WebSocket.
+
 ### User Verification Pending
 - **Sync (Download) button:** Needs end-to-end testing after recent refactorings
-- **Directory highlight persistence:** Needs confirmation that visited directories stay highlighted after page refresh
-- **SOCKS5 Proxy:** Needs testing with real SOCKS5 proxy server
+- **SOCKS5 Proxy:** Needs testing with real SOCKS5 proxy server (implementation complete, waiting for test environment)
 - **OCR with Tika:** Needs testing with real files when Tika service is running
 
 ### Completed (Session 19)
