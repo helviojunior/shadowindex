@@ -3967,11 +3967,12 @@ async def clear_finished_jobs(db: AsyncSession = Depends(get_db)):
 
 @api_router.post("/downloads/retry-all-failed")
 async def retry_all_failed_jobs(db: AsyncSession = Depends(get_db)):
-    """Recoloca todos os downloads falhados na fila"""
+    """Recoloca todos os downloads e scans falhados na fila"""
     from sqlalchemy import update
+    from database import ScanJob
     
-    # Atualizar todos os jobs falhados para 'queued'
-    result = await db.execute(
+    # Atualizar todos os download jobs falhados para 'queued'
+    download_result = await db.execute(
         update(DownloadJob)
         .where(DownloadJob.status == 'failed')
         .values(
@@ -3983,12 +3984,31 @@ async def retry_all_failed_jobs(db: AsyncSession = Depends(get_db)):
             completed_at=None
         )
     )
+    
+    # Atualizar todos os scan jobs falhados para 'pending'
+    scan_result = await db.execute(
+        update(ScanJob)
+        .where(ScanJob.status == 'failed')
+        .values(
+            status='pending',
+            processed_files=0,
+            queued_files=0,
+            error_message=None,
+            started_at=None,
+            completed_at=None
+        )
+    )
+    
     await db.commit()
+    
+    total_requeued = download_result.rowcount + scan_result.rowcount
     
     return {
         "success": True, 
-        "requeued": result.rowcount,
-        "message": f"{result.rowcount} downloads recolocados na fila"
+        "requeued": total_requeued,
+        "downloads_requeued": download_result.rowcount,
+        "scans_requeued": scan_result.rowcount,
+        "message": f"{total_requeued} jobs recolocados na fila ({download_result.rowcount} downloads, {scan_result.rowcount} scans)"
     }
 
 
