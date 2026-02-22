@@ -10,7 +10,7 @@ import subprocess
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -18,9 +18,56 @@ logger = logging.getLogger(__name__)
 # Diretório para armazenar resultados do GitLeaks
 GITLEAKS_OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "gitleaks")
 GITLEAKS_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gitleaks_config.toml")
+STORAGE_BASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "storage")
 
 # Garantir que o diretório existe
 os.makedirs(GITLEAKS_OUTPUT_DIR, exist_ok=True)
+
+
+def extract_ids_from_path(file_path: str) -> Optional[Tuple[int, int, int]]:
+    """
+    Extrai server_id, file_id e version de um caminho de arquivo físico.
+    
+    O caminho físico segue o padrão: {storage_base}/{server_id}/{file_id}/{version}
+    Pode ter extensões como .ocr ou .metadata no final.
+    
+    Args:
+        file_path: Caminho físico do arquivo
+        
+    Returns:
+        Tuple[server_id, file_id, version] ou None se não conseguir extrair
+    """
+    if not file_path:
+        return None
+    
+    # Normalizar path
+    path = file_path.replace('\\', '/')
+    
+    # Remover extensões .ocr e .metadata para obter o caminho base
+    if path.lower().endswith('.ocr'):
+        path = path[:-4]
+    elif path.lower().endswith('.metadata'):
+        path = path[:-9]
+    
+    # Tentar encontrar o padrão {storage_base}/.../server_id/file_id/version
+    # O padrão é: qualquer coisa seguida de /numero/numero/numero no final
+    match = re.search(r'/(\d+)/(\d+)/(\d+)$', path)
+    if match:
+        return int(match.group(1)), int(match.group(2)), int(match.group(3))
+    
+    # Tentar padrão alternativo apenas com server_id/file_id/version (sem prefixo)
+    parts = path.split('/')
+    if len(parts) >= 3:
+        try:
+            # Pegar os últimos 3 componentes
+            version = int(parts[-1])
+            file_id = int(parts[-2])
+            server_id = int(parts[-3])
+            return server_id, file_id, version
+        except (ValueError, IndexError):
+            pass
+    
+    return None
 
 
 def normalize_file_path(file_path: str) -> Dict[str, Any]:
