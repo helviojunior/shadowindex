@@ -65,6 +65,8 @@ class DirectInteractionPlugin(BasePlugin):
         # Credential configuration - MUST be user_password type
         self.credential_id = config.get("credential_id")
         self._credential = None  # Will be loaded lazily
+        self._credential_id_used = None  # Track which credential ID was used
+        self._on_auth_success_callback = None  # Callback for successful authentication
         
         # DNS configuration
         self.dns_mode = config.get("dns_mode", "system")  # 'system' or 'custom'
@@ -77,6 +79,23 @@ class DirectInteractionPlugin(BasePlugin):
         
         logger.info(f"DirectInteractionPlugin initialized: dns_mode={self.dns_mode}, "
                    f"dns_servers={self.dns_servers}, credential_id={self.credential_id}")
+    
+    def set_on_auth_success_callback(self, callback):
+        """
+        Set a callback to be called when authentication is successful.
+        
+        Args:
+            callback: Async function that takes credential_id as argument
+        """
+        self._on_auth_success_callback = callback
+    
+    async def _notify_auth_success(self):
+        """Notify that authentication was successful"""
+        if self._on_auth_success_callback and self._credential_id_used:
+            try:
+                await self._on_auth_success_callback(self._credential_id_used)
+            except Exception as e:
+                logger.warning(f"Error in auth success callback: {e}")
     
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
