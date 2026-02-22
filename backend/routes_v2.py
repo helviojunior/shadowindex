@@ -4494,7 +4494,8 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             ".npmrc", ".pypirc", ".netrc",  # Package managers
             ".pgpass", ".my.cnf",  # Database configs
             ".aws", ".boto",  # AWS configs
-            ".ssh", ".gnupg"  # SSH/GPG
+            ".ssh", ".gnupg",  # SSH/GPG
+            ".ppk"  # PuTTY private key
         ],
         "exact_names": [
             ".env",
@@ -4507,7 +4508,13 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             "config.py",
             "secrets.yaml",
             "credentials.json",
-            "service-account.json"
+            "service-account.json",
+            "id_rsa",
+            "id_rsa.pub",
+            "id_dsa",
+            "id_ecdsa",
+            "id_ed25519",
+            "credentials"
         ],
         "mime_types": [
             "application/x-pkcs12",
@@ -4533,7 +4540,7 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             r".*_\d{8,}.*",  # Timestamps longos
             r".*-\d{6,}.*"  # Números de sequência
         ],
-        "log_extensions": [".log", ".logs"]
+        "log_extensions": [".log", ".logs", ".txt"]
     },
     
     # Auto-start GitLeaks após scan crítico
