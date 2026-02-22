@@ -375,8 +375,16 @@ const ProxyServers = () => {
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
                           <div className="font-medium">
-                            {proxy.username ? (
-                              <span className="text-green-500">Configurada ({proxy.username})</span>
+                            {proxy.credential_id ? (
+                              <span className="text-green-500 flex items-center gap-2">
+                                <CredentialIcon className="w-4 h-4" />
+                                {getCredentialName(proxy.credential_id)}
+                              </span>
+                            ) : proxy.username ? (
+                              <span className="text-yellow-500 flex items-center gap-2">
+                                <User className="w-4 h-4" />
+                                {proxy.username} (legado)
+                              </span>
                             ) : (
                               <span className="text-muted-foreground">Sem autenticação</span>
                             )}
