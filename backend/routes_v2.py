@@ -493,6 +493,28 @@ async def list_shares(
                     "plugin_name": e.plugin_name
                 }
             )
+        
+        except ConnectionException as e:
+            logger.warning(f"Connection error for server {server.ip}: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "connection_error",
+                    "message": str(e),
+                    "server_ip": server.ip
+                }
+            )
+        
+        except AccessDeniedException as e:
+            logger.warning(f"Access denied for server {server.ip}: {e}")
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "access_denied",
+                    "message": str(e),
+                    "server_ip": server.ip
+                }
+            )
                 
         except ValueError as e:
             # Erro de validação (plugin_instance_id não configurado, instância não encontrada, etc.)
