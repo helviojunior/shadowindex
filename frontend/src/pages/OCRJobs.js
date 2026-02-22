@@ -67,11 +67,28 @@ const OCRJobs = () => {
     failed: 0,
     skipped: 0
   });
+  const [tikaStatus, setTikaStatus] = useState({ online: null, server_url: '', error: null });
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ open: false, action: null, jobId: null });
   const isMounted = useRef(true);
+
+  // Carregar status do Tika
+  const loadTikaStatus = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/ocr/tika-status`);
+      if (isMounted.current) {
+        setTikaStatus(response.data || { online: false });
+      }
+    } catch (error) {
+      console.error('Error loading Tika status:', error);
+      if (isMounted.current) {
+        setTikaStatus({ online: false, error: 'Erro ao verificar status' });
+      }
+    }
+  }, []);
 
   // Carregar jobs
   const loadJobs = useCallback(async () => {
