@@ -3965,6 +3965,33 @@ async def clear_finished_jobs(db: AsyncSession = Depends(get_db)):
     return {"success": True, "deleted": len(jobs_to_delete)}
 
 
+@api_router.post("/downloads/retry-all-failed")
+async def retry_all_failed_jobs(db: AsyncSession = Depends(get_db)):
+    """Recoloca todos os downloads falhados na fila"""
+    from sqlalchemy import update
+    
+    # Atualizar todos os jobs falhados para 'queued'
+    result = await db.execute(
+        update(DownloadJob)
+        .where(DownloadJob.status == 'failed')
+        .values(
+            status='queued',
+            progress=0,
+            downloaded_bytes=0,
+            error_message=None,
+            started_at=None,
+            completed_at=None
+        )
+    )
+    await db.commit()
+    
+    return {
+        "success": True, 
+        "requeued": result.rowcount,
+        "message": f"{result.rowcount} downloads recolocados na fila"
+    }
+
+
 # =====================
 # App Settings Endpoints
 # =====================
