@@ -29,22 +29,22 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2026-02-22 (Session 36 - Download Worker Improvements & SOCKS5 Fix)
+### 2026-02-22 (Session 36 - Download Worker Improvements & Jobs Monitor)
 - [x] **Correção de Jobs de Download Travados:**
-  - Adicionado timeout automático de 10 minutos para downloads individuais
-  - Loop de verificação periódica (60s) para detectar jobs "stale"
-  - Jobs travados são automaticamente marcados como "failed" com mensagem de timeout
-  - Evento WebSocket `downloads_cleanup` emitido quando jobs são limpos
-- [x] **Emissão de eventos para downloads diretos:**
-  - Downloads de arquivos pequenos (diretos) agora também emitem evento `download_started`
-  - Comportamento consistente entre downloads diretos e em chunks
-- [x] **Hook `useDownloadEvents` expandido:**
-  - Novo callback `onCleanup` para evento `downloads_cleanup`
-  - Página de Downloads recarrega automaticamente quando há limpeza de jobs
+  - Reset de jobs "downloading" na inicialização do worker (comportamento existente mantido)
+  - Emissão de evento `download_started` para downloads diretos (arquivos pequenos)
 - [x] **Correção da função `get_active_proxy_url`:**
   - Agora busca credenciais da tabela `Credential` via `credential_id` do proxy
   - Suporte a autenticação HTTP com username:password
   - Fallback para campos deprecated `username/password` se `credential_id` não definido
+- [x] **Painel de Monitoramento de Jobs no Dashboard:**
+  - Nova seção "Monitoramento de Jobs" após "Status do Scan"
+  - Downloads ativos com progresso em tempo real
+  - Scans de diretório ativos com status
+  - Jobs recentes (concluídos/falhos) com badges coloridos
+  - Contador de jobs ativos no header
+  - Atualização via WebSocket em tempo real
+  - Polling de fallback a cada 5 segundos
 
 ### 2026-02-22 (Session 35 - Connection Status Alert Bar & WebSocket Expansion)
 - [x] **Barra de alerta global para erros de conexão:**
