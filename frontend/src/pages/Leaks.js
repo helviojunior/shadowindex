@@ -740,12 +740,14 @@ const Leaks = () => {
                                 </Button>
                               )}
                               {/* Abrir arquivo */}
-                              {finding.extracted_server_id && finding.extracted_file_id && (
+                              {((finding.extracted_server_id && finding.extracted_file_id) || 
+                                (finding.server_id && finding.extracted_file_id)) && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
-                                    window.location.href = `/servers/${finding.extracted_server_id}/browse?file_id=${finding.extracted_file_id}`;
+                                    const serverId = finding.extracted_server_id || finding.server_id;
+                                    window.location.href = `/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`;
                                   }}
                                   title="Abrir arquivo no navegador"
                                 >
