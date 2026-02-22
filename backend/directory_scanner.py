@@ -51,7 +51,7 @@ async def get_critical_search_config() -> Dict[str, Any]:
             try:
                 _critical_search_config = json.loads(setting.value)
                 return _critical_search_config
-            except:
+            except (json.JSONDecodeError, TypeError):
                 pass
     
     # Retornar config padrão se não encontrar
