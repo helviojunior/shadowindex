@@ -18,6 +18,12 @@ export const WebSocketProvider = ({ children }) => {
   const reconnectTimeoutRef = useRef(null);
   const pingIntervalRef = useRef(null);
   const listenersRef = useRef(new Map());
+  const connectionStatusCallbackRef = useRef(null);
+
+  // Registrar callback para status de conexão (será usado pelo ConnectionStatusContext)
+  const setConnectionStatusCallback = useCallback((callback) => {
+    connectionStatusCallbackRef.current = callback;
+  }, []);
 
   // Conectar ao WebSocket
   const connect = useCallback(() => {
@@ -32,6 +38,11 @@ export const WebSocketProvider = ({ children }) => {
       wsRef.current.onopen = () => {
         console.log('WebSocket connected');
         setIsConnected(true);
+        
+        // Notificar que está conectado
+        if (connectionStatusCallbackRef.current) {
+          connectionStatusCallbackRef.current({ connected: true });
+        }
         
         // Iniciar ping a cada 30 segundos para manter conexão viva
         pingIntervalRef.current = setInterval(() => {
@@ -50,6 +61,14 @@ export const WebSocketProvider = ({ children }) => {
           clearInterval(pingIntervalRef.current);
         }
         
+        // Notificar desconexão (apenas se não foi intencional)
+        if (event.code !== 1000 && connectionStatusCallbackRef.current) {
+          connectionStatusCallbackRef.current({ 
+            connected: false, 
+            message: 'WebSocket desconectado' 
+          });
+        }
+        
         // Reconectar após 3 segundos (exceto se fechado intencionalmente)
         if (event.code !== 1000) {
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -61,6 +80,7 @@ export const WebSocketProvider = ({ children }) => {
 
       wsRef.current.onerror = (error) => {
         console.error('WebSocket error:', error);
+        // Não notificar aqui, o onclose será chamado após o erro
       };
 
       wsRef.current.onmessage = (event) => {
@@ -85,6 +105,13 @@ export const WebSocketProvider = ({ children }) => {
       };
     } catch (error) {
       console.error('Error creating WebSocket:', error);
+      // Notificar erro de conexão
+      if (connectionStatusCallbackRef.current) {
+        connectionStatusCallbackRef.current({ 
+          connected: false, 
+          message: 'Erro ao conectar WebSocket' 
+        });
+      }
     }
   }, []);
 
