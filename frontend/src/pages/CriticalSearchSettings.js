@@ -29,6 +29,7 @@ const CriticalSearchSettings = () => {
   const [newMimeType, setNewMimeType] = useState('');
   const [newLogPattern, setNewLogPattern] = useState('');
   const [newLogExtension, setNewLogExtension] = useState('');
+  const [newExcludedExtension, setNewExcludedExtension] = useState('');
 
   useEffect(() => {
     loadConfig();
