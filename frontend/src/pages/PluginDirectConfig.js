@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Loader2, CheckCircle, XCircle, RefreshCw, Plus, Trash2, ChevronUp, 
@@ -233,37 +233,23 @@ const PluginDirectConfig = () => {
   }
 
   return (
-    <div className="space-y-6" data-testid="plugin-direct-config-page">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Server className="w-8 h-8" />
-            Interação Direta
-          </h1>
-          <p className="text-muted-foreground mt-2">Comunicação direta via SMB/Impacket</p>
-        </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="instances" data-testid="tab-instances">
-            <Plug className="w-4 h-4 mr-2" />
-            Instâncias
-          </TabsTrigger>
-          <TabsTrigger value="info" data-testid="tab-info">
-            <Settings className="w-4 h-4 mr-2" />
-            Info
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Tab: Instâncias */}
-        <TabsContent value="instances" className="space-y-6 mt-6">
-          {/* Botão Adicionar */}
-          <div className="flex justify-end">
+    <div className="h-full flex flex-col" data-testid="plugin-direct-config-page">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+              <Server className="w-6 h-6" />
+              Interação Direta
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">Comunicação direta via SMB/Impacket</p>
+          </div>
+          {activeTab === 'instances' && (
             <Button 
               onClick={() => setShowAddForm(!showAddForm)} 
               data-testid="toggle-add-instance-btn"
               variant={showAddForm ? "secondary" : "default"}
+              size="sm"
             >
               {showAddForm ? (
                 <>
@@ -277,87 +263,132 @@ const PluginDirectConfig = () => {
                 </>
               )}
             </Button>
-          </div>
-
-          {/* Form para nova instância */}
-          {showAddForm && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Nova Instância de Interação Direta</CardTitle>
-                <CardDescription>Configure uma nova instância do plugin SMB/Impacket</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Nome da Instância</Label>
-                      <Input
-                        id="name"
-                        data-testid="instance-name-input"
-                        placeholder="Produção, Homologação, etc."
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <ShieldKeyIcon className="w-4 h-4" />
-                        Credencial
-                      </Label>
-                      <Select 
-                        value={formData.config?.credential_id?.toString() || 'none'} 
-                        onValueChange={(value) => setFormData({ 
-                          ...formData, 
-                          config: { 
-                            ...formData.config, 
-                            credential_id: value === 'none' ? null : parseInt(value) 
-                          }
-                        })}
-                      >
-                        <SelectTrigger data-testid="instance-credential-select">
-                          <SelectValue placeholder="Selecione uma credencial" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sem autenticação</SelectItem>
-                          {credentials.map((cred) => (
-                            <SelectItem key={cred.id} value={cred.id.toString()}>
-                              {cred.name || `${cred.domain || ''}\\${cred.username}`}
-                              {cred.verified && ' ✓'}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea
-                      id="description"
-                      data-testid="instance-description-input"
-                      placeholder="Descrição opcional da instância"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    />
-                  </div>
-                  <Button type="submit" disabled={formLoading} data-testid="create-instance-btn">
-                    {formLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                    Criar Instância
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
           )}
+        </div>
+      </div>
 
-          {/* Lista de Instâncias */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Instâncias Configuradas</CardTitle>
-              <CardDescription>{instances.length} instância(s) de interação direta</CardDescription>
-            </CardHeader>
-            <CardContent>
+      {/* Tabs - Flat Style */}
+      <div className="px-6 pt-4 border-b border-border">
+        <div className="flex gap-8">
+          <button
+            onClick={() => setActiveTab('instances')}
+            className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
+              activeTab === 'instances' 
+                ? 'text-green-500' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            data-testid="tab-instances"
+          >
+            <Plug className="w-4 h-4" />
+            Instâncias
+            <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{instances.length}</span>
+            {activeTab === 'instances' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+            )}
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('info')}
+            className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
+              activeTab === 'info' 
+                ? 'text-green-500' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            data-testid="tab-info"
+          >
+            <Settings className="w-4 h-4" />
+            Info
+            {activeTab === 'info' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <ScrollArea className="flex-1">
+        <div className="p-6">
+          {/* Tab: Instâncias */}
+          {activeTab === 'instances' && (
+            <div className="space-y-6">
+              {/* Form para nova instância */}
+              {showAddForm && (
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base">Nova Instância de Interação Direta</CardTitle>
+                    <CardDescription>Configure uma nova instância do plugin SMB/Impacket</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Nome da Instância</Label>
+                          <Input
+                            id="name"
+                            data-testid="instance-name-input"
+                            placeholder="Produção, Homologação, etc."
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <ShieldKeyIcon className="w-4 h-4" />
+                            Credencial
+                          </Label>
+                          <Select 
+                            value={formData.config?.credential_id?.toString() || 'none'} 
+                            onValueChange={(value) => setFormData({ 
+                              ...formData, 
+                              config: { 
+                                ...formData.config, 
+                                credential_id: value === 'none' ? null : parseInt(value) 
+                              }
+                            })}
+                          >
+                            <SelectTrigger data-testid="instance-credential-select">
+                              <SelectValue placeholder="Selecione uma credencial" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem autenticação</SelectItem>
+                              {credentials.map((cred) => (
+                                <SelectItem key={cred.id} value={cred.id.toString()}>
+                                  {cred.name || `${cred.domain || ''}\\${cred.username}`}
+                                  {cred.verified && ' ✓'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="description">Descrição</Label>
+                        <Textarea
+                          id="description"
+                          data-testid="instance-description-input"
+                          placeholder="Descrição opcional da instância"
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          rows={2}
+                        />
+                      </div>
+                      <Button type="submit" disabled={formLoading} data-testid="create-instance-btn" size="sm">
+                        {formLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                        Criar Instância
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Lista de Instâncias */}
               {instances.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Nenhuma instância configurada</p>
+                <div className="text-center py-12 text-muted-foreground">
+                  <Plug className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhuma instância configurada</p>
+                  <p className="text-sm mt-1">Clique em "Nova Instância" para criar</p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {instances.map((instance) => {
@@ -415,6 +446,7 @@ const PluginDirectConfig = () => {
                               <Textarea
                                 value={editData.description}
                                 onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                                rows={2}
                               />
                             </div>
                             <div className="flex gap-2">
@@ -431,14 +463,14 @@ const PluginDirectConfig = () => {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-lg">{instance.name}</span>
+                                <span className="font-medium">{instance.name}</span>
                                 {instance.is_default && (
-                                  <Badge variant="secondary" className="gap-1">
+                                  <Badge variant="secondary" className="gap-1 text-xs">
                                     <Star className="w-3 h-3" /> Padrão
                                   </Badge>
                                 )}
                                 {!instance.is_active && (
-                                  <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
+                                  <Badge variant="outline" className="text-muted-foreground text-xs">Inativo</Badge>
                                 )}
                               </div>
                               {instance.description && (
@@ -452,7 +484,7 @@ const PluginDirectConfig = () => {
                             <div className="flex items-center gap-1">
                               {/* Health status */}
                               {health && (
-                                <Badge variant={health.healthy ? "default" : "destructive"} className="mr-2">
+                                <Badge variant={health.healthy ? "default" : "destructive"} className="mr-2 text-xs">
                                   {health.healthy ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
                                   {health.healthy ? 'OK' : 'Erro'}
                                 </Badge>
@@ -462,6 +494,7 @@ const PluginDirectConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => checkHealth(instance.id)}
                                 disabled={checkingHealth[instance.id]}
                                 title="Verificar saúde"
@@ -477,6 +510,7 @@ const PluginDirectConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => toggleDefault(instance)}
                                 title={instance.is_default ? "Remover padrão" : "Definir como padrão"}
                               >
@@ -491,6 +525,7 @@ const PluginDirectConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => toggleActive(instance)}
                                 title={instance.is_active ? "Desativar" : "Ativar"}
                               >
@@ -505,6 +540,7 @@ const PluginDirectConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => startEdit(instance)}
                                 title="Editar"
                               >
@@ -515,8 +551,8 @@ const PluginDirectConfig = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
                                 onClick={() => handleDelete(instance.id)}
-                                className="text-destructive hover:text-destructive"
                                 title="Excluir"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -529,267 +565,232 @@ const PluginDirectConfig = () => {
                   })}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab: Info */}
-        <TabsContent value="info" className="space-y-6 mt-6">
-          {/* Plugin Info Card */}
-          {pluginInfo && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plug className="w-5 h-5" />
-                  Informações do Plugin
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Nome</div>
-                    <div className="font-medium">{pluginInfo.name}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Tipo</div>
-                    <Badge variant="outline">{pluginInfo.type}</Badge>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Versão</div>
-                    <div className="font-medium">{pluginInfo.version}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Descrição</div>
-                    <div className="text-sm text-muted-foreground">{pluginInfo.description}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           )}
 
-          {/* Test Configuration Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Network className="w-5 h-5" />
-                Testar Configuração
-              </CardTitle>
-              <CardDescription>Configure e teste a resolução DNS do plugin</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Credential Selector */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <ShieldKeyIcon className="w-4 h-4" />
-                    Credencial (tipo Usuário/Senha)
-                  </Label>
-                  <Select 
-                    value={testConfig.credential_id} 
-                    onValueChange={(value) => setTestConfig({ ...testConfig, credential_id: value })}
-                  >
-                    <SelectTrigger data-testid="test-credential-selector">
-                      <SelectValue placeholder="Selecione uma credencial" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhuma</SelectItem>
-                      {credentials.map((cred) => (
-                        <SelectItem key={cred.id} value={cred.id.toString()}>
-                          {cred.name || `${cred.domain || ''}\\${cred.username}`}
-                          {cred.verified && ' ✓'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Modo DNS</Label>
-                  <Select 
-                    value={testConfig.dns_mode} 
-                    onValueChange={(value) => setTestConfig({ ...testConfig, dns_mode: value })}
-                  >
-                    <SelectTrigger data-testid="test-dns-mode-selector">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="system">Padrão do Sistema Operacional</SelectItem>
-                      <SelectItem value="custom">Servidores Personalizados</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Custom DNS Servers */}
-              {testConfig.dns_mode === 'custom' && (
-                <div className="space-y-2">
-                  <Label>Servidores DNS (separados por vírgula)</Label>
-                  <Input
-                    placeholder="8.8.8.8, 8.8.4.4"
-                    value={testConfig.dns_servers}
-                    onChange={(e) => setTestConfig({ ...testConfig, dns_servers: e.target.value })}
-                    data-testid="test-dns-servers-input"
-                  />
-                </div>
+          {/* Tab: Info */}
+          {activeTab === 'info' && (
+            <div className="space-y-6">
+              {/* Plugin Info Card */}
+              {pluginInfo && (
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Plug className="w-4 h-4" />
+                      Informações do Plugin
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Nome</div>
+                        <div className="font-medium text-sm">{pluginInfo.name}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Tipo</div>
+                        <Badge variant="outline" className="text-xs">{pluginInfo.type}</Badge>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Versão</div>
+                        <div className="font-medium text-sm">{pluginInfo.version}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Descrição</div>
+                        <div className="text-sm text-muted-foreground">{pluginInfo.description}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
-              {/* Test Hostname */}
-              <div className="space-y-2">
-                <Label>Hostname para Teste</Label>
-                <Input
-                  placeholder="google.com"
-                  value={testConfig.test_hostname}
-                  onChange={(e) => setTestConfig({ ...testConfig, test_hostname: e.target.value })}
-                  data-testid="test-hostname-input"
-                />
-              </div>
+              {/* Test Configuration Card */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Network className="w-4 h-4" />
+                    Testar Configuração
+                  </CardTitle>
+                  <CardDescription>Configure e teste a resolução DNS do plugin</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Credential Selector */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm">
+                        <ShieldKeyIcon className="w-4 h-4" />
+                        Credencial (tipo Usuário/Senha)
+                      </Label>
+                      <Select 
+                        value={testConfig.credential_id} 
+                        onValueChange={(value) => setTestConfig({ ...testConfig, credential_id: value })}
+                      >
+                        <SelectTrigger data-testid="test-credential-selector">
+                          <SelectValue placeholder="Selecione uma credencial" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {credentials.map((cred) => (
+                            <SelectItem key={cred.id} value={cred.id.toString()}>
+                              {cred.name || `${cred.domain || ''}\\${cred.username}`}
+                              {cred.verified && ' ✓'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-              {/* Test Button */}
-              <Button onClick={testPlugin} disabled={testing} data-testid="test-plugin-btn">
-                {testing ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                )}
-                Testar Plugin
-              </Button>
+                    <div className="space-y-2">
+                      <Label className="text-sm">Modo DNS</Label>
+                      <Select 
+                        value={testConfig.dns_mode} 
+                        onValueChange={(value) => setTestConfig({ ...testConfig, dns_mode: value })}
+                      >
+                        <SelectTrigger data-testid="test-dns-mode-selector">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="system">Padrão do Sistema Operacional</SelectItem>
+                          <SelectItem value="custom">Servidores Personalizados</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              {/* Test Result */}
-              {testResult && (
-                <div className={`p-4 rounded-lg border ${testResult.healthy ? 'bg-green-500/10 border-green-500' : 'bg-red-500/10 border-red-500'}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {testResult.healthy ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
+                  {/* Custom DNS Servers */}
+                  {testConfig.dns_mode === 'custom' && (
+                    <div className="space-y-2">
+                      <Label className="text-sm">Servidores DNS (separados por vírgula)</Label>
+                      <Input
+                        placeholder="8.8.8.8, 8.8.4.4"
+                        value={testConfig.dns_servers}
+                        onChange={(e) => setTestConfig({ ...testConfig, dns_servers: e.target.value })}
+                        data-testid="test-dns-servers-input"
+                      />
+                    </div>
+                  )}
+
+                  {/* Test Hostname */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Hostname para Teste</Label>
+                    <Input
+                      placeholder="google.com"
+                      value={testConfig.test_hostname}
+                      onChange={(e) => setTestConfig({ ...testConfig, test_hostname: e.target.value })}
+                      data-testid="test-hostname-input"
+                    />
+                  </div>
+
+                  {/* Test Button */}
+                  <Button onClick={testPlugin} disabled={testing} data-testid="test-plugin-btn" size="sm">
+                    {testing ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
-                      <XCircle className="w-5 h-5 text-red-500" />
+                      <RefreshCw className="w-4 h-4 mr-2" />
                     )}
-                    <span className="font-medium">
-                      {testResult.healthy ? 'Sucesso' : 'Falha'}
-                    </span>
-                  </div>
-                  <p className="text-sm">{testResult.message}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    Testar Plugin
+                  </Button>
 
-          {/* Funcionalidades */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Funcionalidades</CardTitle>
-              <CardDescription>Status das funcionalidades do plugin</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Network className="w-5 h-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Resolução DNS</div>
-                      <div className="text-sm text-muted-foreground">
-                        Resolver nomes de domínio para IP com suporte a DNS personalizado e proxy SOCKS
+                  {/* Test Result */}
+                  {testResult && (
+                    <div className={`p-4 rounded-lg border ${testResult.healthy ? 'bg-green-500/10 border-green-500' : 'bg-red-500/10 border-red-500'}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {testResult.healthy ? (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        )}
+                        <span className="font-medium text-sm">
+                          {testResult.healthy ? 'Sucesso' : 'Falha'}
+                        </span>
                       </div>
+                      <p className="text-sm">{testResult.message}</p>
                     </div>
-                  </div>
-                  <Badge variant="default" className="bg-green-500">Implementado</Badge>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Network className="w-5 h-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Listagem de Compartilhamentos (SMB)</div>
-                      <div className="text-sm text-muted-foreground">
-                        Listar compartilhamentos de rede via protocolo SMB usando impacket
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="default" className="bg-green-500">Implementado</Badge>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Network className="w-5 h-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Navegação de Diretórios (SMB)</div>
-                      <div className="text-sm text-muted-foreground">
-                        Navegar diretórios em compartilhamentos de rede
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="default" className="bg-green-500">Implementado</Badge>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Network className="w-5 h-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Download de Arquivos (SMB)</div>
-                      <div className="text-sm text-muted-foreground">
-                        Baixar arquivos diretamente via protocolo SMB
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="default" className="bg-green-500">Implementado</Badge>
-                </div>
+                  )}
+                </CardContent>
+              </Card>
 
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg opacity-60">
-                  <div className="flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium">Execução SQL Direta</div>
-                      <div className="text-sm text-muted-foreground">
-                        Execução de queries SQL via conexão direta
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="outline">Não Implementado</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Config Schema Card */}
-          {pluginInfo?.config_schema && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Esquema de Configuração</CardTitle>
-                <CardDescription>Campos disponíveis para configuração de instâncias</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(pluginInfo.config_schema.properties || {}).map(([key, prop]) => (
-                    <div key={key} className="flex items-start gap-3 p-3 border border-border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-medium">{key}</span>
-                          {pluginInfo.config_schema.required?.includes(key) && (
-                            <Badge variant="destructive" className="text-[10px]">obrigatório</Badge>
+              {/* Funcionalidades */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base">Funcionalidades</CardTitle>
+                  <CardDescription>Status das funcionalidades do plugin</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {[
+                      { name: 'Resolução DNS', desc: 'Resolver nomes de domínio para IP com suporte a DNS personalizado', implemented: true },
+                      { name: 'Listagem de Compartilhamentos (SMB)', desc: 'Listar compartilhamentos de rede via protocolo SMB', implemented: true },
+                      { name: 'Navegação de Diretórios (SMB)', desc: 'Navegar diretórios em compartilhamentos de rede', implemented: true },
+                      { name: 'Download de Arquivos (SMB)', desc: 'Baixar arquivos diretamente via protocolo SMB', implemented: true },
+                      { name: 'Execução SQL Direta', desc: 'Execução de queries SQL via conexão direta', implemented: false },
+                    ].map((feat, idx) => (
+                      <div key={idx} className={`flex items-center justify-between p-3 border border-border rounded-lg ${!feat.implemented ? 'opacity-60' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          {feat.implemented ? (
+                            <Network className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-muted-foreground" />
                           )}
-                          <Badge variant="outline" className="text-[10px]">{prop.type}</Badge>
-                        </div>
-                        {prop.description && (
-                          <div className="text-sm text-muted-foreground mt-1">{prop.description}</div>
-                        )}
-                        {prop.enum && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Valores: {prop.enum.join(', ')}
+                          <div>
+                            <div className="font-medium text-sm">{feat.name}</div>
+                            <div className="text-xs text-muted-foreground">{feat.desc}</div>
                           </div>
-                        )}
-                      </div>
-                      {prop.default !== undefined && (
-                        <div className="text-sm text-muted-foreground">
-                          default: <span className="font-mono">{JSON.stringify(prop.default)}</span>
                         </div>
-                      )}
+                        <Badge 
+                          variant={feat.implemented ? "default" : "outline"} 
+                          className={`text-xs ${feat.implemented ? 'bg-green-500' : ''}`}
+                        >
+                          {feat.implemented ? 'Implementado' : 'Não Implementado'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Config Schema Card */}
+              {pluginInfo?.config_schema && (
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base">Esquema de Configuração</CardTitle>
+                    <CardDescription>Campos disponíveis para configuração de instâncias</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {Object.entries(pluginInfo.config_schema.properties || {}).map(([key, prop]) => (
+                        <div key={key} className="flex items-start gap-3 p-3 border border-border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm font-medium">{key}</span>
+                              {pluginInfo.config_schema.required?.includes(key) && (
+                                <Badge variant="destructive" className="text-[10px]">obrigatório</Badge>
+                              )}
+                              <Badge variant="outline" className="text-[10px]">{prop.type}</Badge>
+                            </div>
+                            {prop.description && (
+                              <div className="text-xs text-muted-foreground mt-1">{prop.description}</div>
+                            )}
+                            {prop.enum && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Valores: {prop.enum.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                          {prop.default !== undefined && (
+                            <div className="text-xs text-muted-foreground">
+                              default: <span className="font-mono">{JSON.stringify(prop.default)}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      </ScrollArea>
     </div>
   );
 };
