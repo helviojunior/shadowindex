@@ -1246,34 +1246,38 @@ const ServerBrowser = () => {
 
   // Navegar para um resultado de busca
   const navigateToSearchResult = async (result) => {
-    // Encontrar o share do resultado
-    const shareName = result.share_name;
+    // Mostrar overlay de loading
+    setNavigatingToResult(true);
     
-    // Expandir a árvore até o item
-    const pathParts = result.full_path.split('\\').filter(p => p);
-    
-    if (pathParts.length < 2) {
-      return;
-    }
-    
-    // Construir o path do share
-    const serverIp = pathParts[0];
-    const shareNameFromPath = pathParts[1];
-    const sharePath = `\\\\${serverIp}\\${shareNameFromPath}`;
-    const shareNodeId = `share-${shareName}`;
-    
-    // 1. Primeiro expandir o share
-    setExpandedNodes(prev => ({ ...prev, [shareNodeId]: true }));
-    
-    // Carregar filhos do share se necessário
     try {
-      await loadDirectory(shareNodeId, sharePath, shareName);
-    } catch (e) {
-      console.error('Erro ao carregar share:', e);
-    }
-    
-    // Aguardar o estado atualizar
-    await new Promise(resolve => setTimeout(resolve, 400));
+      // Encontrar o share do resultado
+      const shareName = result.share_name;
+      
+      // Expandir a árvore até o item
+      const pathParts = result.full_path.split('\\').filter(p => p);
+      
+      if (pathParts.length < 2) {
+        return;
+      }
+      
+      // Construir o path do share
+      const serverIp = pathParts[0];
+      const shareNameFromPath = pathParts[1];
+      const sharePath = `\\\\${serverIp}\\${shareNameFromPath}`;
+      const shareNodeId = `share-${shareName}`;
+      
+      // 1. Primeiro expandir o share
+      setExpandedNodes(prev => ({ ...prev, [shareNodeId]: true }));
+      
+      // Carregar filhos do share se necessário
+      try {
+        await loadDirectory(shareNodeId, sharePath, shareName);
+      } catch (e) {
+        console.error('Erro ao carregar share:', e);
+      }
+      
+      // Aguardar o estado atualizar
+      await new Promise(resolve => setTimeout(resolve, 400));
     
     // 2. Expandir cada diretório intermediário sequencialmente
     // Precisamos construir o path incrementalmente e buscar cada nível
