@@ -594,10 +594,18 @@ const Leaks = () => {
                       // Extrair nome do arquivo e diretório do path
                       const fullPath = finding.server_path || finding.original_file || finding.File || '';
                       // Separar por \ ou / para pegar o nome do arquivo
-                      const pathParts = fullPath.replace(/\//g, '\\').split('\\');
+                      const pathParts = fullPath.replace(/\//g, '\\').split('\\').filter(p => p); // filter remove strings vazias
                       const extractedFileName = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Arquivo';
-                      // Diretório é tudo exceto o último componente
-                      const directoryPath = pathParts.length > 1 ? pathParts.slice(0, -1).join('\\') : '';
+                      
+                      // Diretório: remover \\IP do início e o nome do arquivo do final
+                      // Path típico: \\172.31.255.5\E$\subdir\file.txt -> queremos: E$\subdir
+                      let directoryPath = '';
+                      if (pathParts.length > 1) {
+                        // Se começa com IP (primeiro componente parece IP), pular ele
+                        const startIndex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(pathParts[0]) ? 1 : 0;
+                        // Pegar do share até antes do arquivo
+                        directoryPath = pathParts.slice(startIndex, -1).join('\\');
+                      }
                       
                       // Usar o nome do arquivo do banco ou extraído do path
                       const fileName = finding.file_name || extractedFileName || 'Arquivo';
