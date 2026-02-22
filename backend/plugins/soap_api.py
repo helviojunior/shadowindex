@@ -100,7 +100,7 @@ class SoapApiPlugin(BasePlugin):
         }
     
     async def health_check(self) -> Dict[str, Any]:
-        """Check SOAP service connectivity"""
+        """Check SOAP service connectivity using configured proxy"""
         if not self.soap_url:
             return {
                 "healthy": False,
@@ -109,12 +109,22 @@ class SoapApiPlugin(BasePlugin):
             }
         
         try:
+            # Build proxy config if available
+            proxies = None
+            if self.proxy_url:
+                proxies = {
+                    'http': self.proxy_url,
+                    'https': self.proxy_url
+                }
+                logger.info(f"Health check using proxy: {self.proxy_url}")
+            
             # Try a simple request to check connectivity
             response = await asyncio.to_thread(
                 requests.get,
                 self.soap_url + "?WSDL",
                 timeout=10,
-                verify=False
+                verify=False,
+                proxies=proxies
             )
             
             if response.status_code == 200:
@@ -123,7 +133,8 @@ class SoapApiPlugin(BasePlugin):
                     "message": "SOAP service is reachable",
                     "details": {
                         "url": self.soap_url,
-                        "status_code": response.status_code
+                        "status_code": response.status_code,
+                        "proxy_used": self.proxy_url or "none"
                     }
                 }
             else:
@@ -132,7 +143,8 @@ class SoapApiPlugin(BasePlugin):
                     "message": f"SOAP service returned status {response.status_code}",
                     "details": {
                         "url": self.soap_url,
-                        "status_code": response.status_code
+                        "status_code": response.status_code,
+                        "proxy_used": self.proxy_url or "none"
                     }
                 }
         except Exception as e:
@@ -141,7 +153,8 @@ class SoapApiPlugin(BasePlugin):
                 "message": f"Failed to connect: {str(e)}",
                 "details": {
                     "url": self.soap_url,
-                    "error": str(e)
+                    "error": str(e),
+                    "proxy_used": self.proxy_url or "none"
                 }
             }
     
