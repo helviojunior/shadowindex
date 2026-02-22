@@ -7,6 +7,7 @@ Plugin implementation for communicating with servers via SOAP Web Service.
 import asyncio
 import logging
 import xml.etree.ElementTree as ET
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 import requests
