@@ -2652,7 +2652,12 @@ const ServerBrowser = () => {
     }
     
     const isShare = !!item.share_name;
-    const rawNodeId = item.id || `share-${item.share_name}`;
+    // Calcular nodeId de forma robusta:
+    // - Para shares: usar share-{nome}
+    // - Para outros: usar ID do banco, ou gerar hash do fullPath se não existir
+    const rawNodeId = isShare 
+      ? `share-${item.share_name}` 
+      : (item.id || `item-${(item.fullPath || item.full_path || item.name || '').replace(/[^a-zA-Z0-9]/g, '_')}`);
     const nodeId = String(rawNodeId);
     const safeTestId = nodeId.replace(/\$/g, '_dollar_');
     const isExpanded = expandedNodes[nodeId];
