@@ -1,10 +1,14 @@
 version: '3.8'
 
-# Lightweight docker-compose for development/testing
-# Uses SOAP mock server instead of real SOAP services
-# Does not include Tika (OCR)
+# Docker-compose for development/testing
+# Includes SOAP mock server and Tika for OCR
 
 services:
+  tika:
+    image: apache/tika:latest-full
+    container_name: ops-integration-tika-dev
+    restart: unless-stopped
+
   soap-mock:
     build:
       context: ./backend/soap_mock
@@ -25,12 +29,14 @@ services:
       - ./shadowindex_data:/app/data
     environment:
       - CORS_ORIGINS=*
+      - TIKA_SERVER_URL=http://tika:9998
       - SOAP_MOCK_URL=http://soap-mock:9999/Test.asmx
     extra_hosts:
       - "proxy.local:host-gateway"
     command: uvicorn server:app --host 0.0.0.0 --port 8001 --reload
     restart: unless-stopped
     depends_on:
+      - tika
       - soap-mock
 
   frontend:
