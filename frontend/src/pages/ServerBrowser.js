@@ -2840,12 +2840,16 @@ const ServerBrowser = () => {
                 // Mostrar se é o nó focado
                 if (childNodeId === focusedNodeId) return true;
                 // Verificar se o nó focado está nos filhos deste child
-                const hasFocusedDescendant = (nodes, targetId) => {
+                // Usar Set para evitar visitar o mesmo nó duas vezes (proteção contra loop)
+                const hasFocusedDescendant = (nodes, targetId, visited = new Set(), maxDepth = 30) => {
+                  if (maxDepth <= 0) return false; // Proteção contra recursão infinita
                   for (const node of nodes) {
                     const nId = String(node.id || `share-${node.share_name}`);
+                    if (visited.has(nId)) continue; // Já visitado, pular
+                    visited.add(nId);
                     if (nId === targetId) return true;
                     const nc = nodeChildren[nId] || [];
-                    if (nc.length > 0 && hasFocusedDescendant(nc, targetId)) return true;
+                    if (nc.length > 0 && hasFocusedDescendant(nc, targetId, visited, maxDepth - 1)) return true;
                   }
                   return false;
                 };
