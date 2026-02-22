@@ -3870,7 +3870,7 @@ async def get_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/ocr/stats")
-async def get_ocr_stats(db: AsyncSession = Depends(get_db)):
+async def get_ocr_stats(db: AsyncSession = Depends(get_db_readonly)):
     """Retorna estatísticas dos jobs de OCR"""
     from database import OCRJob
     from sqlalchemy import func
