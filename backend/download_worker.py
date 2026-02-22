@@ -17,7 +17,7 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from database import FileVersion
 from websocket_manager import get_websocket_manager
@@ -30,6 +30,34 @@ WORKER_POLL_INTERVAL = 2  # segundos entre verificações
 
 # Instância global do worker
 _worker_instance: Optional['DownloadWorker'] = None
+
+
+async def emit_download_stats():
+    """Busca e emite estatísticas de downloads via WebSocket"""
+    from database import async_session_maker, DownloadJob
+    
+    try:
+        async with async_session_maker() as db:
+            result = await db.execute(
+                select(DownloadJob.status, func.count(DownloadJob.id))
+                .group_by(DownloadJob.status)
+            )
+            status_counts = dict(result.all())
+            
+            stats = {
+                "total": sum(status_counts.values()),
+                "pending": status_counts.get('pending', 0),
+                "downloading": status_counts.get('downloading', 0),
+                "completed": status_counts.get('completed', 0),
+                "failed": status_counts.get('failed', 0),
+                "cancelled": status_counts.get('cancelled', 0),
+                "skipped": status_counts.get('skipped', 0)
+            }
+            
+            ws_manager = get_websocket_manager()
+            await ws_manager.emit_download_stats(stats)
+    except Exception as e:
+        logger.error(f"Error emitting download stats: {e}")
 
 
 async def get_max_concurrent_downloads() -> int:
