@@ -131,10 +131,10 @@ const Gitleaks = () => {
     }
   }, []);
 
-  // Polling para jobs ativos
+  // Polling para jobs ativos (5 segundos)
   useEffect(() => {
     if (polling) {
-      const interval = setInterval(loadJobs, 2000);
+      const interval = setInterval(loadJobs, 5000);
       return () => clearInterval(interval);
     }
   }, [polling, loadJobs]);
