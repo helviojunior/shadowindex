@@ -167,20 +167,19 @@ const Servers = () => {
     setLoading(true);
 
     try {
-      // Build plugin config based on plugin type
-      let pluginConfig = {};
-      if (formData.plugin_type === 'soap_api') {
-        pluginConfig = { soap_url: formData.plugin_config.soap_url || soapApiUrl };
+      const payload = {
+        name: formData.name,
+        ip: formData.ip
+      };
+
+      // Add plugin_instance_id if selected
+      if (formData.plugin_instance_id) {
+        payload.plugin_instance_id = parseInt(formData.plugin_instance_id);
       }
 
-      await axios.post(`${API}/servers`, {
-        name: formData.name,
-        ip: formData.ip,
-        plugin_type: formData.plugin_type,
-        plugin_config: pluginConfig
-      });
+      await axios.post(`${API}/servers`, payload);
       toast.success('Servidor cadastrado com sucesso');
-      setFormData({ name: '', ip: '', plugin_type: 'soap_api', plugin_config: {} });
+      setFormData({ name: '', ip: '', plugin_instance_id: '' });
       setShowAddForm(false);
       loadServers();
     } catch (error) {
