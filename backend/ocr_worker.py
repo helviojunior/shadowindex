@@ -303,11 +303,18 @@ class OCRWorker:
     async def _process_loop(self):
         """Loop principal de processamento"""
         from database import AsyncSessionLocal
+        from sqlalchemy.exc import OperationalError
         
         while self.running:
             try:
                 async with AsyncSessionLocal() as db:
                     await self._process_pending_jobs(db)
+            except OperationalError as e:
+                if "database is locked" in str(e):
+                    logger.warning("Database locked in OCR worker, retrying in 5s...")
+                    await asyncio.sleep(5)
+                else:
+                    logger.error(f"Database error in OCR worker loop: {e}")
             except Exception as e:
                 logger.error(f"Error in OCR worker loop: {e}")
                 print(f"=== OCR WORKER ERROR: {e} ===", flush=True)
