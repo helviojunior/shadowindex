@@ -259,13 +259,12 @@ const Leaks = () => {
     }
   };
 
-  // Limpar todos findings
+  // Limpar todos findings - com confirmação
   const handleClearFindings = async () => {
-    if (!confirm('Tem certeza que deseja limpar todos os findings?')) return;
-    
     try {
       await axios.delete(`${API}/gitleaks/findings`);
       loadFindings();
+      toast.success('Todos os findings foram removidos');
     } catch (error) {
       toast.error('Erro ao limpar findings');
     }
@@ -290,6 +289,7 @@ const Leaks = () => {
       if (response.data.success) {
         // Recarregar findings para atualizar a estrutura de files
         loadFindings();
+        toast.success('Finding removido');
       } else {
         toast.error(response.data.message || 'Erro ao remover finding');
       }
@@ -298,6 +298,26 @@ const Leaks = () => {
       const errorMsg = error.response?.data?.detail || error.message;
       toast.error(`Erro ao remover finding: ${errorMsg}`);
     }
+  };
+
+  // Abrir diálogo de confirmação para limpar todos os findings
+  const confirmClearAllFindings = () => {
+    setConfirmDialog({ open: true, action: 'clearAll', fingerprint: null });
+  };
+
+  // Abrir diálogo de confirmação para deletar um finding
+  const confirmDeleteFinding = (fingerprint) => {
+    setConfirmDialog({ open: true, action: 'deleteFinding', fingerprint });
+  };
+
+  // Executar ação confirmada
+  const executeConfirmedAction = () => {
+    if (confirmDialog.action === 'clearAll') {
+      handleClearFindings();
+    } else if (confirmDialog.action === 'deleteFinding' && confirmDialog.fingerprint) {
+      handleDeleteFinding(confirmDialog.fingerprint);
+    }
+    setConfirmDialog({ open: false, action: null, fingerprint: null });
   };
 
   // Copiar para clipboard
