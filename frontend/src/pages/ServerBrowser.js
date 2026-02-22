@@ -3057,6 +3057,21 @@ const ServerBrowser = () => {
           {/* Botões de ação para arquivos */}
           {isFile && !isAccessDenied && (
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Botão Identificar Credencial - ao lado do Abrir */}
+              {downloaded && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="h-7 text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
+                  onClick={() => setShowLeakModal(true)}
+                  title="Identificar credencial manualmente"
+                  data-testid="identify-credential-button"
+                >
+                  <ShieldKeyIcon className="w-4 h-4 mr-1" />
+                  Identificar
+                </Button>
+              )}
+              
               {downloaded && (
                 <Button 
                   size="sm" 
