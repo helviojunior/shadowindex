@@ -192,16 +192,18 @@ def build_directory_response(path: str) -> str:
         original_ip = ip_match.group(1)
     
     results = ""
+    backslash = '\\'
     for idx, item in enumerate(items, 1):
-        fullname = f"\\\\{original_ip}\\{normalized_path.split('\\')[-1] if '\\' in normalized_path else ''}\\{item['name']}"
-        if normalized_path.count('\\') > 3:
+        # Build fullname path
+        if normalized_path.count(backslash) > 3:
             # Build full path properly
-            parts = normalized_path.split('\\')
-            share_and_path = '\\'.join(parts[3:])
-            fullname = f"\\\\{original_ip}\\{share_and_path}\\{item['name']}"
+            parts = normalized_path.split(backslash)
+            share_and_path = backslash.join(parts[3:])
+            fullname = f"{backslash}{backslash}{original_ip}{backslash}{share_and_path}{backslash}{item['name']}"
         else:
-            share_name = normalized_path.split('\\')[-1] if '\\' in normalized_path else ''
-            fullname = f"\\\\{original_ip}\\{share_name}\\{item['name']}"
+            parts = normalized_path.split(backslash)
+            share_name = parts[-1] if parts else ''
+            fullname = f"{backslash}{backslash}{original_ip}{backslash}{share_name}{backslash}{item['name']}"
         
         results += f'''<Result diffgr:id="Result{idx}" msdata:rowOrder="{idx-1}" diffgr:hasChanges="inserted"><type>{item["type"]}</type><name>{escape_xml(item["name"])}</name><length>{item["length"]}</length><s_length>{item["s_length"]}</s_length><lastwritetime>{item["lastwritetime"]}</lastwritetime><fullname>{escape_xml(fullname)}</fullname></Result>'''
     
