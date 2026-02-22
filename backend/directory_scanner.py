@@ -296,9 +296,6 @@ class DirectoryScanner:
                 item_size = item.size or 0
                 item_full_path = item.path or f"{full_path}\\{item_name}"
                 
-                # Calcular path relativo para o job
-                item_path = f"{scan_job.path}\\{item_name}" if scan_job.path else item_name
-                
                 if item_type == 'Directory':
                     # Adicionar subdiretório à fila de scan
                     if scan_job.depth < scan_job.max_depth:
