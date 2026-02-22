@@ -145,7 +145,7 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
     Raises:
         CredentialNotSetException: If plugin requires credential but none configured
     """
-    from database import SoapApiUrl, Credential, PluginInstance
+    from database import Credential, PluginInstance
     from .exceptions import CredentialNotSetException
     
     # Get proxy URL
