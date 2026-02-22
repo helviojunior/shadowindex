@@ -382,20 +382,23 @@ const ImportServers = () => {
               </div>
               {/* Action buttons moved to header */}
               <div className="flex items-center gap-2">
-                {/* Plugin selector */}
+                {/* Plugin instance selector */}
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-muted-foreground whitespace-nowrap">
                     <Plug className="w-4 h-4 inline mr-1" />
-                    Plugin:
+                    Instância:
                   </Label>
-                  <Select value={selectedPlugin} onValueChange={setSelectedPlugin}>
-                    <SelectTrigger className="w-48" data-testid="plugin-select">
-                      <SelectValue placeholder="Selecione o plugin" />
+                  <Select value={selectedPluginInstance} onValueChange={setSelectedPluginInstance}>
+                    <SelectTrigger className="w-56" data-testid="plugin-instance-select">
+                      <SelectValue placeholder="Selecione uma instância..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(availablePlugins).map(([type, info]) => (
-                        <SelectItem key={type} value={type}>
-                          {info.name}
+                      {pluginInstances.map((instance) => (
+                        <SelectItem key={instance.id} value={instance.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            {instance.name}
+                            <span className="text-xs text-muted-foreground">({instance.plugin_type})</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -410,7 +413,7 @@ const ImportServers = () => {
                 </Button>
                 <Button 
                   onClick={handleImport} 
-                  disabled={importing || selectedHosts.size === 0}
+                  disabled={importing || selectedHosts.size === 0 || !selectedPluginInstance}
                   data-testid="import-btn"
                 >
                   {importing ? (
