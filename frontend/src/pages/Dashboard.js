@@ -149,13 +149,14 @@ const Dashboard = () => {
         axios.get(`${API}/downloads`).catch(() => ({ data: [] })),
         axios.get(`${API}/scans`).catch(() => ({ data: [] })),
         axios.get(`${API_V2}/ocr/jobs?limit=20`).catch(() => ({ data: [] })),
-        axios.get(`${API_V2}/gitleaks/jobs?active_only=false`).catch(() => ({ data: [] }))
+        axios.get(`${API_V2}/gitleaks/jobs?active_only=false`).catch(() => ({ data: { jobs: [] } }))
       ]);
       
       setDownloadJobs(downloads.data || []);
       setScanJobs(scans.data || []);
       setOcrJobs(ocr.data || []);
-      setGitleaksJobs(gitleaks.data || []);
+      // GitLeaks retorna { jobs: [], total: 0 }
+      setGitleaksJobs(gitleaks.data?.jobs || []);
       setJobsLoading(false);
     } catch (error) {
       console.error('Error loading jobs:', error);
