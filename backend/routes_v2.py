@@ -15,6 +15,7 @@ Estrutura:
 - /api/v2/servers/{server_id}/batch/queue - Batch queue
 """
 
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
