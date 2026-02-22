@@ -59,8 +59,6 @@ class DownloadWorker:
         self.max_concurrent = 3  # Será atualizado do banco
         self.semaphore = asyncio.Semaphore(3)
         self._task: Optional[asyncio.Task] = None
-        self._stale_check_task: Optional[asyncio.Task] = None
-        self._last_stale_check = datetime.now(timezone.utc)
     
     async def start(self):
         """Inicia o worker em background"""
@@ -78,7 +76,6 @@ class DownloadWorker:
         
         self.running = True
         self._task = asyncio.create_task(self._run_loop())
-        self._stale_check_task = asyncio.create_task(self._stale_check_loop())
         logger.info("Download worker started")
     
     async def _reset_stale_downloading_jobs(self):
