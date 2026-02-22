@@ -1641,7 +1641,32 @@ async def get_server(
             import logging
             logging.getLogger(__name__).warning(f"Failed to refresh server via SOAP: {e}")
     
-    return server
+    # Buscar nome da instância do plugin se configurada
+    plugin_instance_name = None
+    if server.plugin_instance_id:
+        plugin_result = await db.execute(
+            select(PluginInstance).where(PluginInstance.id == server.plugin_instance_id)
+        )
+        plugin_instance = plugin_result.scalar_one_or_none()
+        if plugin_instance:
+            plugin_instance_name = plugin_instance.name
+    
+    # Retornar resposta com nome da instância
+    return ServerResponse(
+        id=server.id,
+        guid=server.guid,
+        name=server.name,
+        ip=server.ip,
+        verified=server.verified,
+        shares_count=server.shares_count,
+        downloaded_files_count=server.downloaded_files_count,
+        last_verified_at=server.last_verified_at,
+        created_at=server.created_at,
+        plugin_instance_id=server.plugin_instance_id,
+        plugin_instance_name=plugin_instance_name,
+        plugin_type=server.plugin_type,
+        plugin_config=server.plugin_config
+    )
 
 @api_router.put("/servers/{server_id}", response_model=ServerResponse)
 async def update_server_full(server_id: int, server: ServerCreate, db: AsyncSession = Depends(get_db)):
