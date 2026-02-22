@@ -129,13 +129,14 @@ class DirectInteractionPlugin(BasePlugin):
             "required": ["credential_id"]
         }
     
-    def set_credential(self, credential: Dict[str, Any]):
+    def set_credential(self, credential: Dict[str, Any], credential_id: int = None):
         """
         Set the credential to use for SMB operations.
         Must be called before SMB operations.
         
         Args:
             credential: Credential dict with domain, username, password/ntlm_hash
+            credential_id: Optional ID of the credential for verification tracking
         """
         if credential.get("credential_type") != "user_password":
             raise PluginException(
@@ -143,6 +144,7 @@ class DirectInteractionPlugin(BasePlugin):
                 {"credential_type": credential.get("credential_type")}
             )
         self._credential = credential
+        self._credential_id_used = credential_id or credential.get("id")
     
     async def health_check(self) -> Dict[str, Any]:
         """Check plugin connectivity by testing DNS resolution"""
