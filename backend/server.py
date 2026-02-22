@@ -3535,7 +3535,7 @@ async def download_file_to_client(
 @api_router.get("/downloads")
 async def get_download_jobs(
     server_id: Optional[int] = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db_readonly)
 ):
     """Lista todos os jobs de download, opcionalmente filtrado por servidor"""
     query = select(DownloadJob).order_by(desc(DownloadJob.created_at))
