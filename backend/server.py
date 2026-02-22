@@ -4084,6 +4084,14 @@ async def startup_event():
         print("=== STARTUP: Directory scanner started successfully ===", flush=True)
     except Exception as e:
         print(f"=== STARTUP ERROR: Failed to start directory scanner: {e} ===", flush=True)
+    
+    # Iniciar worker de OCR em background
+    try:
+        from ocr_worker import start_ocr_worker
+        await start_ocr_worker()
+        print("=== STARTUP: OCR worker started successfully ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP ERROR: Failed to start OCR worker: {e} ===", flush=True)
 
 
 async def create_default_plugin_instances():
