@@ -167,6 +167,19 @@ const OCRJobs = () => {
     }
   };
 
+  // Cancelar todos os jobs OCR
+  const cancelAllOcrJobs = async () => {
+    try {
+      const response = await axios.post(`${API}/ocr/cancel-all`);
+      toast.success(response.data.message || 'Todos os jobs OCR cancelados');
+      loadJobs();
+      loadStats();
+    } catch (error) {
+      console.error('Error cancelling all OCR jobs:', error);
+      toast.error('Erro ao cancelar todos os jobs OCR');
+    }
+  };
+
   // Limpar jobs finalizados
   const clearFinishedJobs = async () => {
     try {
@@ -538,6 +551,7 @@ const OCRJobs = () => {
             <AlertDialogTitle>
               {confirmDialog.action === 'clear' ? 'Limpar Jobs Finalizados' : 
                confirmDialog.action === 'retry' ? 'Reexecutar Jobs Falhados' :
+               confirmDialog.action === 'cancelAll' ? 'Cancelar Todos os Jobs' :
                'Cancelar Job'}
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -545,6 +559,8 @@ const OCRJobs = () => {
                 ? 'Isso removerá todos os jobs concluídos, falhados e ignorados. Esta ação não pode ser desfeita.'
                 : confirmDialog.action === 'retry'
                 ? `Isso reenfileirará ${stats.failed} jobs falhados para processamento novamente.`
+                : confirmDialog.action === 'cancelAll'
+                ? `Isso cancelará ${(stats.pending || 0) + (stats.running || 0)} jobs pendentes e em execução.`
                 : 'Tem certeza que deseja cancelar este job?'
               }
             </AlertDialogDescription>
@@ -559,6 +575,8 @@ const OCRJobs = () => {
                   cancelJob(confirmDialog.jobId);
                 } else if (confirmDialog.action === 'retry') {
                   retryFailedJobs();
+                } else if (confirmDialog.action === 'cancelAll') {
+                  cancelAllOcrJobs();
                 }
                 setConfirmDialog({ open: false, action: null, jobId: null });
               }}
