@@ -620,8 +620,9 @@ async def browse_share(
     refresh: bool = False,
     db: AsyncSession = Depends(get_db)
 ):
-    """Navega no compartilhamento via SOAP e atualiza cache"""
-    from soap_service import get_default_soap_service
+    """Navega no compartilhamento usando o plugin do servidor e atualiza cache"""
+    from plugins.factory import get_plugin_for_server
+    from plugins.base import DirectoryItem
     from server import parse_exec4_directory_listing
     
     server = await get_server_or_404(db, server_id)
@@ -630,32 +631,36 @@ async def browse_share(
     # Construir path do share
     share_path = f"\\\\{server.ip}\\{share.share_name}"
     
-    # Chamar SOAP Exec4
-    soap_service = await get_default_soap_service(db)
-    params = {"s1": share_path, "s2": ""}
+    logger.info(f"Browsing share {share.share_name} for server {server.ip} using plugin {server.plugin_type}")
     
     try:
-        result_str = await soap_service.call_soap_operation(db, "Exec4", params, refresh)
+        # Obter o plugin correto para o servidor
+        plugin = await get_plugin_for_server(db, server)
+        
+        # Chamar list_directory do plugin
+        directory_items = await plugin.list_directory(share_path, ignore_cache=refresh)
         
         items = []
+        parsed_items = []
         
-        # Parsear resultado
-        parsed_items = parse_exec4_directory_listing(result_str)
-        
-        # Verificar erros de acesso
-        if not parsed_items and result_str:
-            result_lower = result_str.lower()
-            if "access" in result_lower and "denied" in result_lower:
-                share.access_denied = True
-                share.error_message = "Acesso negado"
-                await db.commit()
-                return {
-                    "success": False,
-                    "share_id": share_id,
-                    "access_denied": True,
-                    "error_message": "Acesso negado",
-                    "items": []
-                }
+        if directory_items:
+            for item in directory_items:
+                if isinstance(item, DirectoryItem):
+                    parsed_items.append({
+                        "type": item.item_type,
+                        "name": item.name,
+                        "fullPath": item.full_path,
+                        "size": item.size,
+                        "modified": item.modified.isoformat() if item.modified else None
+                    })
+                elif isinstance(item, dict):
+                    parsed_items.append({
+                        "type": item.get("item_type", item.get("type", "File")),
+                        "name": item.get("name", ""),
+                        "fullPath": item.get("full_path", item.get("fullPath", "")),
+                        "size": item.get("size", 0),
+                        "modified": item.get("modified")
+                    })
         
         # Remover itens antigos deste path
         await db.execute(
@@ -711,6 +716,21 @@ async def browse_share(
         
     except Exception as e:
         logger.error(f"Error browsing share {share_id}: {e}")
+        
+        # Verificar erros de acesso
+        error_str = str(e).lower()
+        if "access" in error_str and "denied" in error_str:
+            share.access_denied = True
+            share.error_message = "Acesso negado"
+            await db.commit()
+            return {
+                "success": False,
+                "share_id": share_id,
+                "access_denied": True,
+                "error_message": "Acesso negado",
+                "items": []
+            }
+        
         raise HTTPException(status_code=500, detail=str(e))
 
 
