@@ -1,9 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useWebSocket } from './useWebSocket';
+import notificationSound from '@/assets/sounds/notification-sound.mp3';
 
 /**
  * Hook para tocar som de notificação quando todos os jobs de um tipo são concluídos.
- * Monitora eventos WebSocket de estatísticas de downloads e gitleaks.
+ * Monitora eventos WebSocket de estatísticas de downloads, gitleaks e OCR.
  * Toca som quando o número de jobs ativos vai de >0 para 0.
  */
 export const useJobCompletionSFX = (enabled = true) => {
@@ -14,40 +15,31 @@ export const useJobCompletionSFX = (enabled = true) => {
   const prevGitleaksActive = useRef(null);
   const prevOcrActive = useRef(null);
   
-  // AudioContext para gerar som
-  const audioContextRef = useRef(null);
+  // Referência para o elemento de áudio
+  const audioRef = useRef(null);
 
-  // Função para tocar um som de notificação usando Web Audio API
+  // Inicializar elemento de áudio
+  useEffect(() => {
+    audioRef.current = new Audio(notificationSound);
+    audioRef.current.volume = 0.5;
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Função para tocar o som de notificação
   const playNotificationSound = useCallback(() => {
     try {
-      // Criar AudioContext se não existir
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(e => {
+          console.warn('Erro ao tocar som de notificação:', e);
+        });
       }
-      
-      const ctx = audioContextRef.current;
-      
-      // Criar oscilador para som de "ding"
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      // Configurar som agradável de notificação (duas notas)
-      oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
-      oscillator.frequency.setValueAtTime(1100, ctx.currentTime + 0.1); // C#6
-      
-      oscillator.type = 'sine';
-      
-      // Envelope de volume
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-      
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 0.5);
-      
     } catch (error) {
       console.warn('Erro ao tocar som de notificação:', error);
     }
