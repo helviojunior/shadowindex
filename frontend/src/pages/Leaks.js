@@ -718,6 +718,19 @@ const Leaks = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              {/* Botão para abrir o arquivo no navegador */}
+                              {finding.extracted_server_id && finding.extracted_file_id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    window.location.href = `/servers/${finding.extracted_server_id}/browse?file_id=${finding.extracted_file_id}`;
+                                  }}
+                                  title="Abrir arquivo no navegador"
+                                >
+                                  <File className="w-4 h-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
