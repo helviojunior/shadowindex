@@ -221,7 +221,9 @@ class DirectInteractionPlugin(BasePlugin):
             return ip
             
         except Exception as e:
-            logger.error(f"DNS resolution failed for {hostname}: {e}")
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f"DNS resolution failed for {hostname}: {e}\n{error_traceback}")
             raise ConnectionException(f"Failed to resolve {hostname}: {str(e)}")
     
     async def _resolve_with_system_dns(self, hostname: str) -> str:
