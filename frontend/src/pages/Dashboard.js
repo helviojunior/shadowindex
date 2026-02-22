@@ -88,12 +88,14 @@ const Dashboard = () => {
         axios.get(`${API}/proxy-servers`, config).catch(() => ({ data: [] })),
         axios.get(`${API}/soap-apis`, config).catch(() => ({ data: [] })),
         axios.get(`${API}/cache/stats`, config).catch(() => ({ data: { entries: 0 } })),
-        axios.get(`${API}/servers`),
-        axios.get(`${API_V2}/gitleaks/stats`).catch(() => ({ data: null })),
-        axios.get(`${API_V2}/gitleaks/findings`).catch(() => ({ data: { files: [] } }))
+        axios.get(`${API}/servers`, config).catch(() => ({ data: [] })),
+        axios.get(`${API_V2}/gitleaks/stats`, config).catch(() => ({ data: null })),
+        axios.get(`${API_V2}/gitleaks/findings`, config).catch(() => ({ data: { files: [] } }))
       ]);
+      
+      clearTimeout(timeoutId);
 
-      const totalDownloads = servers.data.reduce((acc, server) => acc + (server.downloaded_files_count || 0), 0);
+      const totalDownloads = (servers.data || []).reduce((acc, server) => acc + (server.downloaded_files_count || 0), 0);
 
       setStats({
         credentials: creds.data.length,
