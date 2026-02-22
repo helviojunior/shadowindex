@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, inspect, JSON, Float
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, inspect, JSON, Float, event
 from datetime import datetime, timezone
 import os
 import logging
@@ -16,7 +16,40 @@ os.makedirs(DATA_DIR, exist_ok=True)  # Garantir que o diretório existe
 DATABASE_PATH = os.path.join(DATA_DIR, "ops_integration.db")
 DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+# Configurações para melhor concorrência no SQLite
+# - pool_size=1: SQLite não suporta conexões concorrentes de escrita
+# - pool_timeout=30: Tempo de espera para obter uma conexão do pool
+# - connect_args: busy_timeout para esperar em caso de lock
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=False,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=3600,
+    connect_args={
+        "timeout": 30,  # busy_timeout em segundos para aiosqlite
+        "check_same_thread": False
+    }
+)
+
+# Configurar WAL mode e outras otimizações para o SQLite
+@event.listens_for(engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    """Configura pragmas do SQLite para melhor concorrência"""
+    cursor = dbapi_connection.cursor()
+    # WAL mode permite leituras concorrentes durante escritas
+    cursor.execute("PRAGMA journal_mode=WAL")
+    # Sincronização normal (equilibrio entre performance e segurança)
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    # Cache size em KB (negativo) - 64MB
+    cursor.execute("PRAGMA cache_size=-65536")
+    # Tempo de espera em ms quando o banco está bloqueado (30 segundos)
+    cursor.execute("PRAGMA busy_timeout=30000")
+    # Otimização de memória temporária
+    cursor.execute("PRAGMA temp_store=MEMORY")
+    cursor.close()
+
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # Alias para uso mais limpo
