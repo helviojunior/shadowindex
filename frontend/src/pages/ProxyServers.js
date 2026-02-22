@@ -86,6 +86,7 @@ const ProxyServers = () => {
       ip: proxy.ip,
       port: proxy.port.toString(),
       proxy_type: proxy.proxy_type || 'http',
+      auth_type: proxy.username ? 'user_password' : 'none',
       username: proxy.username || '',
       password: ''  // Don't prefill password
     });
