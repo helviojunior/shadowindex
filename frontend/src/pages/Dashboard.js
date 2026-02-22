@@ -967,6 +967,9 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
+      {/* Divisor */}
+      <div className="h-px bg-border/50 my-2" />
+
       {/* System Controls */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card data-testid="offline-mode-card">
