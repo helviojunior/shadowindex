@@ -24,6 +24,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 import { ConnectionStatusProvider } from "@/contexts/ConnectionStatusContext";
 import { WebSocketProvider } from "@/hooks/useWebSocket";
+import ConnectionBridge from "@/components/ConnectionBridge";
 
 function App() {
   const [darkMode, setDarkMode] = useState(true);
