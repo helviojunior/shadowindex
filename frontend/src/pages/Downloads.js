@@ -257,7 +257,6 @@ const Downloads = () => {
   const cancelJob = async (jobId) => {
     try {
       await axios.post(`${API}/downloads/${jobId}/cancel`);
-      toast.success('Download cancelado');
       loadDownloadJobs();
     } catch (error) {
       console.error('Error cancelling job:', error);
@@ -269,7 +268,6 @@ const Downloads = () => {
   const cancelAllJobs = async () => {
     try {
       await axios.post(`${API}/downloads/cancel-all`);
-      toast.success('Todos os downloads cancelados');
       loadDownloadJobs();
     } catch (error) {
       console.error('Error cancelling all jobs:', error);
@@ -281,7 +279,6 @@ const Downloads = () => {
   const forceDownload = async (jobId) => {
     try {
       await axios.post(`${API}/downloads/${jobId}/force`);
-      toast.success('Download forçado iniciado');
       loadDownloadJobs();
     } catch (error) {
       console.error('Error forcing download:', error);
