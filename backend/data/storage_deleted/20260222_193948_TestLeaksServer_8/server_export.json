@@ -1,0 +1,22 @@
+{
+  "server": {
+    "id": 8,
+    "guid": "c4c185ca-e818-4e7e-837a-96ca01383423",
+    "name": "TestLeaksServer",
+    "ip": "10.0.0.100",
+    "verified": false,
+    "shares_count": 0,
+    "downloaded_files_count": 0,
+    "last_verified_at": null,
+    "created_at": "2026-02-22T19:39:43.502454",
+    "plugin_instance_id": null,
+    "plugin_type": "soap_api",
+    "plugin_config": null
+  },
+  "credential": null,
+  "shares": [],
+  "items": [],
+  "downloaded_files": [],
+  "gitleaks_findings": [],
+  "deleted_at": "2026-02-22T19:39:48.979467+00:00"
+}
