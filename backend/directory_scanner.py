@@ -191,7 +191,6 @@ class DirectoryScanner:
         print(f"=== SCANNER: Processing queue with {len(self.scan_queue)} jobs ===", flush=True)
         
         from database import Server, DownloadJob, AsyncSessionLocal
-        from soap_service import get_default_soap_service
         
         # Pegar um lote de jobs para processar
         async with self._lock:
