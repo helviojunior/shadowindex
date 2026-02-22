@@ -655,9 +655,9 @@ const Dashboard = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 divide-x divide-zinc-700">
             {/* Downloads Ativos */}
-            <div className="space-y-3">
+            <div className="space-y-3 pr-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Download className="w-4 h-4" />
                 Downloads
