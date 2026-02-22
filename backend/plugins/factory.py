@@ -144,25 +144,20 @@ async def get_active_proxy_config(db: AsyncSession) -> Optional[Dict[str, Any]]:
             
             if proxy:
                 proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
+                proxy_name = getattr(proxy, 'name', f'{proxy.ip}:{proxy.port}')
                 username = None
                 password = None
                 
-                # Try to get credentials from credential_id first
+                # Get credentials ONLY from credential_id (no fallback to deprecated fields)
                 credential_id = getattr(proxy, 'credential_id', None)
                 if credential_id:
                     cred_result = await db.execute(
                         select(Credential).where(Credential.id == credential_id)
                     )
                     credential = cred_result.scalar_one_or_none()
-                    if credential:
+                    if credential and credential.credential_type == "user_password":
                         username = credential.username
                         password = credential.password
-                
-                # Fallback to deprecated fields if no credential found
-                if not username:
-                    username = getattr(proxy, 'username', None)
-                if not password:
-                    password = getattr(proxy, 'password', None)
                 
                 # Build proxy URL without auth
                 if proxy_type == 'socks5':
@@ -176,7 +171,8 @@ async def get_active_proxy_config(db: AsyncSession) -> Optional[Dict[str, Any]]:
                     "proxy_pass": password,
                     "proxy_type": proxy_type,
                     "proxy_host": proxy.ip,
-                    "proxy_port": proxy.port
+                    "proxy_port": proxy.port,
+                    "proxy_name": proxy_name
                 }
         except Exception as e:
             logger.warning(f"Error loading proxy config: {e}")
