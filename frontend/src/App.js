@@ -55,6 +55,7 @@ function App() {
                     <Route path="/files/browse" element={<FileNavigation />} />
                     <Route path="/downloads" element={<Downloads />} />
                     <Route path="/leaks" element={<Leaks />} />
+                    <Route path="/ocr" element={<OCRJobs />} />
                     <Route path="/credentials" element={<Credentials />} />
                     <Route path="/sql" element={<DatabaseConnections />} />
                     <Route path="/sql/presets" element={<SqlPresets />} />
