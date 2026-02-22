@@ -234,6 +234,10 @@ class SoapService:
             # Save to cache
             await self._save_to_cache(db, cache_key, operation, soap_envelope, result_str)
             
+            # If proxy was used successfully, mark the proxy credential as verified
+            if self.proxy_url:
+                await self._verify_proxy_credential(db)
+            
             return result_str
         
         except requests.exceptions.SSLError as e:
