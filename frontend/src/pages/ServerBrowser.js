@@ -2888,11 +2888,21 @@ const ServerBrowser = () => {
                 return hasFocusedDescendant(childChildren, focusedNodeId);
               });
               
-              return filteredChildren.map((child, index) => {
-                const isLast = index === filteredChildren.length - 1;
-                const newParentLines = [...parentLines, !isLastChild];
-                return renderTreeNode(child, depth + 1, currentShareName, isLast, newParentLines, focusedNodeId);
-              });
+              return filteredChildren
+                .filter(child => {
+                  // Evitar loop infinito: não renderizar filho cujo fullPath é igual ao path do pai
+                  const childPath = child.fullPath || child.full_path;
+                  if (childPath && childPath === path) {
+                    console.warn('[renderTreeNode] Skipping child with same path as parent:', childPath);
+                    return false;
+                  }
+                  return true;
+                })
+                .map((child, index, arr) => {
+                  const isLast = index === arr.length - 1;
+                  const newParentLines = [...parentLines, !isLastChild];
+                  return renderTreeNode(child, depth + 1, currentShareName, isLast, newParentLines, focusedNodeId);
+                });
             })()}
           </div>
         )}
