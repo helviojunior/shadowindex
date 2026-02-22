@@ -320,7 +320,7 @@ const ImportServers = () => {
           </CardTitle>
           <CardDescription>
             Faça upload de um arquivo XML gerado pelo nmap. Serão importados apenas hosts com as{' '}
-            <Link to="/config/general" className="text-primary hover:underline inline-flex items-center gap-1">
+            <Link to="/settings" className="text-primary hover:underline inline-flex items-center gap-1">
               <Settings className="w-3 h-3" />
               portas configuradas
             </Link>
