@@ -4010,13 +4010,15 @@ const ServerBrowser = () => {
                 
                     {/* Content with line numbers */}
                     {beautified ? (
-                      <div className="bg-zinc-900 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                        <div className="flex">
+                      <div className="bg-zinc-900 rounded-lg overflow-hidden max-h-[400px] overflow-auto">
+                        <div className="flex min-w-max">
                           {/* Line numbers */}
-                          <div className="flex-shrink-0 bg-zinc-800 text-zinc-500 text-xs font-mono py-4 px-2 select-none border-r border-zinc-700 text-right">
+                          <div className="flex-shrink-0 bg-zinc-800 text-zinc-500 text-xs font-mono py-4 px-2 select-none border-r border-zinc-700 text-right sticky left-0">
                             {(() => {
                               const content = typeof fileContent === 'object' ? fileContent.content : fileContent;
-                              const lines = (content || '').split('\n');
+                              // Remover tags HTML para contar linhas corretamente
+                              const textContent = content?.replace(/<[^>]*>/g, '') || '';
+                              const lines = textContent.split('\n');
                               return lines.map((_, idx) => (
                                 <div key={idx} className="leading-5 h-5">{idx + 1}</div>
                               ));
@@ -4024,16 +4026,21 @@ const ServerBrowser = () => {
                           </div>
                           {/* Content */}
                           <pre 
-                            className="flex-1 p-4 text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto"
-                            dangerouslySetInnerHTML={{ __html: typeof fileContent === 'object' ? fileContent.content : fileContent }}
+                            className="flex-1 p-4 text-sm font-mono whitespace-pre overflow-visible"
+                            dangerouslySetInnerHTML={{ __html: (() => {
+                              const content = typeof fileContent === 'object' ? fileContent.content : fileContent;
+                              // Renderizar cada linha em uma div com altura fixa
+                              const lines = (content || '').split('\n');
+                              return lines.map((line, idx) => `<div class="leading-5 h-5">${line || ' '}</div>`).join('');
+                            })() }}
                           />
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-muted/50 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                        <div className="flex">
+                      <div className="bg-muted/50 rounded-lg overflow-hidden max-h-[400px] overflow-auto">
+                        <div className="flex min-w-max">
                           {/* Line numbers */}
-                          <div className="flex-shrink-0 bg-muted text-muted-foreground/50 text-xs font-mono py-4 px-2 select-none border-r border-border text-right">
+                          <div className="flex-shrink-0 bg-muted text-muted-foreground/50 text-xs font-mono py-4 px-2 select-none border-r border-border text-right sticky left-0">
                             {(() => {
                               const content = typeof fileContent === 'object' ? fileContent.content : fileContent;
                               const lines = (content || '').split('\n');
@@ -4043,11 +4050,14 @@ const ServerBrowser = () => {
                             })()}
                           </div>
                           {/* Content */}
-                          <pre className="flex-1 p-4 text-sm font-mono whitespace-pre-wrap break-all overflow-x-auto">
+                          <pre className="flex-1 p-4 text-sm font-mono whitespace-pre overflow-visible">
                             {(() => {
                               const content = typeof fileContent === 'object' ? fileContent.content : fileContent;
                               const lines = (content || '').split('\n');
                               return lines.map((line, idx) => (
+                                <div key={idx} className="leading-5 h-5">{line || ' '}</div>
+                              ));
+                            })()}
                                 <div key={idx} className="leading-5 h-5">{line || ' '}</div>
                               ));
                             })()}
