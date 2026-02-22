@@ -31,7 +31,7 @@ const GeneralSettings = () => {
     max_simultaneous_downloads: '3',
     default_depth_levels: '5',
     default_max_file_size_mb: '100',
-    ignored_extensions: '.log,.tmp,.bak',
+    ignored_extensions: '.log,.tmp,.bak,.log.*',
     import_ports: '445,1433,3306,5432,1521,27017,6379,5984,9200',
     auto_ocr_enabled: 'true',
     auto_ocr_extensions: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.odt,.ods,.odp',
