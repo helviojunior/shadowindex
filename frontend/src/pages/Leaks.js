@@ -573,11 +573,11 @@ const Leaks = () => {
                   <TableRow className="bg-muted/50">
                     <TableHead className="font-semibold">SERVIDOR</TableHead>
                     <TableHead className="font-semibold">ARQUIVO</TableHead>
-                    <TableHead className="font-semibold">LINE</TableHead>
-                    <TableHead className="font-semibold">RULE</TableHead>
+                    <TableHead className="font-semibold">LINHA</TableHead>
+                    <TableHead className="font-semibold">REGRA</TableHead>
                     <TableHead className="font-semibold">TAGS</TableHead>
-                    <TableHead className="font-semibold">RISK</TableHead>
-                    <TableHead className="font-semibold text-right">ACTIONS</TableHead>
+                    <TableHead className="font-semibold">RISCO</TableHead>
+                    <TableHead className="font-semibold text-right">AÇÕES</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
