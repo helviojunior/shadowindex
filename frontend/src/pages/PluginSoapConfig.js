@@ -108,7 +108,7 @@ const PluginSoapConfig = () => {
   }
 
   return (
-    <div className="space-y-6" data-testid="plugin-soap-config-page">
+    <div className="space-y-8" data-testid="plugin-soap-config-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">SOAP Plugin</h1>
