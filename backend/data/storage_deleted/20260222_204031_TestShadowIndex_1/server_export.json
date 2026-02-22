@@ -1,0 +1,22 @@
+{
+  "server": {
+    "id": 1,
+    "guid": "3671df0e-2ece-4ba2-8515-7c76d4f4d075",
+    "name": "TestShadowIndex",
+    "ip": "192.168.1.1",
+    "verified": false,
+    "shares_count": 0,
+    "downloaded_files_count": 0,
+    "last_verified_at": null,
+    "created_at": "2026-02-22T19:44:03.223846",
+    "plugin_instance_id": null,
+    "plugin_type": "soap_api",
+    "plugin_config": null
+  },
+  "credential": null,
+  "shares": [],
+  "items": [],
+  "downloaded_files": [],
+  "gitleaks_findings": [],
+  "deleted_at": "2026-02-22T20:40:31.437904+00:00"
+}
