@@ -3858,14 +3858,80 @@ const ServerBrowser = () => {
                       </div>
                     )}
                     
-                    {/* PDF Preview */}
+                    {/* PDF Preview usando react-pdf */}
                     {isPdfFile(selectedItem?.name) && (
                       <div className="bg-muted/30 rounded-lg overflow-hidden">
-                        <iframe 
-                          src={filePreviewUrl}
-                          title={selectedItem?.name}
-                          className="w-full h-[500px] border-0"
-                        />
+                        {/* Controles do PDF */}
+                        <div className="flex items-center justify-between p-2 bg-muted/50 border-b border-border">
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => setPdfPageNumber(prev => Math.max(1, prev - 1))}
+                              disabled={pdfPageNumber <= 1}
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            <span className="text-sm">
+                              Página {pdfPageNumber} de {pdfNumPages || '?'}
+                            </span>
+                            <Button 
+                              variant="outline" 
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setPdfPageNumber(prev => Math.min(pdfNumPages || 1, prev + 1))}
+                              disabled={pdfPageNumber >= (pdfNumPages || 1)}
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setPdfScale(prev => Math.max(0.5, prev - 0.25))}
+                              disabled={pdfScale <= 0.5}
+                            >
+                              -
+                            </Button>
+                            <span className="text-sm w-16 text-center">{Math.round(pdfScale * 100)}%</span>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setPdfScale(prev => Math.min(2, prev + 0.25))}
+                              disabled={pdfScale >= 2}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
+                        {/* Visualizador do PDF */}
+                        <div className="flex justify-center p-4 max-h-[500px] overflow-auto bg-gray-800">
+                          <Document
+                            file={filePreviewUrl}
+                            onLoadSuccess={({ numPages }) => {
+                              setPdfNumPages(numPages);
+                              setPdfPageNumber(1);
+                            }}
+                            onLoadError={(error) => {
+                              console.error('Error loading PDF:', error);
+                              toast.error('Erro ao carregar PDF');
+                            }}
+                            loading={
+                              <div className="flex items-center justify-center p-8">
+                                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                              </div>
+                            }
+                          >
+                            <Page 
+                              pageNumber={pdfPageNumber} 
+                              scale={pdfScale}
+                              renderTextLayer={true}
+                              renderAnnotationLayer={true}
+                            />
+                          </Document>
+                        </div>
                       </div>
                     )}
                   </div>
