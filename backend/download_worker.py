@@ -18,6 +18,8 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from database import FileVersion
+
 logger = logging.getLogger(__name__)
 
 # Configurações do worker
