@@ -328,7 +328,9 @@ class DirectInteractionPlugin(BasePlugin):
             
             return await loop.run_in_executor(None, resolve_via_socks)
         except Exception as e:
-            logger.error(f"SOCKS DNS resolution failed: {e}")
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f"SOCKS DNS resolution failed: {e}\n{error_traceback}")
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, socket.gethostbyname, hostname)
     
