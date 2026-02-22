@@ -1789,6 +1789,15 @@ const ServerBrowser = () => {
       // Diretório pode estar vazio, não precisa de toast
     } catch (error) {
       console.error('Error loading directory:', error);
+      
+      // Verificar se é erro de credencial não configurada
+      if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
+        const detail = error.response.data.detail;
+        toast.error(detail.message || 'Credencial não configurada para este servidor', {
+          duration: 6000,
+          description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
+        });
+      }
     } finally {
       setLoadingNodes(prev => ({ ...prev, [nodeId]: false }));
     }
