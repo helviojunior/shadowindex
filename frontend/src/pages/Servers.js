@@ -90,13 +90,13 @@ const Servers = () => {
     // Ordenar
     if (sortConfig.key) {
       result.sort((a, b) => {
-        const aValue = a[sortConfig.key] || '';
-        const bValue = b[sortConfig.key] || '';
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
         
         if (sortConfig.key === 'ip') {
           // Ordenação especial para IP (numérica)
-          const aParts = aValue.split('.').map(Number);
-          const bParts = bValue.split('.').map(Number);
+          const aParts = (aValue || '').split('.').map(Number);
+          const bParts = (bValue || '').split('.').map(Number);
           for (let i = 0; i < 4; i++) {
             if (aParts[i] !== bParts[i]) {
               return sortConfig.direction === 'asc' 
@@ -107,8 +107,18 @@ const Servers = () => {
           return 0;
         }
         
+        // Ordenação numérica para campos numéricos
+        const numericFields = ['shares_count', 'downloaded_files_count', 'leaks_count', 'risk_score'];
+        if (numericFields.includes(sortConfig.key)) {
+          const aNum = aValue || 0;
+          const bNum = bValue || 0;
+          return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+        
         // Ordenação alfabética para outros campos
-        const comparison = aValue.localeCompare(bValue, 'pt-BR', { sensitivity: 'base' });
+        const aStr = aValue || '';
+        const bStr = bValue || '';
+        const comparison = aStr.localeCompare(bStr, 'pt-BR', { sensitivity: 'base' });
         return sortConfig.direction === 'asc' ? comparison : -comparison;
       });
     }
