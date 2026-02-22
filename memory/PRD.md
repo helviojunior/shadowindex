@@ -29,6 +29,27 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 38 - OCR Jobs Page & Sound Notifications)
+- [x] **Sistema de Notificação Sonora Global:**
+  - Hook `useJobCompletionSFX.js` para tocar som quando jobs completam
+  - Som gerado via Web Audio API (sem dependência de arquivos externos)
+  - Integrado no Layout para funcionar em todas as páginas
+  - Monitora Downloads, GitLeaks e OCR via WebSocket
+- [x] **Página de Jobs de OCR (`/ocr`):**
+  - Visualização de todos os jobs de OCR com filtros
+  - Cards de estatísticas (total, pendentes, executando, concluídos, falhados, ignorados)
+  - Tabela com detalhes dos jobs
+  - Botão para cancelar jobs pendentes/em execução
+  - Botão para limpar jobs finalizados
+  - Atualização em tempo real via polling
+- [x] **Backend OCR Melhorias:**
+  - Novo endpoint `POST /api/v2/ocr/jobs/{job_id}/cancel`
+  - Emissão de estatísticas OCR via WebSocket (`ocr_stats_updated`)
+  - Função `emit_ocr_stats()` no ocr_worker.py
+- [x] **Banco de dados renomeado:** `ops_integration.db` → `shadowindex.db`
+- [x] **Backup automático do banco:** Cria backup comprimido em `./data/backups/db_YYYYMMDD_EPOCH.db.gz` no startup
+- [x] **Exclusão de servidor com backup:** Move storage para `storage_deleted/` e exporta JSON com todos os dados incluindo GitLeaks findings
+
 ### 2026-02-22 (Session 37 - Dashboard Visual Improvements)
 - [x] **Ajustes visuais no Dashboard:**
   - Removidas barras horizontais entre seções do dashboard
