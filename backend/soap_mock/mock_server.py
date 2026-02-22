@@ -384,9 +384,24 @@ async def soap_endpoint(request: Request):
     
     # Handle operations
     if operation == "ListShares":
-        response_xml = build_shares_response(params.get("host"))
+        host = params.get("host", "")
+        # Check if server is "offline" (simulated network error)
+        if is_offline_server(host):
+            logger.info(f"Simulating offline server for host: {host}")
+            response_xml = build_network_error_response("ListShares", host, error_code=53)
+        else:
+            response_xml = build_shares_response(host)
     elif operation == "ListDirectory":
-        response_xml = build_directory_response(params.get("path", ""))
+        path = params.get("path", "")
+        # Extract host from path for offline check
+        import re
+        host_match = re.search(r'\\\\([^\\]+)\\', path)
+        host = host_match.group(1) if host_match else ""
+        if is_offline_server(host):
+            logger.info(f"Simulating offline server for path: {path}")
+            response_xml = build_network_error_response("ListDirectory", host, error_code=53)
+        else:
+            response_xml = build_directory_response(path)
     elif operation == "ResolveAddress":
         response_xml = build_resolve_address_response(params.get("hostname", "localhost"))
     elif operation == "DownloadFile":
