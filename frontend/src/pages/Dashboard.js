@@ -666,9 +666,9 @@ const Dashboard = () => {
                 </Badge>
               </div>
               
-              <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                 {downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length === 0 ? (
-                  <div className="text-center py-3 text-muted-foreground text-xs">
+                  <div className="text-center py-4 text-muted-foreground text-xs">
                     <Download className="w-6 h-6 mx-auto mb-1 opacity-30" />
                     Nenhum ativo
                   </div>
