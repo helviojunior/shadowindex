@@ -1251,7 +1251,10 @@ class DirectInteractionPlugin(BasePlugin):
                     columns = list(docs[0].keys())
                     rows = []
                     for doc in docs:
-                        rows.append([self._serialize_value(doc.get(col)) for col in columns])
+                        row_dict = {}
+                        for col in columns:
+                            row_dict[col] = self._serialize_value(doc.get(col))
+                        rows.append(row_dict)
                 else:
                     columns = []
                     rows = []
@@ -1259,7 +1262,7 @@ class DirectInteractionPlugin(BasePlugin):
             elif operation == "count":
                 count = collection.count_documents(filter_doc)
                 columns = ["count"]
-                rows = [[count]]
+                rows = [{"count": count}]
                 
             elif operation == "aggregate":
                 pipeline = query_config.get("pipeline", [])
@@ -1270,7 +1273,10 @@ class DirectInteractionPlugin(BasePlugin):
                     columns = list(docs[0].keys())
                     rows = []
                     for doc in docs:
-                        rows.append([self._serialize_value(doc.get(col)) for col in columns])
+                        row_dict = {}
+                        for col in columns:
+                            row_dict[col] = self._serialize_value(doc.get(col))
+                        rows.append(row_dict)
                 else:
                     columns = []
                     rows = []
