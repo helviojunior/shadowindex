@@ -17,6 +17,7 @@ import BeautifyTest from "@/pages/BeautifyTest";
 import SqlExecutor from "@/pages/SqlExecutor";
 import SqlPresets from "@/pages/SqlPresets";
 import Downloads from "@/pages/Downloads";
+import OCRJobs from "@/pages/OCRJobs";
 import GeneralSettings from "@/pages/GeneralSettings";
 import PluginSoapConfig from "@/pages/PluginSoapConfig";
 import PluginDirectConfig from "@/pages/PluginDirectConfig";
