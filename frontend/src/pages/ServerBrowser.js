@@ -140,6 +140,7 @@ const ServerBrowser = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [navigatingToResult, setNavigatingToResult] = useState(false); // Overlay de loading para navegação
   const [searchFilters, setSearchFilters] = useState({
     extension: '',
     sha1: '',
