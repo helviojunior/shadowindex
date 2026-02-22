@@ -160,6 +160,27 @@ def parse_exec4_directory_listing(xml_result: str) -> List[dict]:
 # Create the main app
 app = FastAPI(title="ShadowIndex API")
 
+# WebSocket endpoint
+from websocket_manager import get_websocket_manager
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint para atualizações em tempo real"""
+    ws_manager = get_websocket_manager()
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            # Mantém a conexão aberta, aguardando mensagens do cliente (ping/pong)
+            data = await websocket.receive_text()
+            # Se receber "ping", responde com "pong"
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        await ws_manager.disconnect(websocket)
+    except Exception as e:
+        logging.warning(f"WebSocket error: {e}")
+        await ws_manager.disconnect(websocket)
+
 # Create router with /api prefix
 api_router = APIRouter(prefix="/api")
 
