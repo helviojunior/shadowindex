@@ -321,7 +321,11 @@ class DirectInteractionPlugin(BasePlugin):
             ConnectionException: If connection fails
         """
         if not self._credential:
-            raise PluginException("Credencial não configurada. Chame set_credential() primeiro.")
+            raise CredentialNotSetException(
+                operation="SMB",
+                plugin_name=self.PLUGIN_NAME,
+                message="Credencial não configurada. Selecione uma credencial válida nas configurações do servidor."
+            )
         
         try:
             from impacket.smbconnection import SMBConnection
