@@ -513,6 +513,8 @@ class OCRWorker:
         finally:
             job.completed_at = datetime.now(timezone.utc)
             await db.commit()
+            # Emitir estatísticas atualizadas via WebSocket
+            await emit_ocr_stats()
 
 
 # Instância global do worker
