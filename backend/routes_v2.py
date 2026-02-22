@@ -3880,6 +3880,40 @@ async def get_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.post("/ocr/jobs/{job_id}/cancel")
+async def cancel_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Cancela um job de OCR pendente ou em execução"""
+    from database import OCRJob
+    from datetime import datetime, timezone
+    
+    result = await db.execute(select(OCRJob).where(OCRJob.id == job_id))
+    job = result.scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    
+    if job.status not in ['pending', 'running']:
+        raise HTTPException(status_code=400, detail=f"Não é possível cancelar job com status '{job.status}'")
+    
+    job.status = 'cancelled'
+    job.error_message = 'Cancelado pelo usuário'
+    job.completed_at = datetime.now(timezone.utc)
+    await db.commit()
+    
+    # Emitir estatísticas atualizadas
+    try:
+        from ocr_worker import emit_ocr_stats
+        await emit_ocr_stats()
+    except Exception as e:
+        logger.warning(f"Error emitting OCR stats: {e}")
+    
+    return {
+        "success": True,
+        "message": "Job cancelado com sucesso",
+        "job_id": job_id
+    }
+
+
 @router.get("/ocr/stats")
 async def get_ocr_stats(db: AsyncSession = Depends(get_db_readonly)):
     """Retorna estatísticas dos jobs de OCR"""
