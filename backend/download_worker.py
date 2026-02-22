@@ -307,19 +307,25 @@ class DownloadWorker:
             
             logger.info(f"File saved successfully: {full_storage_path}")
             
-            # Calcular mimetype usando libmagic ou por extensão
+            # Calcular mimetype por extensão primeiro (mais confiável no ambiente)
             mimetype = None
+            import mimetypes
             try:
-                mime = magic.Magic(mime=True)
-                mimetype = mime.from_file(str(full_storage_path))
-                logger.info(f"Calculated mimetype (libmagic): {mimetype}")
-            except ImportError:
-                # Fallback: detectar por extensão
-                import mimetypes
                 mimetype, _ = mimetypes.guess_type(str(full_storage_path))
                 logger.info(f"Calculated mimetype (extension): {mimetype}")
             except Exception as e:
-                logger.warning(f"Could not calculate mimetype: {e}")
+                logger.warning(f"Could not calculate mimetype by extension: {e}")
+            
+            # Tentar libmagic como fallback se extensão não funcionou
+            if not mimetype:
+                try:
+                    mime = magic.Magic(mime=True)
+                    mimetype = mime.from_file(str(full_storage_path))
+                    logger.info(f"Calculated mimetype (libmagic): {mimetype}")
+                except Exception as e:
+                    logger.warning(f"Could not calculate mimetype with libmagic: {e}")
+                    # Fallback final: application/octet-stream
+                    mimetype = 'application/octet-stream'
             
             # Atualizar job
             job.downloaded_bytes = len(file_bytes)
