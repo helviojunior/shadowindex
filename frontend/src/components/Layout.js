@@ -405,6 +405,43 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col h-screen overflow-hidden bg-background">
+        {/* Connection Error Alert Bar */}
+        {!isConnected && (
+          <div 
+            className="flex items-center justify-between px-4 py-2 bg-red-600/90 text-white z-[60] animate-in slide-in-from-top duration-300"
+            data-testid="connection-error-bar"
+          >
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm font-medium">
+                {errorMessage || 'Falha na comunicação com o backend'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRetryConnection}
+                disabled={isRetrying}
+                className="text-white hover:bg-white/20 h-7 px-3"
+                data-testid="retry-connection-btn"
+              >
+                <RefreshCw className={cn("w-4 h-4 mr-1.5", isRetrying && "animate-spin")} />
+                {isRetrying ? 'Tentando...' : 'Tentar novamente'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={resetConnection}
+                className="text-white hover:bg-white/20 h-7 w-7"
+                data-testid="dismiss-connection-error-btn"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Top Header - Fixed, spans full width */}
         <header className="flex items-center justify-between bg-card border-b border-border z-50">
           {/* Left side - Logo area (fixed width, independent of sidebar) */}
