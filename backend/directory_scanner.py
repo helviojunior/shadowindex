@@ -32,7 +32,7 @@ _scanner_instance: Optional['DirectoryScanner'] = None
 
 class ScanJob:
     """Representa um job de scan de diretório"""
-    def __init__(self, server_id: int, share_name: str, path: str, depth: int, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True, parent_id: str = None):
+    def __init__(self, server_id: int, share_name: str, path: str, depth: int, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True, parent_id: str = None, critical_only: bool = False):
         self.id = str(uuid.uuid4())[:8]  # ID curto único
         self.parent_id = parent_id  # ID do scan pai (para subdiretórios)
         self.server_id = server_id
@@ -42,10 +42,12 @@ class ScanJob:
         self.max_depth = max_depth
         self.max_file_size_bytes = max_file_size_bytes
         self.apply_filters = apply_filters
+        self.critical_only = critical_only  # Flag para busca crítica
         self.status = 'pending'  # pending, scanning, completed, cancelled
         self.created_at = datetime.now(timezone.utc)
         self.files_found = 0
         self.dirs_found = 0
+        self.critical_files_found = 0  # Contador de arquivos críticos
     
     def to_dict(self):
         return {
@@ -59,6 +61,8 @@ class ScanJob:
             'status': self.status,
             'files_found': self.files_found,
             'dirs_found': self.dirs_found,
+            'critical_only': self.critical_only,
+            'critical_files_found': self.critical_files_found,
             'created_at': self.created_at.isoformat()
         }
 
