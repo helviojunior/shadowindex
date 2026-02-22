@@ -2588,7 +2588,8 @@ class NmapHostData(BaseModel):
     hasSMB: Optional[bool] = False
     hasDB: Optional[bool] = False
     dbTypes: Optional[List[str]] = []
-    plugin_type: Optional[str] = "direct_interaction"
+    plugin_instance_id: Optional[int] = None
+    plugin_type: Optional[str] = "direct_interaction"  # Deprecated - use plugin_instance_id
 
 class NmapImportRequest(BaseModel):
     hosts: List[NmapHostData]
@@ -2611,7 +2612,7 @@ async def import_servers_from_nmap(
     
     Para cada host:
     - Verifica se já existe um servidor com o mesmo IP
-    - Se não existir, cria um novo servidor com plugin_type='direct_interaction'
+    - Se não existir, cria um novo servidor com plugin_instance_id configurado
     - Se já existir, pula (não atualiza)
     """
     import uuid
@@ -2638,12 +2639,23 @@ async def import_servers_from_nmap(
                 })
                 continue
             
+            # Determinar plugin_type a partir da instância (se fornecida)
+            plugin_type = host.plugin_type or "direct_interaction"
+            if host.plugin_instance_id:
+                instance_result = await db.execute(
+                    select(PluginInstance).where(PluginInstance.id == host.plugin_instance_id)
+                )
+                instance = instance_result.scalar_one_or_none()
+                if instance:
+                    plugin_type = instance.plugin_type
+            
             # Criar novo servidor
             new_server = Server(
                 guid=str(uuid.uuid4()),
                 name=host.name,
                 ip=host.ip,
-                plugin_type=host.plugin_type or "direct_interaction",  # Plugin selecionado pelo usuário
+                plugin_instance_id=host.plugin_instance_id,
+                plugin_type=plugin_type,
                 plugin_config={
                     "imported_from": "nmap",
                     "has_smb": host.hasSMB,
