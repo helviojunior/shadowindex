@@ -631,13 +631,16 @@ const Dashboard = () => {
             <div className="flex items-center gap-2">
               {jobsLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
               <Badge variant="outline" className="text-xs">
-                {downloadJobs.filter(j => j.status === 'downloading').length + scanJobs.filter(s => s.status === 'scanning').length} ativos
+                {downloadJobs.filter(j => j.status === 'downloading').length + 
+                 scanJobs.filter(s => s.status === 'scanning').length +
+                 ocrJobs.filter(o => o.status === 'running' || o.status === 'pending').length +
+                 gitleaksJobs.filter(g => g.status === 'running').length} ativos
               </Badge>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Downloads Ativos */}
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -648,25 +651,25 @@ const Dashboard = () => {
                 </Badge>
               </div>
               
-              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+              <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
                 {downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground text-sm">
-                    <Download className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    Nenhum download ativo
+                  <div className="text-center py-3 text-muted-foreground text-xs">
+                    <Download className="w-6 h-6 mx-auto mb-1 opacity-30" />
+                    Nenhum ativo
                   </div>
                 ) : (
                   downloadJobs
                     .filter(j => ['downloading', 'pending'].includes(j.status))
-                    .slice(0, 5)
+                    .slice(0, 3)
                     .map(job => (
                       <div 
                         key={job.id} 
                         className={cn(
-                          "p-2 rounded border text-sm",
+                          "p-2 rounded border text-xs",
                           job.status === 'downloading' ? "border-blue-500/50 bg-blue-500/10" : "border-border bg-muted/30"
                         )}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           {job.status === 'downloading' ? (
                             <Loader2 className="w-3 h-3 animate-spin text-blue-500 flex-shrink-0" />
                           ) : (
@@ -677,77 +680,160 @@ const Dashboard = () => {
                           </span>
                         </div>
                         {job.status === 'downloading' && (
-                          <Progress value={job.progress || 0} className="h-1 mt-1.5" />
+                          <Progress value={job.progress || 0} className="h-1 mt-1" />
                         )}
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {job.server_name || job.server_ip}
-                        </p>
                       </div>
                     ))
                 )}
-                {downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length > 5 && (
-                  <p className="text-xs text-center text-muted-foreground pt-1">
-                    +{downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length - 5} mais...
+                {downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length > 3 && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    +{downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length - 3} mais
                   </p>
                 )}
               </div>
             </div>
             
-            {/* Scans Ativos */}
+            {/* Scans de Diretório */}
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <FolderSearch className="w-4 h-4" />
-                Scans de Diretório
+                Scans Dir
                 <Badge variant="secondary" className="ml-auto text-xs">
                   {scanJobs.filter(s => s.status === 'scanning' || s.status === 'pending').length}
                 </Badge>
               </div>
               
-              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+              <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
                 {scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground text-sm">
-                    <FolderSearch className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    Nenhum scan ativo
+                  <div className="text-center py-3 text-muted-foreground text-xs">
+                    <FolderSearch className="w-6 h-6 mx-auto mb-1 opacity-30" />
+                    Nenhum ativo
                   </div>
                 ) : (
                   scanJobs
                     .filter(s => ['scanning', 'pending'].includes(s.status))
-                    .slice(0, 5)
-                    .map(scan => {
-                      const pathParts = (scan.path || '').split('\\');
-                      const displayPath = pathParts.length > 2 
-                        ? `...\\${pathParts.slice(-2).join('\\')}`
-                        : scan.path;
-                      
-                      return (
-                        <div 
-                          key={scan.id} 
-                          className={cn(
-                            "p-2 rounded border text-sm",
-                            scan.status === 'scanning' ? "border-blue-500/50 bg-blue-500/10" : "border-border bg-muted/30"
+                    .slice(0, 3)
+                    .map(scan => (
+                      <div 
+                        key={scan.id} 
+                        className={cn(
+                          "p-2 rounded border text-xs",
+                          scan.status === 'scanning' ? "border-blue-500/50 bg-blue-500/10" : "border-border bg-muted/30"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {scan.status === 'scanning' ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-blue-500 flex-shrink-0" />
+                          ) : (
+                            <Clock className="w-3 h-3 text-yellow-500 flex-shrink-0" />
                           )}
-                        >
-                          <div className="flex items-center gap-2">
-                            {scan.status === 'scanning' ? (
-                              <Loader2 className="w-3 h-3 animate-spin text-blue-500 flex-shrink-0" />
-                            ) : (
-                              <Clock className="w-3 h-3 text-yellow-500 flex-shrink-0" />
-                            )}
-                            <span className="truncate flex-1" title={scan.path}>
-                              {displayPath}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Nível {scan.depth || 0}/{scan.max_depth || 0}
-                            {scan.files_found > 0 && ` • ${scan.files_found} arquivos`}
-                          </p>
+                          <span className="truncate flex-1" title={scan.path}>
+                            {scan.path?.split('\\').pop() || 'Diretório'}
+                          </span>
                         </div>
-                      );
-                    })
+                        <p className="text-muted-foreground mt-0.5">
+                          Nível {scan.depth || 0}/{scan.max_depth || 0}
+                        </p>
+                      </div>
+                    ))
                 )}
-                {scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length > 5 && (
-                  <p className="text-xs text-center text-muted-foreground pt-1">
-                    +{scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length - 5} mais...
+                {scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length > 3 && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    +{scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length - 3} mais
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* OCR Jobs */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Eye className="w-4 h-4" />
+                OCR
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  {ocrJobs.filter(o => o.status === 'running' || o.status === 'pending').length}
+                </Badge>
+              </div>
+              
+              <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                {ocrJobs.filter(o => ['running', 'pending'].includes(o.status)).length === 0 ? (
+                  <div className="text-center py-3 text-muted-foreground text-xs">
+                    <Eye className="w-6 h-6 mx-auto mb-1 opacity-30" />
+                    Nenhum ativo
+                  </div>
+                ) : (
+                  ocrJobs
+                    .filter(o => ['running', 'pending'].includes(o.status))
+                    .slice(0, 3)
+                    .map(job => (
+                      <div 
+                        key={job.id} 
+                        className={cn(
+                          "p-2 rounded border text-xs",
+                          job.status === 'running' ? "border-purple-500/50 bg-purple-500/10" : "border-border bg-muted/30"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {job.status === 'running' ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-purple-500 flex-shrink-0" />
+                          ) : (
+                            <Clock className="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                          )}
+                          <span className="truncate flex-1" title={job.file_name || job.file_path}>
+                            {job.file_name || job.file_path?.split('/').pop() || 'Arquivo'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                )}
+                {ocrJobs.filter(o => ['running', 'pending'].includes(o.status)).length > 3 && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    +{ocrJobs.filter(o => ['running', 'pending'].includes(o.status)).length - 3} mais
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* GitLeaks Jobs */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <ScanSearch className="w-4 h-4" />
+                GitLeaks
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  {gitleaksJobs.filter(g => g.status === 'running').length}
+                </Badge>
+              </div>
+              
+              <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                {gitleaksJobs.filter(g => g.status === 'running').length === 0 ? (
+                  <div className="text-center py-3 text-muted-foreground text-xs">
+                    <ScanSearch className="w-6 h-6 mx-auto mb-1 opacity-30" />
+                    Nenhum ativo
+                  </div>
+                ) : (
+                  gitleaksJobs
+                    .filter(g => g.status === 'running')
+                    .slice(0, 3)
+                    .map(job => (
+                      <div 
+                        key={job.job_id || job.id} 
+                        className="p-2 rounded border text-xs border-orange-500/50 bg-orange-500/10"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Loader2 className="w-3 h-3 animate-spin text-orange-500 flex-shrink-0" />
+                          <span className="truncate flex-1">
+                            {job.server_name || `Servidor ${job.server_id}`}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground mt-0.5">
+                          {job.files_scanned || 0} arquivos
+                        </p>
+                      </div>
+                    ))
+                )}
+                {gitleaksJobs.filter(g => g.status === 'running').length > 3 && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    +{gitleaksJobs.filter(g => g.status === 'running').length - 3} mais
                   </p>
                 )}
               </div>
@@ -758,35 +844,61 @@ const Dashboard = () => {
           <div className="mt-4 pt-4 border-t">
             <p className="text-sm font-medium text-muted-foreground mb-3">Jobs Recentes</p>
             <div className="flex flex-wrap gap-2">
-              {[...downloadJobs, ...scanJobs]
-                .filter(j => ['completed', 'failed'].includes(j.status))
-                .sort((a, b) => new Date(b.completed_at || b.created_at) - new Date(a.completed_at || a.created_at))
-                .slice(0, 8)
+              {[
+                ...downloadJobs.map(j => ({ ...j, _type: 'download' })),
+                ...scanJobs.map(j => ({ ...j, _type: 'scan' })),
+                ...ocrJobs.map(j => ({ ...j, _type: 'ocr' })),
+                ...gitleaksJobs.map(j => ({ ...j, _type: 'gitleaks' }))
+              ]
+                .filter(j => ['completed', 'failed', 'finished'].includes(j.status))
+                .sort((a, b) => new Date(b.completed_at || b.finished_at || b.created_at) - new Date(a.completed_at || a.finished_at || a.created_at))
+                .slice(0, 10)
                 .map((job, idx) => {
-                  const isDownload = 'file_path' in job;
-                  const name = isDownload 
-                    ? (job.file_name || job.file_path?.split('\\').pop() || 'Arquivo')
-                    : (job.path?.split('\\').pop() || 'Scan');
+                  let name = '';
+                  let icon = null;
+                  const isSuccess = job.status === 'completed' || job.status === 'finished';
+                  
+                  switch(job._type) {
+                    case 'download':
+                      name = job.file_name || job.file_path?.split('\\').pop() || 'Download';
+                      icon = <Download className="w-3 h-3 mr-1" />;
+                      break;
+                    case 'scan':
+                      name = job.path?.split('\\').pop() || 'Scan';
+                      icon = <FolderSearch className="w-3 h-3 mr-1" />;
+                      break;
+                    case 'ocr':
+                      name = job.file_name || 'OCR';
+                      icon = <Eye className="w-3 h-3 mr-1" />;
+                      break;
+                    case 'gitleaks':
+                      name = job.server_name || `GL-${job.server_id}`;
+                      icon = <ScanSearch className="w-3 h-3 mr-1" />;
+                      break;
+                    default:
+                      name = 'Job';
+                  }
                   
                   return (
                     <Badge
-                      key={`${isDownload ? 'dl' : 'scan'}-${job.id}-${idx}`}
+                      key={`${job._type}-${job.id || job.job_id}-${idx}`}
                       variant="outline"
                       className={cn(
                         "text-xs",
-                        job.status === 'completed' ? "border-green-600/50 text-green-500" : "border-red-600/50 text-red-500"
+                        isSuccess ? "border-green-600/50 text-green-500" : "border-red-600/50 text-red-500"
                       )}
                     >
-                      {job.status === 'completed' ? (
+                      {isSuccess ? (
                         <CheckCircle className="w-3 h-3 mr-1" />
                       ) : (
                         <XCircle className="w-3 h-3 mr-1" />
                       )}
-                      <span className="max-w-[100px] truncate">{name}</span>
+                      {icon}
+                      <span className="max-w-[80px] truncate">{name}</span>
                     </Badge>
                   );
                 })}
-              {[...downloadJobs, ...scanJobs].filter(j => ['completed', 'failed'].includes(j.status)).length === 0 && (
+              {[...downloadJobs, ...scanJobs, ...ocrJobs, ...gitleaksJobs].filter(j => ['completed', 'failed', 'finished'].includes(j.status)).length === 0 && (
                 <p className="text-xs text-muted-foreground">Nenhum job recente</p>
               )}
             </div>
