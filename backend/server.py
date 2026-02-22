@@ -1295,7 +1295,9 @@ async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)
     db_server = Server(
         guid=str(uuid.uuid4()),
         name=server.name,
-        ip=server.ip
+        ip=server.ip,
+        plugin_type=server.plugin_type or "soap_api",
+        plugin_config=server.plugin_config
     )
     db.add(db_server)
     await db.commit()
