@@ -352,14 +352,20 @@ class DownloadWorker:
                 downloaded_file.mimetype = mimetype
                 downloaded_file.downloaded_at = datetime.now(timezone.utc)
                 downloaded_file.sanitized_path = relative_path
+                downloaded_file.local_path = str(full_storage_path)
+                downloaded_file.file_name = job.file_name
+                downloaded_file.server_id = server.id
             else:
                 # Criar novo registro - usar relative_path que já foi sanitizado
                 logger.info("Creating new DownloadedFile record")
                 downloaded_file = DownloadedFile(
+                    server_id=server.id,
                     server_guid=server.guid,
                     share_name=job.share_name,
                     file_path=job.file_path,
+                    file_name=job.file_name,
                     sanitized_path=relative_path,
+                    local_path=str(full_storage_path),
                     sha1_hash=sha1_hash,
                     file_size=len(file_bytes),
                     mimetype=mimetype,
@@ -370,14 +376,115 @@ class DownloadWorker:
                 # Incrementar contador do servidor
                 server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
             
+            # Criar/atualizar FileVersion (como o sync manual)
+            existing_version = await db.execute(
+                select(FileVersion).where(
+                    FileVersion.server_guid == server.guid,
+                    FileVersion.share_name == job.share_name,
+                    FileVersion.file_path == job.file_path,
+                    FileVersion.sha1_hash == sha1_hash
+                )
+            )
+            version = existing_version.scalar_one_or_none()
+            
+            if not version:
+                # Marcar versões anteriores como não-atuais
+                await db.execute(
+                    select(FileVersion).where(
+                        FileVersion.server_guid == server.guid,
+                        FileVersion.file_path == job.file_path,
+                        FileVersion.is_current == True
+                    )
+                )
+                # Contar versões existentes
+                version_count = await db.execute(
+                    select(FileVersion).where(
+                        FileVersion.server_guid == server.guid,
+                        FileVersion.file_path == job.file_path
+                    )
+                )
+                versions_list = version_count.scalars().all()
+                for v in versions_list:
+                    v.is_current = False
+                next_version = len(versions_list) + 1
+                
+                # Criar nova versão
+                version = FileVersion(
+                    server_guid=server.guid,
+                    share_name=job.share_name,
+                    file_path=job.file_path,
+                    version_number=next_version,
+                    sha1_hash=sha1_hash,
+                    file_size=len(file_bytes),
+                    mimetype=mimetype,
+                    local_path=str(full_storage_path),
+                    is_current=True
+                )
+                db.add(version)
+                logger.info(f"Created new FileVersion #{next_version} for {job.file_path}")
+            
             await db.commit()
             await db.refresh(downloaded_file)
+            if version:
+                await db.refresh(version)
             logger.info(f"DownloadedFile record saved successfully for {job.file_path}")
             
-            # Adicionar à fila de OCR se o tipo de arquivo suporta
-            ocr_supported_mimes = [
-                'application/pdf',
-                'image/',
+            # Verificar configurações de Auto OCR
+            auto_ocr_enabled = True
+            auto_ocr_extensions = []
+            auto_ocr_mimetypes = []
+            
+            try:
+                from database import AppSettings
+                
+                # Verificar se auto OCR está habilitado
+                enabled_result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'auto_ocr_enabled')
+                )
+                enabled_setting = enabled_result.scalar_one_or_none()
+                if enabled_setting:
+                    auto_ocr_enabled = enabled_setting.value.lower() in ('true', '1', 'yes', 'on')
+                
+                # Buscar extensões configuradas
+                ext_result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'auto_ocr_extensions')
+                )
+                ext_setting = ext_result.scalar_one_or_none()
+                if ext_setting and ext_setting.value:
+                    auto_ocr_extensions = [e.strip().lower() for e in ext_setting.value.split(',') if e.strip()]
+                
+                # Buscar mimetypes configurados
+                mime_result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'auto_ocr_mimetypes')
+                )
+                mime_setting = mime_result.scalar_one_or_none()
+                if mime_setting and mime_setting.value:
+                    auto_ocr_mimetypes = [m.strip().lower() for m in mime_setting.value.split(',') if m.strip()]
+                    
+            except Exception as settings_err:
+                logger.warning(f"Could not load auto OCR settings: {settings_err}")
+            
+            # Verificar se deve adicionar à fila de OCR
+            should_ocr = False
+            if auto_ocr_enabled:
+                file_ext = ('.' + job.file_name.rsplit('.', 1)[-1]).lower() if '.' in job.file_name else ''
+                mime_lower = (mimetype or '').lower()
+                
+                # Verificar por extensão
+                if file_ext and any(file_ext == ext or file_ext.endswith(ext) for ext in auto_ocr_extensions):
+                    should_ocr = True
+                    logger.info(f"Auto OCR enabled for {job.file_name} (extension match: {file_ext})")
+                
+                # Verificar por mimetype (match parcial)
+                if not should_ocr and mime_lower:
+                    for mime_pattern in auto_ocr_mimetypes:
+                        if mime_pattern in mime_lower:
+                            should_ocr = True
+                            logger.info(f"Auto OCR enabled for {job.file_name} (mimetype match: {mime_lower})")
+                            break
+            
+            # Adicionar à fila de OCR se configurado
+            if should_ocr:
                 'text/',
                 'application/msword',
                 'application/vnd.openxmlformats-officedocument',
