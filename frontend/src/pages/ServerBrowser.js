@@ -55,11 +55,11 @@ import {
   Binary,
   FileText,
   ScanText,
-  ShieldAlert,
-  Key
+  ShieldAlert
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
+import { ShieldKeyIcon } from '@/components/icons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
