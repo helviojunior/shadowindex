@@ -469,28 +469,48 @@ class DirectInteractionPlugin(BasePlugin):
                 
                 shares = []
                 for share in smb_conn.listShares():
-                    share_name = share['shi1_netname'][:-1]  # Remove null terminator
-                    share_type = share['shi1_type']
-                    remark = share.get('shi1_remark', '') or ''
-                    if remark and remark.endswith('\x00'):
-                        remark = remark[:-1]
-                    
-                    # Determine share type
-                    type_str = "disk"
-                    if share_type & 0x80000000:
-                        type_str = "hidden"
-                    elif share_type == 1:
-                        type_str = "printer"
-                    elif share_type == 2:
-                        type_str = "device"
-                    elif share_type == 3:
-                        type_str = "ipc"
-                    
-                    shares.append(ShareInfo(
-                        name=share_name,
-                        type=type_str,
-                        remark=remark
-                    ))
+                    # Handle both dict-like and object-like access
+                    # impacket can return SHARE_INFO_1 objects or dicts depending on version
+                    try:
+                        if hasattr(share, '__getitem__'):
+                            # Dict-like access
+                            share_name = share['shi1_netname']
+                            share_type = share['shi1_type']
+                            remark = share.get('shi1_remark', '') if hasattr(share, 'get') else ''
+                        else:
+                            # Object attribute access (SHARE_INFO_1)
+                            share_name = getattr(share, 'shi1_netname', '') or ''
+                            share_type = getattr(share, 'shi1_type', 0) or 0
+                            remark = getattr(share, 'shi1_remark', '') or ''
+                        
+                        # Clean up share name (remove null terminator if present)
+                        if share_name and share_name.endswith('\x00'):
+                            share_name = share_name[:-1]
+                        
+                        # Clean up remark
+                        if remark and remark.endswith('\x00'):
+                            remark = remark[:-1]
+                        
+                        # Determine share type string
+                        type_str = "disk"
+                        if isinstance(share_type, int):
+                            if share_type & 0x80000000:
+                                type_str = "hidden"
+                            elif share_type == 1:
+                                type_str = "printer"
+                            elif share_type == 2:
+                                type_str = "device"
+                            elif share_type == 3:
+                                type_str = "ipc"
+                        
+                        shares.append(ShareInfo(
+                            name=share_name,
+                            type=type_str,
+                            remark=remark
+                        ))
+                    except Exception as share_err:
+                        logger.warning(f"Error parsing share info: {share_err}, share data: {share}")
+                        continue
                 
                 return shares
                 
