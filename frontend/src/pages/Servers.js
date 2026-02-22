@@ -213,25 +213,23 @@ const Servers = () => {
 
   const handleEditPlugin = (server) => {
     setEditingPluginServer(server.id);
-    setEditPluginType(server.plugin_type || 'soap_api');
+    setEditPluginInstanceId(server.plugin_instance_id?.toString() || '');
   };
 
   const handleCancelPluginEdit = () => {
     setEditingPluginServer(null);
-    setEditPluginType('');
+    setEditPluginInstanceId('');
   };
 
   const handleSavePlugin = async (serverId) => {
-    if (!editPluginType) {
-      toast.error('Selecione um plugin');
-      return;
-    }
-
     try {
-      await axios.patch(`${API}/servers/${serverId}`, { plugin_type: editPluginType });
+      const payload = { 
+        plugin_instance_id: editPluginInstanceId ? parseInt(editPluginInstanceId) : null 
+      };
+      await axios.patch(`${API}/servers/${serverId}`, payload);
       toast.success('Plugin atualizado com sucesso');
       setEditingPluginServer(null);
-      setEditPluginType('');
+      setEditPluginInstanceId('');
       loadServers();
     } catch (error) {
       console.error('Error updating server plugin:', error);
