@@ -1858,6 +1858,44 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
             "downloaded_at": file.downloaded_at.isoformat() if file.downloaded_at else None
         })
     
+    # Buscar findings do GitLeaks (por server_id ou extracted_server_id)
+    from sqlalchemy import or_
+    findings_result = await db.execute(
+        select(GitleaksFinding).where(
+            or_(
+                GitleaksFinding.server_id == server.id,
+                GitleaksFinding.extracted_server_id == server.id
+            )
+        )
+    )
+    findings = findings_result.scalars().all()
+    for finding in findings:
+        export_data["gitleaks_findings"].append({
+            "id": finding.id,
+            "fingerprint": finding.fingerprint,
+            "rule_id": finding.rule_id,
+            "description": finding.description,
+            "match": finding.match,
+            "secret": finding.secret,
+            "start_line": finding.start_line,
+            "end_line": finding.end_line,
+            "entropy": finding.entropy,
+            "tags": finding.tags,
+            "file_path": finding.file_path,
+            "original_file": finding.original_file,
+            "detection_source": finding.detection_source,
+            "extracted_file_id": finding.extracted_file_id,
+            "extracted_version": finding.extracted_version,
+            "server_name": finding.server_name,
+            "server_ip": finding.server_ip,
+            "file_name": finding.file_name,
+            "server_path": finding.server_path,
+            "share_name": finding.share_name,
+            "job_id": finding.job_id,
+            "scanned_at": finding.scanned_at.isoformat() if finding.scanned_at else None,
+            "created_at": finding.created_at.isoformat() if finding.created_at else None
+        })
+    
     # Mover diretório de storage para storage_deleted
     storage_deleted_base = os.path.join(os.path.dirname(STORAGE_BASE_PATH), "storage_deleted")
     os.makedirs(storage_deleted_base, exist_ok=True)
