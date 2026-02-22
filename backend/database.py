@@ -108,8 +108,9 @@ class ProxyServer(Base):
     ip = Column(String, nullable=False)
     port = Column(Integer, nullable=False)
     proxy_type = Column(String, default="http")  # "http" or "socks5"
-    username = Column(String, nullable=True)  # Optional for SOCKS
-    password = Column(String, nullable=True)  # Optional for SOCKS
+    credential_id = Column(Integer, nullable=True)  # FK para Credential (user_password type)
+    username = Column(String, nullable=True)  # Deprecated - use credential_id
+    password = Column(String, nullable=True)  # Deprecated - use credential_id
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class SoapApiUrl(Base):
