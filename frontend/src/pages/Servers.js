@@ -372,20 +372,26 @@ const Servers = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="plugin_type">Plugin</Label>
+                  <Label htmlFor="plugin_instance">Instância de Plugin</Label>
                   <Select 
-                    value={formData.plugin_type} 
-                    onValueChange={(value) => setFormData({ ...formData, plugin_type: value, plugin_config: {} })}
+                    value={formData.plugin_instance_id} 
+                    onValueChange={(value) => setFormData({ ...formData, plugin_instance_id: value })}
                   >
                     <SelectTrigger data-testid="server-plugin-select">
-                      <SelectValue placeholder="Selecione o plugin" />
+                      <SelectValue placeholder="Selecione a instância (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(availablePlugins).map(([type, info]) => (
-                        <SelectItem key={type} value={type}>
+                      <SelectItem value="">
+                        <span className="text-muted-foreground">Nenhuma (usar padrão)</span>
+                      </SelectItem>
+                      {pluginInstances.map((instance) => (
+                        <SelectItem key={instance.id} value={instance.id.toString()}>
                           <div className="flex items-center gap-2">
                             <Plug className="w-4 h-4" />
-                            {info.name}
+                            {instance.name}
+                            <Badge variant="outline" className="text-xs ml-1">
+                              {instance.plugin_type === 'soap_api' ? 'SOAP' : 'Direto'}
+                            </Badge>
                           </div>
                         </SelectItem>
                       ))}
@@ -393,30 +399,6 @@ const Servers = () => {
                   </Select>
                 </div>
               </div>
-              
-              {/* Plugin-specific configuration */}
-              {formData.plugin_type === 'soap_api' && (
-                <div className="pt-2 border-t border-border">
-                  <div className="space-y-2">
-                    <Label htmlFor="soap_url">URL da API SOAP (opcional - usa padrão se vazio)</Label>
-                    <Input
-                      id="soap_url"
-                      data-testid="server-soap-url-input"
-                      placeholder={soapApiUrl || "http://servidor/soap/api"}
-                      value={formData.plugin_config.soap_url || ''}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        plugin_config: { ...formData.plugin_config, soap_url: e.target.value }
-                      })}
-                    />
-                    {soapApiUrl && (
-                      <p className="text-xs text-muted-foreground">
-                        URL padrão configurada: {soapApiUrl}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
               
               <Button type="submit" disabled={loading} data-testid="add-server-btn">
                 <Plus className="w-4 h-4 mr-2" />
