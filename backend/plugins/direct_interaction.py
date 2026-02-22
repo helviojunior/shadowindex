@@ -284,17 +284,17 @@ class DirectInteractionPlugin(BasePlugin):
         try:
             import socks
         except ImportError:
-            logger.warning("PySocks not installed, falling back to direct DNS")
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, socket.gethostbyname, hostname)
+            raise PluginException("PySocks não está instalado. Execute: pip install pysocks")
         
         # Parse proxy URL
         proxy_url = self.proxy_url
         proxy_type = socks.SOCKS5
         proxy_host = None
         proxy_port = 1080
-        proxy_user = None
-        proxy_pass = None
+        
+        # Get credentials from plugin config (not from URL)
+        proxy_user = self.proxy_user
+        proxy_pass = self.proxy_pass
         
         if proxy_url.startswith("socks5://"):
             proxy_url = proxy_url[9:]
@@ -302,12 +302,11 @@ class DirectInteractionPlugin(BasePlugin):
             proxy_type = socks.SOCKS4
             proxy_url = proxy_url[9:]
         
-        if "@" in proxy_url:
-            auth, host_part = proxy_url.rsplit("@", 1)
-            if ":" in auth:
-                proxy_user, proxy_pass = auth.split(":", 1)
-        else:
-            host_part = proxy_url
+        # Parse host:port from URL (ignore any auth in URL, use config credentials)
+        host_part = proxy_url
+        if "@" in host_part:
+            # Strip auth from URL - we use config credentials instead
+            _, host_part = host_part.rsplit("@", 1)
         
         if ":" in host_part:
             proxy_host, port_str = host_part.rsplit(":", 1)
@@ -315,57 +314,59 @@ class DirectInteractionPlugin(BasePlugin):
         else:
             proxy_host = host_part
         
-        logger.info(f"Resolving {hostname} through SOCKS proxy {proxy_host}:{proxy_port}")
+        logger.info(f"Resolving {hostname} through SOCKS proxy {proxy_host}:{proxy_port}" + 
+                   (f" (user: {proxy_user})" if proxy_user else ""))
+        
+        loop = asyncio.get_event_loop()
+        
+        def resolve_via_socks():
+            # Create a SOCKS socket with remote DNS resolution enabled
+            s = socks.socksocket(socket.AF_INET, socket.SOCK_STREAM)
+            s.set_proxy(
+                proxy_type, 
+                proxy_host, 
+                proxy_port, 
+                rdns=True,  # Enable remote DNS - proxy will resolve the hostname
+                username=proxy_user, 
+                password=proxy_pass
+            )
+            s.settimeout(30)
+            
+            try:
+                # Connect to the hostname - the SOCKS proxy will resolve it remotely
+                # We use port 80 as a common port that should be open
+                s.connect((hostname, 80))
+                # Get the resolved IP from the connection
+                peer = s.getpeername()
+                resolved_ip = peer[0]
+                s.close()
+                logger.info(f"SOCKS resolved {hostname} -> {resolved_ip}")
+                return resolved_ip
+            except socks.SOCKS5AuthError as e:
+                s.close()
+                raise PluginException(f"Falha na autenticação SOCKS: {e}")
+            except socks.SOCKS5Error as e:
+                s.close()
+                raise PluginException(f"Erro SOCKS5 ao resolver {hostname}: {e}")
+            except socks.GeneralProxyError as e:
+                s.close()
+                raise PluginException(f"Erro de proxy SOCKS ao resolver {hostname}: {e}")
+            except socket.timeout:
+                s.close()
+                raise PluginException(f"Timeout ao resolver {hostname} via SOCKS proxy")
+            except ConnectionRefusedError:
+                s.close()
+                raise PluginException(f"Conexão recusada pelo proxy SOCKS {proxy_host}:{proxy_port}")
+            except Exception as e:
+                s.close()
+                raise PluginException(f"Erro ao resolver {hostname} via SOCKS: {e}")
         
         try:
-            loop = asyncio.get_event_loop()
-            
-            def resolve_via_socks():
-                # Create a SOCKS socket with remote DNS resolution enabled
-                s = socks.socksocket(socket.AF_INET, socket.SOCK_STREAM)
-                s.set_proxy(
-                    proxy_type, 
-                    proxy_host, 
-                    proxy_port, 
-                    rdns=True,  # Enable remote DNS - proxy will resolve the hostname
-                    username=proxy_user, 
-                    password=proxy_pass
-                )
-                s.settimeout(30)
-                
-                try:
-                    # Connect to the hostname - the SOCKS proxy will resolve it remotely
-                    # We use port 80 as a common port that should be open
-                    s.connect((hostname, 80))
-                    # Get the resolved IP from the connection
-                    peer = s.getpeername()
-                    resolved_ip = peer[0]
-                    s.close()
-                    logger.info(f"SOCKS resolved {hostname} -> {resolved_ip}")
-                    return resolved_ip
-                except socks.SOCKS5Error as e:
-                    s.close()
-                    logger.warning(f"SOCKS5 error resolving {hostname}: {e}")
-                    # Fallback to local DNS if SOCKS fails
-                    return socket.gethostbyname(hostname)
-                except socks.GeneralProxyError as e:
-                    s.close()
-                    logger.warning(f"SOCKS proxy error resolving {hostname}: {e}")
-                    return socket.gethostbyname(hostname)
-                except Exception as e:
-                    s.close()
-                    logger.warning(f"Error resolving {hostname} via SOCKS: {e}")
-                    return socket.gethostbyname(hostname)
-            
             return await loop.run_in_executor(None, resolve_via_socks)
-            
+        except PluginException:
+            raise
         except Exception as e:
-            import traceback
-            error_traceback = traceback.format_exc()
-            logger.error(f"SOCKS DNS resolution failed: {e}\n{error_traceback}")
-            # Final fallback to direct DNS
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, socket.gethostbyname, hostname)
+            raise PluginException(f"Falha na resolução DNS via SOCKS: {e}")
     
     def _get_smb_connection(self, server_ip: str):
         """
