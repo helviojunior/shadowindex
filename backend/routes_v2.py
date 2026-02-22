@@ -1620,13 +1620,38 @@ async def get_file_content(server_id: int, file_id: int, db: AsyncSession = Depe
             except UnicodeDecodeError:
                 content = raw_content.decode('utf-8', errors='replace')
         
+        # Detecção automática de chaves privadas
+        leak_registered = None
+        key_type, key_description = detect_private_key_type(content)
+        if key_type:
+            try:
+                leak_result = await auto_register_private_key_leak(
+                    file_path=file.file_path,
+                    content=content,
+                    server_id=server_id,
+                    key_type=key_type,
+                    description=key_description
+                )
+                if not leak_result.get("already_exists"):
+                    leak_registered = {
+                        "type": key_type,
+                        "description": key_description,
+                        "fingerprint": leak_result["finding"]["Fingerprint"]
+                    }
+                    logger.info(f"Chave privada detectada e registrada como leak: {file.file_path}")
+            except Exception as e:
+                logger.warning(f"Erro ao registrar leak de chave privada: {e}")
+        
         return {
             "success": True,
             "file_id": file_id,
             "content": content,
             "size": len(content),
             "has_bom": has_bom,
-            "encoding": "UTF-8 with BOM" if has_bom else "UTF-8"
+            "encoding": "UTF-8 with BOM" if has_bom else "UTF-8",
+            "private_key_detected": key_type is not None,
+            "private_key_type": key_type,
+            "leak_registered": leak_registered
         }
         
     except Exception as e:
