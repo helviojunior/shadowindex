@@ -376,6 +376,54 @@ const CriticalSearchSettings = () => {
                 </Button>
               </div>
             </div>
+
+            <Separator />
+
+            {/* Extensões Excluídas */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Ban className="w-4 h-4 text-red-500" />
+                Extensões Excluídas
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Arquivos com estas extensões serão IGNORADOS na busca crítica (ex: binários, mídia)
+              </p>
+              <div className="flex flex-wrap gap-2 min-h-[32px]">
+                {config.file_rules?.excluded_extensions?.map((ext, index) => (
+                  <Badge key={index} variant="outline" className="gap-1 bg-red-500/10 text-red-400 border-red-500/30">
+                    {ext}
+                    <X 
+                      className="w-3 h-3 cursor-pointer hover:text-red-300" 
+                      onClick={() => removeFromArray('file_rules.excluded_extensions', index)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ex: .exe, .dll, .msi..."
+                  value={newExcludedExtension}
+                  onChange={(e) => setNewExcludedExtension(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      addToArray('file_rules.excluded_extensions', newExcludedExtension);
+                      setNewExcludedExtension('');
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => {
+                    addToArray('file_rules.excluded_extensions', newExcludedExtension);
+                    setNewExcludedExtension('');
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
