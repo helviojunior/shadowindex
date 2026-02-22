@@ -1429,19 +1429,23 @@ const ServerBrowser = () => {
       const { shares: loadedShares, items_by_path } = response.data;
       
       // Definir os shares com campos mapeados para o formato do frontend
-      const mappedShares = loadedShares.map(share => ({
-        ...share,
-        nodeId: `share-${share.share_name}`,
-        type: 'Share',
-        itemType: 'Share',
-        name: share.share_name,
-        fullPath: `\\\\${server?.ip}\\${share.share_name}`,
-        shareName: share.share_name,
-        hasChildren: share.has_children,
-        childrenFetched: share.children_fetched || false,
-        accessDenied: share.access_denied || false,
-        errorMessage: share.error_message
-      }));
+      const mappedShares = loadedShares.map(share => {
+        const mapped = {
+          ...share,
+          nodeId: `share-${share.share_name}`,
+          type: 'Share',
+          itemType: 'Share',
+          name: share.share_name,
+          fullPath: `\\\\${server?.ip}\\${share.share_name}`,
+          shareName: share.share_name,
+          hasChildren: share.has_children,
+          childrenFetched: share.children_fetched || false,
+          accessDenied: share.access_denied || false,
+          errorMessage: share.error_message
+        };
+        console.log(`[loadShares] Share ${share.share_name}: access_denied=${share.access_denied}, children_fetched=${share.children_fetched}`);
+        return mapped;
+      });
       setShares(mappedShares);
       
       // Carregar filhos salvos no banco para cada share e subdiretório
