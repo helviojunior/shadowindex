@@ -158,11 +158,12 @@ const Dashboard = () => {
   
   const loadJobs = async () => {
     try {
+      // Limitar busca a jobs ativos + recentes para melhor performance
       const [downloads, scans, ocr, gitleaks] = await Promise.all([
-        axios.get(`${API}/downloads`).catch(() => ({ data: [] })),
-        axios.get(`${API}/scans`).catch(() => ({ data: [] })),
+        axios.get(`${API}/downloads?limit=50&active_first=true`).catch(() => ({ data: [] })),
+        axios.get(`${API}/scans?limit=20`).catch(() => ({ data: [] })),
         axios.get(`${API_V2}/ocr/jobs?limit=20`).catch(() => ({ data: [] })),
-        axios.get(`${API_V2}/gitleaks/jobs?active_only=false`).catch(() => ({ data: { jobs: [] } }))
+        axios.get(`${API_V2}/gitleaks/jobs?active_only=false&limit=20`).catch(() => ({ data: { jobs: [] } }))
       ]);
       
       setDownloadJobs(downloads.data || []);
