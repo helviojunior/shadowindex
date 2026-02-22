@@ -641,6 +641,7 @@ async def update_db_connection(conn_id: int, conn_data: DatabaseConnectionCreate
     existing.name = conn_data.name
     existing.connection_string = conn_data.connection_string
     existing.db_type_id = conn_data.db_type_id
+    existing.plugin_instance_id = conn_data.plugin_instance_id
     # Reset verification status when connection string changes
     existing.verified = False
     existing.last_verified_at = None
