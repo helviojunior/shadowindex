@@ -1340,15 +1340,15 @@ async def soap_resolve_ipv4(
                     detail="Instância de plugin não encontrada"
                 )
             
-            # Verificar se o plugin tem o método resolve
-            if not hasattr(plugin, 'resolve'):
+            # Verificar se o plugin tem o método resolve_address
+            if not hasattr(plugin, 'resolve_address'):
                 raise HTTPException(
                     status_code=400,
                     detail="O plugin selecionado não suporta resolução de nomes"
                 )
             
-            # Chamar resolve do plugin
-            result = await plugin.resolve(request.s1, ignore_cache=request.ignore_cache)
+            # Chamar resolve_address do plugin
+            result = await plugin.resolve_address(request.s1, ignore_cache=request.ignore_cache)
             
             # Extrair IPv4 prioritário do resultado
             ipv4_result = extract_ipv4_from_resolve_result(result)
