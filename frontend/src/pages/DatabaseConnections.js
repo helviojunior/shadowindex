@@ -463,7 +463,7 @@ const DatabaseConnections = () => {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 text-sm">
                           <Plug className="w-4 h-4 text-muted-foreground" />
-                          {getPluginLabel(conn.plugin_type)}
+                          {getPluginLabel(conn.plugin_instance_id)}
                         </div>
                       </td>
                       <td className="px-4 py-3">
