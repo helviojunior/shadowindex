@@ -109,9 +109,17 @@ class DownloadWorker:
     
     async def _run_loop(self):
         """Loop principal do worker"""
+        from sqlalchemy.exc import OperationalError
+        
         while self.running:
             try:
                 await self._process_pending_jobs()
+            except OperationalError as e:
+                if "database is locked" in str(e):
+                    logger.warning("Database locked in download worker, retrying in 3s...")
+                    await asyncio.sleep(3)
+                else:
+                    logger.error(f"Database error in download worker loop: {e}")
             except Exception as e:
                 logger.error(f"Error in download worker loop: {e}")
             
