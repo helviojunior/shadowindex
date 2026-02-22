@@ -3543,7 +3543,7 @@ const ServerBrowser = () => {
                         onClick={() => setShowLeakModal(true)}
                         title="Identificar credencial manualmente"
                       >
-                        <Key className="w-4 h-4 mr-2" />
+                        <ShieldKeyIcon className="w-4 h-4 mr-2" />
                         Identificar Credencial
                       </Button>
                     </div>
