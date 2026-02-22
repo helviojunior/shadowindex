@@ -95,6 +95,13 @@ const Leaks = () => {
   const [polling, setPolling] = useState(false);
   const [showScanPanel, setShowScanPanel] = useState(true);
   const errorCountRef = useRef(0);
+  
+  // State para diálogo de confirmação
+  const [confirmDialog, setConfirmDialog] = useState({ 
+    open: false, 
+    action: null, // 'clearAll' ou 'deleteFinding'
+    fingerprint: null 
+  });
 
   // Carregar status do GitLeaks
   const loadGitleaksStatus = useCallback(async () => {
