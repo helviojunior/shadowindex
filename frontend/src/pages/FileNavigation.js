@@ -125,13 +125,6 @@ const FileNavigation = () => {
           ))}
         </div>
       )}
-
-      {/* Stats - only show when filtering */}
-      {servers.length > 0 && searchTerm && (
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{filteredServers.length} encontrado{filteredServers.length !== 1 ? 's' : ''}</span>
-        </div>
-      )}
     </div>
   );
 };
