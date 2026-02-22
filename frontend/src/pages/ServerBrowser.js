@@ -83,6 +83,7 @@ const PDF_EXTENSION = '.pdf';
 const ServerBrowser = () => {
   const { serverId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { ignoreCache } = useApp();
   
   const [server, setServer] = useState(null);
