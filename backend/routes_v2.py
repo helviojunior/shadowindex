@@ -347,7 +347,6 @@ async def quick_search(
     from database import FileVersion, GitleaksFinding
     
     server = await get_server_or_404(db, server_id)
-    query_lower = q.lower()
     
     # 1. Buscar itens por nome
     items_result = await db.execute(
