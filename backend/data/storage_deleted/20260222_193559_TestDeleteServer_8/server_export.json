@@ -1,0 +1,21 @@
+{
+  "server": {
+    "id": 8,
+    "guid": "49bc49dc-09fd-4483-b1ad-a6194ca06727",
+    "name": "TestDeleteServer",
+    "ip": "10.0.0.99",
+    "verified": false,
+    "shares_count": 0,
+    "downloaded_files_count": 0,
+    "last_verified_at": null,
+    "created_at": "2026-02-22T19:35:54.653173",
+    "plugin_instance_id": null,
+    "plugin_type": "soap_api",
+    "plugin_config": null
+  },
+  "credential": null,
+  "shares": [],
+  "items": [],
+  "downloaded_files": [],
+  "deleted_at": "2026-02-22T19:35:59.130074+00:00"
+}
