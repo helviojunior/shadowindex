@@ -2778,7 +2778,7 @@ const ServerBrowser = () => {
     return (
       <div key={`${nodeId}-${isAccessDenied ? 'denied' : 'ok'}`}>
         <div
-          className={`flex items-center cursor-pointer hover:bg-muted/50 rounded transition-colors ${
+          className={`group flex items-center cursor-pointer hover:bg-muted/50 rounded transition-colors ${
             isSelected ? 'bg-primary/10 text-primary' : ''
           } ${isAccessDenied ? 'opacity-75' : ''}`}
           style={{ paddingLeft: '8px', paddingRight: '8px', minHeight: '32px' }}
