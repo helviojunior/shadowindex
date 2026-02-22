@@ -259,11 +259,10 @@ const DatabaseConnections = () => {
     }
   };
 
-  const getPluginLabel = (pluginType) => {
-    if (availablePlugins[pluginType]) {
-      return availablePlugins[pluginType].name;
-    }
-    return pluginType || 'SOAP API';
+  const getPluginLabel = (pluginInstanceId) => {
+    if (!pluginInstanceId) return 'Não configurado';
+    const instance = pluginInstances.find(p => p.id === pluginInstanceId);
+    return instance ? instance.name : `Instância #${pluginInstanceId}`;
   };
 
   return (
