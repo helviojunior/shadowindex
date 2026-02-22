@@ -404,15 +404,30 @@ const OCRJobs = () => {
               </Select>
             </div>
 
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={() => setConfirmDialog({ open: true, action: 'clear', jobId: null })}
-              disabled={stats.completed === 0 && stats.failed === 0 && stats.skipped === 0}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Limpar Finalizados
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setConfirmDialog({ open: true, action: 'retry', jobId: null })}
+                disabled={stats.failed === 0 || retrying}
+              >
+                {retrying ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                Reexecutar Falhados
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => setConfirmDialog({ open: true, action: 'clear', jobId: null })}
+                disabled={stats.completed === 0 && stats.failed === 0 && stats.skipped === 0}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Limpar Finalizados
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
