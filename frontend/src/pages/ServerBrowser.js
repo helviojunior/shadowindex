@@ -3534,6 +3534,18 @@ const ServerBrowser = () => {
                           Base64
                         </Button>
                       )}
+                      
+                      {/* Botão Identificar Credencial */}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
+                        onClick={() => setShowLeakModal(true)}
+                        title="Identificar credencial manualmente"
+                      >
+                        <Key className="w-4 h-4 mr-2" />
+                        Identificar Credencial
+                      </Button>
                     </div>
                 
                     {/* Content */}
