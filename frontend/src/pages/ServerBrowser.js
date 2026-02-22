@@ -315,6 +315,61 @@ const ServerBrowser = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchResults]);
 
+  // Verificar parâmetro file_id na URL para navegação automática
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const fileId = searchParams.get('file_id');
+    
+    if (fileId && server && !pendingFileNavigation) {
+      setPendingFileNavigation(parseInt(fileId));
+    }
+  }, [location.search, server]);
+  
+  // Navegar até o arquivo quando temos pendingFileNavigation e os shares carregaram
+  useEffect(() => {
+    const navigateToFile = async () => {
+      if (!pendingFileNavigation || !server || shares.length === 0) return;
+      
+      setNavigatingToResult(true);
+      
+      try {
+        // Buscar informações do arquivo baixado
+        const response = await axios.get(`${API}/downloads/${pendingFileNavigation}`);
+        const fileInfo = response.data;
+        
+        if (fileInfo && fileInfo.file_path) {
+          // Criar um item para navegar
+          const item = {
+            id: fileInfo.id,
+            name: fileInfo.file_name || fileInfo.file_path.split('\\').pop() || fileInfo.file_path.split('/').pop(),
+            full_path: fileInfo.file_path,
+            share_name: fileInfo.share_name,
+            item_type: 'File',
+            itemType: 'File',
+            is_downloaded: true
+          };
+          
+          // Usar a função de navegação existente
+          await navigateToSearchResult(item);
+        } else {
+          toast.error('Arquivo não encontrado');
+        }
+      } catch (error) {
+        console.error('Error navigating to file:', error);
+        toast.error('Erro ao navegar até o arquivo');
+      } finally {
+        setNavigatingToResult(false);
+        setPendingFileNavigation(null);
+        
+        // Limpar o parâmetro da URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    };
+    
+    navigateToFile();
+  }, [pendingFileNavigation, server, shares]);
+
   useEffect(() => {
     if (server) {
       loadShares();
