@@ -75,8 +75,8 @@ export const useJobCompletionSFX = (enabled = true) => {
 
     const handleDownloadStats = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'downloads_stats_updated' && data.data) {
+        const data = event.detail;
+        if (data && data.data) {
           const active = (data.data.downloading || 0) + (data.data.pending || 0);
           checkAndPlaySound('Downloads', active, prevDownloadsActive);
         }
@@ -87,8 +87,8 @@ export const useJobCompletionSFX = (enabled = true) => {
 
     const handleGitleaksStats = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'gitleaks_stats_updated' && data.data) {
+        const data = event.detail;
+        if (data && data.data) {
           const active = (data.data.running || 0) + (data.data.pending || 0);
           checkAndPlaySound('GitLeaks', active, prevGitleaksActive);
         }
@@ -99,8 +99,8 @@ export const useJobCompletionSFX = (enabled = true) => {
 
     const handleOcrStats = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'ocr_stats_updated' && data.data) {
+        const data = event.detail;
+        if (data && data.data) {
           const active = (data.data.running || 0) + (data.data.pending || 0);
           checkAndPlaySound('OCR', active, prevOcrActive);
         }
@@ -109,7 +109,7 @@ export const useJobCompletionSFX = (enabled = true) => {
       }
     };
 
-    // Adicionar listeners ao WebSocket global
+    // Adicionar listeners aos eventos customizados
     window.addEventListener('ws_downloads_stats', handleDownloadStats);
     window.addEventListener('ws_gitleaks_stats', handleGitleaksStats);
     window.addEventListener('ws_ocr_stats', handleOcrStats);
