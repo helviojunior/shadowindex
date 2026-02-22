@@ -28,6 +28,26 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 26 - Dashboard Layout & CredentialNotSetException)
+- [x] **Layout do Dashboard já implementado:**
+  - 3 linhas de widgets funcionando corretamente
+  - Linha 1: Cards de estatísticas (Total Servidores, Serv. com Arquivos, Leaks Detectados, Credenciais)
+  - Linha 2: Overall Risk Score (verde com sparkline), Risk by Severity (donut), Vulnerabilities by Extension (spider/radar chart)
+  - Linha 3: Status do Scan (com botão), Risk vs. Time (area chart)
+- [x] **Nova Exception CredentialNotSetException:**
+  - Adicionada em `plugins/exceptions.py` com campos: operation, plugin_name, message
+  - Integrada ao `plugins/factory.py` para validação automática de credenciais
+  - Levanta erro HTTP 422 com estrutura JSON detalhada: `{error, message, operation, plugin_name}`
+- [x] **Tratamento de erro no Frontend:**
+  - `ServerBrowser.js` atualizado para tratar erro 422 com `detail.error === 'credential_not_set'`
+  - Toast de erro com duração de 6 segundos e descrição orientando o usuário
+  - Funções atualizadas: `loadShares`, `refreshShares`, `loadDirectory`
+- [x] **Validação automática de credenciais no plugin Direct Interaction:**
+  - `get_plugin_for_server()` agora carrega e valida credenciais automaticamente
+  - Verifica se `credential_id` está configurado no plugin
+  - Verifica se a credencial existe no banco de dados
+  - Verifica se o tipo de credencial é `user_password` (único suportado para SMB)
+
 ### 2026-02-22 (Session 21 - Plugin Management in Server List)
 - [x] **Edição de Plugin do Servidor:**
   - Coluna "Plugin" adicionada à tabela de servidores
