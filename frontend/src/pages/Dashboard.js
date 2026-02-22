@@ -282,20 +282,20 @@ const Dashboard = () => {
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Overall Risk Score Card */}
         <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-1">
             <CardTitle className="text-lg text-white/90 flex items-center gap-2">
               <Activity className="w-5 h-5" />
               Índice de Risco Geral
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <div className="text-center">
-              <p className="text-6xl font-bold">{riskScore}</p>
-              <p className="text-white/70 mt-2">RISCO</p>
+              <p className="text-5xl font-bold">{riskScore}</p>
+              <p className="text-white/70 mt-1 text-sm">RISCO</p>
             </div>
             
             {/* Mini sparkline */}
-            <div className="h-16 mt-4">
+            <div className="h-12 mt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={riskOverTimeData}>
                   <Area 
@@ -313,11 +313,11 @@ const Dashboard = () => {
 
         {/* Risk by Severity Donut Chart */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-1">
             <CardTitle className="text-lg">Risco por Severidade</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
+          <CardContent className="pt-0">
+            <div className="h-[180px]">
               {severityData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -325,8 +325,8 @@ const Dashboard = () => {
                       data={severityData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={40}
-                      outerRadius={70}
+                      innerRadius={35}
+                      outerRadius={60}
                       paddingAngle={2}
                       dataKey="value"
                     >
@@ -343,9 +343,9 @@ const Dashboard = () => {
                     />
                     <Legend 
                       verticalAlign="bottom" 
-                      height={36}
+                      height={30}
                       formatter={(value) => (
-                        <span style={{ color: '#999', fontSize: '12px' }}>{value}</span>
+                        <span style={{ color: '#999', fontSize: '11px' }}>{value}</span>
                       )}
                     />
                   </PieChart>
@@ -362,14 +362,14 @@ const Dashboard = () => {
 
         {/* Extensions Spider/Radar Chart */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <FileWarning className="w-5 h-5 text-red-500" />
               Leaks por Extensão
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
+          <CardContent className="pt-0">
+            <div className="h-[180px]">
               {extensionStats.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="70%" data={extensionStats}>
@@ -411,92 +411,91 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Linha 3: Status do Scan + Risk vs. Time (lado a lado) */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Scan Status Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Status do Scan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center">
-              <p className="text-5xl font-bold text-green-500">{scanProgress}%</p>
-              <Progress value={scanProgress} className="mt-4 h-3" />
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4 text-center pt-4 border-t">
-              <div>
-                <p className="text-2xl font-bold">{gitleaksStats?.jobs?.total || 0}</p>
-                <p className="text-xs text-muted-foreground">Total de Scans</p>
-              </div>
-              <div>
-                <Badge variant="outline" className="text-lg px-4 py-1">
-                  {gitleaksStats?.jobs?.running || 0}
-                </Badge>
-                <p className="text-xs text-muted-foreground mt-1">Executando</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{gitleaksStats?.jobs?.completed || 0}</p>
-                <p className="text-xs text-muted-foreground">Concluídos</p>
-              </div>
-            </div>
+      {/* Linha 3: Leaks vs. Tempo (linha inteira) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Leaks vs. Tempo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={riskOverTimeData}>
+                <defs>
+                  <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#22C55E" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                <YAxis stroke="#666" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1a1a1a', 
+                    border: '1px solid #333',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="risk" 
+                  stroke="#22C55E" 
+                  fill="url(#riskGradient)"
+                  strokeWidth={2}
+                  dot={{ fill: '#22C55E', strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
 
-            <div className="pt-4 border-t">
+      {/* Linha 4: Status do Scan (linha inteira) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Status do Scan</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-8">
+            <div className="text-center flex-shrink-0">
+              <p className="text-5xl font-bold text-green-500">{scanProgress}%</p>
+              <p className="text-xs text-muted-foreground mt-1">Progresso</p>
+            </div>
+            <Progress value={scanProgress} className="flex-1 h-3" />
+          </div>
+          
+          <div className="grid grid-cols-4 gap-4 text-center pt-4 border-t">
+            <div>
+              <p className="text-2xl font-bold">{gitleaksStats?.jobs?.total || 0}</p>
+              <p className="text-xs text-muted-foreground">Total de Scans</p>
+            </div>
+            <div>
+              <Badge variant="outline" className="text-lg px-4 py-1">
+                {gitleaksStats?.jobs?.running || 0}
+              </Badge>
+              <p className="text-xs text-muted-foreground mt-1">Executando</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{gitleaksStats?.jobs?.completed || 0}</p>
+              <p className="text-xs text-muted-foreground">Concluídos</p>
+            </div>
+            <div>
               <Button 
                 onClick={handleScanAllServers} 
                 disabled={scanningAll}
-                className="w-full"
+                size="sm"
               >
                 {scanningAll ? (
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                Escanear todos os arquivos baixados
+                Escanear Todos
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Risk vs Time Area Chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Leaks vs. Tempo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={riskOverTimeData}>
-                  <defs>
-                    <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#22C55E" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="date" stroke="#666" fontSize={12} />
-                  <YAxis stroke="#666" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1a1a1a', 
-                      border: '1px solid #333',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="risk" 
-                    stroke="#22C55E" 
-                    fill="url(#riskGradient)"
-                    strokeWidth={2}
-                    dot={{ fill: '#22C55E', strokeWidth: 2 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Resumo / Quick Stats */}
       <Card>
