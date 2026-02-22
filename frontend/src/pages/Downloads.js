@@ -67,11 +67,10 @@ const ocrStatusConfig = {
 const Downloads = () => {
   const [downloadJobs, setDownloadJobs] = useState([]);
   const [scanJobs, setScanJobs] = useState([]);
-  const [ocrJobs, setOcrJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState(null);
   const [expandedServers, setExpandedServers] = useState({});
-  const [activeTab, setActiveTab] = useState('downloads'); // 'downloads', 'scans', 'ocr'
+  const [activeTab, setActiveTab] = useState('downloads'); // 'downloads' or 'scans'
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -79,14 +78,6 @@ const Downloads = () => {
     completed: 0,
     failed: 0,
     cancelled: 0,
-    skipped: 0
-  });
-  const [ocrStats, setOcrStats] = useState({
-    total: 0,
-    pending: 0,
-    running: 0,
-    completed: 0,
-    failed: 0,
     skipped: 0
   });
   
