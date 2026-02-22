@@ -290,7 +290,6 @@ const Downloads = () => {
   const retryDownload = async (jobId) => {
     try {
       await axios.post(`${API}/downloads/${jobId}/retry`);
-      toast.success('Download reiniciado');
       loadDownloadJobs();
     } catch (error) {
       console.error('Error retrying download:', error);
