@@ -247,8 +247,8 @@ const Leaks = () => {
       const response = await axios.delete(`${API}/gitleaks/findings/${encodeURIComponent(fingerprint)}`);
       if (response.data.success) {
         toast.success('Finding removido');
-        // Atualizar lista local sem recarregar
-        setFindings(prev => prev.filter(f => f.Fingerprint !== fingerprint));
+        // Recarregar findings para atualizar a estrutura de files
+        loadFindings();
       } else {
         toast.error(response.data.message || 'Erro ao remover finding');
       }
