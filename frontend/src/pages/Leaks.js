@@ -497,7 +497,7 @@ const Leaks = () => {
                 <p className="text-sm text-muted-foreground">Tipos de Secrets</p>
                 <p className="text-2xl font-bold">{new Set(findings.map(f => f.RuleID)).size}</p>
               </div>
-              <Key className="w-8 h-8 text-blue-500 opacity-50" />
+              <ShieldKeyIcon className="w-8 h-8 text-blue-500 opacity-50" />
             </div>
           </CardContent>
         </Card>
