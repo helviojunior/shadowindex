@@ -335,14 +335,21 @@ async def quick_search(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Busca rápida por nome de arquivo ou diretório.
-    Retorna resultados agrupados por tipo.
+    Busca rápida por:
+    1. Nome de arquivo ou diretório
+    2. Metadados (extensão, mimetype)
+    3. Conteúdo OCR
+    4. Findings do GitLeaks
+    
+    Retorna resultados agrupados por tipo e fonte.
     """
     from sqlalchemy import or_, and_
+    from database import FileVersion, GitleaksFinding
     
     server = await get_server_or_404(db, server_id)
+    query_lower = q.lower()
     
-    # Buscar itens
+    # 1. Buscar itens por nome
     items_result = await db.execute(
         select(ServerItem).where(
             ServerItem.server_guid == server.guid,
@@ -351,19 +358,92 @@ async def quick_search(
     )
     items = items_result.scalars().all()
     
-    # Buscar arquivos baixados por path ou sha1
+    # 2. Buscar arquivos baixados por path, sha1, nome ou mimetype
     files_result = await db.execute(
         select(DownloadedFile).where(
             DownloadedFile.server_guid == server.guid,
             or_(
                 DownloadedFile.file_path.ilike(f"%{q}%"),
-                DownloadedFile.sha1_hash.ilike(f"%{q}%")
+                DownloadedFile.file_name.ilike(f"%{q}%"),
+                DownloadedFile.sha1_hash.ilike(f"%{q}%"),
+                DownloadedFile.mimetype.ilike(f"%{q}%")
             )
         ).limit(limit)
     )
     downloaded_files = files_result.scalars().all()
     
-    # Organizar resultados
+    # 3. Buscar em conteúdo OCR (FileVersion tem o campo ocr_text)
+    ocr_results = []
+    try:
+        ocr_query = await db.execute(
+            select(FileVersion).where(
+                FileVersion.server_guid == server.guid,
+                FileVersion.ocr_text.ilike(f"%{q}%")
+            ).limit(limit // 2)
+        )
+        ocr_versions = ocr_query.scalars().all()
+        
+        for version in ocr_versions:
+            # Extrair snippet do texto OCR onde a query foi encontrada
+            ocr_text = version.ocr_text or ''
+            idx = ocr_text.lower().find(query_lower)
+            snippet = ""
+            if idx >= 0:
+                start = max(0, idx - 50)
+                end = min(len(ocr_text), idx + len(q) + 50)
+                snippet = ocr_text[start:end]
+                if start > 0:
+                    snippet = "..." + snippet
+                if end < len(ocr_text):
+                    snippet = snippet + "..."
+            
+            ocr_results.append({
+                "id": version.id,
+                "file_path": version.file_path,
+                "name": version.file_path.split('\\')[-1] if '\\' in version.file_path else version.file_path.split('/')[-1],
+                "share_name": version.share_name,
+                "version": version.version_number,
+                "snippet": snippet,
+                "type": "ocr",
+                "source": "OCR"
+            })
+    except Exception as e:
+        logger.warning(f"Error searching OCR: {e}")
+    
+    # 4. Buscar em findings do GitLeaks
+    gitleaks_results = []
+    try:
+        gitleaks_query = await db.execute(
+            select(GitleaksFinding).where(
+                GitleaksFinding.server_id == server_id,
+                or_(
+                    GitleaksFinding.file_name.ilike(f"%{q}%"),
+                    GitleaksFinding.server_path.ilike(f"%{q}%"),
+                    GitleaksFinding.rule_id.ilike(f"%{q}%"),
+                    GitleaksFinding.secret.ilike(f"%{q}%"),
+                    GitleaksFinding.match.ilike(f"%{q}%"),
+                    GitleaksFinding.description.ilike(f"%{q}%")
+                )
+            ).limit(limit // 2)
+        )
+        findings = gitleaks_query.scalars().all()
+        
+        for finding in findings:
+            gitleaks_results.append({
+                "id": finding.id,
+                "fingerprint": finding.fingerprint,
+                "file_name": finding.file_name,
+                "file_path": finding.server_path or finding.file_path,
+                "rule_id": finding.rule_id,
+                "description": finding.description,
+                "line": finding.start_line,
+                "type": "gitleaks",
+                "source": "GitLeaks"
+            })
+    except Exception as e:
+        logger.warning(f"Error searching GitLeaks: {e}")
+    
+    # Organizar resultados por tipo
     directories = []
     files = []
     downloaded = []
@@ -376,7 +456,8 @@ async def quick_search(
             "share_name": item.share_name,
             "size": item.size,
             "modified": item.modified,
-            "type": "item"
+            "type": "item",
+            "source": "Navegação"
         }
         if item.item_type == 'Directory':
             directories.append(item_data)
@@ -388,7 +469,7 @@ async def quick_search(
     
     for df in downloaded_files:
         if df.file_path not in item_paths:
-            name = df.file_path.split('\\')[-1] if '\\' in df.file_path else df.file_path.split('/')[-1]
+            name = df.file_name or (df.file_path.split('\\')[-1] if '\\' in df.file_path else df.file_path.split('/')[-1])
             downloaded.append({
                 "id": df.id,
                 "name": name,
@@ -396,8 +477,10 @@ async def quick_search(
                 "share_name": df.share_name,
                 "size": str(df.file_size) if df.file_size else None,
                 "sha1_hash": df.sha1_hash,
+                "mimetype": df.mimetype,
                 "downloaded_at": df.downloaded_at.isoformat() if df.downloaded_at else None,
-                "type": "downloaded"
+                "type": "downloaded",
+                "source": "Download"
             })
     
     return {
@@ -405,7 +488,9 @@ async def quick_search(
         "directories": directories,
         "files": files,
         "downloaded": downloaded,
-        "total": len(directories) + len(files) + len(downloaded)
+        "ocr": ocr_results,
+        "gitleaks": gitleaks_results,
+        "total": len(directories) + len(files) + len(downloaded) + len(ocr_results) + len(gitleaks_results)
     }
 
 
