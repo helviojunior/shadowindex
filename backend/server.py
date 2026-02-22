@@ -4103,6 +4103,15 @@ async def startup_event():
     except Exception as e:
         print(f"=== STARTUP WARNING: Tika OCR service error: {e} ===", flush=True)
     
+    # Carregar findings do GitLeaks do banco de dados
+    try:
+        from gitleaks_service import get_gitleaks_service
+        service = get_gitleaks_service()
+        db_count = await service.load_findings_from_db()
+        print(f"=== STARTUP: GitLeaks findings loaded from database: {db_count} ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP WARNING: Failed to load GitLeaks findings: {e} ===", flush=True)
+    
     # Iniciar worker de downloads em background
     try:
         from download_worker import start_download_worker
