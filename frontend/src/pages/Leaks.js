@@ -139,13 +139,13 @@ const Leaks = () => {
     }
   }, []);
 
-  // Polling para jobs ativos
+  // Polling para jobs ativos - para após erros consecutivos
   useEffect(() => {
-    if (polling) {
+    if (polling && errorCountRef.current < 3) {
       const interval = setInterval(() => {
         loadJobs();
         loadFindings();
-      }, 3000);
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [polling, loadJobs, loadFindings]);
