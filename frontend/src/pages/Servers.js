@@ -469,6 +469,10 @@ const Servers = () => {
                     </th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">Verificado</th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">
+                      <Plug className="w-4 h-4 inline mr-1" />
+                      Plugin
+                    </th>
+                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">
                       <HardDrive className="w-4 h-4 inline mr-1" />
                       Shares
                     </th>
