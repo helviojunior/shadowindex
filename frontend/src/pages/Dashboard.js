@@ -231,7 +231,80 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Scan Status + Overall Risk Score */}
+      {/* Risk vs Time + Overall Risk Score */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Risk vs Time Area Chart */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Risk vs. Time</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={riskOverTimeData}>
+                  <defs>
+                    <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#22C55E" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                  <YAxis stroke="#666" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1a1a1a', 
+                      border: '1px solid #333',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="risk" 
+                    stroke="#22C55E" 
+                    fill="url(#riskGradient)"
+                    strokeWidth={2}
+                    dot={{ fill: '#22C55E', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Overall Risk Score Card - Verde como no Sn1per */}
+        <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white">
+          <CardHeader>
+            <CardTitle className="text-lg text-white/90 flex items-center gap-2">
+              <Activity className="w-5 h-5" />
+              Overall Risk Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center">
+              <p className="text-6xl font-bold">{riskScore}</p>
+              <p className="text-white/70 mt-2">RISK</p>
+            </div>
+            
+            {/* Mini sparkline */}
+            <div className="h-16 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={riskOverTimeData}>
+                  <Area 
+                    type="monotone" 
+                    dataKey="risk" 
+                    stroke="rgba(255,255,255,0.8)" 
+                    fill="rgba(255,255,255,0.2)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Scan Status + Risk by Severity */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Scan Status Card */}
         <Card className="lg:col-span-2">
@@ -280,74 +353,6 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Overall Risk Score Card - Verde como no Sn1per */}
-        <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white">
-          <CardHeader>
-            <CardTitle className="text-lg text-white/90 flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              Overall Risk Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">
-              <p className="text-6xl font-bold">{riskScore}</p>
-              <p className="text-white/70 mt-2">RISK</p>
-            </div>
-            
-            {/* Mini sparkline */}
-            <div className="h-16 mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={riskOverTimeData}>
-                  <Area 
-                    type="monotone" 
-                    dataKey="risk" 
-                    stroke="rgba(255,255,255,0.8)" 
-                    fill="rgba(255,255,255,0.2)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Risk vs Time Area Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Risk vs. Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={riskOverTimeData}>
-                  <defs>
-                    <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#22C55E" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="date" stroke="#666" fontSize={12} />
-                  <YAxis stroke="#666" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1a1a1a', 
-                      border: '1px solid #333',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="risk" 
-                    stroke="#22C55E" 
-                    fill="url(#riskGradient)"
-                    strokeWidth={2}
-                    dot={{ fill: '#22C55E', strokeWidth: 2 }}
-                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
