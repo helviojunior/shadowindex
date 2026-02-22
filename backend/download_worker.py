@@ -369,7 +369,48 @@ class DownloadWorker:
                 server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
             
             await db.commit()
+            await db.refresh(downloaded_file)
             logger.info(f"DownloadedFile record saved successfully for {job.file_path}")
+            
+            # Adicionar à fila de OCR se o tipo de arquivo suporta
+            ocr_supported_mimes = [
+                'application/pdf',
+                'image/',
+                'text/',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument',
+                'application/vnd.ms-excel',
+                'application/vnd.ms-powerpoint'
+            ]
+            
+            if mimetype and any(m in mimetype for m in ocr_supported_mimes):
+                try:
+                    from ocr_worker import queue_ocr_job
+                    
+                    # Buscar versão atual do arquivo
+                    version_result = await db.execute(
+                        select(FileVersion).where(
+                            FileVersion.file_id == downloaded_file.id,
+                            FileVersion.is_current == True
+                        )
+                    )
+                    current_version = version_result.scalar_one_or_none()
+                    version_id = current_version.id if current_version else None
+                    
+                    await queue_ocr_job(
+                        db=db,
+                        file_id=downloaded_file.id,
+                        version_id=version_id,
+                        server_id=server.id,
+                        file_path=job.file_path,
+                        file_name=job.file_name,
+                        local_path=str(full_storage_path),
+                        ocr_language="eng+por",
+                        priority=0
+                    )
+                    logger.info(f"OCR job queued for {job.file_name}")
+                except Exception as ocr_err:
+                    logger.warning(f"Failed to queue OCR job: {ocr_err}")
             
         except Exception as e:
             logger.error(f"Error saving file content: {e}")
