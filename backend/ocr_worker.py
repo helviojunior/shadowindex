@@ -9,10 +9,39 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+async def emit_ocr_stats():
+    """Emite estatísticas de OCR via WebSocket"""
+    try:
+        from database import async_session_maker, OCRJob
+        from websocket_manager import get_websocket_manager
+        
+        async with async_session_maker() as db:
+            # Contar jobs por status
+            result = await db.execute(
+                select(OCRJob.status, func.count(OCRJob.id))
+                .group_by(OCRJob.status)
+            )
+            status_counts = dict(result.fetchall())
+            
+            stats = {
+                "running": status_counts.get('running', 0),
+                "pending": status_counts.get('pending', 0),
+                "completed": status_counts.get('completed', 0),
+                "failed": status_counts.get('failed', 0),
+                "skipped": status_counts.get('skipped', 0),
+                "total": sum(status_counts.values())
+            }
+            
+            ws_manager = get_websocket_manager()
+            await ws_manager.emit_ocr_stats(stats)
+    except Exception as e:
+        logger.error(f"Error emitting OCR stats: {e}")
 
 
 class OCRWorker:
