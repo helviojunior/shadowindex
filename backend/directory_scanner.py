@@ -374,15 +374,6 @@ class DirectoryScanner:
         except Exception as e:
             print(f"=== SCANNER ERROR in _scan_directory: {e} ===", flush=True)
             logger.error(f"Error scanning {full_path}: {e}")
-    
-    def _parse_directory_listing(self, result: str) -> List[dict]:
-        """Parseia o resultado da listagem de diretório (formato SOAP Exec4)"""
-        # Usar a função utilitária do server.py
-        from server import parse_exec4_directory_listing
-        
-        items = parse_exec4_directory_listing(result)
-        print(f"=== SCANNER PARSE: Found {len(items)} items ===", flush=True)
-        return items
 
 
 def get_scanner() -> DirectoryScanner:
