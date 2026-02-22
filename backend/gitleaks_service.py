@@ -440,10 +440,48 @@ class GitleaksService:
         return [f for f in self._findings if f.get('job_id') == job_id]
     
     def clear_findings(self) -> int:
-        """Limpa todos os findings do cache"""
+        """Limpa todos os findings do cache (não remove do banco)"""
         count = len(self._findings)
         self._findings = []
         return count
+    
+    async def delete_finding_from_db(self, fingerprint: str) -> bool:
+        """Remove um finding do banco de dados"""
+        from database import async_session_maker, GitleaksFinding
+        from sqlalchemy import delete
+        
+        try:
+            async with async_session_maker() as db:
+                await db.execute(
+                    delete(GitleaksFinding).where(GitleaksFinding.fingerprint == fingerprint)
+                )
+                await db.commit()
+                
+                # Remover também do cache em memória
+                self._findings = [f for f in self._findings if f.get('Fingerprint') != fingerprint]
+                logger.info(f"Finding {fingerprint} removido do banco")
+                return True
+        except Exception as e:
+            logger.error(f"Erro ao remover finding {fingerprint}: {e}")
+            return False
+    
+    async def load_findings_from_db(self) -> int:
+        """Carrega findings do banco de dados para o cache em memória"""
+        findings = await load_findings_from_db()
+        
+        # Adicionar ao cache evitando duplicatas
+        existing_fingerprints = {f.get('Fingerprint') for f in self._findings}
+        added_count = 0
+        
+        for finding in findings:
+            fingerprint = finding.get('Fingerprint')
+            if fingerprint and fingerprint not in existing_fingerprints:
+                self._findings.append(finding)
+                existing_fingerprints.add(fingerprint)
+                added_count += 1
+        
+        logger.info(f"Carregados {added_count} findings do banco para o cache")
+        return added_count
     
     def clear_old_jobs(self) -> int:
         """Remove jobs antigos (completed, failed, cancelled)"""
