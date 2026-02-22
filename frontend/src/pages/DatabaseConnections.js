@@ -143,8 +143,7 @@ const DatabaseConnections = () => {
         name: `_temp_test_${Date.now()}`,
         connection_string: formData.connection_string,
         db_type_id: formData.db_type_id ? parseInt(formData.db_type_id) : null,
-        plugin_type: formData.plugin_type,
-        plugin_config: formData.plugin_config
+        plugin_instance_id: formData.plugin_instance_id ? parseInt(formData.plugin_instance_id) : null
       };
       
       // Create temp connection
