@@ -16,7 +16,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 # Tika server URL from environment
-TIKA_SERVER_URL = os.environ.get("TIKA_SERVER_URL", "http://localhost:9998")
+TIKA_SERVER_URL = os.environ.get("TIKA_SERVER_URL", "http://tika:9998")
 
 
 class TikaService:
