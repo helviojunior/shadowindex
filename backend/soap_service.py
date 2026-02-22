@@ -261,6 +261,30 @@ class SoapService:
         except Exception as e:
             logger.error(f"SOAP call failed: {e}")
             raise Exception(f"Erro ao chamar o WebService SOAP: {str(e)}")
+    
+    async def _verify_proxy_credential(self, db: AsyncSession):
+        """Verify the proxy credential after successful communication"""
+        try:
+            from credential_verification import mark_credential_verified
+            
+            # Get the active proxy to find its credential_id
+            result = await db.execute(
+                select(AppConfig).where(AppConfig.key == "active_proxy_id")
+            )
+            proxy_config = result.scalar_one_or_none()
+            
+            if proxy_config and proxy_config.value and proxy_config.value != "null":
+                proxy_id = int(proxy_config.value)
+                result = await db.execute(
+                    select(ProxyServer).where(ProxyServer.id == proxy_id)
+                )
+                proxy = result.scalar_one_or_none()
+                
+                if proxy and proxy.credential_id:
+                    await mark_credential_verified(db, proxy.credential_id, context="Proxy/SOAP Communication")
+                    logger.info(f"Proxy credential {proxy.credential_id} verified after successful SOAP call")
+        except Exception as e:
+            logger.warning(f"Error verifying proxy credential: {e}")
 
 
 async def get_default_soap_service(db: AsyncSession) -> SoapService:
