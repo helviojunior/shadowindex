@@ -724,7 +724,7 @@ async def list_items(
 
 
 @router.get("/servers/{server_id}/shares/{share_id}", response_model=ShareResponse)
-async def get_share(server_id: int, share_id: int, db: AsyncSession = Depends(get_db)):
+async def get_share(server_id: int, share_id: int, db: AsyncSession = Depends(get_db_readonly)):
     """Obtém informações de um compartilhamento"""
     server = await get_server_or_404(db, server_id)
     share = await get_share_or_404(db, server, share_id)
@@ -732,7 +732,7 @@ async def get_share(server_id: int, share_id: int, db: AsyncSession = Depends(ge
 
 
 @router.get("/servers/{server_id}/shares/{share_id}/items", response_model=List[ItemResponse])
-async def get_share_items(server_id: int, share_id: int, db: AsyncSession = Depends(get_db)):
+async def get_share_items(server_id: int, share_id: int, db: AsyncSession = Depends(get_db_readonly)):
     """Obtém itens de um compartilhamento do cache"""
     server = await get_server_or_404(db, server_id)
     share = await get_share_or_404(db, server, share_id)
