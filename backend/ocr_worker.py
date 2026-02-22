@@ -111,14 +111,14 @@ class OCRWorker:
                 return
             
             # Executar OCR
-            ocr_result = await ocr_service.extract_text(
+            ocr_text, ocr_metadata, error = await ocr_service.extract_text_and_metadata(
                 job.local_path,
                 ocr_language=job.ocr_language
             )
             
-            if ocr_result and ocr_result.get('success'):
-                job.ocr_text = ocr_result.get('text', '')
-                job.ocr_metadata = ocr_result.get('metadata')
+            if ocr_text is not None:
+                job.ocr_text = ocr_text
+                job.ocr_metadata = ocr_metadata
                 job.status = 'completed'
                 
                 # Atualizar a versão do arquivo com o texto OCR
@@ -136,7 +136,7 @@ class OCRWorker:
                 logger.info(f"OCR job {job.id} completed: {len(job.ocr_text or '')} chars")
             else:
                 job.status = 'failed'
-                job.error_message = ocr_result.get('error', 'OCR failed') if ocr_result else 'No result'
+                job.error_message = error or 'OCR failed - no text extracted'
                 print(f"=== OCR WORKER: Job {job.id} failed: {job.error_message} ===", flush=True)
             
         except FileNotFoundError as e:
