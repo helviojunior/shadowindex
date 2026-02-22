@@ -536,7 +536,9 @@ class DirectInteractionPlugin(BasePlugin):
         except (AuthenticationFailureException, ConnectionException):
             raise
         except Exception as e:
-            logger.error(f"Failed to list shares on {server_ip}: {e}")
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f"Failed to list shares on {server_ip}: {e}\n{error_traceback}")
             raise ConnectionException(
                 server=server_ip,
                 message=f"Erro ao listar compartilhamentos: {str(e)}",
