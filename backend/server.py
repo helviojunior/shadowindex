@@ -509,7 +509,7 @@ async def create_credential(credential: CredentialCreate, db: AsyncSession = Dep
     return db_credential
 
 @api_router.get("/credentials", response_model=List[CredentialResponse])
-async def get_credentials(db: AsyncSession = Depends(get_db)):
+async def get_credentials(db: AsyncSession = Depends(get_db_readonly)):
     result = await db.execute(select(Credential))
     return result.scalars().all()
 
