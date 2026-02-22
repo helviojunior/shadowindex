@@ -4062,17 +4062,22 @@ async def get_leak_types():
     ]
 
 
-@router.delete("/gitleaks/findings/{fingerprint}")
+@router.delete("/gitleaks/findings/{fingerprint:path}")
 async def delete_leak_finding(fingerprint: str):
     """
     Remove um leak específico pelo fingerprint (do cache e do banco de dados).
+    O fingerprint pode conter caracteres especiais como / e :
     """
     from gitleaks_service import get_gitleaks_service
+    from urllib.parse import unquote
+    
+    # Decodificar o fingerprint (pode vir URL-encoded)
+    decoded_fingerprint = unquote(fingerprint)
     
     service = get_gitleaks_service()
     
     # Remover do banco de dados e do cache
-    success = await service.delete_finding_from_db(fingerprint)
+    success = await service.delete_finding_from_db(decoded_fingerprint)
     
     if success:
         return {"success": True, "message": "Leak removido com sucesso"}
