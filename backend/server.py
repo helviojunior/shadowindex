@@ -1678,7 +1678,8 @@ async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)
 
 @api_router.get("/servers", response_model=List[ServerResponse])
 async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
-    from database import PluginInstance
+    from database import PluginInstance, GitleaksFinding
+    from sqlalchemy import func
     
     result = await db.execute(select(Server))
     servers = result.scalars().all()
@@ -1694,9 +1695,41 @@ async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
         for pi in plugin_result.scalars().all():
             plugin_names[pi.id] = pi.name
     
-    # Construir resposta com nomes das instâncias
+    # Buscar contagem de leaks por servidor
+    leaks_result = await db.execute(
+        select(
+            GitleaksFinding.server_id,
+            func.count(GitleaksFinding.id).label('leaks_count')
+        )
+        .where(GitleaksFinding.server_id.isnot(None))
+        .group_by(GitleaksFinding.server_id)
+    )
+    leaks_by_server = {row.server_id: row.leaks_count for row in leaks_result}
+    
+    # Construir resposta com nomes das instâncias e contagem de leaks
     response = []
     for server in servers:
+        leaks_count = leaks_by_server.get(server.id, 0)
+        
+        # Calcular índice de risco (0-100)
+        # Fórmula: considera leaks (peso maior), shares e arquivos baixados
+        risk_score = 0.0
+        if leaks_count > 0:
+            # Leaks têm peso principal: cada leak adiciona pontos
+            # 1-5 leaks: 20-40 pontos, 6-20 leaks: 40-70 pontos, 20+: 70-100 pontos
+            if leaks_count <= 5:
+                risk_score = 20 + (leaks_count * 4)  # 24-40
+            elif leaks_count <= 20:
+                risk_score = 40 + ((leaks_count - 5) * 2)  # 42-70
+            else:
+                risk_score = min(70 + ((leaks_count - 20) * 0.5), 100)  # 70-100
+        
+        # Adicionar pontos baseados em shares e downloads (menor peso)
+        if server.shares_count > 0:
+            risk_score = min(risk_score + min(server.shares_count * 0.5, 10), 100)
+        if server.downloaded_files_count > 0:
+            risk_score = min(risk_score + min(server.downloaded_files_count * 0.1, 10), 100)
+        
         response.append(ServerResponse(
             id=server.id,
             guid=server.guid,
@@ -1705,6 +1738,8 @@ async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
             verified=server.verified,
             shares_count=server.shares_count,
             downloaded_files_count=server.downloaded_files_count,
+            leaks_count=leaks_count,
+            risk_score=round(risk_score, 1),
             last_verified_at=server.last_verified_at,
             created_at=server.created_at,
             plugin_instance_id=server.plugin_instance_id,
