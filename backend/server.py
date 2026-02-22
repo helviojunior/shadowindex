@@ -3478,11 +3478,17 @@ async def download_file_to_client(
 # ==================== DOWNLOAD JOBS ENDPOINTS ====================
 
 @api_router.get("/downloads")
-async def get_download_jobs(db: AsyncSession = Depends(get_db)):
-    """Lista todos os jobs de download"""
-    result = await db.execute(
-        select(DownloadJob).order_by(desc(DownloadJob.created_at))
-    )
+async def get_download_jobs(
+    server_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista todos os jobs de download, opcionalmente filtrado por servidor"""
+    query = select(DownloadJob).order_by(desc(DownloadJob.created_at))
+    
+    if server_id:
+        query = query.where(DownloadJob.server_id == server_id)
+    
+    result = await db.execute(query)
     jobs = result.scalars().all()
     
     return [
