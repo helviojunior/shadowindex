@@ -3535,13 +3535,35 @@ async def download_file_to_client(
 @api_router.get("/downloads")
 async def get_download_jobs(
     server_id: Optional[int] = None,
+    limit: Optional[int] = None,
+    active_first: bool = False,
     db: AsyncSession = Depends(get_db_readonly)
 ):
-    """Lista todos os jobs de download, opcionalmente filtrado por servidor"""
-    query = select(DownloadJob).order_by(desc(DownloadJob.created_at))
+    """Lista jobs de download, opcionalmente filtrado por servidor
+    
+    Args:
+        server_id: Filtrar por servidor específico
+        limit: Limitar quantidade de resultados
+        active_first: Ordenar jobs ativos (downloading, pending) primeiro
+    """
+    from sqlalchemy import case
+    
+    if active_first:
+        # Ordenar: ativos primeiro (downloading=1, pending=2), depois por data
+        status_order = case(
+            (DownloadJob.status == 'downloading', 1),
+            (DownloadJob.status == 'pending', 2),
+            else_=3
+        )
+        query = select(DownloadJob).order_by(status_order, desc(DownloadJob.created_at))
+    else:
+        query = select(DownloadJob).order_by(desc(DownloadJob.created_at))
     
     if server_id:
         query = query.where(DownloadJob.server_id == server_id)
+    
+    if limit:
+        query = query.limit(limit)
     
     result = await db.execute(query)
     jobs = result.scalars().all()
