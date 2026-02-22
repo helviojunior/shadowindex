@@ -2407,7 +2407,7 @@ const ServerBrowser = () => {
             }
             // Para arquivos de texto
             else {
-              const textResponse = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/view`);
+              const textResponse = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/content`);
               if (textResponse.data) {
                 setRawFileContent(textResponse.data.content || textResponse.data);
                 // Tentar beautify
