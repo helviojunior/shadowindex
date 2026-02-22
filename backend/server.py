@@ -1496,6 +1496,7 @@ async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)
         guid=str(uuid.uuid4()),
         name=server.name,
         ip=server.ip,
+        plugin_instance_id=server.plugin_instance_id,
         plugin_type=server.plugin_type or "soap_api",
         plugin_config=server.plugin_config
     )
