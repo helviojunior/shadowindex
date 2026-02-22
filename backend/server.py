@@ -3532,17 +3532,41 @@ async def download_file_to_client(
 
 # ==================== DOWNLOAD JOBS ENDPOINTS ====================
 
+@api_router.get("/downloads/stats")
+async def get_download_stats(db: AsyncSession = Depends(get_db_readonly)):
+    """Retorna estatísticas dos jobs de download (contagens por status)"""
+    from sqlalchemy import func
+    
+    result = await db.execute(
+        select(DownloadJob.status, func.count(DownloadJob.id))
+        .group_by(DownloadJob.status)
+    )
+    status_counts = dict(result.all())
+    
+    return {
+        "total": sum(status_counts.values()),
+        "pending": status_counts.get('pending', 0),
+        "downloading": status_counts.get('downloading', 0),
+        "completed": status_counts.get('completed', 0),
+        "failed": status_counts.get('failed', 0),
+        "cancelled": status_counts.get('cancelled', 0),
+        "skipped": status_counts.get('skipped', 0)
+    }
+
+
 @api_router.get("/downloads")
 async def get_download_jobs(
     server_id: Optional[int] = None,
+    status: Optional[str] = None,
     limit: Optional[int] = None,
     active_first: bool = False,
     db: AsyncSession = Depends(get_db_readonly)
 ):
-    """Lista jobs de download, opcionalmente filtrado por servidor
+    """Lista jobs de download, opcionalmente filtrado por servidor e status
     
     Args:
         server_id: Filtrar por servidor específico
+        status: Filtrar por status (pode ser múltiplos separados por vírgula)
         limit: Limitar quantidade de resultados
         active_first: Ordenar jobs ativos (downloading, pending) primeiro
     """
