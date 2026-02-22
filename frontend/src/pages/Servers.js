@@ -215,6 +215,40 @@ const Servers = () => {
     setEditIp('');
   };
 
+  const handleEditName = (server) => {
+    setEditingNameServer(server.id);
+    setEditName(server.name);
+  };
+
+  const handleCancelNameEdit = () => {
+    setEditingNameServer(null);
+    setEditName('');
+  };
+
+  const handleSaveName = async (serverId) => {
+    if (!editName.trim()) {
+      toast.error('Nome não pode estar vazio');
+      return;
+    }
+
+    const server = servers.find(s => s.id === serverId);
+    if (editName.trim() === server?.name) {
+      handleCancelNameEdit();
+      return;
+    }
+
+    try {
+      await axios.patch(`${API}/servers/${serverId}`, { name: editName.trim() });
+      toast.success('Nome atualizado com sucesso');
+      setEditingNameServer(null);
+      setEditName('');
+      loadServers();
+    } catch (error) {
+      console.error('Error updating server name:', error);
+      toast.error('Erro ao atualizar nome');
+    }
+  };
+
   const handleEditPlugin = (server) => {
     setEditingPluginServer(server.id);
     setEditPluginInstanceId(server.plugin_instance_id?.toString() || '');
