@@ -343,6 +343,30 @@ const Downloads = () => {
     }
   };
 
+  // Cancel OCR job
+  const cancelOcrJob = async (jobId) => {
+    try {
+      await axios.post(`${API}/v2/ocr/jobs/${jobId}/cancel`);
+      loadOcrJobs();
+      loadOcrStats();
+      toast.success('Job OCR cancelado');
+    } catch (error) {
+      toast.error('Erro ao cancelar job OCR');
+    }
+  };
+
+  // Clear finished OCR jobs
+  const clearFinishedOcrJobs = async () => {
+    try {
+      await axios.delete(`${API}/v2/ocr/jobs/clear-finished`);
+      loadOcrJobs();
+      loadOcrStats();
+      toast.success('Jobs OCR limpos');
+    } catch (error) {
+      toast.error('Erro ao limpar jobs OCR');
+    }
+  };
+
   // Initial load and polling
   useEffect(() => {
     let isMounted = true;
@@ -354,6 +378,10 @@ const Downloads = () => {
       await loadActiveJobs();
       if (!isMounted) return;
       await loadScanJobs();
+      if (!isMounted) return;
+      await loadOcrJobs();
+      if (!isMounted) return;
+      await loadOcrStats();
     };
     
     loadData();
@@ -366,6 +394,8 @@ const Downloads = () => {
         loadStats();
         loadActiveJobs();
         loadScanJobs();
+        loadOcrJobs();
+        loadOcrStats();
       }
     }, pollInterval);
     
@@ -373,7 +403,7 @@ const Downloads = () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [loadStats, loadActiveJobs, loadScanJobs, isConnected]);
+  }, [loadStats, loadActiveJobs, loadScanJobs, loadOcrJobs, loadOcrStats, isConnected]);
 
   // Cancel single job
   const cancelJob = async (jobId) => {
