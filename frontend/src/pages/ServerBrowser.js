@@ -4504,7 +4504,7 @@ const ServerBrowser = () => {
               {submittingLeak ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <Key className="w-4 h-4 mr-2" />
+                <ShieldKeyIcon className="w-4 h-4 mr-2" />
               )}
               Registrar Credencial
             </Button>
