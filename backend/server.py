@@ -24,7 +24,7 @@ except ImportError:
     logging.info("libmagic não instalado - mimetype será detectado por extensão")
 
 from database import (
-    init_db, get_db, 
+    init_db, get_db, get_db_readonly,
     Credential, DatabaseConnection, ProxyServer, SoapApiUrl, SoapCache, AppConfig,
     Server, ServerShare, DownloadedFile, ServerItem, SqlPreset, SqlQueryHistory, DatabaseType,
     FileVersion, PfxPassword, DownloadJob, AppSettings, PluginInstance
