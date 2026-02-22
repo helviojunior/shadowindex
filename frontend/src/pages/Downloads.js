@@ -196,14 +196,6 @@ const Downloads = () => {
     }));
   }, []);
   
-  // Handler para limpeza de downloads (timeout/stale)
-  const handleDownloadsCleanup = useCallback((data) => {
-    // Recarregar jobs quando há limpeza automática
-    if (data.timed_out_count > 0) {
-      loadDownloadJobs();
-    }
-  }, [loadDownloadJobs]);
-  
   // Handler para progresso de scan
   const handleScanProgress = useCallback((data) => {
     setScanJobs(prev => prev.map(scan => 
@@ -233,8 +225,7 @@ const Downloads = () => {
     handleDownloadProgress,
     handleDownloadComplete,
     handleDownloadFailed,
-    handleDownloadStarted,
-    handleDownloadsCleanup
+    handleDownloadStarted
   );
   
   useScanEvents(handleScanProgress, handleScanComplete);
