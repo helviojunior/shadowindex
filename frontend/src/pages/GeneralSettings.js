@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database } from 'lucide-react';
+import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database, FileSearch, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -30,13 +32,18 @@ const GeneralSettings = () => {
     default_depth_levels: '5',
     default_max_file_size_mb: '100',
     ignored_extensions: '.log,.tmp,.bak',
-    import_ports: '445,1433,3306,5432,1521,27017,6379,5984,9200'
+    import_ports: '445,1433,3306,5432,1521,27017,6379,5984,9200',
+    auto_ocr_enabled: 'true',
+    auto_ocr_extensions: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.odt,.ods,.odp',
+    auto_ocr_mimetypes: 'application/pdf,image/,text/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newExtension, setNewExtension] = useState('');
   const [newPort, setNewPort] = useState('');
   const [newPortName, setNewPortName] = useState('');
+  const [newOcrExtension, setNewOcrExtension] = useState('');
+  const [newOcrMimetype, setNewOcrMimetype] = useState('');
 
   useEffect(() => {
     loadSettings();
