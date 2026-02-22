@@ -3992,9 +3992,9 @@ async def create_default_plugin_instances():
     Cria instâncias padrão de plugins se não existir nenhuma instância.
     Cada plugin terá uma instância padrão sem autenticação.
     """
-    from database import async_session_maker
+    from database import AsyncSessionLocal
     
-    async with async_session_maker() as db:
+    async with AsyncSessionLocal() as db:
         # Verificar se existem instâncias
         result = await db.execute(select(PluginInstance))
         existing_instances = result.scalars().all()
