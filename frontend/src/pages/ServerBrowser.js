@@ -1468,18 +1468,24 @@ const ServerBrowser = () => {
           
           if (shareItems && Array.isArray(shareItems)) {
             // Mapear itens para o formato usado no frontend
-            newNodeChildren[shareNodeId] = shareItems.map(item => ({
-              ...item,
-              id: item.id,
-              type: item.type,
-              itemType: item.type,
-              name: item.name,
-              fullPath: item.full_path,
-              shareName: share.share_name,
-              childrenFetched: item.children_fetched || false,
-              hasChildren: item.has_children,
-              accessDenied: item.access_denied || false
-            }));
+            newNodeChildren[shareNodeId] = shareItems.map(item => {
+              const mapped = {
+                ...item,
+                id: item.id,
+                type: item.type,
+                itemType: item.type,
+                name: item.name,
+                fullPath: item.full_path,
+                shareName: share.share_name,
+                childrenFetched: item.children_fetched || false,
+                hasChildren: item.has_children,
+                accessDenied: item.access_denied || false
+              };
+              if (item.type === 'Directory') {
+                console.log(`[loadShares] Item ${item.name}: access_denied=${item.access_denied}, children_fetched=${item.children_fetched}`);
+              }
+              return mapped;
+            });
           }
         });
         
