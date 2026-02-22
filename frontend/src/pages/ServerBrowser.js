@@ -4058,9 +4058,6 @@ const ServerBrowser = () => {
                                 <div key={idx} className="leading-5 h-5">{line || ' '}</div>
                               ));
                             })()}
-                                <div key={idx} className="leading-5 h-5">{line || ' '}</div>
-                              ));
-                            })()}
                           </pre>
                         </div>
                       </div>
