@@ -438,6 +438,13 @@ class DirectoryScanner:
             
             files_added = 0
             dirs_added = 0
+            critical_files_added = 0
+            
+            # Carregar configuração de Critical Search se necessário
+            critical_config = None
+            if scan_job.critical_only:
+                critical_config = await get_critical_search_config()
+                print(f"=== SCANNER: Critical search mode, config loaded ===", flush=True)
             
             for item in items:
                 # DirectoryItem tem: name, item_type, size, full_path, etc.
