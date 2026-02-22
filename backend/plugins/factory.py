@@ -182,12 +182,6 @@ async def get_active_proxy_config(db: AsyncSession) -> Optional[Dict[str, Any]]:
             logger.warning(f"Error loading proxy config: {e}")
     
     return None
-                    else:
-                        return f"http://{proxy.ip}:{proxy.port}"
-        except (ValueError, TypeError) as e:
-            logger.warning(f"Invalid proxy_id in config: {e}")
-    
-    return None
 
 
 async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
