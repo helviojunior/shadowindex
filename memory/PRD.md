@@ -28,6 +28,24 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 21 - Plugin Management in Server List)
+- [x] **Edição de Plugin do Servidor:**
+  - Coluna "Plugin" adicionada à tabela de servidores
+  - Badge visual mostrando nome do plugin (SOAP API Plugin / Interação Direta)
+  - Ícone de edição (lápis) para alterar o plugin inline
+  - Select dropdown com todos os plugins disponíveis
+  - Botões de confirmar (✓) e cancelar (✕)
+- [x] **Backend - Endpoint PATCH /api/servers/{server_id} atualizado:**
+  - Suporte para atualizar `plugin_type` e `plugin_config`
+  - Validação de campos opcionais
+- [x] **Backend - Endpoint POST /api/servers corrigido:**
+  - Agora salva `plugin_type` e `plugin_config` ao criar servidor
+  - Default: `soap_api`
+- [x] **Testes realizados:**
+  - Criação de servidor com plugin específico (curl)
+  - Atualização de plugin existente (curl)
+  - Interface visual (screenshots)
+
 ### 2026-02-22 (Session 20 - GitLeaks Integration Complete)
 - [x] **Dockerfile atualizado para GitLeaks dinâmico:**
   - Download automático da última versão do GitLeaks no build
