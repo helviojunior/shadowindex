@@ -717,12 +717,18 @@ async def browse_share(
         if directory_items:
             for item in directory_items:
                 if isinstance(item, DirectoryItem):
+                    # Handle modified - can be datetime, string, or None
+                    modified_val = item.modified
+                    if modified_val is not None:
+                        if hasattr(modified_val, 'isoformat'):
+                            modified_val = modified_val.isoformat()
+                        # else: already a string from cache
                     parsed_items.append({
                         "type": item.item_type,
                         "name": item.name,
                         "fullPath": item.full_path,
                         "size": item.size,
-                        "modified": item.modified.isoformat() if item.modified else None
+                        "modified": modified_val
                     })
                 elif isinstance(item, dict):
                     parsed_items.append({
@@ -898,12 +904,18 @@ async def browse_path(
         if directory_items:
             for item in directory_items:
                 if isinstance(item, DirectoryItem):
+                    # Handle modified - can be datetime, string, or None
+                    modified_val = item.modified
+                    if modified_val is not None:
+                        if hasattr(modified_val, 'isoformat'):
+                            modified_val = modified_val.isoformat()
+                        # else: already a string from cache
                     parsed_items.append({
                         "type": item.item_type,
                         "name": item.name,
                         "fullPath": item.full_path,
                         "size": item.size,
-                        "modified": item.modified.isoformat() if item.modified else None
+                        "modified": modified_val
                     })
                 elif isinstance(item, dict):
                     parsed_items.append({
@@ -1148,12 +1160,18 @@ async def browse_item(
         if directory_items:
             for dir_item in directory_items:
                 if isinstance(dir_item, PluginDirectoryItem):
+                    # Handle modified - can be datetime, string, or None
+                    modified_val = dir_item.modified
+                    if modified_val is not None:
+                        if hasattr(modified_val, 'isoformat'):
+                            modified_val = modified_val.isoformat()
+                        # else: already a string from cache
                     parsed_items.append({
                         "type": dir_item.item_type,
                         "name": dir_item.name,
                         "fullPath": dir_item.full_path,
                         "size": dir_item.size,
-                        "modified": dir_item.modified.isoformat() if dir_item.modified else None
+                        "modified": modified_val
                     })
                 elif isinstance(dir_item, dict):
                     parsed_items.append({
