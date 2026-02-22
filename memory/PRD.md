@@ -39,6 +39,10 @@ Portuguese (pt-BR)
   - Função `get_active_proxy_config` busca username/password apenas do `Credential` vinculado
   - Campos deprecated `username/password` no modelo `ProxyServer` são ignorados
   - Credenciais do proxy são passadas para o plugin via `proxy_user` e `proxy_pass` no config
+- [x] **Botão de edição do nome do servidor movido para listagem:**
+  - Botão de edição removido da página de browse (`/servers/{id}/browse`)
+  - Botão de edição adicionado na tabela de listagem de servidores (`/servers`)
+  - Edição inline com Enter para salvar e Escape para cancelar
 
 ### 2026-02-22 (Session 40 - SQL Execution & Bug Fixes)
 - [x] **Execute SQL no Plugin de Interação Direta:**
