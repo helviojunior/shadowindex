@@ -28,11 +28,14 @@ async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
     """
     Salva um finding no banco de dados.
     
+    Aplica precedência: findings do arquivo original têm prioridade sobre OCR.
+    Se já existir um finding do arquivo original com o mesmo secret, o finding OCR não é salvo.
+    
     Returns:
         True se salvou com sucesso, False se já existia ou erro
     """
     from database import async_session_maker, GitleaksFinding
-    from sqlalchemy import select
+    from sqlalchemy import select, and_
     
     fingerprint = finding.get('Fingerprint')
     if not fingerprint:
@@ -41,13 +44,34 @@ async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
     
     try:
         async with async_session_maker() as db:
-            # Verificar se já existe
+            # Verificar se já existe pelo Fingerprint
             existing = await db.execute(
                 select(GitleaksFinding).where(GitleaksFinding.fingerprint == fingerprint)
             )
             if existing.scalar_one_or_none():
                 logger.debug(f"Finding {fingerprint} já existe no banco")
                 return False
+            
+            # Se for finding de OCR, verificar se já existe um do arquivo original com o mesmo secret
+            detection_source = finding.get('detection_source')
+            if detection_source == 'ocr':
+                original_file = finding.get('original_file')
+                secret = finding.get('Secret')
+                
+                if original_file and secret:
+                    # Buscar finding do arquivo original (detection_source IS NULL ou vazio)
+                    existing_original = await db.execute(
+                        select(GitleaksFinding).where(
+                            and_(
+                                GitleaksFinding.original_file == original_file,
+                                GitleaksFinding.secret == secret,
+                                GitleaksFinding.detection_source.is_(None) | (GitleaksFinding.detection_source == '')
+                            )
+                        )
+                    )
+                    if existing_original.scalar_one_or_none():
+                        logger.debug(f"Finding OCR ignorado - já existe do arquivo original: {original_file}")
+                        return False
             
             # Criar novo finding
             db_finding = GitleaksFinding(
