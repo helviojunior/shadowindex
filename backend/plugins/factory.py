@@ -186,15 +186,11 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
     
     # For SOAP API plugin, validate URL is configured in instance
     if plugin_type == "soap_api" and "soap_url" not in plugin_config:
-        # Fallback to SoapApiUrl table for legacy support
-        result = await db.execute(select(SoapApiUrl).limit(1))
-        soap_api = result.scalar_one_or_none()
-        
-        if soap_api:
-            plugin_config["soap_url"] = soap_api.uri
-            logger.warning("Using legacy SoapApiUrl table - configure URL in plugin instance instead")
-        else:
-            raise ValueError("URL do SOAP não configurada. Configure a URL na instância do plugin.")
+        # Don't fallback to global SoapApiUrl - require URL in instance config
+        raise ValueError(
+            "URL do SOAP não configurada na instância do plugin. "
+            "Acesse Plugins > SOAP API > Instâncias e configure a URL do WebService."
+        )
     
     # Create the plugin instance
     plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
