@@ -483,8 +483,15 @@ class DirectoryScanner:
                             dirs_added += 1
                 
                 elif item_type == 'File':
-                    # Verificar extensão ignorada (apenas se aplicar filtros)
-                    if scan_job.apply_filters and ignored_extensions:
+                    # Para Critical Search, verificar se é arquivo crítico
+                    if scan_job.critical_only and critical_config:
+                        if not is_critical_file(item_name, item_size, critical_config):
+                            continue  # Pular arquivos não-críticos
+                        critical_files_added += 1
+                        print(f"=== SCANNER: Critical file found: {item_name} ===", flush=True)
+                    
+                    # Verificar extensão ignorada (apenas se aplicar filtros e não for critical_only)
+                    if scan_job.apply_filters and ignored_extensions and not scan_job.critical_only:
                         file_lower = item_name.lower()
                         should_skip = False
                         for ext in ignored_extensions:
@@ -493,7 +500,6 @@ class DirectoryScanner:
                                 base_ext = ext[:-2]  # Remove .*
                                 if base_ext in file_lower:
                                     # Verificar se tem algo após o padrão base (ex: .log.1, .log.2)
-                                    import re
                                     pattern = re.escape(base_ext) + r'\.\d+'
                                     if re.search(pattern, file_lower):
                                         should_skip = True
