@@ -583,8 +583,14 @@ const ServerBrowser = () => {
 
   // Verifica se é um arquivo PDF
   const isPdfFile = (filename) => {
-    if (!filename) return false;
-    return filename.toLowerCase().endsWith(PDF_EXTENSION);
+    if (!filename) {
+      console.log('DEBUG isPdfFile: filename is null/undefined');
+      return false;
+    }
+    const lowerName = filename.toLowerCase();
+    const result = lowerName.endsWith(PDF_EXTENSION);
+    console.log('DEBUG isPdfFile:', { filename, lowerName, result, PDF_EXTENSION });
+    return result;
   };
 
   // Verifica se o arquivo pode ser visualizado (texto, imagem ou PDF)
