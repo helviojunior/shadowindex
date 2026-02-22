@@ -15,140 +15,578 @@ O usuário solicitou inicialmente um painel web para gerenciar credenciais, cone
 **User's preferred language**: Portuguese. O próximo agente DEVE responder em português.
 
 **what currently exists?**
-Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. O sistema de plugins foi completamente refatorado: agora existem tipos de plugins (SOAP, Interação Direta) e instâncias de plugins. Cada servidor é vinculado a uma instância específica, que contém sua própria configuração (por exemplo, a URL do webservice para uma instância SOAP ou a credencial para uma instância de Interação Direta). A tela de gerenciamento de Proxy foi aprimorada para permitir a associação de credenciais existentes. Foi implementada uma flag  que é automaticamente atribuída a uma credencial após uma comunicação bem-sucedida. Vários bugs foram corrigidos, incluindo um erro de frontend na tela de credenciais e a implementação de um tratamento de erro específico para quando uma credencial não está configurada em um plugin.
+Uma aplicação full-stack (FastAPI + React) ShadowIndex que foi significativamente refatorada para ser centrada em instâncias de plugin em vez de tipos de plugin. O backend (, , ) foi modificado para usar a instância de plugin configurada para cada servidor, corrigindo um bug crítico onde um serviço SOAP padrão era sempre usado. O frontend (, , ) foi atualizado para permitir a seleção de instâncias de plugin e para exibir um alerta quando nenhuma instância está configurada. Um servidor SOAP mock () e um  foram criados para facilitar o desenvolvimento. Foram feitas várias correções de bugs, incluindo tratamento de erros em downloads de arquivos , robustez do serviço de OCR, e validações no backend.
 
 **Last working item**:
-- **Last item agent was working:** O último trabalho foi uma grande refatoração do sistema de plugins, concluindo a migração das configurações (como a URL do SOAP) para dentro das instâncias de plugin. Com esta tarefa concluída, o próximo item de maior prioridade é validar funcionalidades existentes que estão pendentes de verificação. A tarefa imediata é a verificação completa da funcionalidade de Sync (Download) de arquivos e diretórios.
-- **Status:** NOT STARTED
+- **Last item agent was working:** O agente estava investigando e tentando corrigir dois bugs críticos relatados pelo usuário:
+    1.  Um erro 500 na rota .
+    2.  O menu dropdown de seleção de plugins não estava exibindo todas as instâncias de plugin SOAP disponíveis.
+- **Status:** IN PROGRESS
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** Manual testing. Navegue até o Server Browser de um servidor configurado, selecione um arquivo ou diretório e tente usar a funcionalidade de download/sync para verificar se o processo funciona de ponta a ponta.
+- **Which testing method agent to use?** backend testing agent.
+    1.  Para o erro 500, o agente deve executar  no endpoint  e inspecionar os logs do backend (==> /var/log/supervisor/backend.err.log <==
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'plugins/soap_api.py'. Reloading...
+INFO:     Started server process [4958]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'plugins/soap_api.py'. Reloading...
+INFO:     Started server process [5285]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'plugins/soap_api.py'. Reloading...
+INFO:     Started server process [5343]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'routes_v2.py'. Reloading...
+INFO:     Started server process [5434]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'routes_v2.py'. Reloading...
+INFO:     Started server process [5552]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'soap_mock/mock_server.py'. Reloading...
+INFO:     Started server process [5722]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'soap_mock/mock_server.py'. Reloading...
+INFO:     Started server process [5816]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'soap_mock/mock_server.py'. Reloading...
+INFO:     Started server process [5910]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'soap_mock/mock_server.py'. Reloading...
+INFO:     Started server process [5978]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Started server process [6264]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'database.py'. Reloading...
+INFO:     Started server process [6556]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'storage_utils.py'. Reloading...
+INFO:     Started server process [7546]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'download_worker.py'. Reloading...
+INFO:     Started server process [7655]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'routes_v2.py'. Reloading...
+INFO:     Started server process [8476]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'routes_v2.py'. Reloading...
+INFO:     Started server process [8521]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [48] using WatchFiles
+INFO:     Started server process [94]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+
+==> /var/log/supervisor/backend.out.log <==
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===) para identificar a causa raiz, que é provavelmente um problema de migração do banco de dados.
+    2.  Para o problema do dropdown, o agente deve usar  para inspecionar a resposta do endpoint que lista as instâncias SOAP e, em seguida, usar a ferramenta de screenshot para verificar se o frontend renderiza a lista corretamente.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0): Verificação da funcionalidade Sync (Download).**
-- **Issue 2 (P1): Validação completa da funcionalidade de proxy SOCKS5.**
-- **Issue 3 (P1): Validação completa do fluxo de OCR.**
-- **Issue 4 (P2): Destaque de diretórios visitados não persiste após atualização da página.**
+- **Issue 1 (P0):** A rota  está retornando um erro 500, o que impede o gerenciamento de conexões de banco de dados.
+- **Issue 2 (P0):** O dropdown de seleção de plugins não exibe todas as instâncias de plugin SOAP disponíveis, impedindo os usuários de selecionar a configuração correta.
+- **Issue 3 (P1):** A persistência do estado da tree view (cores para acesso negado e visitado) não funciona corretamente após o refresh da página.
+- **Issue 4 (P1):** O envio de downloads em lote para a fila () está falhando, gerando um erro no frontend.
+- **Issue 5 (P2):** O backend não consegue se conectar ao servidor Tika, embora a configuração do hostname pareça correta ().
+- **Issue 6 (P2):** O parsing do XML na função  do plugin SOAP, que foi modificado para um novo formato, nunca foi testado ou validado.
 
 **Issues Detail:**
-- **Issue 1: Verificação da funcionalidade Sync (Download).**
-    - **Attempted fixes:** Nenhuma tentativa nesta sessão. Esta é uma funcionalidade antiga que precisa de verificação de regressão.
+- **Issue 1: A rota  está retornando um erro 500.**
+    - **Attempted fixes:** O agente modificou os modelos de dados para usar , mas a investigação foi interrompida antes de encontrar a causa do erro 500.
     - **Next debug checklist:**
-        1.  Navegar até a página de um servidor que tenha compartilhamentos acessíveis.
-        2.  Selecionar um arquivo e/ou um diretório.
-        3.  Acionar a função Sync ou Download.
-        4.  Verificar se o backend processa a solicitação e se o arquivo é baixado corretamente no navegador.
-        5.  Verificar os logs do backend em caso de falha.
-    - **Why fix this issue and what will be achieved with the fix?** Para garantir que uma das funcionalidades centrais da aplicação (extração de dados de servidores) está funcionando corretamente após as recentes refatorações.
-    - **Status:** NOT STARTED
+        1.  Verifique os logs do backend (==> /var/log/supervisor/backend.err.log <==
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'plugins/soap_api.py'. Reloading...
+INFO:     Started server process [4958]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'plugins/soap_api.py'. Reloading...
+INFO:     Started server process [5285]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'plugins/soap_api.py'. Reloading...
+INFO:     Started server process [5343]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'routes_v2.py'. Reloading...
+INFO:     Started server process [5434]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'routes_v2.py'. Reloading...
+INFO:     Started server process [5552]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'soap_mock/mock_server.py'. Reloading...
+INFO:     Started server process [5722]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'soap_mock/mock_server.py'. Reloading...
+INFO:     Started server process [5816]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'soap_mock/mock_server.py'. Reloading...
+INFO:     Started server process [5910]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'soap_mock/mock_server.py'. Reloading...
+INFO:     Started server process [5978]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Started server process [6264]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'database.py'. Reloading...
+INFO:     Started server process [6556]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'storage_utils.py'. Reloading...
+INFO:     Started server process [7546]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'download_worker.py'. Reloading...
+INFO:     Started server process [7655]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'routes_v2.py'. Reloading...
+INFO:     Started server process [8476]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+WARNING:  WatchFiles detected changes in 'routes_v2.py'. Reloading...
+INFO:     Started server process [8521]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [48] using WatchFiles
+INFO:     Started server process [94]
+INFO:     Waiting for application startup.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [ocr_service] Cannot connect to Tika server at http://tika:9998: HTTPConnectionPool(host='tika', port=9998): Max retries exceeded with url: /tika (Caused by NameResolutionError("HTTPConnection(host='tika', port=9998): Failed to resolve 'tika' ([Errno -2] Name or service not known)"))
+
+==> /var/log/supervisor/backend.out.log <==
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===
+=== STARTUP: Starting application ===
+=== STARTUP: Database initialized ===
+=== STARTUP: Found 2 existing plugin instances ===
+=== STARTUP: Default plugin instances checked/created ===
+=== STARTUP: Tika OCR service not available (will retry on demand) ===
+=== STARTUP: Download worker started successfully ===
+=== STARTUP: Directory scanner started successfully ===
+=== SCANNER: Loop started ===) para obter o traceback completo do erro.
+        2.  Suspeite de uma migração de banco de dados incompleta ou falha. Inspecione o esquema da tabela  com  para confirmar se a coluna  existe e está configurada corretamente.
+        3.  Revise o endpoint em  e o Pydantic schema  em .
+    - **Why fix this issue and what will be achieved with the fix?** Esta é uma funcionalidade crítica da aplicação que está completamente quebrada.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** Y
+    - **Should Test frontend/backend/both after fix?** Backend.
+
+- **Issue 2: O dropdown de seleção de plugins não exibe todas as instâncias de plugin SOAP disponíveis.**
+    - **Attempted fixes:** O agente apenas começou a investigar, visualizando os arquivos do frontend.
+    - **Next debug checklist:**
+        1.  Identifique o endpoint do backend que fornece a lista de instâncias SOAP (ex: ).
+        2.  Use  para testar este endpoint e verificar se ele retorna todas as instâncias do banco de dados.
+        3.  Examine o código do frontend (ex: ) que faz a chamada a este endpoint e popula o dropdown.
+    - **Why fix this issue and what will be achieved with the fix?** O fluxo principal do usuário de associar operações a uma configuração de plugin específica está quebrado.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** Both.
+
+- **Issue 3: A persistência do estado da tree view não funciona corretamente.**
+    - **Attempted fixes:** O agente modificou o backend para salvar o estado  e  no banco de dados quando o usuário navega na árvore. No entanto, o usuário relatou que o problema persiste.
+    - **Next debug checklist:**
+        1.  Verifique se o endpoint  em  está corretamente retornando os valores de  e  do banco de dados quando a árvore é carregada.
+        2.  No frontend (), adicione  para inspecionar os dados recebidos do backend e garantir que as propriedades  e  estão sendo mapeadas e usadas corretamente na renderização dos nós da árvore.
+    - **Why fix this issue and what will be achieved with the fix?** A experiência do usuário ao navegar em grandes sistemas de arquivos é ruim, pois não há feedback visual do que já foi explorado ou do que não pode ser acessado.
+    - **Status:** IN PROGRESS
     - **Is recurring issue?** Y
     - **Should Test frontend/backend/both after fix?** Both.
-    - **Blocked on other issue:** None.
-- **Issue 2, 3, 4:** Estes são problemas conhecidos de sessões anteriores que ainda aguardam uma verificação completa e continuam pendentes.
 
 **In progress Task List**:
-Nenhuma. A última tarefa foi concluída.
+- **Task 1: Concluir a refatoração para Plugin Instances.**
+    - **Where to resume:** A tarefa está quase concluída, mas os bugs pendentes (Issue 1 e 2) mostram que ela não está estável. A resolução desses bugs finalizará esta tarefa.
+    - **What will be achieved with this?** Uma arquitetura estável e funcional onde todas as operações respeitam a configuração da instância de plugin selecionada.
+    - **Status:** IN PROGRESS
+    - **Should Test frontend/backend/both after fix?** Both.
+    - **Blocked on something:** Issues 1 e 2.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
+    - (P0) Testar e validar o novo parsing de XML no plugin SOAP ().
     - (P1) Validação completa da funcionalidade de proxy SOCKS5.
-    - (P1) Validação completa do fluxo de OCR.
-    - (P2) Correção da persistência do destaque de diretórios visitados.
+    - (P1) Validação completa do fluxo de OCR, incluindo a verificação da conexão com o Tika.
 - **Future Tasks:**
   - (P2) Evoluir a arquitetura de plugins (exceptions padronizadas, funções base obrigatórias).
-  - (P3) Criar um serviço SOAP mock para permitir testes mais confiáveis do .
+  - (P3) Melhorar o serviço SOAP mock para cobrir mais casos de uso.
 
 **Completed work in this session**
-- **Refatoração do Sistema de Plugins para Instâncias:**
-  - Criado o modelo  no backend e uma nova página de gerenciamento no frontend ().
-  - Os servidores agora são vinculados a uma , permitindo múltiplas configurações para o mesmo tipo de plugin.
-  - Configurações específicas, como a URL do WebService para SOAP, foram movidas para a configuração JSON da instância.
-- **Melhoria na Autenticação de Proxy:**
-  - A UI de configuração de Proxy () foi atualizada para permitir a seleção de uma credencial do tipo  existente, em vez de inserir usuário e senha diretamente.
-- **Implementação da Flag  para Credenciais:**
-  - Uma credencial agora é marcada como  automaticamente no banco de dados após uma primeira comunicação bem-sucedida, seja via plugin  (SMB) ou via um plugin SOAP que utilize um proxy autenticado.
-- **Atualização do Plugin SOAP:**
-  - O parâmetro do método  foi alterado de  para .
-  - A lógica de parsing de XML foi atualizada para ser compatível com o formato  fornecido pelo usuário.
+- **Refatoração do Backend para usar Instâncias de Plugin:** Modificados os endpoints em  e o  para usar , eliminando o uso de um serviço SOAP hardcoded.
+- **Refatoração do Frontend para usar Instâncias de Plugin:** Atualizadas as páginas ,  e  para buscar e selecionar instâncias de plugin.
+- **Validação de Backend:** Adicionada lógica em  para lançar um erro se uma operação for tentada em um servidor sem , com o backend retornando um erro 422.
+- **Criação do Servidor SOAP Mock:** Criado um servidor mock () e um  para desenvolvimento local.
+- **Melhorias no Plugin SOAP:** O método  foi refatorado para decodificar base64 antes de verificar erros. A lógica de OCR foi adicionada ao fluxo de pós-download.
 - **Correções de Bugs:**
-  - **:** Foi criada uma exceção customizada para quando uma credencial não está configurada em um plugin. O backend agora retorna um erro , e o frontend exibe uma notificação (toast) clara para o usuário.
-  - **:** Corrigido um erro de javascript na página de  causado pela falta de importação do ícone  de .
+    - Corrigido o endpoint .
+    - Corrigido o tratamento de erro em  para downloads de  no frontend.
+    - Melhorada a robustez do  para lidar com a ausência de .
+    - Corrigido o alinhamento do layout do OCR em .
+    - Corrigida a lógica de refresh da tree view que limpava os nós expandidos (embora a persistência de estado ainda esteja com problemas).
 
 **Earlier issues found/mentioned but not fixed**
-- A dependência  ainda requer um bloco  no código () devido à possível ausência de um pacote no ambiente de execução.
+- A dependência  ainda causa um warning no log se não estiver presente no sistema, embora o código agora tenha um  mais robusto para evitar que a aplicação quebre.
 
 **Known issue recurrence from previous fork**
-- **Funcionalidade Sync:** Continua necessitando de verificação completa.
-- **Estado do diretório visitado:** A persistência do destaque após a atualização da página necessita de verificação.
-- **Ambiente Local do Usuário:** O usuário relatou um erro de backend () que correspondia a uma versão antiga do código. Isso indica que o ambiente Docker local do usuário pode não estar sincronizado. Se o usuário reportar erros de backend que não correspondem ao código atual, ele deve ser instruído a reconstruir ou reiniciar seus contêineres Docker.
+- **Funcionalidade Sync:** Continua apresentando problemas, especificamente o download em lote.
+- **Estado do diretório visitado:** A persistência do estado da tree view (cores para visitado/acesso negado) é um problema recorrente que ainda não foi totalmente resolvido.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Migração Manual de Banco de Dados:** A adição de novas colunas/tabelas ao schema do SQLAlchemy () exigiu a criação de scripts Python manuais para executar comandos  no banco de dados SQLite. A falha em fazer isso fez com que o servidor backend travasse na inicialização.
-- **Plugins como Instâncias:** Uma mudança arquitetônica fundamental de tipos de plugins estáticos para instâncias configuráveis, o que aumenta a reutilização e a flexibilidade. Cada instância tem sua própria configuração JSON.
-- **Tratamento de Exceções Centralizado:** A criação de exceções específicas (ex: ) e seu tratamento nas rotas do FastAPI para fornecer feedback consistente e claro ao frontend através de códigos de status HTTP e mensagens de erro.
+- **Plugin Instance-Centric Architecture:** O conceito central da sessão foi refatorar a aplicação para que todas as operações sejam vinculadas a uma *instância* de plugin específica, em vez de um *tipo* de plugin genérico.
+- **Backend Validation:** Mover a lógica de validação para o backend (ex: proibir operações sem uma instância de plugin) para criar uma API mais robusta.
+- **Mocking Services for Development:** Criação de um servidor SOAP mock () e um  para permitir o desenvolvimento e teste de funcionalidades dependentes de serviços externos.
+- **Asynchronous Error Handling (Frontend):** Corrigir o tratamento de erros em chamadas  que esperam um . O erro de um blob precisa ser lido como texto de forma assíncrona antes de ser processado.
+- **Database Migrations (Incompleta):** Alterações nos modelos SQLAlchemy (, ) foram feitas, mas a migração do banco de dados parece ter falhado ou está incompleta, sendo a causa provável do erro 500.
 
 **key DB schema**
-- : {id, name, plugin_type, config (JSON), is_default}
-- : Adicionado FK . Campos  e  foram removidos/depreciados.
-- : Adicionado FK .
-- : Adicionado campo  (boolean).
+- : { : ForeignKey(plugin_instances.id) }. **VERIFICAÇÃO NECESSÁRIA**.
+- : { uid=0(root) gid=0(root) groups=0(root), ,  }. Nova tabela para downloads em lote. **VERIFICAÇÃO NECESSÁRIA**.
+- : { : Boolean }.
+- : { : Boolean }.
 
 **All files of reference**
--  (Nova UI para gerenciar instâncias de plugins)
--  (Refatorado para vincular servidores a instâncias de plugins)
--  (UI de Proxy atualizada para usar credenciais existentes)
--  (Novos modelos de dados e endpoints para instâncias, proxies e credenciais)
--  (Lógica central para carregar instâncias de plugins e suas configurações)
--  (Lógica para marcar credencial como verificada)
--  (Lógica de parsing de XML atualizada)
+-  (Epicentro das correções de bugs e lógica de negócios)
+-  (Lógica central para obter o plugin correto)
+-  (Definição dos modelos de banco de dados e schemas Pydantic)
+-  (Página afetada pelo erro 500 e pelo bug do dropdown)
+-  (Página com os problemas de persistência da tree view)
+-  (Referência para o comportamento esperado do serviço SOAP)
 
 **Critical Info for New Agent**
-- **Refatoração de Plugins:** O sistema de plugins foi completamente alterado. Agora, você gerencia instâncias de plugins. Cada servidor se conecta a uma instância, não a um tipo de plugin. Toda a lógica de configuração (URL, credencial) agora vive dentro da configuração da instância.
-- **Migrações Manuais de DB:** Se você alterar um modelo SQLAlchemy em , o backend provavelmente travará na inicialização. Você DEVE criar e executar um script Python separado para aplicar as alterações () ao arquivo de banco de dados SQLite ().
-- **Ambiente Local do Usuário:** Esteja ciente de que o usuário pode estar executando um ambiente Docker local que pode ficar dessincronizado. Se eles relatarem erros de backend que não fazem sentido com o código atual, a causa provável é o ambiente deles.
+- **Foco Imediato nos Regressions (P0):** A prioridade máxima é corrigir o erro 500 em  e o bug do dropdown de instâncias de plugin. Essas são funcionalidades essenciais que estão quebradas e bloqueiam o usuário.
+- **Verificar Migrações do Banco de Dados:** O erro 500 é muito provavelmente causado por uma inconsistência entre o modelo SQLAlchemy () e o esquema real do banco de dados. O agente anterior tentou adicionar colunas manualmente. Verifique o esquema com  e considere usar  para gerar e aplicar uma migração adequada se necessário.
+- **Problema Recorrente da Tree View:** O usuário relatou o problema da persistência do estado da árvore (cores) novamente. A abordagem de salvar o estado no DB é correta, mas a implementação pode estar incompleta. A depuração deve focar em garantir que o estado é salvo em *todas* as interações relevantes e que o endpoint  retorna esse estado de forma consistente no refresh da página.
+- **Use o Mock SOAP:** O  e o  foram criados para facilitar os testes. Inicie o ambiente de desenvolvimento com  para ter os mocks disponíveis.
 
 **documents and test reports created in this job**
--  foi atualizado.
+-  (Atualizado com as últimas correções)
+-  (Novo arquivo para ambiente de desenvolvimento com mocks)
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **(Done)** Solicitou mover a URL do webservice SOAP para a configuração da instância do plugin, em vez de ser um objeto global.
-9.  **(Done)** Solicitou uma refatoração para que os plugins (SOAP e Interação Direta) sejam tipos, com múltiplas instâncias configuráveis, e os servidores se vinculem a uma instância específica.
-8.  **(Done)** Pediu para atualizar o parsing da resposta XML do plugin SOAP e alterar o nome de um parâmetro de 'ip' para 'host'.
-7.  **(Done)** Solicitou a implementação da flag  em credenciais, para ser ativada após o uso bem-sucedido em um proxy ou no plugin de interação direta.
-6.  **(Done)** Pediu que o combo de autenticação de proxy, em vez de campos de usuário/senha, listasse as credenciais já cadastradas.
-5.  **(Done)** Solicitou adicionar um combo de autenticação (Sem autenticação ou Usuário e Senha) para o cadastro e edição de servidores proxy.
-4.  **(Bug Report)** Relatou um erro de backend e um erro de frontend () ao adicionar uma credencial.
-3.  **(Bug Report)** Relatou um traceback de erro no backend ().
-2.  **(In Progress by user)** Confirmou que a tarefa de tratamento de erro () estava correta e a tela de erro apareceu.
-1.  **(Done)** Solicitou focar na tarefa P0 (Dashboard) e no tratamento da .
+10. **(PENDING)** Reportou um erro 500 na rota .
+9.  **(PENDING)** Reportou que no combo de plugins SOAP, nem todas as instâncias são exibidas.
+8.  **(PENDING)** Reportou que os erros na tree view (estado de acesso negado e diretórios visitados não persistindo) continuam.
+7.  **(Partially Addressed)** Reportou um erro na API de OCR (), que o mimetype não estava sendo calculado e que o layout do OCR estava desalinhado (com imagem).
+6.  **(Partially Addressed)** Reportou 5 bugs de uma vez: erro 500 em , erro no , persistência do estado da tree view, erro no download em batch (com imagem).
+5.  **(Done)** Solicitou para ter certeza de que o Mock SOAP estava com dados fictícios.
+4.  **(Done)** Solicitou que o docker-compose de desenvolvimento também iniciasse o Tika.
+3.  **(Done)** Descreveu o fluxo desejado para o tratamento de download: tentar decode base64, depois validar erros, e após o download, atualizar status e rodar OCR.
+2.  **(Done)** Solicitou ajustar o plugin SOAP para usar o método  e pediu a criação de um serviço SOAP mock com respostas de exemplo detalhadas.
+1.  **(Partially Addressed)** Reportou 3 problemas: backend deveria dar erro em operações sem instância de plugin, bug no refresh da tree view após download, e erro de conexão com o servidor Tika.
 
 **Project Health Check:**
-- **Broken:** Nenhuma funcionalidade está quebrada no momento.
+- **Broken:**
+    - Gerenciamento de Conexões SQL ( retorna 500).
+    - Seleção de instância de plugin (dropdown não mostra todas as opções).
 - **Needs Verification:**
-  - Fluxo de Sync (Download).
-  - Funcionalidade de proxy SOCKS5 de ponta a ponta.
-  - Fluxo de OCR com um servidor Tika.
-  - Persistência do destaque de diretórios visitados.
-- **Mocked / Placeholder:** Nenhuma.
+    - Persistência do estado da Tree View (acesso negado, visitado).
+    - Funcionalidade de download em lote (Sync).
+    - Conexão com o servidor Tika e fluxo de OCR de ponta a ponta.
+    - Funcionalidade do plugin SOAP () com o novo parsing XML.
+    - Funcionalidade de proxy SOCKS5.
 
 **3rd Party Integrations**
 - **Apache Tika:** Para OCR.
 - **Impacket:** Para interação SMB.
 - **GitLeaks:** Binário para varredura de segredos.
-- **UI Libraries:** , , .
-- **Backend:** , , , .
+- **UI Libraries:** , , , .
+- **Backend:** , , , , To use the fastapi command, please install "fastapi[standard]":
+
+	pip install "fastapi[standard]", , .
 
 **Testing status**
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** N/A
-- **Known regressions:** A funcionalidade Sync e o Destaque de Diretório são problemas recorrentes que precisam de verificação.
+- **Known regressions:**
+    - A rota  está quebrada.
+    - A persistência do estado da Tree View (cores de status) continua sendo um problema.
+    - A funcionalidade Sync para downloads em lote está quebrada.
 
 **Credentials to test flow:**
-Não há credenciais estáticas. Todas as configurações são criadas através da UI.
+Não há credenciais estáticas. Todas as configurações (servidores, credenciais, instâncias de plugin) são criadas através da UI. Para testar o plugin SOAP, crie uma instância apontando para a URL do mock server (ex:  se estiver rodando localmente com o ).
 
 **What agent forgot to execute**
-O agente não esqueceu de nada, mas as tarefas de verificação de funcionalidades existentes (Sync, Proxy, OCR) foram adiadas por várias sessões e agora devem ser priorizadas para evitar regressões.</analysis>
+O agente não concluiu a depuração dos últimos bugs relatados pelo usuário, principalmente o erro 500 e o problema do dropdown. Além disso, a tarefa original de testar o novo parsing XML do  foi adiada e nunca foi explicitamente validada.</analysis>
