@@ -639,6 +639,10 @@ const Leaks = () => {
                                 <Badge className="text-xs bg-orange-600">
                                   Auto-PFX
                                 </Badge>
+                              ) : finding.detection_source === 'auto-key' ? (
+                                <Badge className="text-xs bg-red-600">
+                                  Auto-Key
+                                </Badge>
                               ) : (
                                 <Badge 
                                   className={`text-xs ${
@@ -648,7 +652,7 @@ const Leaks = () => {
                                   {finding.job_id ? 'Scan' : 'GitLeaks'}
                                 </Badge>
                               )}
-                              {detectionSource && detectionSource !== 'manual' && detectionSource !== 'auto-pfx' && (
+                              {detectionSource && detectionSource !== 'manual' && detectionSource !== 'auto-pfx' && detectionSource !== 'auto-key' && (
                                 <Badge 
                                   className={`text-xs ${
                                     detectionSource === 'ocr' ? 'bg-blue-600' : 'bg-violet-600'
