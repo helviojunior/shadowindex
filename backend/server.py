@@ -2049,16 +2049,24 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
     await db.execute(delete(DownloadedFile).where(DownloadedFile.server_guid == server.guid))
     await db.execute(delete(FileVersion).where(FileVersion.server_guid == server.guid))
     await db.execute(delete(DownloadJob).where(DownloadJob.server_id == server.id))
+    
     # Excluir findings do GitLeaks relacionados ao servidor
-    from sqlalchemy import or_
+    # Usar múltiplos critérios para cobrir todos os casos possíveis
+    from sqlalchemy import or_, and_
     await db.execute(
         delete(GitleaksFinding).where(
             or_(
                 GitleaksFinding.server_id == server.id,
-                GitleaksFinding.extracted_server_id == server.id
+                GitleaksFinding.extracted_server_id == server.id,
+                # Fallback: buscar por nome E IP para findings antigos sem server_id
+                and_(
+                    GitleaksFinding.server_name == server.name,
+                    GitleaksFinding.server_ip == server.ip
+                )
             )
         )
     )
+    
     await db.execute(delete(Server).where(Server.id == server_id))
     await db.commit()
     
