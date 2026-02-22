@@ -216,6 +216,11 @@ const ImportServers = () => {
       return;
     }
 
+    if (!selectedPluginInstance) {
+      toast.error('Selecione uma instância de plugin para os servidores');
+      return;
+    }
+
     setImporting(true);
     setImportResults(null);
 
@@ -227,7 +232,7 @@ const ImportServers = () => {
         hosts: hostsToImport.map(h => ({
           ip: h.ip,
           name: h.name,
-          plugin_type: selectedPlugin
+          plugin_instance_id: parseInt(selectedPluginInstance)
         }))
       });
       
