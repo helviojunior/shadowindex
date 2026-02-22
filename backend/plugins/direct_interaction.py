@@ -488,6 +488,9 @@ class DirectInteractionPlugin(BasePlugin):
             # Cache the result
             await self.cache.set("direct_shares", cache_params, [s.__dict__ for s in shares], ttl_hours=24)
             
+            # Notify successful authentication
+            await self._notify_auth_success()
+            
             logger.info(f"Listed {len(shares)} shares on {server_ip}")
             return shares
             
