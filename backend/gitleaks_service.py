@@ -450,6 +450,22 @@ class GitleaksService:
         self._findings = []
         return count
     
+    async def clear_findings_from_db(self) -> int:
+        """Remove todos os findings do banco de dados"""
+        from database import async_session_maker, GitleaksFinding
+        from sqlalchemy import delete
+        
+        try:
+            async with async_session_maker() as db:
+                result = await db.execute(delete(GitleaksFinding))
+                await db.commit()
+                count = result.rowcount
+                logger.info(f"Removidos {count} findings do banco de dados")
+                return count
+        except Exception as e:
+            logger.error(f"Erro ao limpar findings do banco: {e}")
+            return 0
+    
     async def delete_finding_from_db(self, fingerprint: str) -> bool:
         """Remove um finding do banco de dados e do cache"""
         from database import async_session_maker, GitleaksFinding
