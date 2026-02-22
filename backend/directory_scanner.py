@@ -158,8 +158,18 @@ class DirectoryScanner:
             print(f"=== SCANNER: Cancelled all {count} scan jobs ===", flush=True)
             return count
     
-    async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True) -> str:
+    async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True, critical_only: bool = False) -> str:
         """Adiciona um diretório para ser escaneado. Retorna o ID do job."""
+        
+        # Se for critical_only, carregar configurações
+        if critical_only:
+            try:
+                from critical_search_service import get_critical_search_service
+                service = get_critical_search_service()
+                await service.load_config()
+            except Exception as e:
+                print(f"=== SCANNER: Error loading critical search config: {e} ===", flush=True)
+        
         async with self._lock:
             job = ScanJob(
                 server_id=server_id,
@@ -168,11 +178,13 @@ class DirectoryScanner:
                 depth=1,
                 max_depth=max_depth,
                 max_file_size_bytes=max_file_size_bytes,
-                apply_filters=apply_filters
+                apply_filters=apply_filters,
+                critical_only=critical_only
             )
             self.scan_queue.append(job)
-            print(f"=== SCANNER: Added scan job {job.id}: server={server_id}, share={share_name}, path={path} ===", flush=True)
-            logger.info(f"Added scan job: {path}")
+            scan_type = "CRITICAL" if critical_only else ""
+            print(f"=== SCANNER: Added {scan_type} scan job {job.id}: server={server_id}, share={share_name}, path={path} ===", flush=True)
+            logger.info(f"Added scan job: {path} (critical_only={critical_only})")
             return job.id
     
     async def _run_loop(self):
