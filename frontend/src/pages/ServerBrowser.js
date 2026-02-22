@@ -1859,6 +1859,41 @@ const ServerBrowser = () => {
           duration: 6000,
           description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
         });
+      } else if (error.response?.status === 500 && error.response?.data?.detail) {
+        // Tratamento para erros estruturados do plugin
+        const detail = error.response.data.detail;
+        let errorMessage = detail.message || 'Erro ao navegar diretório';
+        let description = '';
+        
+        switch (detail.error) {
+          case 'credential_error':
+            description = 'Verifique as credenciais configuradas no plugin.';
+            break;
+          case 'connection_error':
+            description = 'Verifique se o servidor está acessível na rede.';
+            break;
+          case 'timeout_error':
+            description = 'Servidor demorou muito para responder.';
+            break;
+          case 'config_error':
+            description = 'Verifique as configurações do plugin (URL, credenciais, etc).';
+            break;
+          case 'auth_error':
+            description = 'Falha na autenticação. Verifique usuário e senha.';
+            break;
+          default:
+            description = 'Verifique os logs para mais detalhes.';
+        }
+        
+        toast.error(errorMessage, {
+          duration: 6000,
+          description
+        });
+      } else {
+        toast.error('Erro ao carregar diretório', {
+          duration: 4000,
+          description: error.message || 'Erro desconhecido'
+        });
       }
     } finally {
       setLoadingNodes(prev => ({ ...prev, [nodeId]: false }));
