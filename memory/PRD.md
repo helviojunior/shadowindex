@@ -28,6 +28,27 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-22 (Session 28 - Plugin Page Refactoring)
+- [x] **Refatoração da Página de Plugins:**
+  - Removida a página centralizada "Instâncias de Plugins" (`/plugins/instances`)
+  - Cada plugin agora tem sua própria página com 2 abas: "Instâncias" e "Info"
+  - SOAP Plugin (`/plugins/soap`): Aba Instâncias para gerenciar instâncias SOAP, Aba Info para informações do plugin e funcionalidades
+  - Interação Direta (`/plugins/direct`): Aba Instâncias para gerenciar instâncias SMB, Aba Info para testar configuração e ver funcionalidades
+- [x] **Criação Automática de Instâncias Padrão:**
+  - Na inicialização da aplicação, se não existir nenhuma instância, são criadas automaticamente:
+    - "SOAP Padrão": Sem URL configurada, marcada como padrão
+    - "Interação Direta Padrão": Sem credencial (sem autenticação), marcada como padrão
+  - Lógica implementada em `create_default_plugin_instances()` no `server.py`
+- [x] **Atualização do Menu Lateral:**
+  - Removido item "Instâncias" do submenu de Plugins
+  - Mantidos apenas "SOAP API" e "Interação Direta"
+- [x] **Arquivos modificados:**
+  - `frontend/src/pages/PluginSoapConfig.js` - Reescrito com abas Instâncias/Info
+  - `frontend/src/pages/PluginDirectConfig.js` - Reescrito com abas Instâncias/Info
+  - `frontend/src/components/Layout.js` - Menu atualizado
+  - `frontend/src/App.js` - Rota `/plugins/instances` removida
+  - `backend/server.py` - Função de criação de instâncias padrão adicionada ao startup
+
 ### 2026-02-22 (Session 27 - Credential Verification & Proxy Credentials)
 - [x] **Flag `verified` em Credenciais:**
   - Campo `verified`, `last_verified_at`, `verification_error` no modelo Credential
