@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { 
   Database, Server, Globe, FileText, Wifi, WifiOff, HardDrive, Download,
   AlertTriangle, Shield, Activity, Search, RefreshCw, Play, FileWarning,
-  Clock, CheckCircle, XCircle, Loader2, FolderSearch, X
+  Clock, CheckCircle, XCircle, Loader2, FolderSearch, X, Eye, ScanSearch
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
