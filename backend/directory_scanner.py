@@ -286,22 +286,18 @@ class DirectoryScanner:
             if not items:
                 print(f"=== SCANNER: Empty result from list_directory ===", flush=True)
                 return
-            if "access" in result_lower and "denied" in result_lower:
-                print(f"=== SCANNER: Access denied for {full_path} ===", flush=True)
-                logger.warning(f"Access denied: {full_path}")
-                return
-            
-            # Parsear resultado (formato CSV ou XML)
-            items = self._parse_directory_listing(result)
-            print(f"=== SCANNER: Parsed {len(items)} items from directory listing ===", flush=True)
             
             files_added = 0
             dirs_added = 0
             
             for item in items:
-                item_type = item.get('type', '')
-                item_name = item.get('name', '')
-                item_size = int(item.get('size', 0))
+                # DirectoryItem tem: name, item_type, size, path, etc.
+                item_type = item.item_type  # 'File' ou 'Directory'
+                item_name = item.name
+                item_size = item.size or 0
+                item_full_path = item.path or f"{full_path}\\{item_name}"
+                
+                # Calcular path relativo para o job
                 item_path = f"{scan_job.path}\\{item_name}" if scan_job.path else item_name
                 
                 if item_type == 'Directory':
@@ -315,12 +311,12 @@ class DirectoryScanner:
                             sub_job = ScanJob(
                                 server_id=scan_job.server_id,
                                 share_name=scan_job.share_name,
-                                path=item_path,
+                                path=item_full_path,  # Usar path completo
                                 depth=scan_job.depth + 1,
                                 max_depth=scan_job.max_depth,
                                 max_file_size_bytes=scan_job.max_file_size_bytes,
                                 apply_filters=scan_job.apply_filters,
-                                parent_id=scan_job.parent_id or scan_job.id  # Herdar parent_id ou usar ID atual
+                                parent_id=scan_job.parent_id or scan_job.id
                             )
                             self.scan_queue.append(sub_job)
                             dirs_added += 1
@@ -333,11 +329,12 @@ class DirectoryScanner:
                         if should_skip:
                             logger.debug(f"Skipping file by extension: {item_name}")
                             continue
+                    
                     # Verificar se já existe job para este arquivo
                     existing = await db.execute(
                         select(DownloadJob).where(
                             DownloadJob.server_id == scan_job.server_id,
-                            DownloadJob.file_path == item_path,
+                            DownloadJob.file_path == item_full_path,
                             DownloadJob.status.in_(['pending', 'downloading', 'completed'])
                         )
                     )
@@ -357,7 +354,7 @@ class DirectoryScanner:
                         server_name=server.name,
                         server_ip=server.ip,
                         share_name=scan_job.share_name,
-                        file_path=item_path,
+                        file_path=item_full_path,
                         file_name=item_name,
                         file_size=item_size,
                         status=status,
