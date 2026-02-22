@@ -358,7 +358,11 @@ class GitleaksService:
                             if findings:
                                 job.findings_count = len(findings)
                                 saved_count = 0
-                                # Adicionar ao cache global com metadata
+                                
+                                # Separar findings em originais e OCR para aplicar precedência
+                                original_findings = []
+                                ocr_findings = []
+                                
                                 for finding in findings:
                                     # Normalizar caminho do arquivo (tratar .ocr e .metadata)
                                     file_info = normalize_file_path(finding.get('File', ''))
@@ -382,18 +386,54 @@ class GitleaksService:
                                         finding['extracted_file_id'] = ids[1]
                                         finding['extracted_version'] = ids[2]
                                     
-                                    # Verificar se já existe no cache (por Fingerprint)
+                                    # Separar por fonte de detecção
+                                    if file_info['source'] == 'ocr':
+                                        ocr_findings.append(finding)
+                                    else:
+                                        original_findings.append(finding)
+                                
+                                # Processar findings originais primeiro (têm precedência)
+                                # Chave: (original_file, Secret) para identificar duplicatas
+                                processed_keys = set()
+                                
+                                for finding in original_findings:
                                     fingerprint = finding.get('Fingerprint')
                                     already_in_cache = any(f.get('Fingerprint') == fingerprint for f in self._findings)
                                     
                                     if not already_in_cache:
-                                        # Adicionar ao cache em memória
                                         self._findings.append(finding)
                                     
-                                    # Salvar no banco de dados (persistência) - já verifica duplicatas internamente
+                                    # Registrar chave para evitar duplicata do OCR
+                                    key = (finding.get('original_file', ''), finding.get('Secret', ''))
+                                    processed_keys.add(key)
+                                    
                                     if await save_finding_to_db(finding):
                                         saved_count += 1
                                 
+                                # Processar findings de OCR (apenas se não existir do original)
+                                ocr_skipped = 0
+                                for finding in ocr_findings:
+                                    key = (finding.get('original_file', ''), finding.get('Secret', ''))
+                                    
+                                    # Se já existe um finding do arquivo original com o mesmo secret, pular
+                                    if key in processed_keys:
+                                        ocr_skipped += 1
+                                        logger.debug(f"OCR finding ignorado (já existe no original): {finding.get('original_file')}")
+                                        continue
+                                    
+                                    fingerprint = finding.get('Fingerprint')
+                                    already_in_cache = any(f.get('Fingerprint') == fingerprint for f in self._findings)
+                                    
+                                    if not already_in_cache:
+                                        self._findings.append(finding)
+                                    
+                                    processed_keys.add(key)
+                                    
+                                    if await save_finding_to_db(finding):
+                                        saved_count += 1
+                                
+                                if ocr_skipped > 0:
+                                    logger.info(f"Ignorados {ocr_skipped} findings de OCR (já existiam no arquivo original)")
                                 logger.info(f"Salvos {saved_count} novos findings no banco de dados")
                             else:
                                 job.findings_count = 0
