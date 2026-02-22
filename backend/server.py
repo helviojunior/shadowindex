@@ -773,7 +773,7 @@ async def delete_sql_preset(preset_id: int, db: AsyncSession = Depends(get_db)):
 @api_router.post("/sql/execute", response_model=SqlExecuteResponse)
 async def execute_sql(request: SqlExecuteRequest, db: AsyncSession = Depends(get_db)):
     """Executa uma query SQL usando a instância de plugin configurada na conexão"""
-    from plugins.factory import get_plugin_instance
+    from plugins.factory import get_plugin_for_instance
     from plugins.exceptions import PluginException
     
     # Buscar a conexão
@@ -796,7 +796,7 @@ async def execute_sql(request: SqlExecuteRequest, db: AsyncSession = Depends(get
     
     try:
         # Obter a instância de plugin configurada na conexão
-        plugin = await get_plugin_instance(db, conn.plugin_instance_id)
+        plugin = await get_plugin_for_instance(db, conn.plugin_instance_id)
         
         if not plugin:
             raise HTTPException(
@@ -808,17 +808,18 @@ async def execute_sql(request: SqlExecuteRequest, db: AsyncSession = Depends(get
             )
         
         # Executar a query SQL usando o plugin
-        sql_result = await plugin.execute_sql(conn.connection_string, request.query)
+        sql_result = await plugin.sql_request(conn.connection_string, request.query, ignore_cache=True)
         
         execution_time = int((time.time() - start_time) * 1000)
         
         # Verificar se o resultado é um erro
-        if hasattr(sql_result, 'error') and sql_result.error:
-            raise Exception(sql_result.error_message or "Erro ao executar query SQL")
+        if sql_result.error:
+            raise Exception(sql_result.error)
         
         # Extrair colunas e linhas do resultado
-        columns = sql_result.columns if hasattr(sql_result, 'columns') else []
-        rows = sql_result.rows if hasattr(sql_result, 'rows') else []
+        columns = sql_result.columns
+        # Converter rows de List[Dict] para List[List]
+        rows = [[row.get(col, "") for col in columns] for row in sql_result.rows]
         
         # Marcar conexão como verificada
         conn.verified = True
