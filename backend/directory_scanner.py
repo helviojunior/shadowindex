@@ -362,6 +362,12 @@ class DirectoryScanner:
                     # Manter apenas últimos 50 completados
                     if len(self.completed_scans) > 50:
                         self.completed_scans = self.completed_scans[-50:]
+                    
+                    # Verificar se é um scan crítico ROOT que completou
+                    # e se não há mais sub-scans pendentes
+                    if scan_job.critical_only and scan_job.parent_id is None:
+                        await self._check_and_trigger_gitleaks(scan_job)
+                        
                 except Exception as e:
                     scan_job.status = 'failed'
                     self.completed_scans.append(scan_job)
