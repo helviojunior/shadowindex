@@ -770,32 +770,42 @@ async def browse_path(
     ignore_cache: bool = False,
     db: AsyncSession = Depends(get_db)
 ):
-    """Navega em um path via SOAP e atualiza cache - endpoint genérico"""
-    from soap_service import get_default_soap_service
+    """Navega em um path usando o plugin do servidor e atualiza cache"""
+    from plugins.factory import get_plugin_for_server
+    from plugins.base import DirectoryItem
     from server import parse_exec4_directory_listing
     
     server = await get_server_or_404(db, server_id)
     
-    # Chamar SOAP Exec4
-    soap_service = await get_default_soap_service(db)
-    params = {"s1": path, "s2": ""}
+    logger.info(f"Browsing path {path} for server {server.ip} using plugin {server.plugin_type}")
     
     try:
-        result_str = await soap_service.call_soap_operation(db, "Exec4", params, ignore_cache)
+        # Obter o plugin correto para o servidor
+        plugin = await get_plugin_for_server(db, server)
         
-        # Verificar erros de acesso
-        if result_str:
-            result_lower = result_str.lower()
-            if "access" in result_lower and "denied" in result_lower:
-                return {
-                    "success": False,
-                    "accessDenied": True,
-                    "errorMessage": "Acesso negado",
-                    "items": []
-                }
+        # Chamar list_directory do plugin
+        directory_items = await plugin.list_directory(path, ignore_cache=ignore_cache)
         
-        # Parsear resultado
-        parsed_items = parse_exec4_directory_listing(result_str)
+        parsed_items = []
+        
+        if directory_items:
+            for item in directory_items:
+                if isinstance(item, DirectoryItem):
+                    parsed_items.append({
+                        "type": item.item_type,
+                        "name": item.name,
+                        "fullPath": item.full_path,
+                        "size": item.size,
+                        "modified": item.modified.isoformat() if item.modified else None
+                    })
+                elif isinstance(item, dict):
+                    parsed_items.append({
+                        "type": item.get("item_type", item.get("type", "File")),
+                        "name": item.get("name", ""),
+                        "fullPath": item.get("full_path", item.get("fullPath", "")),
+                        "size": item.get("size", 0),
+                        "modified": item.get("modified")
+                    })
         
         # Remover itens antigos deste path
         await db.execute(
@@ -850,6 +860,17 @@ async def browse_path(
         
     except Exception as e:
         logger.error(f"Error browsing path {path}: {e}")
+        
+        # Verificar erros de acesso
+        error_str = str(e).lower()
+        if "access" in error_str and "denied" in error_str:
+            return {
+                "success": False,
+                "accessDenied": True,
+                "errorMessage": "Acesso negado",
+                "items": []
+            }
+        
         raise HTTPException(status_code=500, detail=str(e))
 
 
