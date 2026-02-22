@@ -163,7 +163,7 @@ app = FastAPI(title="ShadowIndex API")
 # WebSocket endpoint
 from websocket_manager import get_websocket_manager
 
-@app.websocket("/ws")
+@app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint para atualizações em tempo real"""
     ws_manager = get_websocket_manager()
