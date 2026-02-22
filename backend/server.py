@@ -1817,25 +1817,30 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
         "deleted_at": datetime.now(timezone.utc).isoformat()
     }
     
-    # Buscar credencial usada (via plugin_instance)
+    # Buscar credencial usada (via plugin_instance config)
     if server.plugin_instance_id:
         pi_result = await db.execute(
             select(PluginInstance).where(PluginInstance.id == server.plugin_instance_id)
         )
         plugin_instance = pi_result.scalar_one_or_none()
-        if plugin_instance and plugin_instance.credential_id:
-            cred_result = await db.execute(
-                select(Credential).where(Credential.id == plugin_instance.credential_id)
-            )
-            credential = cred_result.scalar_one_or_none()
-            if credential:
-                export_data["credential"] = {
-                    "id": credential.id,
-                    "name": credential.name,
-                    "credential_type": credential.credential_type,
-                    "username": credential.username,
-                    # Não exportar dados sensíveis como password/ntlm_hash
-                }
+        if plugin_instance:
+            # Extrair credential_id do config do plugin
+            config = plugin_instance.config or {}
+            credential_id = config.get('credential_id')
+            
+            if credential_id:
+                cred_result = await db.execute(
+                    select(Credential).where(Credential.id == credential_id)
+                )
+                credential = cred_result.scalar_one_or_none()
+                if credential:
+                    export_data["credential"] = {
+                        "id": credential.id,
+                        "name": credential.name,
+                        "credential_type": credential.credential_type,
+                        "username": credential.username,
+                        # Não exportar dados sensíveis como password/ntlm_hash
+                    }
     
     # Buscar shares
     shares_result = await db.execute(
