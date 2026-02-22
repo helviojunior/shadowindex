@@ -571,7 +571,8 @@ const Leaks = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold">TARGET</TableHead>
+                    <TableHead className="font-semibold">SERVIDOR</TableHead>
+                    <TableHead className="font-semibold">ARQUIVO</TableHead>
                     <TableHead className="font-semibold">LINE</TableHead>
                     <TableHead className="font-semibold">RULE</TableHead>
                     <TableHead className="font-semibold">TAGS</TableHead>
@@ -583,13 +584,31 @@ const Leaks = () => {
                   {filteredFiles.map((file) => 
                     file.findings.map((finding, fIndex) => {
                       const risk = getRiskIndicators(finding.RuleID);
-                      // Usar dados já normalizados pelo backend
-                      const originalFile = finding.original_file || finding.File;
+                      // Usar dados enriquecidos pelo backend
                       const detectionSource = finding.detection_source; // "ocr", "metadata" ou null
-                      const fileName = originalFile.split('/').pop();
+                      
+                      // Dados do banco de dados
+                      const serverName = finding.server_name || '-';
+                      const serverIp = finding.server_ip || '';
+                      const fileName = finding.file_name || finding.original_file?.split('/').pop() || 'Arquivo';
+                      const serverPath = finding.server_path || finding.original_file || finding.File;
                       
                       return (
                         <TableRow key={`${file.file}-${fIndex}`} className="hover:bg-muted/30">
+                          {/* Coluna Servidor */}
+                          <TableCell>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm text-emerald-400 truncate max-w-[140px]" title={serverName}>
+                                {serverName}
+                              </p>
+                              {serverIp && (
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {serverIp}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          {/* Coluna Arquivo */}
                           <TableCell>
                             <div className="flex items-start gap-2">
                               {detectionSource && (
@@ -602,11 +621,11 @@ const Leaks = () => {
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <p className="font-medium text-sm text-cyan-400 truncate max-w-[280px]">
+                                <p className="font-medium text-sm text-cyan-400 truncate max-w-[280px]" title={fileName}>
                                   {fileName}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate max-w-[280px]">
-                                  {originalFile}
+                                <p className="text-xs text-muted-foreground truncate max-w-[280px]" title={serverPath}>
+                                  {serverPath}
                                 </p>
                               </div>
                             </div>
