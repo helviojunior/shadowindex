@@ -3866,11 +3866,24 @@ async def scan_directory_for_download(
 
 
 @api_router.get("/scans")
-async def get_scan_jobs():
-    """Lista todos os scan jobs (pendentes e recentes)"""
+async def get_scan_jobs(limit: Optional[int] = None):
+    """Lista todos os scan jobs (pendentes e recentes)
+    
+    Args:
+        limit: Limitar quantidade de resultados
+    """
     from directory_scanner import get_scanner
     scanner = get_scanner()
-    return scanner.get_scan_jobs()
+    jobs = scanner.get_scan_jobs()
+    
+    if limit:
+        # Ordenar: ativos primeiro, depois limitar
+        active_statuses = ['scanning', 'pending']
+        active = [j for j in jobs if j.get('status') in active_statuses]
+        inactive = [j for j in jobs if j.get('status') not in active_statuses]
+        jobs = (active + inactive)[:limit]
+    
+    return jobs
 
 
 @api_router.post("/scans/{scan_id}/cancel")
