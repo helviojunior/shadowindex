@@ -422,7 +422,7 @@ async def list_shares(
     """Lista todos os compartilhamentos do servidor"""
     from plugins.factory import get_plugin_for_server
     from plugins.base import ShareInfo
-    from plugins.exceptions import CredentialNotSetException
+    from plugins.exceptions import CredentialNotSetException, ConnectionException, AccessDeniedException
     import xml.etree.ElementTree as ET
     
     server = await get_server_or_404(db, server_id)
