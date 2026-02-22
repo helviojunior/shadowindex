@@ -844,35 +844,16 @@ const Leaks = () => {
                     )}
                   </div>
                   
-                  {/* Botão Abrir Arquivo no modal */}
-                  {(selectedFinding.extracted_file_id || (selectedFinding.server_id && fullPath)) && (
+                  {/* Botão Abrir Arquivo no modal - só mostra se tem extracted_file_id (arquivo baixado) */}
+                  {selectedFinding.extracted_file_id && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="w-full mt-2"
-                      onClick={async () => {
+                      onClick={() => {
                         const serverId = selectedFinding.extracted_server_id || selectedFinding.server_id;
-                        
-                        if (selectedFinding.extracted_file_id) {
-                          try {
-                            const response = await axios.get(`${API}/downloads/${selectedFinding.extracted_file_id}`);
-                            if (response.data && response.data.server_id) {
-                              window.open(`/servers/${response.data.server_id}/browse?file_id=${selectedFinding.extracted_file_id}`, '_blank');
-                              return;
-                            }
-                          } catch (error) {
-                            console.error('Error fetching file info:', error);
-                          }
-                          if (serverId) {
-                            window.open(`/servers/${serverId}/browse?file_id=${selectedFinding.extracted_file_id}`, '_blank');
-                            return;
-                          }
-                        }
-                        
-                        // Para leaks manuais
-                        if (serverId && fullPath) {
-                          const encodedPath = encodeURIComponent(fullPath);
-                          window.open(`/servers/${serverId}/browse?path=${encodedPath}`, '_blank');
+                        if (serverId) {
+                          window.open(`/servers/${serverId}/browse?file_id=${selectedFinding.extracted_file_id}`, '_blank');
                         }
                       }}
                     >
