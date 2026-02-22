@@ -568,13 +568,45 @@ const Servers = () => {
                       <Plug className="w-4 h-4 inline mr-1" />
                       Plugin
                     </th>
-                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">
-                      <HardDrive className="w-4 h-4 inline mr-1" />
-                      Shares
+                    <th 
+                      className="text-center p-3 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => handleSort('risk_score')}
+                    >
+                      <div className="flex items-center justify-center">
+                        <ShieldAlert className="w-4 h-4 mr-1" />
+                        Risco
+                        {getSortIcon('risk_score')}
+                      </div>
                     </th>
-                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">
-                      <Download className="w-4 h-4 inline mr-1" />
-                      Downloads
+                    <th 
+                      className="text-center p-3 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => handleSort('leaks_count')}
+                    >
+                      <div className="flex items-center justify-center">
+                        <AlertTriangle className="w-4 h-4 mr-1" />
+                        Leaks
+                        {getSortIcon('leaks_count')}
+                      </div>
+                    </th>
+                    <th 
+                      className="text-center p-3 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => handleSort('shares_count')}
+                    >
+                      <div className="flex items-center justify-center">
+                        <HardDrive className="w-4 h-4 mr-1" />
+                        Shares
+                        {getSortIcon('shares_count')}
+                      </div>
+                    </th>
+                    <th 
+                      className="text-center p-3 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => handleSort('downloaded_files_count')}
+                    >
+                      <div className="flex items-center justify-center">
+                        <Download className="w-4 h-4 mr-1" />
+                        Downloads
+                        {getSortIcon('downloaded_files_count')}
+                      </div>
                     </th>
                     <th className="text-left p-3 text-sm font-medium text-muted-foreground">Última Verificação</th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">Ações</th>
