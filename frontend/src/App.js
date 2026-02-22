@@ -37,18 +37,19 @@ function App() {
 
   return (
     <div className="App">
-      <AppProvider>
-        <BrowserRouter>
-          <Layout darkMode={darkMode} setDarkMode={setDarkMode}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/servers" element={<Servers />} />
-              <Route path="/servers/import" element={<ImportServers />} />
-              <Route path="/servers/:serverId" element={<ServerBrowser />} />
-              <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
-              <Route path="/files/browse" element={<FileNavigation />} />
-              <Route path="/downloads" element={<Downloads />} />
-              <Route path="/leaks" element={<Leaks />} />
+      <WebSocketProvider>
+        <AppProvider>
+          <BrowserRouter>
+            <Layout darkMode={darkMode} setDarkMode={setDarkMode}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/servers" element={<Servers />} />
+                <Route path="/servers/import" element={<ImportServers />} />
+                <Route path="/servers/:serverId" element={<ServerBrowser />} />
+                <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
+                <Route path="/files/browse" element={<FileNavigation />} />
+                <Route path="/downloads" element={<Downloads />} />
+                <Route path="/leaks" element={<Leaks />} />
               <Route path="/credentials" element={<Credentials />} />
               <Route path="/sql" element={<DatabaseConnections />} />
               <Route path="/sql/presets" element={<SqlPresets />} />
