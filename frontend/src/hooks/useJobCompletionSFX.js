@@ -113,15 +113,6 @@ export const useJobCompletionSFX = (enabled = true) => {
     };
   }, [isConnected, enabled, checkAndPlaySound]);
 
-  // Limpar AudioContext ao desmontar
-  useEffect(() => {
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, []);
-
   return { playNotificationSound };
 };
 
