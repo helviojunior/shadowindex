@@ -180,6 +180,22 @@ const OCRJobs = () => {
     }
   };
 
+  // Reexecutar jobs falhados
+  const retryFailedJobs = async () => {
+    setRetrying(true);
+    try {
+      const response = await axios.post(`${API}/ocr/retry-failed`);
+      toast.success(response.data.message);
+      loadJobs();
+      loadStats();
+    } catch (error) {
+      console.error('Error retrying failed jobs:', error);
+      toast.error('Erro ao reexecutar jobs falhados');
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   // Filtrar jobs por termo de busca
   const filteredJobs = jobs.filter(job => {
     if (!searchTerm) return true;
