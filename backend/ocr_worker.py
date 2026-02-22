@@ -80,7 +80,6 @@ class OCRWorker:
             cert = None
             private_key = None
             chain = None
-            password_used = None
             
             if file_ext in ['.pfx', '.p12']:
                 # Tentar sem senha primeiro
