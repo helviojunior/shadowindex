@@ -45,7 +45,7 @@ O sistema já está rodando no ambiente Kubernetes:
 # Frontend na porta 3000
 ```
 
-Acesse: https://cred-manager-test.preview.emergentagent.com/
+Acesse: https://shadow-index-1.preview.emergentagent.com/
 
 ### Opção 2: Docker Compose (Porta 9090)
 
