@@ -690,17 +690,21 @@ const ServerBrowser = () => {
     
     // Para imagens e PDFs, carregar como blob e criar URL
     if (isImageFile(filename) || isPdfFile(filename)) {
+      console.log('[loadFileContent] Loading as blob (image/PDF)');
       setLoadingContent(true);
       try {
         const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
           responseType: 'blob'
         });
         
+        console.log('[loadFileContent] Blob received, size:', response.data.size, 'type:', response.data.type);
         const url = window.URL.createObjectURL(new Blob([response.data]));
+        console.log('[loadFileContent] Created blob URL:', url);
         setFilePreviewUrl(url);
         setFileContent(null);
+        console.log('[loadFileContent] Set filePreviewUrl, cleared fileContent');
       } catch (error) {
-        console.error('Error loading file preview:', error);
+        console.error('[loadFileContent] Error loading blob:', error);
         // Handle blob error response
         let errorMessage = 'Erro ao carregar preview do arquivo';
         if (error.response?.data instanceof Blob) {
@@ -721,6 +725,7 @@ const ServerBrowser = () => {
     }
 
     // Para arquivos de texto
+    console.log('[loadFileContent] Loading as text');
     setLoadingContent(true);
     try {
       const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/content`);
