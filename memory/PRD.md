@@ -60,6 +60,21 @@ Portuguese (pt-BR)
 - [x] **Espaçamento da página Plugin SOAP:**
   - Aumentado espaçamento entre seções (space-y-8)
 
+### 2026-02-22 (Session 23 - Import Plugin Selection & Port Configuration)
+- [x] **Seletor de Plugin na Importação:**
+  - Adicionado combobox para selecionar o plugin que será vinculado aos servidores importados
+  - Backend atualizado para aceitar `plugin_type` no endpoint `/api/v2/servers/import/nmap`
+  - Modelo `NmapHostData` atualizado com campo opcional `plugin_type`
+- [x] **Remoção de Badges de Serviço na Importação:**
+  - Removidas as badges de tipo de serviço (SMB, MSSQL, etc.) da lista de servidores encontrados
+  - Interface mais limpa e focada
+- [x] **Configuração de Portas de Importação:**
+  - Nova seção "Portas de Importação" na página de Configurações Gerais
+  - Permite adicionar/remover portas que serão consideradas na importação via Nmap XML
+  - Portas padrão: SMB (445), MSSQL (1433), MySQL (3306), PostgreSQL (5432), Oracle (1521), MongoDB (27017), Redis (6379), CouchDB (5984), Elasticsearch (9200)
+  - Badges coloridas diferenciando SMB (azul) de bancos de dados (verde)
+  - Link direto da página de importação para as configurações de portas
+
 ### 2026-02-22 (Session 20 - GitLeaks Integration Complete)
 - [x] **Dockerfile atualizado para GitLeaks dinâmico:**
   - Download automático da última versão do GitLeaks no build
