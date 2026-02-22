@@ -7,16 +7,18 @@ Características:
 - Processamento em background independente do navegador
 - Suporte a downloads em chunks para arquivos grandes
 - Atualização de progresso em tempo real via WebSocket
+- Timeout automático para downloads travados
+- Verificação periódica de jobs stale
 """
 
 import asyncio
 import logging
 import base64
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from database import FileVersion
 from websocket_manager import get_websocket_manager
@@ -26,6 +28,8 @@ logger = logging.getLogger(__name__)
 # Configurações do worker
 CHUNK_SIZE = 1024 * 1024  # 1MB chunks
 WORKER_POLL_INTERVAL = 2  # segundos entre verificações
+DOWNLOAD_TIMEOUT_MINUTES = 10  # timeout máximo para um download individual
+STALE_CHECK_INTERVAL = 60  # segundos entre verificações de jobs stale
 
 # Instância global do worker
 _worker_instance: Optional['DownloadWorker'] = None
