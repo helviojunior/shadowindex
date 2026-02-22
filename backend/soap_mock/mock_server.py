@@ -31,6 +31,14 @@ app = FastAPI(title="SOAP Mock Server", version="1.0.0")
 
 MOCK_SERVER_IP = "10.20.30.40"
 
+# IPs/hostnames que devem simular servidores offline (erro de rede 53)
+OFFLINE_SERVERS = [
+    "offline.test.local",
+    "192.168.99.99",
+    "10.0.0.254",
+    "unreachable.local"
+]
+
 MOCK_SHARES = [
     {"host": MOCK_SERVER_IP, "name": "ADMIN$", "type": "Disk", "remark": "Remote Admin"},
     {"host": MOCK_SERVER_IP, "name": "C$", "type": "Disk", "remark": "Default share"},
