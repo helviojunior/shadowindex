@@ -3658,7 +3658,7 @@ async def scan_all_servers_storage(
 
 
 @router.get("/gitleaks/stats")
-async def get_gitleaks_stats(db: AsyncSession = Depends(get_db)):
+async def get_gitleaks_stats(db: AsyncSession = Depends(get_db_readonly)):
     """
     Retorna estatísticas gerais do GitLeaks para o Dashboard.
     """
