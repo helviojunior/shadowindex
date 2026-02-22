@@ -113,14 +113,8 @@ const ProxyServers = () => {
         ip: editData.ip,
         port: parseInt(editData.port),
         proxy_type: editData.proxy_type,
-        username: editData.auth_type === 'user_password' ? (editData.username || null) : null,
-        password: editData.auth_type === 'user_password' ? (editData.password || undefined) : null
+        credential_id: editData.credential_id !== 'none' ? parseInt(editData.credential_id) : null
       };
-      
-      // Don't send password if empty and auth is user_password (keep existing)
-      if (editData.auth_type === 'user_password' && !editData.password) {
-        delete payload.password;
-      }
       
       await axios.put(`${API}/proxy-servers/${id}`, payload);
       toast.success('Proxy server atualizado com sucesso');
