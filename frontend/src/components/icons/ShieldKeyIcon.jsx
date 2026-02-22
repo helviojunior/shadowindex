@@ -15,49 +15,40 @@ const CredentialKeyIcon = ({ className = '', size = 24, ...props }) => {
       fill="currentColor"
       {...props}
     >
-      {/* Key head (oval) */}
-      <ellipse cx="5.5" cy="6" rx="4.5" ry="5" />
+      {/* Key head (oval filled) */}
+      <ellipse cx="5" cy="5.5" rx="4" ry="4.5" />
       
-      {/* Key hole */}
-      <ellipse cx="5.5" cy="6" rx="1.2" ry="1.4" fill="var(--background, #1c1c1c)" />
+      {/* Key hole (cutout) */}
+      <ellipse cx="5" cy="5.5" rx="1" ry="1.2" fill="var(--background, #1a1a1a)" />
       
-      {/* Key shaft with zigzag teeth */}
+      {/* Key shaft - rectangle part */}
+      <rect x="8" y="4" width="4" height="3" />
+      
+      {/* Key teeth - zigzag pattern */}
       <path 
-        d="M9.5 5h4l2 2.5-2 2.5h2l2-2.5 1.5 1.5v1l-1.5 1.5-2-2.5h-2l2 2.5-2 2.5h-4v-3z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinejoin="round"
+        d="M12 4 L15 4 L15 5 L17 5 L17 4 L19 4 L21 5.5 L19 7 L17 7 L17 6 L15 6 L15 7 L12 7 Z"
       />
       
-      {/* Alternative simpler key shaft */}
-      <path 
-        d="M9 5.5h6l1.5 1.5-1.5 1.5 1.5 1.5-1.5 1.5h2l1-1v-1l1 1v1l-1 1h-9v-6z"
-        fill="currentColor"
-        style={{ display: 'none' }}
-      />
+      {/* Password field bar */}
+      <rect x="1" y="16" width="22" height="7" rx="0.5" />
       
-      {/* Simplified key shaft */}
-      <rect x="9" y="4.5" width="5" height="3" rx="0.3" />
-      <polygon points="14,5 18,5 20,6 18,7 16,7 18,8 20,9 18,10 14,10 14,7.5" />
-      
-      {/* Password field (rectangle with asterisks) */}
-      <rect x="2" y="16" width="20" height="6" rx="0.5" />
-      
-      {/* Asterisks - using 6-point stars */}
-      <g fill="var(--background, #1c1c1c)">
-        {/* Asterisk 1 */}
-        <text x="4.5" y="21" fontSize="5" textAnchor="middle" fontFamily="sans-serif" fontWeight="bold">*</text>
-        {/* Asterisk 2 */}
-        <text x="9" y="21" fontSize="5" textAnchor="middle" fontFamily="sans-serif" fontWeight="bold">*</text>
-        {/* Asterisk 3 */}
-        <text x="13.5" y="21" fontSize="5" textAnchor="middle" fontFamily="sans-serif" fontWeight="bold">*</text>
-        {/* Asterisk 4 */}
-        <text x="18" y="21" fontSize="5" textAnchor="middle" fontFamily="sans-serif" fontWeight="bold">*</text>
+      {/* Asterisks as star shapes */}
+      <g fill="var(--background, #1a1a1a)">
+        {/* Star 1 */}
+        <path d="M4.5 19.5 L4.5 17.5 M3.3 18.2 L5.7 20.8 M5.7 18.2 L3.3 20.8" stroke="var(--background, #1a1a1a)" strokeWidth="0.8" strokeLinecap="round"/>
+        {/* Star 2 */}
+        <path d="M9 19.5 L9 17.5 M7.8 18.2 L10.2 20.8 M10.2 18.2 L7.8 20.8" stroke="var(--background, #1a1a1a)" strokeWidth="0.8" strokeLinecap="round"/>
+        {/* Star 3 */}
+        <path d="M13.5 19.5 L13.5 17.5 M12.3 18.2 L14.7 20.8 M14.7 18.2 L12.3 20.8" stroke="var(--background, #1a1a1a)" strokeWidth="0.8" strokeLinecap="round"/>
+        {/* Star 4 */}
+        <path d="M18 19.5 L18 17.5 M16.8 18.2 L19.2 20.8 M19.2 18.2 L16.8 20.8" stroke="var(--background, #1a1a1a)" strokeWidth="0.8" strokeLinecap="round"/>
       </g>
     </svg>
   );
 };
 
-export { CredentialKeyIcon };
+// Export with both names for compatibility
+const ShieldKeyIcon = CredentialKeyIcon;
+
+export { CredentialKeyIcon, ShieldKeyIcon };
 export default CredentialKeyIcon;
