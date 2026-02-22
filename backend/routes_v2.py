@@ -3865,8 +3865,9 @@ async def register_manual_leak(leak: ManualLeakCreate, db: AsyncSession = Depend
     Registra um leak manualmente identificado pelo usuário.
     Útil quando o GitLeaks não detectou automaticamente.
     """
-    from gitleaks_service import get_gitleaks_service
+    from gitleaks_service import get_gitleaks_service, save_finding_to_db, extract_ids_from_path
     from datetime import datetime, timezone
+    from database import Server, DownloadedFile
     import hashlib
     
     service = get_gitleaks_service()
@@ -3877,6 +3878,40 @@ async def register_manual_leak(leak: ManualLeakCreate, db: AsyncSession = Depend
     # Gerar fingerprint único
     fingerprint_source = f"{leak.file_path}:{leak.line_number or 0}:{leak.secret_type}:{leak.match_text or ''}"
     fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
+    
+    # Buscar dados do servidor
+    server_name = None
+    server_ip = None
+    if leak.server_id:
+        server_result = await db.execute(
+            select(Server).where(Server.id == leak.server_id)
+        )
+        server = server_result.scalar_one_or_none()
+        if server:
+            server_name = server.name
+            server_ip = server.ip
+    
+    # Buscar dados do arquivo baixado (se existir)
+    file_name = None
+    server_path = None
+    share_name = None
+    extracted_file_id = None
+    extracted_version = None
+    
+    # Tentar extrair IDs do caminho
+    ids = extract_ids_from_path(leak.file_path)
+    if ids:
+        extracted_server_id, extracted_file_id, extracted_version = ids
+        
+        # Buscar arquivo no banco
+        file_result = await db.execute(
+            select(DownloadedFile).where(DownloadedFile.id == extracted_file_id)
+        )
+        downloaded_file = file_result.scalar_one_or_none()
+        if downloaded_file:
+            file_name = downloaded_file.file_name
+            server_path = downloaded_file.file_path
+            share_name = downloaded_file.share_name
     
     # Criar finding no formato GitLeaks
     finding = {
@@ -3897,7 +3932,17 @@ async def register_manual_leak(leak: ManualLeakCreate, db: AsyncSession = Depend
         "scanned_at": datetime.now(timezone.utc).isoformat(),
         "original_file": leak.file_path,
         "scanned_file": leak.file_path,
-        "detection_source": "manual"
+        "detection_source": "manual",
+        
+        # Dados enriquecidos do servidor e arquivo
+        "server_name": server_name,
+        "server_ip": server_ip,
+        "file_name": file_name,
+        "server_path": server_path,
+        "share_name": share_name,
+        "extracted_server_id": leak.server_id,
+        "extracted_file_id": extracted_file_id,
+        "extracted_version": extracted_version
     }
     
     # Verificar se já existe
@@ -3911,6 +3956,9 @@ async def register_manual_leak(leak: ManualLeakCreate, db: AsyncSession = Depend
     
     # Adicionar ao cache
     service._findings.append(finding)
+    
+    # Salvar no banco de dados para persistência
+    await save_finding_to_db(finding)
     
     return {
         "success": True,
