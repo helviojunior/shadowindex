@@ -142,6 +142,38 @@ const Servers = () => {
       : <ArrowDown className="w-4 h-4 ml-1 text-primary" />;
   };
 
+  // Renderiza o badge de risco com cor baseada no score
+  const getRiskBadge = (riskScore) => {
+    if (riskScore === 0) {
+      return (
+        <Badge variant="outline" className="text-muted-foreground">
+          0
+        </Badge>
+      );
+    }
+    if (riskScore < 30) {
+      return (
+        <Badge className="bg-green-600 hover:bg-green-700">
+          {riskScore}
+        </Badge>
+      );
+    }
+    if (riskScore < 60) {
+      return (
+        <Badge className="bg-yellow-600 hover:bg-yellow-700">
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          {riskScore}
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-red-600 hover:bg-red-700">
+        <ShieldAlert className="w-3 h-3 mr-1" />
+        {riskScore}
+      </Badge>
+    );
+  };
+
   const loadServers = async () => {
     try {
       const response = await axios.get(`${API}/servers`);
