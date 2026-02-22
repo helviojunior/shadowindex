@@ -575,28 +575,53 @@ class GitleaksService:
                     with open(filepath, 'r') as f:
                         findings = json.load(f)
                         if findings and isinstance(findings, list):
+                            # Separar findings em originais e OCR para aplicar precedência
+                            original_findings = []
+                            ocr_findings = []
+                            
                             for finding in findings:
-                                # Evitar duplicatas
-                                if not any(f.get('Fingerprint') == finding.get('Fingerprint') 
-                                          for f in self._findings):
-                                    
-                                    # Normalizar caminho do arquivo (tratar .ocr e .metadata)
-                                    file_info = normalize_file_path(finding.get('File', ''))
-                                    
-                                    finding['original_file'] = file_info['original_file']
-                                    finding['scanned_file'] = file_info['scanned_file']
-                                    finding['detection_source'] = file_info['source']
-                                    finding['File'] = file_info['original_file']
-                                    
-                                    # Extrair IDs do caminho físico
-                                    ids = extract_ids_from_path(file_info['original_file'])
-                                    if ids:
-                                        finding['extracted_server_id'] = ids[0]
-                                        finding['extracted_file_id'] = ids[1]
-                                        finding['extracted_version'] = ids[2]
-                                    
+                                # Evitar duplicatas por Fingerprint
+                                if any(f.get('Fingerprint') == finding.get('Fingerprint') 
+                                      for f in self._findings):
+                                    continue
+                                
+                                # Normalizar caminho do arquivo (tratar .ocr e .metadata)
+                                file_info = normalize_file_path(finding.get('File', ''))
+                                
+                                finding['original_file'] = file_info['original_file']
+                                finding['scanned_file'] = file_info['scanned_file']
+                                finding['detection_source'] = file_info['source']
+                                finding['File'] = file_info['original_file']
+                                
+                                # Extrair IDs do caminho físico
+                                ids = extract_ids_from_path(file_info['original_file'])
+                                if ids:
+                                    finding['extracted_server_id'] = ids[0]
+                                    finding['extracted_file_id'] = ids[1]
+                                    finding['extracted_version'] = ids[2]
+                                
+                                # Separar por fonte de detecção
+                                if file_info['source'] == 'ocr':
+                                    ocr_findings.append(finding)
+                                else:
+                                    original_findings.append(finding)
+                            
+                            # Processar originais primeiro (têm precedência)
+                            processed_keys = set()
+                            
+                            for finding in original_findings:
+                                self._findings.append(finding)
+                                loaded_count += 1
+                                key = (finding.get('original_file', ''), finding.get('Secret', ''))
+                                processed_keys.add(key)
+                            
+                            # Processar OCR apenas se não existir do original
+                            for finding in ocr_findings:
+                                key = (finding.get('original_file', ''), finding.get('Secret', ''))
+                                if key not in processed_keys:
                                     self._findings.append(finding)
                                     loaded_count += 1
+                                    processed_keys.add(key)
                 except Exception as e:
                     logger.warning(f"Erro ao carregar {filename}: {e}")
         
