@@ -114,10 +114,11 @@ const FileNavigation = () => {
                   {server.ip}
                 </p>
                 
-                {/* Plugin Badge */}
-                {server.plugin_type && (
+                {/* Plugin Badge - Nome da instância ou tipo */}
+                {(server.plugin_instance_name || server.plugin_type) && (
                   <Badge variant="outline" className="mt-2 text-[10px]">
-                    {server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type}
+                    {server.plugin_instance_name || 
+                      (server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type)}
                   </Badge>
                 )}
               </div>
