@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  Key, Database, Server, Globe, FileText, Wifi, WifiOff, HardDrive, Download,
+  Database, Server, Globe, FileText, Wifi, WifiOff, HardDrive, Download,
   AlertTriangle, Shield, Activity, Search, RefreshCw, Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
+import { ShieldKeyIcon } from '@/components/icons';
 import {
   AreaChart,
   Area,
