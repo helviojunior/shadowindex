@@ -522,7 +522,15 @@ class SoapApiPlugin(BasePlugin):
         length: Optional[int] = None,
         ignore_cache: bool = False
     ) -> FileContent:
-        """Download file content via SOAP"""
+        """
+        Download file content via SOAP.
+        
+        Fluxo:
+        1. Tentar decode base64
+           1.1 Se falhar, considera que o conteúdo não é base64 e continua
+           1.2 Se sucesso, continua com o texto decodificado
+        2. Validar erros de acesso negado para exceptions específicas
+        """
         try:
             params = {"path": path}
             if offset > 0:
@@ -539,32 +547,56 @@ class SoapApiPlugin(BasePlugin):
             if not result:
                 raise ItemNotFoundException(path)
             
-            # Check for error messages in the result (File not found, access denied)
-            if "not found!" in result.lower() or "cannot find" in result.lower():
-                raise ItemNotFoundException(path)
-            if "access" in result.lower() and "denied" in result.lower():
-                raise AccessDeniedException(path)
-            
-            # Result should be base64 encoded content
+            # Step 1: Try base64 decode first
             import base64
+            data = None
+            is_base64 = False
+            
             try:
                 data = base64.b64decode(result)
-            except Exception:
-                # If not base64, check if it's an error message
-                if "at Test.Test." in result or "at System." in result:
-                    # This is a stack trace, not valid file content
-                    error_lines = result.split('\n')
-                    error_msg = error_lines[0] if error_lines else result
-                    if "not found" in error_msg.lower():
-                        raise ItemNotFoundException(path)
-                    raise PluginException(f"Erro ao baixar arquivo: {error_msg}")
-                # Use raw data if not base64 and not an error
-                data = result.encode('utf-8')
+                is_base64 = True
+                logger.debug(f"Successfully decoded base64 content for {path}")
+            except Exception as decode_error:
+                # 1.1 - Not base64, use raw content
+                logger.debug(f"Content is not base64, using raw text: {decode_error}")
+                data = result.encode('utf-8') if isinstance(result, str) else result
+            
+            # Step 2: Validate for errors (works on both decoded and raw content)
+            # Check the result string for error patterns
+            content_to_check = result if isinstance(result, str) else data.decode('utf-8', errors='ignore')
+            content_lower = content_to_check.lower()
+            
+            # Check for "not found" errors
+            if "not found!" in content_lower or "cannot find" in content_lower:
+                logger.warning(f"File not found: {path}")
+                raise ItemNotFoundException(path)
+            
+            # Check for "access denied" errors
+            if "access" in content_lower and "denied" in content_lower:
+                logger.warning(f"Access denied to file: {path}")
+                raise AccessDeniedException(path)
+            
+            # Check for stack traces (indicates an error from the server)
+            if "at Test.Test." in content_to_check or "at System." in content_to_check:
+                # This is a stack trace, extract error message
+                error_lines = content_to_check.split('\n')
+                error_msg = error_lines[0].strip() if error_lines else content_to_check
+                
+                # Re-check specific errors from the error message
+                error_lower = error_msg.lower()
+                if "not found" in error_lower:
+                    raise ItemNotFoundException(path)
+                if "access" in error_lower and "denied" in error_lower:
+                    raise AccessDeniedException(path)
+                
+                # Generic error
+                logger.error(f"Server error downloading file: {error_msg}")
+                raise PluginException(f"Erro ao baixar arquivo: {error_msg}")
             
             return FileContent(
                 data=data,
                 size=len(data),
-                is_complete=length is None,
+                is_complete=length is None or len(data) < length,
                 offset=offset,
                 total_size=len(data) if length is None else None
             )
@@ -575,9 +607,16 @@ class SoapApiPlugin(BasePlugin):
             raise
         except ConnectionException:
             raise
+        except PluginException:
+            raise
         except Exception as e:
             error_msg = str(e).lower()
             if "access" in error_msg and "denied" in error_msg:
+                raise AccessDeniedException(path)
+            if "not found" in error_msg:
+                raise ItemNotFoundException(path)
+            logger.error(f"Error downloading file: {e}")
+            raise PluginException(f"Failed to download file: {e}")
                 raise AccessDeniedException(path)
             if "not found" in error_msg:
                 raise ItemNotFoundException(path)
