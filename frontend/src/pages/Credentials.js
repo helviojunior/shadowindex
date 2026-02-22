@@ -7,15 +7,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Plus, ChevronUp, Pencil, X, Check, Key, Hash, Ticket, KeyRound, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Trash2, Plus, ChevronUp, Pencil, X, Check, Hash, Ticket, KeyRound, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { ShieldKeyIcon } from '@/components/icons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const CREDENTIAL_TYPES = {
-  user_password: { label: 'Usuário e Senha/NTLM', icon: Key, color: 'text-blue-500' },
+  user_password: { label: 'Usuário e Senha/NTLM', icon: ShieldKeyIcon, color: 'text-blue-500' },
   token: { label: 'Token', icon: Ticket, color: 'text-green-500' },
   ssh_key: { label: 'Chave SSH', icon: KeyRound, color: 'text-purple-500' }
 };
