@@ -4266,7 +4266,9 @@ const ServerBrowser = () => {
           {activeTab === 'objetos' && (isShare || isDirectory) && !isAccessDenied && (
             <div className="flex-1 overflow-hidden flex flex-col">
               {(() => {
-                const nodeId = String(selectedItem.id || `share-${selectedItem.share_name}`);
+                // Para shares, usar share_name ou shareName
+                const shareNameForId = selectedItem.share_name || selectedItem.shareName || selectedItem.name;
+                const nodeId = String(selectedItem.id || `share-${shareNameForId}`);
                 const children = nodeChildren[nodeId] || [];
                 const isLoading = loadingNodes[nodeId];
                 
