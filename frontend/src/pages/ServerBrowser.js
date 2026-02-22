@@ -111,6 +111,7 @@ const ServerBrowser = () => {
   const [singleDownloadProgress, setSingleDownloadProgress] = useState(null); // Progresso do download individual (0-100)
   const singleDownloadCancelledRef = useRef(false); // Ref para cancelamento do sync individual
   const [fileInQueue, setFileInQueue] = useState(null); // {inQueue: bool, status: 'pending'|'downloading'}
+  const processingClickRef = useRef(false); // Ref para evitar cliques duplos na tree
   
   // Estados para OCR
   const [ocrData, setOcrData] = useState(null); // {ocr_processed, ocr_content, ocr_metadata, ocr_error}
