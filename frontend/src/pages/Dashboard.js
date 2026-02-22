@@ -644,6 +644,9 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
+      {/* Divisor */}
+      <div className="h-px bg-border/50 my-2" />
+
       {/* Linha 5: Monitoramento de Jobs em Tempo Real */}
       <Card data-testid="jobs-monitor">
         <CardHeader className="pb-2">
