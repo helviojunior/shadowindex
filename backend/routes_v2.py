@@ -2337,7 +2337,7 @@ async def import_servers_from_nmap(
                 guid=str(uuid.uuid4()),
                 name=host.name,
                 ip=host.ip,
-                plugin_type="direct_interaction",  # Plugin padrão para servidores importados
+                plugin_type=host.plugin_type or "direct_interaction",  # Plugin selecionado pelo usuário
                 plugin_config={
                     "imported_from": "nmap",
                     "has_smb": host.hasSMB,
