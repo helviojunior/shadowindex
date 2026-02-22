@@ -325,7 +325,7 @@ class OCRWorker:
     async def _process_pending_jobs(self, db: AsyncSession):
         """Processa jobs pendentes de OCR"""
         from database import OCRJob, FileVersion, AppSettings
-        import magic
+        import mimetypes
         
         # Buscar próximo job pendente (ordenado por prioridade e data)
         result = await db.execute(
@@ -365,14 +365,11 @@ class OCRWorker:
         
         # HARD-CODED: Sempre ignorar mimetypes text/* - não faz sentido OCR em texto
         if not is_excluded and job.local_path and os.path.exists(job.local_path):
-            try:
-                mime = magic.Magic(mime=True)
-                file_mimetype = mime.from_file(job.local_path)
-                if file_mimetype and file_mimetype.startswith('text/'):
-                    is_excluded = True
-                    skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
-            except Exception as e:
-                logger.warning(f"Failed to detect mimetype for {job.file_name}: {e}")
+            # Usar mimetypes para detecção baseada em extensão (fallback seguro)
+            file_mimetype, _ = mimetypes.guess_type(job.local_path)
+            if file_mimetype and file_mimetype.startswith('text/'):
+                is_excluded = True
+                skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
         
         if is_excluded:
             # Marcar como skipped e não processar
