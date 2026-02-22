@@ -64,6 +64,9 @@ class DownloadWorker:
             logger.info("Download worker already running")
             return
         
+        # Resetar jobs que ficaram travados com status 'downloading' de execuções anteriores
+        await self._reset_stale_downloading_jobs()
+        
         # Carregar configurações do banco
         self.max_concurrent = await get_max_concurrent_downloads()
         self.semaphore = asyncio.Semaphore(self.max_concurrent)
@@ -72,6 +75,25 @@ class DownloadWorker:
         self.running = True
         self._task = asyncio.create_task(self._run_loop())
         logger.info("Download worker started")
+    
+    async def _reset_stale_downloading_jobs(self):
+        """Reseta jobs que ficaram com status 'downloading' de execuções anteriores"""
+        from database import async_session_maker, DownloadJob
+        from sqlalchemy import update
+        
+        try:
+            async with async_session_maker() as db:
+                result = await db.execute(
+                    update(DownloadJob)
+                    .where(DownloadJob.status == 'downloading')
+                    .values(status='queued', progress=0, downloaded_bytes=0)
+                )
+                await db.commit()
+                
+                if result.rowcount > 0:
+                    logger.warning(f"Reset {result.rowcount} stale downloading jobs to queued")
+        except Exception as e:
+            logger.error(f"Error resetting stale jobs: {e}")
     
     async def stop(self):
         """Para o worker"""
