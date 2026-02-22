@@ -636,6 +636,15 @@ const ServerBrowser = () => {
     const filename = selectedItem.name;
     const filePath = selectedItem.fullPath || selectedItem.serverPath;
     
+    console.log('DEBUG loadFileContent:', {
+      filename,
+      filePath,
+      isImage: isImageFile(filename),
+      isPdf: isPdfFile(filename),
+      isCert: isCertificateFile(filename),
+      isText: isTextFile(filename)
+    });
+    
     // Obter file_id do downloadedFilesInfo ou buscar via API
     let fileId = downloadedFilesInfo[filePath]?.id;
     if (!fileId) {
