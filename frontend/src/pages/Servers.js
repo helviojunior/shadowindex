@@ -546,13 +546,58 @@ const Servers = () => {
                       className="border-b border-border hover:bg-muted/50 transition-colors"
                     >
                       <td className="p-3">
-                        <div 
-                          className="font-medium cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => navigate(`/servers/${server.id}/browse`)}
-                        >
-                          {server.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{server.guid.substring(0, 8)}...</div>
+                        {editingNameServer === server.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              className="w-48 h-8 text-sm"
+                              placeholder="Nome do servidor"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveName(server.id);
+                                if (e.key === 'Escape') handleCancelNameEdit();
+                              }}
+                              autoFocus
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                              onClick={() => handleSaveName(server.id)}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={handleCancelNameEdit}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <div 
+                                className="font-medium cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => navigate(`/servers/${server.id}/browse`)}
+                              >
+                                {server.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">{server.guid.substring(0, 8)}...</div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleEditName(server)}
+                              title="Editar nome do servidor"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                       <td className="p-3">
                         {editingServer === server.id ? (
