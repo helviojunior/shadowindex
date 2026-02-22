@@ -459,9 +459,9 @@ const Downloads = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col gap-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Downloads</h1>
           <p className="text-muted-foreground flex items-center gap-2">
@@ -497,8 +497,82 @@ const Downloads = () => {
         </Button>
       </div>
 
-      {/* Tabs - Flat Style (como na página de Plugins) */}
-      <div className="px-6 border-b border-border">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        {Object.entries(statusConfig).map(([status, config]) => {
+          const count = stats[status] || 0;
+          const isActive = activeFilter === status;
+          const isLoading = loadingStatus === status;
+          const isLoaded = loadedStatuses.has(status);
+          const Icon = config.icon;
+          
+          return (
+            <Card 
+              key={status}
+              className={cn(
+                "cursor-pointer transition-all hover:shadow-md border-2 relative",
+                isActive ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
+              )}
+              onClick={() => handleFilterClick(status)}
+              data-testid={`filter-${status}`}
+            >
+              <CardContent className="p-4 pt-4">
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 absolute top-3 right-3 animate-spin text-muted-foreground" />
+                ) : (
+                  <Icon className={cn("w-5 h-5 absolute top-3 right-3", config.textColor)} />
+                )}
+                <div>
+                  <p className="text-2xl font-bold">{count}</p>
+                  <p className={cn("text-sm font-medium", config.textColor)}>
+                    {config.label}
+                    {!isLoaded && !['downloading', 'pending'].includes(status) && count > 0 && (
+                      <span className="text-xs text-muted-foreground ml-1">(clique)</span>
+                    )}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        
+        {/* Total card */}
+        <Card 
+          className={cn(
+            "cursor-pointer transition-all hover:shadow-md border-2 relative",
+            activeFilter === null ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
+          )}
+          onClick={() => setActiveFilter(null)}
+          data-testid="filter-all"
+        >
+          <CardContent className="p-4 pt-4">
+            <Download className="w-5 h-5 absolute top-3 right-3 text-muted-foreground" />
+            <div>
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-sm text-muted-foreground font-medium">Total</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Active filter indicator */}
+      {activeFilter && (
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Filter className="w-3 h-3" />
+            Filtro: {statusConfig[activeFilter]?.label}
+            <button 
+              onClick={() => setActiveFilter(null)}
+              className="ml-1 hover:text-destructive"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="border-b border-border">
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab('downloads')}
@@ -515,7 +589,7 @@ const Downloads = () => {
               {stats.downloading + stats.pending > 0 ? (
                 <span className="text-blue-400">{stats.downloading + stats.pending} ativos</span>
               ) : (
-                stats.total
+                downloadJobs.length
               )}
             </span>
             {activeTab === 'downloads' && (
@@ -551,401 +625,325 @@ const Downloads = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-auto p-6">
-        {/* Tab: Downloads */}
-        {activeTab === 'downloads' && (
-          <div className="space-y-6">
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 flex-wrap">
+      {/* Tab: Downloads */}
+      {activeTab === 'downloads' && (
+        <div className="space-y-4">
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFinished}
+              data-testid="clear-finished"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Limpar Concluídos
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={retryAllFailed}
+              disabled={stats.failed === 0}
+              data-testid="retry-all-failed"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refazer Falhados
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={cancelAllJobs}
+              disabled={stats.pending === 0 && stats.downloading === 0}
+              data-testid="cancel-all"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancelar Todos
+            </Button>
+          </div>
+
+          {/* Download list grouped by server */}
+          {Object.keys(jobsByServer).length === 0 ? (
+            <Card>
+              <CardContent className="p-8 pt-8 text-center">
+                <Download className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {activeFilter 
+                    ? `Nenhum download com status "${statusConfig[activeFilter]?.label}"`
+                    : "Nenhum download na fila"
+                  }
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(jobsByServer).map(([serverId, serverData]) => (
+                <Card key={serverId}>
+                  <CardHeader 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors py-3"
+                    onClick={() => toggleServer(serverId)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {expandedServers[serverId] ? (
+                          <ChevronDown className="w-5 h-5" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5" />
+                        )}
+                        <Server className="w-5 h-5 text-primary" />
+                        <div>
+                          <CardTitle className="text-base">{serverData.serverName}</CardTitle>
+                          {serverData.serverIp && (
+                            <p className="text-xs text-muted-foreground">{serverData.serverIp}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant="outline">{serverData.jobs.length} arquivos</Badge>
+                    </div>
+                  </CardHeader>
+                  
+                  {expandedServers[serverId] && (
+                    <CardContent className="pt-0">
+                      <div className="space-y-2">
+                        {serverData.jobs.map((job) => {
+                          const statusConf = statusConfig[job.status] || statusConfig.pending;
+                          const StatusIcon = statusConf.icon;
+                          const progress = job.progress || 0;
+                          
+                          return (
+                            <div 
+                              key={job.id}
+                              className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                              data-testid={`download-item-${job.id}`}
+                            >
+                              {/* Status icon */}
+                              <StatusIcon 
+                                className={cn(
+                                  "w-5 h-5 flex-shrink-0",
+                                  statusConf.textColor,
+                                  statusConf.animate && "animate-spin"
+                                )}
+                              />
+                              
+                              {/* File info */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate" title={job.file_path}>
+                                  {job.file_name || job.file_path?.split('\\').pop() || 'Unknown'}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate" title={job.file_path}>
+                                  {job.file_path}
+                                </p>
+                                
+                                {/* Progress bar for downloading */}
+                                {job.status === 'downloading' && (
+                                  <div className="mt-2">
+                                    <Progress value={progress} className="h-1" />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {progress}% - {formatFileSize(job.downloaded_bytes)} / {formatFileSize(job.file_size)}
+                                    </p>
+                                  </div>
+                                )}
+                                
+                                {/* Error message */}
+                                {job.error_message && (
+                                  <p className="text-xs text-red-500 mt-1">{job.error_message}</p>
+                                )}
+                              </div>
+                              
+                              {/* File size */}
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm">{formatFileSize(job.file_size)}</p>
+                                <p className="text-xs text-muted-foreground">{formatDate(job.created_at)}</p>
+                              </div>
+                              
+                              {/* Actions */}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {job.status === 'pending' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => cancelJob(job.id)}
+                                    className="h-8 w-8 p-0"
+                                    title="Cancelar"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {job.status === 'downloading' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => cancelJob(job.id)}
+                                    className="h-8 w-8 p-0"
+                                    title="Cancelar"
+                                  >
+                                    <Pause className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {job.status === 'failed' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => retryDownload(job.id)}
+                                    className="h-8 w-8 p-0"
+                                    title="Tentar novamente"
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {job.status === 'skipped' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => forceDownload(job.id)}
+                                    className="h-8 w-8 p-0"
+                                    title="Forçar download"
+                                  >
+                                    <Play className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Scans */}
+      {activeTab === 'scans' && (
+        <div className="space-y-4">
+          {/* Action buttons for scans */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {scanJobs.filter(s => s.status === 'completed' || s.status === 'cancelled' || s.status === 'failed').length > 0 && (
               <Button
-                variant="outline"
                 size="sm"
-                onClick={clearFinished}
-                data-testid="clear-finished"
+                variant="outline"
+                onClick={clearFinishedScans}
+                data-testid="clear-finished-scans"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Limpar Concluídos
+                Limpar Finalizados
               </Button>
+            )}
+            {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 0 && (
               <Button
-                variant="outline"
                 size="sm"
-                onClick={retryAllFailed}
-                disabled={stats.failed === 0}
-                data-testid="retry-all-failed"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refazer Falhados
-              </Button>
-              <Button
                 variant="destructive"
-                size="sm"
-                onClick={cancelAllJobs}
-                disabled={stats.pending === 0 && stats.downloading === 0}
-                data-testid="cancel-all"
+                onClick={cancelAllScans}
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancelar Todos
               </Button>
-            </div>
-
-            {/* Stats Cards - Clickable for filtering */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-              {Object.entries(statusConfig).map(([status, config]) => {
-                const count = stats[status] || 0;
-                const isActive = activeFilter === status;
-                const isLoading = loadingStatus === status;
-                const isLoaded = loadedStatuses.has(status);
-                const Icon = config.icon;
-                
-                return (
-                  <Card 
-                    key={status}
-                    className={cn(
-                      "cursor-pointer transition-all hover:shadow-md border-2 relative",
-                      isActive ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
-                    )}
-                    onClick={() => handleFilterClick(status)}
-                    data-testid={`filter-${status}`}
-                  >
-                    <CardContent className="p-4 pt-4">
-                      {isLoading ? (
-                        <Loader2 className="w-5 h-5 absolute top-3 right-3 animate-spin text-muted-foreground" />
-                      ) : (
-                        <Icon className={cn("w-5 h-5 absolute top-3 right-3", config.textColor)} />
-                      )}
-                      <div>
-                        <p className="text-2xl font-bold">{count}</p>
-                        <p className={cn("text-sm font-medium", config.textColor)}>
-                          {config.label}
-                          {!isLoaded && !['downloading', 'pending'].includes(status) && count > 0 && (
-                            <span className="text-xs text-muted-foreground ml-1">(clique)</span>
-                          )}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-              
-              {/* Total card */}
-              <Card 
-                className={cn(
-                  "cursor-pointer transition-all hover:shadow-md border-2 relative",
-                  activeFilter === null ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
-                )}
-                onClick={() => setActiveFilter(null)}
-                data-testid="filter-all"
-              >
-                <CardContent className="p-4 pt-4">
-                  <Download className="w-5 h-5 absolute top-3 right-3 text-muted-foreground" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.total}</p>
-                    <p className="text-sm text-muted-foreground font-medium">Total</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Active filter indicator */}
-            {activeFilter && (
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <Filter className="w-3 h-3" />
-                  Filtro: {statusConfig[activeFilter]?.label}
-                  <button 
-                    onClick={() => setActiveFilter(null)}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </Badge>
-              </div>
-            )}
-
-            {/* Download list grouped by server */}
-            {Object.keys(jobsByServer).length === 0 ? (
-              <Card>
-                <CardContent className="p-8 pt-8 text-center">
-                  <Download className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    {activeFilter 
-                      ? `Nenhum download com status "${statusConfig[activeFilter]?.label}"`
-                      : "Nenhum download na fila"
-                    }
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {Object.entries(jobsByServer).map(([serverId, serverData]) => (
-                  <Card key={serverId}>
-                    <CardHeader 
-                      className="cursor-pointer hover:bg-muted/50 transition-colors py-3"
-                      onClick={() => toggleServer(serverId)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {expandedServers[serverId] ? (
-                            <ChevronDown className="w-5 h-5" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5" />
-                          )}
-                          <Server className="w-5 h-5 text-primary" />
-                          <div>
-                            <CardTitle className="text-base">{serverData.serverName}</CardTitle>
-                            {serverData.serverIp && (
-                              <p className="text-xs text-muted-foreground">{serverData.serverIp}</p>
-                            )}
-                          </div>
-                        </div>
-                        <Badge variant="outline">{serverData.jobs.length} arquivos</Badge>
-                      </div>
-                    </CardHeader>
-                    
-                    {expandedServers[serverId] && (
-                      <CardContent className="pt-0">
-                        <div className="space-y-2">
-                          {serverData.jobs.map((job) => {
-                            const statusConf = statusConfig[job.status] || statusConfig.pending;
-                            const StatusIcon = statusConf.icon;
-                            const progress = job.progress || 0;
-                            
-                            return (
-                              <div 
-                                key={job.id}
-                                className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                                data-testid={`download-item-${job.id}`}
-                              >
-                                {/* Status icon */}
-                                <StatusIcon 
-                                  className={cn(
-                                    "w-5 h-5 flex-shrink-0",
-                                    statusConf.textColor,
-                                    statusConf.animate && "animate-spin"
-                                  )}
-                                />
-                                
-                                {/* File info */}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate" title={job.file_path}>
-                                    {job.file_name || job.file_path?.split('\\').pop() || 'Unknown'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground truncate" title={job.file_path}>
-                                    {job.file_path}
-                                  </p>
-                                  
-                                  {/* Progress bar for downloading */}
-                                  {job.status === 'downloading' && (
-                                    <div className="mt-2">
-                                      <Progress value={progress} className="h-1" />
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        {progress}% - {formatFileSize(job.downloaded_bytes)} / {formatFileSize(job.file_size)}
-                                      </p>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Error message */}
-                                  {job.error_message && (
-                                    <p className="text-xs text-red-500 mt-1">{job.error_message}</p>
-                                  )}
-                                </div>
-                                
-                                {/* File size */}
-                                <div className="text-right flex-shrink-0">
-                                  <p className="text-sm">{formatFileSize(job.file_size)}</p>
-                                  <p className="text-xs text-muted-foreground">{formatDate(job.created_at)}</p>
-                                </div>
-                                
-                                {/* Actions */}
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  {job.status === 'pending' && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => cancelJob(job.id)}
-                                      className="h-8 w-8 p-0"
-                                      title="Cancelar"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                  {job.status === 'downloading' && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => cancelJob(job.id)}
-                                      className="h-8 w-8 p-0"
-                                      title="Cancelar"
-                                    >
-                                      <Pause className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                  {job.status === 'failed' && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => retryDownload(job.id)}
-                                      className="h-8 w-8 p-0"
-                                      title="Tentar novamente"
-                                    >
-                                      <RotateCcw className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                  {job.status === 'skipped' && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => forceDownload(job.id)}
-                                      className="h-8 w-8 p-0"
-                                      title="Forçar download"
-                                    >
-                                      <Play className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                ))}
-              </div>
             )}
           </div>
-        )}
 
-        {/* Tab: Scans */}
-        {activeTab === 'scans' && (
-          <div className="space-y-6">
-            {/* Action buttons for scans */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {scanJobs.filter(s => s.status === 'completed' || s.status === 'cancelled' || s.status === 'failed').length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={clearFinishedScans}
-                  data-testid="clear-finished-scans"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Limpar Finalizados
-                </Button>
-              )}
-              {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 0 && (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={cancelAllScans}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancelar Todos
-                </Button>
-              )}
-            </div>
-
-            {/* Scan Jobs List */}
-            {scanJobs.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 pt-8 text-center">
-                  <FolderSearch className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Nenhum scan de diretório em andamento
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Os scans são iniciados automaticamente ao navegar em diretórios
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    {[...scanJobs]
-                      .sort((a, b) => {
-                        const statusOrder = { scanning: 0, pending: 1, completed: 2, cancelled: 3, failed: 4 };
-                        return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
-                      })
-                      .map((scan) => {
-                        const StatusIcon = scanStatusConfig[scan.status]?.icon || Clock;
-                        const isActive = scan.status === 'pending' || scan.status === 'scanning';
-                        const pathParts = scan.path.split('\\');
-                        const displayPath = pathParts.length > 3 
-                          ? `...\\${pathParts.slice(-3).join('\\')}`
-                          : scan.path;
-                        
-                        return (
-                          <div 
-                            key={scan.id}
-                            className={cn(
-                              "flex items-center justify-between p-3 rounded-lg border",
-                              scan.status === 'scanning' ? "border-blue-500/50 bg-blue-500/10" :
-                              scan.status === 'pending' ? "border-yellow-500/30 bg-muted/30" :
-                              "border-border bg-muted/20"
-                            )}
-                          >
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <StatusIcon className={cn(
-                                "w-5 h-5 flex-shrink-0",
-                                scanStatusConfig[scan.status]?.color,
-                                scan.status === 'scanning' && "animate-spin"
-                              )} />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium flex items-center gap-2">
-                                  <Server className="w-3 h-3 text-muted-foreground" />
-                                  {scan.server_name}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate" title={scan.path}>
-                                  {displayPath}
-                                </p>
-                                {scan.status === 'scanning' && (
-                                  <div className="mt-1.5">
-                                    <Progress 
-                                      value={scan.total_files ? (scan.processed_files / scan.total_files) * 100 : 0} 
-                                      className="h-1.5"
-                                    />
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {scan.processed_files || 0} / {scan.total_files || '?'} arquivos • 
-                                      {scan.queued_files || 0} para download
-                                    </p>
-                                  </div>
-                                )}
-                                {scan.status === 'completed' && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {scan.total_files || 0} arquivos encontrados • {scan.queued_files || 0} para download
+          {/* Scan Jobs List */}
+          {scanJobs.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 pt-8 text-center">
+                <FolderSearch className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  Nenhum scan de diretório em andamento
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Os scans são iniciados automaticamente ao navegar em diretórios
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  {[...scanJobs]
+                    .sort((a, b) => {
+                      const statusOrder = { scanning: 0, pending: 1, completed: 2, cancelled: 3, failed: 4 };
+                      return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
+                    })
+                    .map((scan) => {
+                      const StatusIcon = scanStatusConfig[scan.status]?.icon || Clock;
+                      const isActive = scan.status === 'pending' || scan.status === 'scanning';
+                      const pathParts = scan.path.split('\\');
+                      const displayPath = pathParts.length > 3 
+                        ? `...\\${pathParts.slice(-3).join('\\')}`
+                        : scan.path;
+                      
+                      return (
+                        <div 
+                          key={scan.id}
+                          className={cn(
+                            "flex items-center justify-between p-3 rounded-lg border",
+                            scan.status === 'scanning' ? "border-blue-500/50 bg-blue-500/10" :
+                            scan.status === 'pending' ? "border-yellow-500/30 bg-muted/30" :
+                            "border-border bg-muted/20"
+                          )}
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <StatusIcon className={cn(
+                              "w-5 h-5 flex-shrink-0",
+                              scanStatusConfig[scan.status]?.color,
+                              scan.status === 'scanning' && "animate-spin"
+                            )} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium flex items-center gap-2">
+                                <Server className="w-3 h-3 text-muted-foreground" />
+                                {scan.server_name}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate" title={scan.path}>
+                                {displayPath}
+                              </p>
+                              {scan.status === 'scanning' && (
+                                <div className="mt-1.5">
+                                  <Progress 
+                                    value={scan.total_files ? (scan.processed_files / scan.total_files) * 100 : 0} 
+                                    className="h-1.5"
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {scan.processed_files || 0} / {scan.total_files || '?'} arquivos • 
+                                    {scan.queued_files || 0} para download
                                   </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                              <Badge 
-                                variant="outline"
-                                className={cn("text-xs", scanStatusConfig[scan.status]?.color)}
-                              >
-                                {scanStatusConfig[scan.status]?.label}
-                              </Badge>
-                              {isActive && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => cancelScanJob(scan.id)}
-                                  className="h-8 w-8 p-0"
-                                  title="Cancelar scan"
-                                >
-                                  <X className="w-4 h-4 text-muted-foreground hover:text-red-500" />
-                                </Button>
+                                </div>
+                              )}
+                              {scan.status === 'completed' && (
+                                <p className="text-xs text-muted-foreground">
+                                  {scan.total_files || 0} arquivos encontrados • {scan.queued_files || 0} para download
+                                </p>
                               )}
                             </div>
                           </div>
-                        );
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-      </div>
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                            <Badge 
+                              variant="outline"
+                              className={cn("text-xs", scanStatusConfig[scan.status]?.color)}
+                            >
+                              {scanStatusConfig[scan.status]?.label}
+                            </Badge>
+                            {isActive && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => cancelScanJob(scan.id)}
+                                className="h-8 w-8 p-0"
+                                title="Cancelar scan"
+                              >
+                                <X className="w-4 h-4 text-muted-foreground hover:text-red-500" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 };
