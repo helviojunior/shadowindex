@@ -740,14 +740,30 @@ const Leaks = () => {
                                 </Button>
                               )}
                               {/* Abrir arquivo */}
-                              {((finding.extracted_server_id && finding.extracted_file_id) || 
-                                (finding.server_id && finding.extracted_file_id)) && (
+                              {finding.extracted_file_id && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    const serverId = finding.extracted_server_id || finding.server_id;
-                                    window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                  onClick={async () => {
+                                    try {
+                                      // Buscar informações do arquivo para obter o server_id
+                                      const response = await axios.get(`${API}/downloads/${finding.extracted_file_id}`);
+                                      if (response.data && response.data.server_guid) {
+                                        // Buscar servidor pelo guid
+                                        const serversResponse = await axios.get(`${API.replace('/v2', '')}/servers`);
+                                        const server = serversResponse.data.find(s => s.guid === response.data.server_guid);
+                                        if (server) {
+                                          window.open(`/servers/${server.id}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                        }
+                                      }
+                                    } catch (error) {
+                                      console.error('Error opening file:', error);
+                                      // Fallback: usar server_id do finding se disponível
+                                      const serverId = finding.extracted_server_id || finding.server_id;
+                                      if (serverId) {
+                                        window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                      }
+                                    }
                                   }}
                                   title="Abrir arquivo no navegador"
                                 >
