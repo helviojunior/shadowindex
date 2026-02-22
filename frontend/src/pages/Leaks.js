@@ -766,7 +766,7 @@ const Leaks = () => {
             const directoryPath = pathParts.length > 1 ? pathParts.slice(startIndex, -1).join('\\') : '';
             
             return (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 {/* Header com informações principais */}
                 <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4">
                   <div className="flex items-start justify-between">
