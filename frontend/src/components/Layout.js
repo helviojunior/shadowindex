@@ -48,6 +48,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { useConnectionStatus } from '@/contexts/ConnectionStatusContext';
+import { useJobCompletionSFX } from '@/hooks/useJobCompletionSFX';
 
 // Menu structure with multi-level support
 const menuStructure = [
