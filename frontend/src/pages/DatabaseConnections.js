@@ -220,8 +220,7 @@ const DatabaseConnections = () => {
       name: conn.name,
       db_type_id: conn.db_type_id?.toString() || '',
       connection_string: conn.connection_string,
-      plugin_type: conn.plugin_type || 'soap_api',
-      plugin_config: conn.plugin_config || {}
+      plugin_instance_id: conn.plugin_instance_id?.toString() || ''
     });
     setEditModalOpen(true);
   };
@@ -235,8 +234,7 @@ const DatabaseConnections = () => {
         name: editFormData.name,
         connection_string: editFormData.connection_string,
         db_type_id: editFormData.db_type_id ? parseInt(editFormData.db_type_id) : null,
-        plugin_type: editFormData.plugin_type,
-        plugin_config: editFormData.plugin_config
+        plugin_instance_id: editFormData.plugin_instance_id ? parseInt(editFormData.plugin_instance_id) : null
       };
       
       await axios.put(`${API}/db-connections/${editingConnection.id}`, payload);
