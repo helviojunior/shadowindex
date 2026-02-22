@@ -787,6 +787,16 @@ const Leaks = () => {
                                   <ExternalLink className="w-4 h-4" />
                                 </Button>
                               )}
+                              {/* Deletar finding */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteFinding(finding.Fingerprint)}
+                                title="Remover finding"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
