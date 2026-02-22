@@ -1744,9 +1744,165 @@ async def update_server_full(server_id: int, server: ServerCreate, db: AsyncSess
 
 @api_router.delete("/servers/{server_id}")
 async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Exclui um servidor do banco de dados.
+    - Move o diretório de storage para storage_deleted
+    - Exporta os dados do servidor em JSON junto com o diretório
+    """
+    import shutil
+    import json
+    from storage_utils import get_server_storage_path, STORAGE_BASE_PATH
+    
+    # Buscar servidor
+    result = await db.execute(select(Server).where(Server.id == server_id))
+    server = result.scalar_one_or_none()
+    if not server:
+        raise HTTPException(status_code=404, detail="Servidor não encontrado")
+    
+    # Coletar dados para export antes da exclusão
+    export_data = {
+        "server": {
+            "id": server.id,
+            "guid": server.guid,
+            "name": server.name,
+            "ip": server.ip,
+            "verified": server.verified,
+            "shares_count": server.shares_count,
+            "downloaded_files_count": server.downloaded_files_count,
+            "last_verified_at": server.last_verified_at.isoformat() if server.last_verified_at else None,
+            "created_at": server.created_at.isoformat() if server.created_at else None,
+            "plugin_instance_id": server.plugin_instance_id,
+            "plugin_type": server.plugin_type,
+            "plugin_config": server.plugin_config
+        },
+        "credential": None,
+        "shares": [],
+        "items": [],
+        "downloaded_files": [],
+        "deleted_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Buscar credencial usada (via plugin_instance)
+    if server.plugin_instance_id:
+        pi_result = await db.execute(
+            select(PluginInstance).where(PluginInstance.id == server.plugin_instance_id)
+        )
+        plugin_instance = pi_result.scalar_one_or_none()
+        if plugin_instance and plugin_instance.credential_id:
+            cred_result = await db.execute(
+                select(Credential).where(Credential.id == plugin_instance.credential_id)
+            )
+            credential = cred_result.scalar_one_or_none()
+            if credential:
+                export_data["credential"] = {
+                    "id": credential.id,
+                    "name": credential.name,
+                    "auth_type": credential.auth_type,
+                    "username": credential.username,
+                    # Não exportar dados sensíveis como password/ntlm_hash
+                }
+    
+    # Buscar shares
+    shares_result = await db.execute(
+        select(ServerShare).where(ServerShare.server_guid == server.guid)
+    )
+    shares = shares_result.scalars().all()
+    for share in shares:
+        export_data["shares"].append({
+            "id": share.id,
+            "share_name": share.share_name,
+            "share_type": share.share_type,
+            "remark": share.remark,
+            "access_denied": share.access_denied,
+            "has_children": share.has_children,
+            "discovered_at": share.discovered_at.isoformat() if share.discovered_at else None
+        })
+    
+    # Buscar items (arquivos e diretórios)
+    items_result = await db.execute(
+        select(ServerItem).where(ServerItem.server_guid == server.guid)
+    )
+    items = items_result.scalars().all()
+    for item in items:
+        export_data["items"].append({
+            "id": item.id,
+            "share_name": item.share_name,
+            "parent_path": item.parent_path,
+            "item_type": item.item_type,
+            "name": item.name,
+            "full_path": item.full_path,
+            "size": item.size,
+            "modified": item.modified,
+            "access_denied": item.access_denied,
+            "has_children": item.has_children,
+            "discovered_at": item.discovered_at.isoformat() if item.discovered_at else None
+        })
+    
+    # Buscar arquivos baixados
+    files_result = await db.execute(
+        select(DownloadedFile).where(DownloadedFile.server_guid == server.guid)
+    )
+    downloaded_files = files_result.scalars().all()
+    for file in downloaded_files:
+        export_data["downloaded_files"].append({
+            "id": file.id,
+            "share_name": file.share_name,
+            "file_path": file.file_path,
+            "file_name": file.file_name,
+            "sanitized_path": file.sanitized_path,
+            "local_path": file.local_path,
+            "file_size": file.file_size,
+            "sha1_hash": file.sha1_hash,
+            "mimetype": file.mimetype,
+            "downloaded_at": file.downloaded_at.isoformat() if file.downloaded_at else None
+        })
+    
+    # Mover diretório de storage para storage_deleted
+    storage_deleted_base = os.path.join(os.path.dirname(STORAGE_BASE_PATH), "storage_deleted")
+    os.makedirs(storage_deleted_base, exist_ok=True)
+    
+    # Tentar encontrar o diretório do servidor (pode ser por id ou guid)
+    storage_path_id = get_server_storage_path(server.id)
+    storage_path_guid = get_server_storage_path(server.guid)
+    
+    source_path = None
+    if os.path.exists(storage_path_id):
+        source_path = storage_path_id
+    elif os.path.exists(storage_path_guid):
+        source_path = storage_path_guid
+    
+    # Nome do diretório destino: {timestamp}_{server_name}_{server_id}
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_name = re.sub(r'[^\w\-]', '_', server.name)[:50]
+    dest_dir_name = f"{timestamp}_{safe_name}_{server.id}"
+    dest_path = os.path.join(storage_deleted_base, dest_dir_name)
+    
+    if source_path:
+        # Mover diretório
+        shutil.move(str(source_path), dest_path)
+    else:
+        # Se não existe diretório, criar um para salvar o JSON
+        os.makedirs(dest_path, exist_ok=True)
+    
+    # Salvar JSON com dados do servidor
+    json_path = os.path.join(dest_path, "server_export.json")
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(export_data, f, ensure_ascii=False, indent=2)
+    
+    # Excluir dados relacionados do banco
+    await db.execute(delete(ServerShare).where(ServerShare.server_guid == server.guid))
+    await db.execute(delete(ServerItem).where(ServerItem.server_guid == server.guid))
+    await db.execute(delete(DownloadedFile).where(DownloadedFile.server_guid == server.guid))
+    await db.execute(delete(FileVersion).where(FileVersion.server_guid == server.guid))
+    await db.execute(delete(DownloadJob).where(DownloadJob.server_id == server.id))
     await db.execute(delete(Server).where(Server.id == server_id))
     await db.commit()
-    return {"message": "Server deleted"}
+    
+    return {
+        "message": "Servidor excluído com sucesso",
+        "backup_path": dest_path,
+        "export_file": json_path
+    }
 
 # ==========================================
 # DEPRECATED ENDPOINTS - Use API V2 (/api/v2/...)
