@@ -236,6 +236,28 @@ const Leaks = () => {
     }
   };
 
+  // Deletar um finding específico
+  const handleDeleteFinding = async (fingerprint) => {
+    if (!fingerprint) {
+      toast.error('Finding sem fingerprint');
+      return;
+    }
+    
+    try {
+      const response = await axios.delete(`${API}/gitleaks/findings/${encodeURIComponent(fingerprint)}`);
+      if (response.data.success) {
+        toast.success('Finding removido');
+        // Atualizar lista local sem recarregar
+        setFindings(prev => prev.filter(f => f.Fingerprint !== fingerprint));
+      } else {
+        toast.error(response.data.message || 'Erro ao remover finding');
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || error.message;
+      toast.error(`Erro ao remover finding: ${errorMsg}`);
+    }
+  };
+
   // Recarregar do disco
   const handleReload = async () => {
     try {
