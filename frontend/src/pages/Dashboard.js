@@ -76,13 +76,18 @@ const Dashboard = () => {
   }, []);
 
   const loadData = async () => {
+    // Timeout de 10 segundos para todas as requisições
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
     try {
+      const config = { signal: controller.signal };
       const [creds, dbs, proxies, soaps, cache, servers, gitleaks, findings] = await Promise.all([
-        axios.get(`${API}/credentials`),
-        axios.get(`${API}/db-connections`),
-        axios.get(`${API}/proxy-servers`),
-        axios.get(`${API}/soap-apis`),
-        axios.get(`${API}/cache/stats`),
+        axios.get(`${API}/credentials`, config).catch(() => ({ data: [] })),
+        axios.get(`${API}/db-connections`, config).catch(() => ({ data: [] })),
+        axios.get(`${API}/proxy-servers`, config).catch(() => ({ data: [] })),
+        axios.get(`${API}/soap-apis`, config).catch(() => ({ data: [] })),
+        axios.get(`${API}/cache/stats`, config).catch(() => ({ data: { entries: 0 } })),
         axios.get(`${API}/servers`),
         axios.get(`${API_V2}/gitleaks/stats`).catch(() => ({ data: null })),
         axios.get(`${API_V2}/gitleaks/findings`).catch(() => ({ data: { files: [] } }))
