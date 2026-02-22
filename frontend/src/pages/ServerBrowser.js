@@ -117,6 +117,17 @@ const ServerBrowser = () => {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [processingOcr, setProcessingOcr] = useState(false);
   
+  // Estados para identificação manual de credenciais
+  const [showLeakModal, setShowLeakModal] = useState(false);
+  const [leakTypes, setLeakTypes] = useState([]);
+  const [manualLeak, setManualLeak] = useState({
+    secret_type: 'password',
+    description: '',
+    line_number: null,
+    match_text: ''
+  });
+  const [submittingLeak, setSubmittingLeak] = useState(false);
+  
   // Estados para download recursivo
   const [bulkDownloadConfig, setBulkDownloadConfig] = useState({ depth: 5, maxSize: 100 }); // maxSize em MB
   const [bulkDownloadActive, setBulkDownloadActive] = useState(false);
