@@ -142,6 +142,7 @@ const ServerBrowser = () => {
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [navigatingToResult, setNavigatingToResult] = useState(false); // Overlay de loading para navegação
+  const [pendingFileNavigation, setPendingFileNavigation] = useState(null); // ID do arquivo para navegar automaticamente
   const [searchFilters, setSearchFilters] = useState({
     extension: '',
     sha1: '',
