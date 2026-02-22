@@ -134,7 +134,28 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadData();
+    loadJobs();
+    
+    // Polling para jobs ativos (a cada 5 segundos)
+    const jobsInterval = setInterval(loadJobs, 5000);
+    return () => clearInterval(jobsInterval);
   }, []);
+  
+  const loadJobs = async () => {
+    try {
+      const [downloads, scans] = await Promise.all([
+        axios.get(`${API}/downloads`).catch(() => ({ data: [] })),
+        axios.get(`${API}/scans`).catch(() => ({ data: [] }))
+      ]);
+      
+      setDownloadJobs(downloads.data || []);
+      setScanJobs(scans.data || []);
+      setJobsLoading(false);
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+      setJobsLoading(false);
+    }
+  };
 
   const loadData = async () => {
     // Timeout de 10 segundos para todas as requisições
