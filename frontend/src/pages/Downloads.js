@@ -424,7 +424,7 @@ const Downloads = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={loadDownloadJobs}
+            onClick={resumePolling}
             disabled={loading}
             data-testid="refresh-downloads"
           >
