@@ -241,7 +241,10 @@ class DirectoryScanner:
             logger.warning(f"Server {scan_job.server_id} not found")
             return
         
-        print(f"=== SCANNER: Found server {server.name} ({server.ip}) ===", flush=True)
+        # Refresh para garantir que os atributos estão carregados
+        await db.refresh(server)
+        
+        print(f"=== SCANNER: Found server {server.name} ({server.ip}), plugin_instance_id={server.plugin_instance_id} ===", flush=True)
         
         # Verificar se o servidor tem instância de plugin configurada
         if not server.plugin_instance_id:
