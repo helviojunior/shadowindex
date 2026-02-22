@@ -3894,10 +3894,11 @@ async def get_ocr_stats(db: AsyncSession = Depends(get_db_readonly)):
 
 @router.post("/ocr/skip-excluded")
 async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
-    """Marca como skipped todos os jobs de OCR pendentes com extensões na lista de exclusão"""
+    """Marca como skipped todos os jobs de OCR pendentes com extensões na lista de exclusão ou mimetype text/*"""
     from database import OCRJob, AppSettings
-    from sqlalchemy import update
     from datetime import datetime, timezone
+    import os
+    import magic
     
     # Carregar lista de extensões excluídas
     excluded_result = await db.execute(
@@ -3905,15 +3906,11 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
     )
     excluded_setting = excluded_result.scalar_one_or_none()
     
-    if not excluded_setting or not excluded_setting.value:
-        return {"skipped": 0, "message": "Lista de exclusão está vazia"}
-    
-    excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
-    # Normalizar extensões para ter o ponto
-    excluded_extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in excluded_extensions]
-    
-    if not excluded_extensions:
-        return {"skipped": 0, "message": "Lista de exclusão está vazia"}
+    excluded_extensions = []
+    if excluded_setting and excluded_setting.value:
+        excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
+        # Normalizar extensões para ter o ponto
+        excluded_extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in excluded_extensions]
     
     # Buscar jobs pendentes
     pending_result = await db.execute(
@@ -3921,21 +3918,42 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
     )
     pending_jobs = pending_result.scalars().all()
     
-    skipped_count = 0
+    skipped_by_ext = 0
+    skipped_by_mime = 0
+    mime_detector = magic.Magic(mime=True)
+    
     for job in pending_jobs:
-        import os
         file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
+        skip_reason = None
+        
+        # Verificar extensão
         if file_ext in excluded_extensions:
+            skip_reason = f'Extensão {file_ext} está na lista de exclusão'
+            skipped_by_ext += 1
+        
+        # Verificar mimetype text/* (hard-coded)
+        if not skip_reason and job.local_path and os.path.exists(job.local_path):
+            try:
+                file_mimetype = mime_detector.from_file(job.local_path)
+                if file_mimetype and file_mimetype.startswith('text/'):
+                    skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
+                    skipped_by_mime += 1
+            except Exception:
+                pass
+        
+        if skip_reason:
             job.status = 'skipped'
-            job.error_message = f'Extensão {file_ext} está na lista de exclusão'
+            job.error_message = skip_reason
             job.completed_at = datetime.now(timezone.utc)
-            skipped_count += 1
     
     await db.commit()
     
+    total_skipped = skipped_by_ext + skipped_by_mime
     return {
-        "skipped": skipped_count,
-        "message": f"{skipped_count} jobs marcados como skipped",
+        "skipped": total_skipped,
+        "skipped_by_extension": skipped_by_ext,
+        "skipped_by_mimetype": skipped_by_mime,
+        "message": f"{total_skipped} jobs marcados como skipped",
         "excluded_extensions": excluded_extensions
     }
 
