@@ -948,5 +948,6 @@ const Downloads = () => {
       </div>
     </div>
   );
+};
 
 export default Downloads;
