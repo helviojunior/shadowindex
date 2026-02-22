@@ -350,11 +350,21 @@ class DirectInteractionPlugin(BasePlugin):
         
         # Validate credential has required fields
         username = self._credential.get("username")
+        password = self._credential.get("password")
+        ntlm_hash = self._credential.get("ntlm_hash")
+        
         if not username:
             raise CredentialNotSetException(
                 operation="SMB",
                 plugin_name=self.PLUGIN_NAME,
                 message="Credencial inválida: username não configurado."
+            )
+        
+        if not password and not ntlm_hash:
+            raise CredentialNotSetException(
+                operation="SMB",
+                plugin_name=self.PLUGIN_NAME,
+                message="Credencial inválida: senha ou hash NTLM não configurado."
             )
         
         try:
@@ -364,9 +374,9 @@ class DirectInteractionPlugin(BasePlugin):
             raise PluginException("impacket não está instalado. Execute: pip install impacket")
         
         domain = self._credential.get("domain") or ""
-        username = self._credential.get("username") or ""
-        password = self._credential.get("password") or ""
-        ntlm_hash = self._credential.get("ntlm_hash") or ""
+        username = username or ""
+        password = password or ""
+        ntlm_hash = ntlm_hash or ""
         
         # Parse NTLM hash (LM:NT or just NT)
         lmhash = ""
