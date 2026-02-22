@@ -588,6 +588,9 @@ class DirectInteractionPlugin(BasePlugin):
             # Cache the result
             await self.cache.set("direct_dir", cache_params, [d.__dict__ for d in items], ttl_hours=24)
             
+            # Notify successful authentication
+            await self._notify_auth_success()
+            
             logger.info(f"Listed {len(items)} items in {path}")
             return items
             
