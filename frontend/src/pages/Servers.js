@@ -787,6 +787,20 @@ const Servers = () => {
                         )}
                       </td>
                       <td className="p-3 text-center">
+                        {getRiskBadge(server.risk_score || 0)}
+                      </td>
+                      <td className="p-3 text-center">
+                        {server.leaks_count > 0 ? (
+                          <Badge className="bg-red-600 hover:bg-red-700">
+                            {server.leaks_count}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            0
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
                         <Badge variant="outline">{server.shares_count}</Badge>
                       </td>
                       <td className="p-3 text-center">
