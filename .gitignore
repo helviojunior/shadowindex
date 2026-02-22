@@ -101,6 +101,7 @@ backend/data/storage/
 # Database backups
 backend/backups/
 /data/backups/
+data/backups/
 
 # Deleted server data
 backend/storage_deleted/
