@@ -4415,3 +4415,170 @@ async def auto_register_private_key_leak(
     
     return {"already_exists": False, "finding": finding}
 
+
+
+# ============================================================================
+# CRITICAL SEARCH CONFIGURATION
+# ============================================================================
+
+# Configuração padrão para Critical Search
+DEFAULT_CRITICAL_SEARCH_CONFIG = {
+    "enabled": True,
+    
+    # Arquivos texto pequenos (até 1KB)
+    "text_files": {
+        "enabled": True,
+        "max_size_bytes": 1024,  # 1KB
+        "extensions": [".txt"],
+        "mime_types": ["text/"]  # Prefixo para todos os text/*
+    },
+    
+    # Arquivos office (até 1MB)
+    "office_files": {
+        "enabled": True,
+        "max_size_bytes": 1048576,  # 1MB
+        "extensions": [
+            ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+            ".odt", ".ods", ".odp", ".rtf", ".csv"
+        ],
+        "mime_types": [
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument",
+            "application/vnd.ms-excel",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.oasis.opendocument"
+        ]
+    },
+    
+    # Palavras-chave no nome do arquivo
+    "keyword_files": {
+        "enabled": True,
+        "keywords": [
+            "senha", "password", "pwd", "pass",
+            "acesso", "access", "login", "auth",
+            "credencial", "credential", "cred",
+            "secret", "segredo", "chave", "key",
+            "token", "api_key", "apikey",
+            "config", "configuracao", "settings",
+            "backup", "dump", "export",
+            "private", "privado", "cert",
+            "conexao", "connection", "conn",
+            "usuario", "user", "admin"
+        ],
+        "case_sensitive": False
+    },
+    
+    # Arquivos KeePass
+    "keepass_files": {
+        "enabled": True,
+        "extensions": [".kdbx", ".kdb", ".key"],
+        "mime_types": []
+    },
+    
+    # Arquivos de configuração e scripts críticos
+    "critical_extensions": {
+        "enabled": True,
+        "extensions": [
+            ".pfx", ".p12", ".jks", ".keystore",  # Certificados e keystores
+            ".pem", ".crt", ".cer", ".der",  # Certificados
+            ".cmd", ".bat", ".sh", ".ps1", ".psm1",  # Scripts
+            ".conf", ".ini", ".env", ".yml", ".yaml",  # Configurações
+            ".properties", ".cfg", ".config",  # Mais configurações
+            ".htpasswd", ".htaccess",  # Apache
+            ".npmrc", ".pypirc", ".netrc",  # Package managers
+            ".pgpass", ".my.cnf",  # Database configs
+            ".aws", ".boto",  # AWS configs
+            ".ssh", ".gnupg"  # SSH/GPG
+        ],
+        "mime_types": [
+            "application/x-pkcs12",
+            "application/x-x509-ca-cert",
+            "application/x-pem-file"
+        ]
+    },
+    
+    # Configurações de detecção de logs
+    "log_detection": {
+        "enabled": True,
+        "min_similar_files": 10,  # Mínimo de arquivos similares para considerar logs
+        "log_patterns": [
+            r".*\d{4}[-_]\d{2}[-_]\d{2}.*",  # Datas no nome
+            r".*\.log\.\d+$",  # log.1, log.2, etc
+            r".*_\d{8,}.*",  # Timestamps longos
+            r".*-\d{6,}.*"  # Números de sequência
+        ],
+        "log_extensions": [".log", ".logs"]
+    },
+    
+    # Auto-start GitLeaks após scan crítico
+    "auto_gitleaks": {
+        "enabled": True,
+        "delay_seconds": 5  # Delay antes de iniciar
+    }
+}
+
+
+@router.get("/settings/critical-search")
+async def get_critical_search_config(db: AsyncSession = Depends(get_db_readonly)):
+    """Retorna a configuração de Critical Search"""
+    from database import AppSettings
+    import json
+    
+    result = await db.execute(
+        select(AppSettings).where(AppSettings.key == "critical_search_config")
+    )
+    setting = result.scalar_one_or_none()
+    
+    if setting and setting.value:
+        try:
+            return json.loads(setting.value)
+        except:
+            pass
+    
+    return DEFAULT_CRITICAL_SEARCH_CONFIG
+
+
+@router.put("/settings/critical-search")
+async def update_critical_search_config(
+    config: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """Atualiza a configuração de Critical Search"""
+    from database import AppSettings
+    import json
+    
+    result = await db.execute(
+        select(AppSettings).where(AppSettings.key == "critical_search_config")
+    )
+    setting = result.scalar_one_or_none()
+    
+    if setting:
+        setting.value = json.dumps(config)
+    else:
+        setting = AppSettings(
+            key="critical_search_config",
+            value=json.dumps(config)
+        )
+        db.add(setting)
+    
+    await db.commit()
+    
+    return {"success": True, "message": "Configuração atualizada"}
+
+
+@router.post("/settings/critical-search/reset")
+async def reset_critical_search_config(db: AsyncSession = Depends(get_db)):
+    """Reseta a configuração de Critical Search para o padrão"""
+    from database import AppSettings
+    import json
+    
+    result = await db.execute(
+        select(AppSettings).where(AppSettings.key == "critical_search_config")
+    )
+    setting = result.scalar_one_or_none()
+    
+    if setting:
+        setting.value = json.dumps(DEFAULT_CRITICAL_SEARCH_CONFIG)
+        await db.commit()
+    
+    return {"success": True, "config": DEFAULT_CRITICAL_SEARCH_CONFIG}
