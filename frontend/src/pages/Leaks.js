@@ -205,7 +205,6 @@ const Leaks = () => {
   const handleCancelJob = async (jobId) => {
     try {
       await axios.post(`${API}/gitleaks/jobs/${jobId}/cancel`);
-      toast.success('Job cancelado');
       loadJobs();
     } catch (error) {
       toast.error('Erro ao cancelar job');
@@ -215,8 +214,7 @@ const Leaks = () => {
   // Limpar jobs finalizados
   const handleClearFinished = async () => {
     try {
-      const response = await axios.delete(`${API}/gitleaks/jobs/clear-finished`);
-      toast.success(`${response.data.cleared} jobs removidos`);
+      await axios.delete(`${API}/gitleaks/jobs/clear-finished`);
       loadJobs();
     } catch (error) {
       toast.error('Erro ao limpar jobs');
@@ -228,8 +226,7 @@ const Leaks = () => {
     if (!confirm('Tem certeza que deseja limpar todos os findings?')) return;
     
     try {
-      const response = await axios.delete(`${API}/gitleaks/findings`);
-      toast.success(`${response.data.cleared} findings removidos`);
+      await axios.delete(`${API}/gitleaks/findings`);
       loadFindings();
     } catch (error) {
       toast.error('Erro ao limpar findings');
@@ -253,7 +250,6 @@ const Leaks = () => {
       console.log('Resposta:', response.data);
       
       if (response.data.success) {
-        toast.success('Finding removido');
         // Recarregar findings para atualizar a estrutura de files
         loadFindings();
       } else {
