@@ -18,6 +18,10 @@ DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+# Alias para uso mais limpo
+async_session_maker = AsyncSessionLocal
+
 Base = declarative_base()
 
 class Credential(Base):
