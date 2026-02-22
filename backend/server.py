@@ -489,6 +489,8 @@ class ServerResponse(BaseModel):
     verified: bool
     shares_count: int
     downloaded_files_count: int
+    leaks_count: int = 0  # Quantidade de leaks encontrados
+    risk_score: float = 0.0  # Índice de risco (0-100)
     last_verified_at: Optional[datetime]
     created_at: datetime
     plugin_instance_id: Optional[int] = None
