@@ -139,6 +139,26 @@ class AppConfig(Base):
     value = Column(String, nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+
+class PluginInstance(Base):
+    """
+    Instâncias de plugins.
+    Cada tipo de plugin (soap_api, direct_interaction) pode ter múltiplas instâncias
+    com configurações diferentes.
+    """
+    __tablename__ = "plugin_instances"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)  # Nome amigável da instância
+    plugin_type = Column(String, nullable=False)  # "soap_api" ou "direct_interaction"
+    description = Column(String, nullable=True)  # Descrição opcional
+    config = Column(JSON, nullable=True)  # Configurações específicas do plugin (JSON)
+    is_default = Column(Boolean, default=False)  # Se é a instância padrão para o tipo
+    is_active = Column(Boolean, default=True)  # Se está ativa
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
 class Server(Base):
     __tablename__ = "servers"
     
@@ -151,9 +171,11 @@ class Server(Base):
     downloaded_files_count = Column(Integer, default=0)
     last_verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    # Plugin configuration
-    plugin_type = Column(String, default="soap_api")  # Type of plugin to use
-    plugin_config = Column(JSON, nullable=True)  # Plugin-specific configuration
+    # Plugin configuration - referência para instância de plugin
+    plugin_instance_id = Column(Integer, ForeignKey("plugin_instances.id"), nullable=True)
+    # Legacy fields (mantidos para compatibilidade)
+    plugin_type = Column(String, default="soap_api")  # Deprecated - use plugin_instance_id
+    plugin_config = Column(JSON, nullable=True)  # Deprecated - use plugin_instance_id
 
 class ServerShare(Base):
     __tablename__ = "server_shares"
