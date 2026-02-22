@@ -672,15 +672,15 @@ class SoapApiPlugin(BasePlugin):
         timeout: int = 30,
         ignore_cache: bool = False
     ) -> SqlResult:
-        """Execute SQL query via SOAP"""
+        """Execute SQL query via SOAP using Exec operation"""
         import time
         start_time = time.time()
         
         try:
             result = await self._call_soap(
-                "ExecuteSQL",
+                "Exec",
                 {
-                    "connectionString": connection_string,
+                    "connStr": connection_string,
                     "query": query
                 },
                 ignore_cache=ignore_cache,
