@@ -238,66 +238,33 @@ const ProxyServers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="auth_type">Autenticação</Label>
+                  <Label htmlFor="credential_id">Autenticação</Label>
                   <Select 
-                    value={formData.auth_type} 
-                    onValueChange={(value) => setFormData({ ...formData, auth_type: value, username: '', password: '' })}
+                    value={formData.credential_id} 
+                    onValueChange={(value) => setFormData({ ...formData, credential_id: value })}
                   >
-                    <SelectTrigger data-testid="proxy-auth-type-select">
+                    <SelectTrigger data-testid="proxy-credential-select">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">
                         <div className="flex items-center gap-2">
-                          <X className="w-4 h-4 text-muted-foreground" />
+                          <Ban className="w-4 h-4 text-muted-foreground" />
                           Sem autenticação
                         </div>
                       </SelectItem>
-                      <SelectItem value="user_password">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4" />
-                          Usuário e Senha
-                        </div>
-                      </SelectItem>
+                      {credentials.map((cred) => (
+                        <SelectItem key={cred.id} value={cred.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <CredentialIcon className="w-4 h-4 text-primary" />
+                            {cred.name || `${cred.domain ? cred.domain + '\\' : ''}${cred.username}`}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              
-              {/* Credentials - only show when auth_type is user_password */}
-              {formData.auth_type === 'user_password' && (
-                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-border">
-                  <div className="space-y-2">
-                    <Label htmlFor="username" className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      Usuário
-                    </Label>
-                    <Input
-                      id="username"
-                      data-testid="proxy-username-input"
-                      placeholder="username"
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="flex items-center gap-2">
-                      <KeyRound className="w-4 h-4" />
-                      Senha
-                    </Label>
-                    <Input
-                      id="password"
-                      data-testid="proxy-password-input"
-                      type="password"
-                      placeholder="••••••••"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-              )}
               
               <Button type="submit" disabled={loading} data-testid="add-proxy-btn">
                 <Plus className="w-4 h-4 mr-2" />
