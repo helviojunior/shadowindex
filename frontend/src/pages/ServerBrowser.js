@@ -2322,9 +2322,22 @@ const ServerBrowser = () => {
         }
       }));
       
+      // Limpar conteúdo atual para forçar reload do arquivo recém-baixado
+      setFileContent(null);
+      setRawFileContent(null);
+      setFilePreviewUrl(null);
+      setContentLoadError(null);
+      
       // Recarregar versões
       loadFileVersions(filePath);
       loadServer();
+      
+      // Após um pequeno delay, recarregar o conteúdo do arquivo
+      setTimeout(() => {
+        if (activeTab === 'view') {
+          loadFileContent();
+        }
+      }, 300);
     } catch (error) {
       console.error('Error downloading file:', error);
       // Extrair mensagem de erro do response do backend
