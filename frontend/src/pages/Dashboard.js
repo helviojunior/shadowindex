@@ -225,14 +225,6 @@ const Dashboard = () => {
     ? Math.round((gitleaksStats?.servers_scanned || 0) / stats.servers * 100) 
     : 0;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-muted-foreground">Carregando...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6" data-testid="dashboard-page">
       <div className="flex items-center justify-between">
@@ -241,6 +233,13 @@ const Dashboard = () => {
           <p className="text-muted-foreground mt-2">Visão geral de segurança e assets</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Loading Indicator */}
+          {loading && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Atualizando...</span>
+            </div>
+          )}
           {/* WebSocket Status Indicator */}
           <Badge 
             variant={wsConnected ? "outline" : "secondary"} 
@@ -249,8 +248,8 @@ const Dashboard = () => {
             <span className={`w-2 h-2 rounded-full mr-1.5 ${wsConnected ? 'bg-green-500' : 'bg-gray-400'}`}></span>
             {wsConnected ? 'Tempo real' : 'Offline'}
           </Badge>
-          <Button variant="outline" onClick={loadData}>
-            <RefreshCw className="w-4 h-4 mr-2" />
+          <Button variant="outline" onClick={loadData} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>
