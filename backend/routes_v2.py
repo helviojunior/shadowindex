@@ -495,9 +495,31 @@ async def list_shares(
             )
                 
         except Exception as e:
-            logger.error(f"Error refreshing shares for server {server.ip}: {e}")
             import traceback
-            traceback.print_exc()
+            error_traceback = traceback.format_exc()
+            logger.error(f"Error refreshing shares for server {server.ip}: {e}\n{error_traceback}")
+            
+            # Determinar mensagem de erro amigável
+            error_message = str(e)
+            if "Credencial" in error_message or "credential" in error_message.lower():
+                error_type = "credential_error"
+            elif "conexão" in error_message.lower() or "connection" in error_message.lower():
+                error_type = "connection_error"
+            elif "timeout" in error_message.lower():
+                error_type = "timeout_error"
+            elif "autenticação" in error_message.lower() or "authentication" in error_message.lower():
+                error_type = "auth_error"
+            else:
+                error_type = "plugin_error"
+            
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": error_type,
+                    "message": f"Erro ao atualizar compartilhamentos: {error_message}",
+                    "server_ip": server.ip
+                }
+            )
     
     # Retornar shares do banco
     result = await db.execute(
