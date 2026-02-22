@@ -11,7 +11,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://data-discovery-lab.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://soap-gateway-sandbox.preview.emergentagent.com')
 
 class TestNmapImportEndpoint:
     """Tests for Nmap server import endpoint"""

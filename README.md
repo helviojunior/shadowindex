@@ -45,7 +45,7 @@ O sistema já está rodando no ambiente Kubernetes:
 # Frontend na porta 3000
 ```
 
-Acesse: https://data-discovery-lab.preview.emergentagent.com/
+Acesse: https://soap-gateway-sandbox.preview.emergentagent.com/
 
 ### Opção 2: Docker Compose (Porta 9090)
 
