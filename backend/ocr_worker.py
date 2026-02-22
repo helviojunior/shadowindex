@@ -99,27 +99,44 @@ class OCRWorker:
             if not job.local_path or not os.path.exists(job.local_path):
                 raise FileNotFoundError(f"Arquivo não encontrado: {job.local_path}")
             
-            # Obter serviço OCR
-            ocr_service = await self._get_ocr_service()
+            # Verificar se é certificado digital
+            file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
+            certificate_extensions = ['.pfx', '.p12', '.cer', '.crt', '.pem']
             
-            if not ocr_service.is_available:
-                job.status = 'failed'
-                job.error_message = "Serviço OCR não disponível"
-                job.completed_at = datetime.now(timezone.utc)
-                await db.commit()
-                print(f"=== OCR WORKER: Service unavailable for job {job.id} ===", flush=True)
-                return
-            
-            # Executar OCR
-            ocr_text, ocr_metadata, error = await ocr_service.extract_text_and_metadata(
-                job.local_path,
-                ocr_language=job.ocr_language
-            )
+            if file_ext in certificate_extensions:
+                # Extrair dados do certificado em formato texto
+                ocr_text, ocr_metadata, error = await self._extract_certificate_text(job.local_path, file_ext, db)
+            else:
+                # Executar OCR normal via Tika
+                ocr_service = await self._get_ocr_service()
+                
+                if not ocr_service.is_available:
+                    job.status = 'failed'
+                    job.error_message = "Serviço OCR não disponível"
+                    job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+                    print(f"=== OCR WORKER: Service unavailable for job {job.id} ===", flush=True)
+                    return
+                
+                # Executar OCR
+                ocr_text, ocr_metadata, error = await ocr_service.extract_text_and_metadata(
+                    job.local_path,
+                    ocr_language=job.ocr_language
+                )
             
             if ocr_text is not None:
                 job.ocr_text = ocr_text
                 job.ocr_metadata = ocr_metadata
                 job.status = 'completed'
+                
+                # Salvar também em arquivo .ocr
+                try:
+                    ocr_file_path = job.local_path + '.ocr'
+                    with open(ocr_file_path, 'w', encoding='utf-8') as f:
+                        f.write(ocr_text)
+                    print(f"=== OCR WORKER: Saved OCR text to {ocr_file_path} ===", flush=True)
+                except Exception as e:
+                    logger.warning(f"Failed to save OCR file: {e}")
                 
                 # Atualizar a versão do arquivo com o texto OCR
                 if job.version_id:
