@@ -24,6 +24,125 @@ STORAGE_BASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "da
 os.makedirs(GITLEAKS_OUTPUT_DIR, exist_ok=True)
 
 
+async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
+    """
+    Salva um finding no banco de dados.
+    
+    Returns:
+        True se salvou com sucesso, False se já existia ou erro
+    """
+    from database import async_session_maker, GitleaksFinding
+    from sqlalchemy import select
+    
+    fingerprint = finding.get('Fingerprint')
+    if not fingerprint:
+        logger.warning("Finding sem Fingerprint, ignorando")
+        return False
+    
+    try:
+        async with async_session_maker() as db:
+            # Verificar se já existe
+            existing = await db.execute(
+                select(GitleaksFinding).where(GitleaksFinding.fingerprint == fingerprint)
+            )
+            if existing.scalar_one_or_none():
+                logger.debug(f"Finding {fingerprint} já existe no banco")
+                return False
+            
+            # Criar novo finding
+            db_finding = GitleaksFinding(
+                fingerprint=fingerprint,
+                rule_id=finding.get('RuleID', ''),
+                description=finding.get('Description'),
+                match=finding.get('Match'),
+                secret=finding.get('Secret'),
+                start_line=finding.get('StartLine'),
+                end_line=finding.get('EndLine'),
+                start_column=finding.get('StartColumn'),
+                end_column=finding.get('EndColumn'),
+                entropy=finding.get('Entropy'),
+                tags=finding.get('Tags'),
+                file_path=finding.get('File'),
+                original_file=finding.get('original_file'),
+                detection_source=finding.get('detection_source'),
+                extracted_server_id=finding.get('extracted_server_id'),
+                extracted_file_id=finding.get('extracted_file_id'),
+                extracted_version=finding.get('extracted_version'),
+                server_name=finding.get('server_name'),
+                server_ip=finding.get('server_ip'),
+                file_name=finding.get('file_name'),
+                server_path=finding.get('server_path'),
+                share_name=finding.get('share_name'),
+                job_id=finding.get('job_id'),
+                server_id=finding.get('server_id'),
+                scanned_at=datetime.fromisoformat(finding['scanned_at']) if finding.get('scanned_at') else None,
+                raw_data=finding
+            )
+            
+            db.add(db_finding)
+            await db.commit()
+            logger.info(f"Finding {fingerprint} salvo no banco")
+            return True
+            
+    except Exception as e:
+        logger.error(f"Erro ao salvar finding {fingerprint}: {e}")
+        return False
+
+
+async def load_findings_from_db() -> List[Dict[str, Any]]:
+    """
+    Carrega todos os findings do banco de dados.
+    """
+    from database import async_session_maker, GitleaksFinding
+    from sqlalchemy import select
+    
+    try:
+        async with async_session_maker() as db:
+            result = await db.execute(select(GitleaksFinding))
+            findings = result.scalars().all()
+            
+            # Converter para dicionários
+            findings_list = []
+            for f in findings:
+                finding_dict = f.raw_data or {}
+                # Garantir que os campos principais estão presentes
+                finding_dict.update({
+                    'Fingerprint': f.fingerprint,
+                    'RuleID': f.rule_id,
+                    'Description': f.description,
+                    'Match': f.match,
+                    'Secret': f.secret,
+                    'StartLine': f.start_line,
+                    'EndLine': f.end_line,
+                    'StartColumn': f.start_column,
+                    'EndColumn': f.end_column,
+                    'Entropy': f.entropy,
+                    'Tags': f.tags,
+                    'File': f.file_path,
+                    'original_file': f.original_file,
+                    'detection_source': f.detection_source,
+                    'extracted_server_id': f.extracted_server_id,
+                    'extracted_file_id': f.extracted_file_id,
+                    'extracted_version': f.extracted_version,
+                    'server_name': f.server_name,
+                    'server_ip': f.server_ip,
+                    'file_name': f.file_name,
+                    'server_path': f.server_path,
+                    'share_name': f.share_name,
+                    'job_id': f.job_id,
+                    'server_id': f.server_id,
+                    'scanned_at': f.scanned_at.isoformat() if f.scanned_at else None
+                })
+                findings_list.append(finding_dict)
+            
+            logger.info(f"Carregados {len(findings_list)} findings do banco de dados")
+            return findings_list
+            
+    except Exception as e:
+        logger.error(f"Erro ao carregar findings do banco: {e}")
+        return []
+
+
 def extract_ids_from_path(file_path: str) -> Optional[Tuple[int, int, int]]:
     """
     Extrai server_id, file_id e version de um caminho de arquivo físico.
