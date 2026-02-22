@@ -120,13 +120,10 @@ const FileNavigation = () => {
         </div>
       )}
 
-      {/* Stats */}
-      {servers.length > 0 && (
+      {/* Stats - only show when filtering */}
+      {servers.length > 0 && searchTerm && (
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{servers.length} servidor{servers.length !== 1 ? 'es' : ''} cadastrado{servers.length !== 1 ? 's' : ''}</span>
-          {searchTerm && (
-            <span>• {filteredServers.length} encontrado{filteredServers.length !== 1 ? 's' : ''}</span>
-          )}
+          <span>{filteredServers.length} encontrado{filteredServers.length !== 1 ? 's' : ''}</span>
         </div>
       )}
     </div>
