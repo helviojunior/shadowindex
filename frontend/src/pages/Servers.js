@@ -172,8 +172,8 @@ const Servers = () => {
         ip: formData.ip
       };
 
-      // Add plugin_instance_id if selected
-      if (formData.plugin_instance_id) {
+      // Add plugin_instance_id if selected (not 'none' or empty)
+      if (formData.plugin_instance_id && formData.plugin_instance_id !== 'none') {
         payload.plugin_instance_id = parseInt(formData.plugin_instance_id);
       }
 
