@@ -61,18 +61,13 @@ export const WebSocketProvider = ({ children }) => {
           clearInterval(pingIntervalRef.current);
         }
         
-        // Notificar desconexão (apenas se não foi intencional)
-        if (event.code !== 1000 && connectionStatusCallbackRef.current) {
-          connectionStatusCallbackRef.current({ 
-            connected: false, 
-            message: 'WebSocket desconectado' 
-          });
-        }
+        // Não notificar desconexão - deixar o health check HTTP decidir
+        // WebSocket pode desconectar temporariamente durante reconexões normais
         
         // Reconectar após 3 segundos (exceto se fechado intencionalmente)
         if (event.code !== 1000) {
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('Attempting to reconnect...');
+            console.log('Attempting to reconnect WebSocket...');
             connect();
           }, 3000);
         }
