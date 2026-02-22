@@ -225,7 +225,7 @@ class DirectoryScanner:
     async def _scan_directory(self, db: AsyncSession, scan_job: ScanJob):
         """Escaneia um diretório e adiciona arquivos à fila"""
         from database import Server, DownloadJob, AppSettings
-        from soap_service import get_default_soap_service
+        from plugins.factory import get_plugin_for_server
         
         print(f"=== SCANNER: _scan_directory called for {scan_job.path}, depth={scan_job.depth}/{scan_job.max_depth} ===", flush=True)
         
@@ -244,6 +244,12 @@ class DirectoryScanner:
         
         print(f"=== SCANNER: Found server {server.name} ({server.ip}) ===", flush=True)
         
+        # Verificar se o servidor tem instância de plugin configurada
+        if not server.plugin_instance_id:
+            print(f"=== SCANNER: Server {server.name} has no plugin instance configured ===", flush=True)
+            logger.warning(f"Server {server.name} has no plugin instance configured")
+            return
+        
         # Obter extensões ignoradas (apenas se aplicar filtros)
         ignored_extensions = []
         if scan_job.apply_filters:
@@ -252,32 +258,34 @@ class DirectoryScanner:
             if ext_setting and ext_setting.value:
                 ignored_extensions = [ext.strip().lower() for ext in ext_setting.value.split(',') if ext.strip()]
         
-        # Obter serviço SOAP
-        soap_service = await get_default_soap_service(db)
-        if not soap_service:
-            print(f"=== SCANNER: No SOAP service available ===", flush=True)
+        # Obter plugin usando a instância configurada no servidor
+        try:
+            plugin = await get_plugin_for_server(db, server.id)
+            if not plugin:
+                print(f"=== SCANNER: Could not get plugin for server {server.name} ===", flush=True)
+                return
+            print(f"=== SCANNER: Using plugin instance ID {server.plugin_instance_id} ===", flush=True)
+        except Exception as e:
+            print(f"=== SCANNER: Error getting plugin: {e} ===", flush=True)
+            logger.error(f"Error getting plugin for server {server.id}: {e}")
             return
         
-        # Preparar path para listagem (Exec4)
+        # Preparar path para listagem
         full_path = scan_job.path
         if not full_path.startswith('\\\\'):
             full_path = f"\\\\{server.ip}\\{scan_job.share_name}\\{scan_job.path}"
         
-        print(f"=== SCANNER: Calling Exec4 for path: {full_path} ===", flush=True)
+        print(f"=== SCANNER: Calling list_directory for path: {full_path} ===", flush=True)
         
         try:
-            # Chamar Exec4 para listar diretório
-            params = {"s1": full_path, "s2": ""}
-            result = await soap_service.call_soap_operation(db, "Exec4", params, ignore_cache=True)
+            # Usar o método list_directory do plugin
+            items = await plugin.list_directory(full_path, ignore_cache=True)
             
-            print(f"=== SCANNER: Exec4 result length: {len(result) if result else 0} ===", flush=True)
+            print(f"=== SCANNER: list_directory returned {len(items) if items else 0} items ===", flush=True)
             
-            if not result:
-                print(f"=== SCANNER: Empty result from Exec4 ===", flush=True)
+            if not items:
+                print(f"=== SCANNER: Empty result from list_directory ===", flush=True)
                 return
-            
-            # Verificar erros
-            result_lower = result.lower()
             if "access" in result_lower and "denied" in result_lower:
                 print(f"=== SCANNER: Access denied for {full_path} ===", flush=True)
                 logger.warning(f"Access denied: {full_path}")
