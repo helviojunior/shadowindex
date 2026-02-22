@@ -1004,6 +1004,150 @@ async def validate_plugin_config(plugin_type: str, config: dict):
         }
 
 
+# ==================== Plugin Instances CRUD ====================
+
+@api_router.get("/plugin-instances", response_model=List[PluginInstanceResponse])
+async def get_plugin_instances(
+    plugin_type: Optional[str] = None,
+    active_only: bool = False,
+    db: AsyncSession = Depends(get_db)
+):
+    """List all plugin instances, optionally filtered by type"""
+    query = select(PluginInstance)
+    if plugin_type:
+        query = query.where(PluginInstance.plugin_type == plugin_type)
+    if active_only:
+        query = query.where(PluginInstance.is_active == True)
+    query = query.order_by(PluginInstance.plugin_type, PluginInstance.name)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+@api_router.get("/plugin-instances/{instance_id}", response_model=PluginInstanceResponse)
+async def get_plugin_instance(instance_id: int, db: AsyncSession = Depends(get_db)):
+    """Get a specific plugin instance by ID"""
+    result = await db.execute(select(PluginInstance).where(PluginInstance.id == instance_id))
+    instance = result.scalar_one_or_none()
+    if not instance:
+        raise HTTPException(status_code=404, detail="Instância de plugin não encontrada")
+    return instance
+
+
+@api_router.post("/plugin-instances", response_model=PluginInstanceResponse)
+async def create_plugin_instance(instance: PluginInstanceCreate, db: AsyncSession = Depends(get_db)):
+    """Create a new plugin instance"""
+    # Validate plugin type
+    valid_types = ["soap_api", "direct_interaction"]
+    if instance.plugin_type not in valid_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Tipo de plugin inválido. Use: {', '.join(valid_types)}"
+        )
+    
+    # If setting as default, unset other defaults of same type
+    if instance.is_default:
+        await db.execute(
+            update(PluginInstance)
+            .where(PluginInstance.plugin_type == instance.plugin_type)
+            .values(is_default=False)
+        )
+    
+    db_instance = PluginInstance(**instance.model_dump())
+    db.add(db_instance)
+    await db.commit()
+    await db.refresh(db_instance)
+    return db_instance
+
+
+@api_router.put("/plugin-instances/{instance_id}", response_model=PluginInstanceResponse)
+async def update_plugin_instance(
+    instance_id: int, 
+    instance: PluginInstanceUpdate, 
+    db: AsyncSession = Depends(get_db)
+):
+    """Update a plugin instance"""
+    result = await db.execute(select(PluginInstance).where(PluginInstance.id == instance_id))
+    db_instance = result.scalar_one_or_none()
+    
+    if not db_instance:
+        raise HTTPException(status_code=404, detail="Instância de plugin não encontrada")
+    
+    update_data = instance.model_dump(exclude_unset=True)
+    
+    # If setting as default, unset other defaults of same type
+    if update_data.get("is_default"):
+        await db.execute(
+            update(PluginInstance)
+            .where(PluginInstance.plugin_type == db_instance.plugin_type)
+            .where(PluginInstance.id != instance_id)
+            .values(is_default=False)
+        )
+    
+    for key, value in update_data.items():
+        setattr(db_instance, key, value)
+    
+    await db.commit()
+    await db.refresh(db_instance)
+    return db_instance
+
+
+@api_router.delete("/plugin-instances/{instance_id}")
+async def delete_plugin_instance(instance_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete a plugin instance"""
+    # Check if any servers are using this instance
+    result = await db.execute(
+        select(Server).where(Server.plugin_instance_id == instance_id).limit(1)
+    )
+    server_using = result.scalar_one_or_none()
+    
+    if server_using:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Não é possível excluir: servidor '{server_using.name}' está usando esta instância"
+        )
+    
+    await db.execute(delete(PluginInstance).where(PluginInstance.id == instance_id))
+    await db.commit()
+    return {"message": "Instância de plugin excluída"}
+
+
+@api_router.post("/plugin-instances/{instance_id}/health")
+async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depends(get_db)):
+    """Check health of a plugin instance"""
+    from plugins.factory import PluginFactory, get_active_proxy_url
+    
+    result = await db.execute(select(PluginInstance).where(PluginInstance.id == instance_id))
+    instance = result.scalar_one_or_none()
+    
+    if not instance:
+        raise HTTPException(status_code=404, detail="Instância de plugin não encontrada")
+    
+    try:
+        proxy_url = await get_active_proxy_url(db)
+        config = instance.config or {}
+        
+        # For SOAP API, add the soap_url from config or from SoapApiUrl table
+        if instance.plugin_type == "soap_api":
+            if "soap_url" not in config:
+                soap_result = await db.execute(select(SoapApiUrl).limit(1))
+                soap_api = soap_result.scalar_one_or_none()
+                if soap_api:
+                    config["soap_url"] = soap_api.uri
+        
+        plugin = PluginFactory.create_plugin(instance.plugin_type, config, proxy_url)
+        health = await plugin.health_check()
+        return health
+    except Exception as e:
+        return {
+            "healthy": False,
+            "message": str(e),
+            "details": {}
+        }
+
+
+# ==================== End Plugin Instances CRUD ====================
+
+
 # Proxy Servers CRUD
 @api_router.post("/proxy-servers", response_model=ProxyServerResponse)
 async def create_proxy_server(proxy: ProxyServerCreate, db: AsyncSession = Depends(get_db)):
