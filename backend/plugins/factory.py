@@ -361,8 +361,9 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
     plugin_type = instance.plugin_type
     plugin_config = instance.config or {}
     
-    # Get proxy URL
-    proxy_url = await get_active_proxy_url(db)
+    # Get proxy config with credentials
+    proxy_config = await get_active_proxy_config(db)
+    proxy_url = proxy_config.get("proxy_url") if proxy_config else None
     
     # Validate SOAP URL for SOAP plugins
     if plugin_type == "soap_api" and "soap_url" not in plugin_config:
@@ -370,6 +371,22 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
             f"URL do SOAP não configurada na instância '{instance.name}'. "
             "Edite a instância e configure a URL do WebService."
         )
+    
+    # Add proxy credentials and validate proxy type for direct_interaction
+    if plugin_type == "direct_interaction" and proxy_config:
+        proxy_type = proxy_config.get("proxy_type", "http")
+        proxy_name = proxy_config.get("proxy_name", "Unknown")
+        
+        # Validate proxy type - direct_interaction only supports SOCKS proxies
+        if proxy_type not in ("socks5", "socks4"):
+            raise ValueError(
+                f"Proxy selecionado '{proxy_name}' não suportado para '{instance.name}'. "
+                f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
+                f"Tipo atual: {proxy_type}"
+            )
+        
+        plugin_config["proxy_user"] = proxy_config.get("proxy_user")
+        plugin_config["proxy_pass"] = proxy_config.get("proxy_pass")
     
     # Create the plugin instance
     plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
