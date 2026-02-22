@@ -414,6 +414,19 @@ const PluginInstances = () => {
                             />
                           </div>
                           
+                          {instance.plugin_type === 'soap_api' && (
+                            <div className="grid grid-cols-1 gap-3">
+                              <Input
+                                value={editData.config?.soap_url || ''}
+                                onChange={(e) => setEditData({ 
+                                  ...editData, 
+                                  config: { ...editData.config, soap_url: e.target.value } 
+                                })}
+                                placeholder="URL do WebService SOAP"
+                              />
+                            </div>
+                          )}
+                          
                           {instance.plugin_type === 'direct_interaction' && (
                             <div className="grid grid-cols-2 gap-3">
                               <Select 
