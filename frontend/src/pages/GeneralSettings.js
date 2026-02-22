@@ -549,6 +549,69 @@ const GeneralSettings = () => {
             </div>
           </div>
 
+          {/* Extensões Excluídas do OCR */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Ban className="w-4 h-4 text-red-400" />
+              <Label className="text-sm font-medium">Extensões Excluídas do OCR</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Arquivos com estas extensões serão <strong>sempre ignorados</strong> pelo OCR automático, mesmo que estejam na lista de inclusão.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder=".ext (ex: .jpg)"
+                value={newOcrExcludedExtension}
+                onChange={(e) => setNewOcrExcludedExtension(e.target.value)}
+                className="flex-1 h-9"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newOcrExcludedExtension.trim()) {
+                    const current = settings.auto_ocr_excluded_extensions ? settings.auto_ocr_excluded_extensions.split(',').filter(e => e) : [];
+                    let ext = newOcrExcludedExtension.trim().toLowerCase();
+                    if (!ext.startsWith('.')) ext = '.' + ext;
+                    if (!current.includes(ext)) {
+                      handleChange('auto_ocr_excluded_extensions', [...current, ext].join(','));
+                    }
+                    setNewOcrExcludedExtension('');
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (newOcrExcludedExtension.trim()) {
+                    const current = settings.auto_ocr_excluded_extensions ? settings.auto_ocr_excluded_extensions.split(',').filter(e => e) : [];
+                    let ext = newOcrExcludedExtension.trim().toLowerCase();
+                    if (!ext.startsWith('.')) ext = '.' + ext;
+                    if (!current.includes(ext)) {
+                      handleChange('auto_ocr_excluded_extensions', [...current, ext].join(','));
+                    }
+                    setNewOcrExcludedExtension('');
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(settings.auto_ocr_excluded_extensions || '').split(',').filter(e => e).map((ext, idx) => (
+                <Badge key={idx} variant="outline" className="gap-1 text-xs border-red-500/50 text-red-400">
+                  {ext}
+                  <button
+                    onClick={() => {
+                      const current = settings.auto_ocr_excluded_extensions.split(',').filter(e => e && e !== ext);
+                      handleChange('auto_ocr_excluded_extensions', current.join(','));
+                    }}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+
           {/* Info Box */}
           <div className="rounded-lg bg-purple-500/10 border border-purple-500/30 p-4 mt-4">
             <h4 className="text-sm font-medium text-purple-400 mb-2">Sobre o Auto OCR</h4>
@@ -557,6 +620,7 @@ const GeneralSettings = () => {
               <li>• O texto extraído fica disponível para busca e visualização</li>
               <li>• Requer Apache Tika configurado e em execução</li>
               <li>• MIME types são verificados com match parcial (ex: "image/" captura "image/png", "image/jpeg", etc.)</li>
+              <li>• <strong className="text-red-400">Extensões excluídas têm precedência</strong> sobre inclusões por extensão ou MIME type</li>
             </ul>
           </div>
         </CardContent>
