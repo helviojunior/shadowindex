@@ -218,6 +218,18 @@ const Downloads = () => {
     }
   };
 
+  // Retry all failed downloads
+  const retryAllFailed = async () => {
+    try {
+      const response = await axios.post(`${API}/downloads/retry-all-failed`);
+      toast.success(response.data.message || 'Downloads falhados recolocados na fila');
+      loadDownloadJobs();
+    } catch (error) {
+      console.error('Error retrying all failed:', error);
+      toast.error('Erro ao recolocar downloads na fila');
+    }
+  };
+
   // Filter jobs
   const filteredJobs = activeFilter 
     ? downloadJobs.filter(job => job.status === activeFilter)
