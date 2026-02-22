@@ -313,6 +313,54 @@ class ScanJob(Base):
     completed_at = Column(DateTime, nullable=True)
 
 
+class GitleaksFinding(Base):
+    """Findings do GitLeaks persistidos no banco de dados"""
+    __tablename__ = "gitleaks_findings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    fingerprint = Column(String, unique=True, nullable=False, index=True)  # Identificador único do finding
+    
+    # Dados do finding
+    rule_id = Column(String, nullable=False, index=True)
+    description = Column(String, nullable=True)
+    match = Column(Text, nullable=True)
+    secret = Column(Text, nullable=True)
+    start_line = Column(Integer, nullable=True)
+    end_line = Column(Integer, nullable=True)
+    start_column = Column(Integer, nullable=True)
+    end_column = Column(Integer, nullable=True)
+    entropy = Column(Float, nullable=True)
+    tags = Column(JSON, nullable=True)  # Lista de tags
+    
+    # Dados do arquivo
+    file_path = Column(String, nullable=True)  # Caminho físico escaneado
+    original_file = Column(String, nullable=True)  # Caminho original (sem .ocr/.metadata)
+    detection_source = Column(String, nullable=True)  # "ocr", "metadata" ou null
+    
+    # IDs extraídos do caminho
+    extracted_server_id = Column(Integer, nullable=True)
+    extracted_file_id = Column(Integer, nullable=True)
+    extracted_version = Column(Integer, nullable=True)
+    
+    # Dados do servidor/arquivo (enriquecidos)
+    server_name = Column(String, nullable=True)
+    server_ip = Column(String, nullable=True)
+    file_name = Column(String, nullable=True)
+    server_path = Column(String, nullable=True)
+    share_name = Column(String, nullable=True)
+    
+    # Metadados do scan
+    job_id = Column(String, nullable=True, index=True)
+    server_id = Column(Integer, nullable=True, index=True)  # Server ID do job
+    scanned_at = Column(DateTime, nullable=True)
+    
+    # Dados adicionais
+    raw_data = Column(JSON, nullable=True)  # JSON completo do finding original
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
 class OCRJob(Base):
     """Jobs de OCR em background"""
     __tablename__ = "ocr_jobs"
