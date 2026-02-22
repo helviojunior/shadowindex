@@ -370,14 +370,6 @@ const Downloads = () => {
     return new Date(dateStr).toLocaleString('pt-BR');
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -386,12 +378,18 @@ const Downloads = () => {
           <h1 className="text-2xl font-bold">Downloads</h1>
           <p className="text-muted-foreground flex items-center gap-2">
             Gerencie os downloads de arquivos dos servidores
-            {isConnected ? (
+            {loading && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Atualizando...
+              </span>
+            )}
+            {!loading && isConnected ? (
               <span className="flex items-center gap-1 text-xs text-green-500">
                 <Wifi className="w-3 h-3" />
                 Tempo real
               </span>
-            ) : (
+            ) : !loading && (
               <span className="flex items-center gap-1 text-xs text-yellow-500">
                 <WifiOff className="w-3 h-3" />
                 Offline
@@ -404,9 +402,10 @@ const Downloads = () => {
             variant="outline"
             size="sm"
             onClick={loadDownloadJobs}
+            disabled={loading}
             data-testid="refresh-downloads"
           >
-            <RefreshCw className="w-4 h-4 mr-2" />
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
           <Button
