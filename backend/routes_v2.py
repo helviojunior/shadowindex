@@ -3898,7 +3898,7 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
     from database import OCRJob, AppSettings
     from datetime import datetime, timezone
     import os
-    import magic
+    import mimetypes
     
     # Carregar lista de extensões excluídas
     excluded_result = await db.execute(
@@ -3920,7 +3920,6 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
     
     skipped_by_ext = 0
     skipped_by_mime = 0
-    mime_detector = magic.Magic(mime=True)
     
     for job in pending_jobs:
         file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
@@ -3931,15 +3930,12 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
             skip_reason = f'Extensão {file_ext} está na lista de exclusão'
             skipped_by_ext += 1
         
-        # Verificar mimetype text/* (hard-coded)
-        if not skip_reason and job.local_path and os.path.exists(job.local_path):
-            try:
-                file_mimetype = mime_detector.from_file(job.local_path)
-                if file_mimetype and file_mimetype.startswith('text/'):
-                    skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
-                    skipped_by_mime += 1
-            except Exception:
-                pass
+        # Verificar mimetype text/* (hard-coded) usando mimetypes
+        if not skip_reason and job.local_path:
+            file_mimetype, _ = mimetypes.guess_type(job.local_path)
+            if file_mimetype and file_mimetype.startswith('text/'):
+                skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
+                skipped_by_mime += 1
         
         if skip_reason:
             job.status = 'skipped'
