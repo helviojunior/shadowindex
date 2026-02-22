@@ -2581,7 +2581,7 @@ const ServerBrowser = () => {
     const hasLoadedChildren = nodeChildren[nodeId] !== undefined;
     const isDirectory = item.type === 'Directory' || isShare;
     const isFile = item.type === 'File';
-    const isAccessDenied = item.access_denied || item.accessDenied;
+    const isAccessDenied = item.access_denied === true || item.accessDenied === true;
     const isDownloaded = isFile && isFileDownloaded(item.fullPath);
     const isSelected = selectedItem?.id === nodeId || 
                        (isShare && selectedItem?.share_name === item.share_name && selectedItem?.itemType === 'share');
@@ -2595,12 +2595,12 @@ const ServerBrowser = () => {
     
     const currentShareName = isShare ? item.share_name : shareName;
     
-    // Para shares: usar flag do banco (children_fetched)
-    // Para diretórios: usar flag do item que vem do banco (item.childrenFetched)
+    // Para shares: usar flag do banco (children_fetched ou childrenFetched)
+    // Para diretórios: usar flag do item que vem do banco (item.childrenFetched ou item.children_fetched)
     // Fallback para hasLoadedChildren se não houver flag do banco
     const childrenFetched = isShare 
-      ? item.children_fetched 
-      : (item.childrenFetched === true || hasLoadedChildren);
+      ? (item.children_fetched === true || item.childrenFetched === true)
+      : (item.childrenFetched === true || item.children_fetched === true || hasLoadedChildren);
     
     // Determina se o item ainda não teve seus filhos carregados
     // Um diretório é considerado "não carregado" se nunca fizemos fetch dos filhos
