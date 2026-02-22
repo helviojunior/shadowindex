@@ -105,7 +105,6 @@ class OCRWorker:
                         private_key, cert, chain = pkcs12.load_key_and_certificates(
                             cert_data, pwd, default_backend()
                         )
-                        password_used = pwd
                         break
                     except Exception:
                         continue
