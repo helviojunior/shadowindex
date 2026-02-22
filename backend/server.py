@@ -4416,9 +4416,55 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+def backup_database():
+    """
+    Cria um backup comprimido do banco de dados na pasta ./backups/
+    Formato: db_YYYYMMDD_EPOCH.db.gz
+    """
+    import gzip
+    import shutil
+    from database import DATABASE_PATH, DATA_DIR
+    
+    try:
+        # Criar diretório de backups se não existir
+        backup_dir = os.path.join(DATA_DIR, "backups")
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # Verificar se o banco existe
+        if not os.path.exists(DATABASE_PATH):
+            print("=== BACKUP: Database file not found, skipping backup ===", flush=True)
+            return None
+        
+        # Gerar nome do arquivo de backup
+        now = datetime.now()
+        epoch = int(now.timestamp())
+        date_str = now.strftime("%Y%m%d")
+        backup_filename = f"db_{date_str}_{epoch}.db.gz"
+        backup_path = os.path.join(backup_dir, backup_filename)
+        
+        # Criar backup comprimido
+        with open(DATABASE_PATH, 'rb') as f_in:
+            with gzip.open(backup_path, 'wb', compresslevel=6) as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        
+        # Obter tamanho do backup
+        backup_size = os.path.getsize(backup_path)
+        original_size = os.path.getsize(DATABASE_PATH)
+        compression_ratio = (1 - backup_size / original_size) * 100 if original_size > 0 else 0
+        
+        print(f"=== BACKUP: Database backed up to {backup_filename} ({backup_size} bytes, {compression_ratio:.1f}% compression) ===", flush=True)
+        return backup_path
+    except Exception as e:
+        print(f"=== BACKUP ERROR: Failed to backup database: {e} ===", flush=True)
+        return None
+
 @app.on_event("startup")
 async def startup_event():
     print("=== STARTUP: Starting application ===", flush=True)
+    
+    # Backup do banco de dados antes de qualquer operação
+    backup_database()
+    
     await init_db()
     print("=== STARTUP: Database initialized ===", flush=True)
     
