@@ -2987,7 +2987,7 @@ const ServerBrowser = () => {
                   className="absolute bg-border/60" 
                   style={{ 
                     left: '50%', 
-                    width: '50%', 
+                    width: isDirectory ? '50%' : 'calc(50% + 20px)', // Estende para arquivos para compensar espaço do botão
                     height: '1px',
                     top: '50%'
                   }} 
