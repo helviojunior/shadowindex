@@ -2642,6 +2642,12 @@ const ServerBrowser = () => {
 
   // Renderiza um nó da árvore com linhas de hierarquia
   const renderTreeNode = (item, depth = 0, shareName = '', isLastChild = true, parentLines = [], focusedNodeId = null) => {
+    // Proteção contra recursão infinita - limite de profundidade
+    if (depth > 50) {
+      console.warn('renderTreeNode: Max depth exceeded, stopping recursion');
+      return null;
+    }
+    
     const isShare = !!item.share_name;
     const rawNodeId = item.id || `share-${item.share_name}`;
     const nodeId = String(rawNodeId);
