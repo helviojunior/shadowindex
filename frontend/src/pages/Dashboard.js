@@ -226,7 +226,7 @@ const Dashboard = () => {
                 <p className="text-2xl font-bold">{stats.credentials}</p>
                 <p className="text-sm text-muted-foreground uppercase tracking-wider">Credenciais</p>
               </div>
-              <Key className="w-8 h-8 text-purple-500 opacity-60" />
+              <ShieldKeyIcon className="w-8 h-8 text-purple-500 opacity-60" />
             </div>
           </CardContent>
         </Card>
