@@ -1582,8 +1582,42 @@ async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)
 
 @api_router.get("/servers", response_model=List[ServerResponse])
 async def get_servers(db: AsyncSession = Depends(get_db)):
+    from database import PluginInstance
+    
     result = await db.execute(select(Server))
-    return result.scalars().all()
+    servers = result.scalars().all()
+    
+    # Buscar nomes das instâncias de plugin
+    plugin_ids = [s.plugin_instance_id for s in servers if s.plugin_instance_id]
+    plugin_names = {}
+    
+    if plugin_ids:
+        plugin_result = await db.execute(
+            select(PluginInstance).where(PluginInstance.id.in_(plugin_ids))
+        )
+        for pi in plugin_result.scalars().all():
+            plugin_names[pi.id] = pi.name
+    
+    # Construir resposta com nomes das instâncias
+    response = []
+    for server in servers:
+        response.append(ServerResponse(
+            id=server.id,
+            guid=server.guid,
+            name=server.name,
+            ip=server.ip,
+            verified=server.verified,
+            shares_count=server.shares_count,
+            downloaded_files_count=server.downloaded_files_count,
+            last_verified_at=server.last_verified_at,
+            created_at=server.created_at,
+            plugin_instance_id=server.plugin_instance_id,
+            plugin_instance_name=plugin_names.get(server.plugin_instance_id) if server.plugin_instance_id else None,
+            plugin_type=server.plugin_type,
+            plugin_config=server.plugin_config
+        ))
+    
+    return response
 
 @api_router.get("/servers/{server_id}", response_model=ServerResponse)
 async def get_server(
