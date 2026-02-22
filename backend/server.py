@@ -393,6 +393,7 @@ class SoapOperationRequest(BaseModel):
     query: Optional[str] = None
     ignore_cache: bool = False
     server_id: Optional[int] = None  # Para rastrear operações por servidor
+    plugin_instance_id: Optional[int] = None  # ID da instância do plugin a usar
 
 class SoapOperationResponse(BaseModel):
     operation: str
