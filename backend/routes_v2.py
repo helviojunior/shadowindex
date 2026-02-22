@@ -2279,9 +2279,10 @@ async def queue_directory_scan_v2(
 class NmapHostData(BaseModel):
     ip: str
     name: str
-    hasSMB: bool
-    hasDB: bool
-    dbTypes: List[str]
+    hasSMB: Optional[bool] = False
+    hasDB: Optional[bool] = False
+    dbTypes: Optional[List[str]] = []
+    plugin_type: Optional[str] = "direct_interaction"
 
 class NmapImportRequest(BaseModel):
     hosts: List[NmapHostData]
