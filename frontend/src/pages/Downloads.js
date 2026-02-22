@@ -296,7 +296,9 @@ const Downloads = () => {
     loadStats();
     loadActiveJobs();
     loadScanJobs();
-  }, [loadStats, loadActiveJobs, loadScanJobs]);
+    loadOcrJobs();
+    loadOcrStats();
+  }, [loadStats, loadActiveJobs, loadScanJobs, loadOcrJobs, loadOcrStats]);
 
   // Handler para clique no filtro - carrega sob demanda
   const handleFilterClick = useCallback((status) => {
