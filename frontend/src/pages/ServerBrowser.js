@@ -4216,6 +4216,24 @@ const ServerBrowser = () => {
         </div>
       </div>
 
+      {/* Alert when no plugin instance configured */}
+      {!server.plugin_instance_id && (
+        <div className="px-4 py-3 bg-yellow-500/10 border-b border-yellow-500/30">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-500" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-yellow-500">Instância de Plugin Não Configurada</p>
+              <p className="text-xs text-muted-foreground">
+                Configure uma instância de plugin na página de <a href="/servers" className="text-primary hover:underline">Servidores</a> para poder navegar e baixar arquivos.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => navigate('/servers')}>
+              Configurar
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content - Split View */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Left Panel - Tree View */}
