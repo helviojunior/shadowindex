@@ -166,7 +166,9 @@ def build_directory_response(path: str) -> str:
     
     # Replace any IP with mock IP for matching
     import re
-    normalized_for_match = re.sub(r'\\\\[\d.]+\\', f'\\\\{MOCK_SERVER_IP}\\', normalized_path)
+    # Use raw string for replacement to avoid escape issues
+    replacement = '\\\\\\\\' + MOCK_SERVER_IP + '\\\\'
+    normalized_for_match = re.sub(r'\\\\[\d.]+\\', replacement, normalized_path)
     
     # Check if path exists in mock data
     items = None
