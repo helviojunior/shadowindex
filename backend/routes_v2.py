@@ -3552,11 +3552,20 @@ async def scan_server_storage(
     
     server = await get_server_or_404(db, server_id)
     
-    # Obter caminho do storage do servidor
-    storage_path = get_server_storage_path(server.guid)
+    # Obter caminho do storage do servidor (tentar id primeiro, depois guid)
+    storage_path = get_server_storage_path(server.id)
     
+    # Se não existir, tentar com guid (estrutura legada)
+    if not os.path.exists(storage_path):
+        storage_path = get_server_storage_path(server.guid)
+    
+    # Verificar se o diretório existe
     if not os.path.exists(storage_path):
         raise HTTPException(status_code=404, detail="Nenhum arquivo baixado para este servidor")
+    
+    # Verificar se o diretório não está vazio
+    if not any(os.scandir(storage_path)):
+        raise HTTPException(status_code=404, detail="Diretório do servidor está vazio")
     
     service = get_gitleaks_service()
     
