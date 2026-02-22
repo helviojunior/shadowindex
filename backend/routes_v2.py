@@ -1408,42 +1408,66 @@ async def download_file_by_path(
     request: Optional[DownloadRequest] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Download de arquivo via path - para compatibilidade com chunked downloads"""
-    from soap_service import get_default_soap_service
+    """Download de arquivo via path - usando o plugin configurado para o servidor"""
+    from plugins.factory import get_plugin_for_server
+    from plugins.exceptions import CredentialNotSetException, AccessDeniedException, ItemNotFoundException
     from storage_utils import format_size
     from server import get_file_mimetype
     
     server = await get_server_or_404(db, server_id)
     
     raw_content = None
+    content_bytes = None
     
     # Se recebeu content_base64, usar isso (chunked download do frontend)
     if request and request.content_base64:
         raw_content = request.content_base64
+        # Processar conteúdo (decode base64 se necessário, verificar erros)
+        try:
+            content_bytes = process_file_content(raw_content)
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e))
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except Exception as e:
+            logger.error(f"Error processing content: {e}")
+            raise HTTPException(status_code=500, detail=f"Erro ao processar conteúdo: {str(e)}")
     else:
-        # Buscar via SOAP
-        soap_service = await get_default_soap_service(db)
-        params = {"s1": file_path, "s2": "", "l1": 0, "l2": 0}
+        # Buscar usando o plugin do servidor
+        logger.info(f"Downloading file {file_path} for server {server.ip} using plugin {server.plugin_type}")
         
         try:
-            raw_content = await soap_service.call_soap_operation(db, "Exec5", params, ignore_cache=True)
+            plugin = await get_plugin_for_server(db, server)
+            file_content = await plugin.download_file(file_path, ignore_cache=True)
+            
+            if not file_content or not file_content.data:
+                raise HTTPException(status_code=500, detail="Resposta vazia do servidor")
+            
+            content_bytes = file_content.data
+            
+        except CredentialNotSetException as e:
+            logger.warning(f"Credential not set for server {server.ip}: {e.message}")
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "credential_not_set",
+                    "message": e.message,
+                    "operation": e.operation,
+                    "plugin_name": e.plugin_name
+                }
+            )
+        except AccessDeniedException:
+            raise HTTPException(status_code=403, detail="Acesso negado ao arquivo")
+        except ItemNotFoundException:
+            raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
         except Exception as e:
-            logger.error(f"Error downloading file {file_path}: {e}")
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f"Error downloading file {file_path}: {e}\n{error_traceback}")
             raise HTTPException(status_code=500, detail=str(e))
     
-    if not raw_content:
+    if not content_bytes:
         raise HTTPException(status_code=500, detail="Resposta vazia do servidor")
-    
-    # Processar conteúdo (decode base64 se necessário, verificar erros)
-    try:
-        content_bytes = process_file_content(raw_content)
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error processing content: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao processar conteúdo: {str(e)}")
     
     # Verificar se já existe no banco
     existing_result = await db.execute(
