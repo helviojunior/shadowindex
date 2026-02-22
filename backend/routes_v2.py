@@ -2232,6 +2232,31 @@ async def list_server_downloads(server_id: int, db: AsyncSession = Depends(get_d
     ]
 
 
+@router.get("/downloads/{file_id}")
+async def get_downloaded_file_by_id(file_id: int, db: AsyncSession = Depends(get_db)):
+    """Obtém informações de um arquivo baixado pelo ID (sem necessidade do server_id)"""
+    result = await db.execute(
+        select(DownloadedFile).where(DownloadedFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
+    
+    if not file:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    
+    return {
+        "id": file.id,
+        "server_guid": file.server_guid,
+        "file_path": file.file_path,
+        "file_name": file.file_name,
+        "share_name": file.share_name,
+        "sanitized_path": file.sanitized_path,
+        "sha1_hash": file.sha1_hash,
+        "file_size": file.file_size,
+        "mimetype": file.mimetype,
+        "downloaded_at": file.downloaded_at.isoformat() if file.downloaded_at else None
+    }
+
+
 @router.get("/servers/{server_id}/files/{file_id}", response_model=DownloadedFileResponse)
 async def get_downloaded_file(server_id: int, file_id: int, db: AsyncSession = Depends(get_db)):
     """Obtém informações de um arquivo baixado"""
