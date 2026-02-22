@@ -1716,12 +1716,13 @@ async def get_server_downloads(server_id: int, db: AsyncSession = Depends(get_db
 class ServerUpdateRequest(BaseModel):
     ip: Optional[str] = None
     name: Optional[str] = None
-    plugin_type: Optional[str] = None
-    plugin_config: Optional[dict] = None
+    plugin_instance_id: Optional[int] = None
+    plugin_type: Optional[str] = None  # Deprecated
+    plugin_config: Optional[dict] = None  # Deprecated
 
 @api_router.patch("/servers/{server_id}")
 async def update_server(server_id: int, update_data: ServerUpdateRequest, db: AsyncSession = Depends(get_db)):
-    """Atualiza dados do servidor (IP, nome, plugin_type, plugin_config)"""
+    """Atualiza dados do servidor (IP, nome, plugin_instance_id)"""
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
@@ -1731,6 +1732,9 @@ async def update_server(server_id: int, update_data: ServerUpdateRequest, db: As
         server.ip = update_data.ip
     if update_data.name is not None:
         server.name = update_data.name
+    if update_data.plugin_instance_id is not None:
+        server.plugin_instance_id = update_data.plugin_instance_id if update_data.plugin_instance_id else None
+    # Legacy support
     if update_data.plugin_type is not None:
         server.plugin_type = update_data.plugin_type
     if update_data.plugin_config is not None:
