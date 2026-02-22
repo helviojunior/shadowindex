@@ -230,7 +230,7 @@ class DirectoryScanner:
         
         # Verificar limite de profundidade
         if scan_job.depth > scan_job.max_depth:
-            print(f"=== SCANNER: Max depth reached, skipping ===", flush=True)
+            print("=== SCANNER: Max depth reached, skipping ===", flush=True)
             return
         
         # Obter servidor
@@ -283,7 +283,7 @@ class DirectoryScanner:
             print(f"=== SCANNER: list_directory returned {len(items) if items else 0} items ===", flush=True)
             
             if not items:
-                print(f"=== SCANNER: Empty result from list_directory ===", flush=True)
+                print("=== SCANNER: Empty result from list_directory ===", flush=True)
                 return
             
             files_added = 0
