@@ -28,6 +28,33 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-23 (Session 31 - Sync Download & Network Error Handling)
+- [x] **Nome da Instância de Plugin no Card do Servidor:**
+  - Campo `plugin_instance_name` adicionado ao `ServerResponse` em `server.py`
+  - Endpoint `GET /api/servers/{server_id}` agora retorna o nome da instância configurada
+  - Frontend `ServerBrowser.js` exibe o nome da instância em badge abaixo do IP
+- [x] **Correção do Download em Batch (Sync):**
+  - Endpoint `/downloads/scan` corrigido para usar `DirectoryScanner.add_scan_job()`
+  - Anteriormente criava jobs na tabela SQLAlchemy (não processados)
+  - Agora usa o scanner em memória que processa jobs de forma assíncrona
+- [x] **Preservação de Nós da Tree View após Download:**
+  - Função `processDirectoryDownload` corrigida para usar IDs corretos do banco
+  - Cálculo de `nodeId` agora busca o ID real nos `nodeChildren` existentes
+  - `setNodeChildren` agora mescla dados existentes com novos, preservando estado
+  - Subdiretórios usam `dir.id` do banco de dados em vez de hash do path
+- [x] **Tratamento de Erro de Rede no SOAP (Código 53):**
+  - Plugin SOAP (`soap_api.py`) agora detecta erros de rede no `list_shares`
+  - Códigos tratados: 53 (rede), 5 (acesso negado), 1326 (autenticação)
+  - Exceções específicas: `ConnectionException`, `AccessDeniedException`
+- [x] **Mock SOAP para Servidores Offline:**
+  - Lista `OFFLINE_SERVERS` adicionada ao mock para simular servidores inacessíveis
+  - Função `build_network_error_response()` gera XML de erro realista
+  - IPs de teste: `192.168.99.99`, `offline.test.local`, `10.0.0.254`
+- [x] **Tratamento de Exceções no Endpoint list_shares:**
+  - `ConnectionException` retorna HTTP 503 (Service Unavailable)
+  - `AccessDeniedException` retorna HTTP 403 (Forbidden)
+  - Mensagens de erro em português incluídas na resposta
+
 ### 2026-02-22 (Session 30 - Plugin Instance Architecture Update)
 - [x] **SOAP Mock Server criado:**
   - Novo serviço em `backend/soap_mock/mock_server.py`
