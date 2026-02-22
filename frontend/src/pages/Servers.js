@@ -558,14 +558,14 @@ const Servers = () => {
                         {editingPluginServer === server.id ? (
                           <div className="flex items-center justify-center gap-2">
                             <Select
-                              value={editPluginInstanceId}
-                              onValueChange={setEditPluginInstanceId}
+                              value={editPluginInstanceId || 'none'}
+                              onValueChange={(value) => setEditPluginInstanceId(value === 'none' ? '' : value)}
                             >
                               <SelectTrigger className="w-40 h-8 text-xs">
                                 <SelectValue placeholder="Instância" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">
+                                <SelectItem value="none">
                                   <span className="text-muted-foreground">Nenhuma</span>
                                 </SelectItem>
                                 {pluginInstances.map((instance) => (
