@@ -168,8 +168,16 @@ class WebSocketManager:
     async def emit_gitleaks_stats(self, stats: Dict[str, int]):
         """Emite estatísticas de GitLeaks (para notificação sonora)"""
         await self.broadcast({
-            "type": "gitleaks_stats",
-            **stats,
+            "type": "gitleaks_stats_updated",
+            "data": stats,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+    
+    async def emit_ocr_stats(self, stats: Dict[str, int]):
+        """Emite estatísticas de OCR (para notificação sonora)"""
+        await self.broadcast({
+            "type": "ocr_stats_updated",
+            "data": stats,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
