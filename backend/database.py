@@ -1015,7 +1015,16 @@ WHERE STATUS = 'ACTIVE' AND USERNAME IS NOT NULL""",
     logger.info("Database initialized")
 
 async def get_db():
+    """Sessão de banco para operações de escrita"""
     async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+async def get_db_readonly():
+    """Sessão de banco somente leitura para consultas pesadas (dashboard, listagens)"""
+    async with AsyncSessionReadonly() as session:
         try:
             yield session
         finally:
