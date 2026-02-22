@@ -144,10 +144,28 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   const [hoveredMenu, setHoveredMenu] = useState(null);
   const [flyoutPosition, setFlyoutPosition] = useState({ top: 0 });
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const hoverTimeoutRef = useRef(null);
   const menuRefs = useRef({});
   const location = useLocation();
   const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
+  const { isConnected, errorMessage, resetConnection } = useConnectionStatus();
+
+  // Handler para tentar reconectar
+  const handleRetryConnection = useCallback(async () => {
+    setIsRetrying(true);
+    try {
+      // Testar conexão com o backend
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/api/health`);
+      if (response.ok) {
+        resetConnection();
+      }
+    } catch (error) {
+      console.error('Retry failed:', error);
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [resetConnection]);
 
   const { menuId: activeMenuId, subMenuId: activeSubMenuId } = findActiveMenu(location.pathname);
 
