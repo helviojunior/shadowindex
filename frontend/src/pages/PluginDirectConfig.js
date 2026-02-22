@@ -43,16 +43,6 @@ const PluginDirectConfig = () => {
   // Health check states
   const [healthStatus, setHealthStatus] = useState({});
   const [checkingHealth, setCheckingHealth] = useState({});
-  
-  // Test config (for Info tab)
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null);
-  const [testConfig, setTestConfig] = useState({
-    credential_id: 'none',
-    dns_mode: 'system',
-    dns_servers: '',
-    test_hostname: 'google.com'
-  });
 
   useEffect(() => {
     loadData();
