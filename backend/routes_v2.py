@@ -1348,42 +1348,7 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         mimetype = get_file_mimetype(local_path)
         sanitized_path = f"{server.id}/{file_id}/{version}"
         
-        # 2. OCR - Processar arquivo para extração de texto (se aplicável)
-        ocr_text = None
-        ocr_status = "not_applicable"
-        try:
-            from ocr_service import OCRService
-            ocr_service = OCRService()
-            
-            if ocr_service.is_available():
-                # Verificar se o tipo de arquivo suporta OCR
-                ocr_supported_mimes = [
-                    'application/pdf',
-                    'image/png', 'image/jpeg', 'image/gif', 'image/bmp', 'image/tiff',
-                    'application/msword',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'application/vnd.ms-excel',
-                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'text/plain', 'text/html', 'text/xml'
-                ]
-                
-                if mimetype and any(m in mimetype for m in ocr_supported_mimes):
-                    logger.info(f"Processing OCR for file {item.full_path}")
-                    ocr_result = await ocr_service.extract_text(local_path)
-                    if ocr_result and ocr_result.get('success'):
-                        ocr_text = ocr_result.get('text', '')
-                        ocr_status = "completed"
-                        logger.info(f"OCR completed for {item.full_path}: {len(ocr_text)} chars")
-                    else:
-                        ocr_status = "failed"
-                else:
-                    ocr_status = "not_applicable"
-            else:
-                ocr_status = "service_unavailable"
-        except Exception as ocr_error:
-            logger.warning(f"OCR failed for {item.full_path}: {ocr_error}")
-            ocr_status = "failed"
-        
+        # Atualizar campos adicionais no registro
         if existing:
             # Atualizar existente
             existing.sanitized_path = sanitized_path
@@ -1391,13 +1356,139 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
             existing.file_size = file_size
             existing.mimetype = mimetype
             existing.downloaded_at = datetime.now(timezone.utc)
-            await db.commit()
-            await db.refresh(existing)
+            existing.local_path = local_path
+            existing.file_name = item.name
+            existing.server_id = server.id
+            downloaded_file = existing
+        else:
+            # Atualizar o registro criado
+            downloaded_file.sanitized_path = sanitized_path
+            downloaded_file.sha1_hash = sha1_hash
+            downloaded_file.file_size = file_size
+            downloaded_file.mimetype = mimetype
+            downloaded_file.local_path = local_path
+            downloaded_file.file_name = item.name
+            downloaded_file.server_id = server.id
+        
+        # Criar/atualizar FileVersion
+        existing_version = await db.execute(
+            select(FileVersion).where(
+                FileVersion.server_guid == server.guid,
+                FileVersion.file_path == item.full_path,
+                FileVersion.sha1_hash == sha1_hash
+            )
+        )
+        file_version = existing_version.scalar_one_or_none()
+        
+        if not file_version:
+            # Marcar versões anteriores como não-atuais
+            prev_versions = await db.execute(
+                select(FileVersion).where(
+                    FileVersion.server_guid == server.guid,
+                    FileVersion.file_path == item.full_path,
+                    FileVersion.is_current == True
+                )
+            )
+            for v in prev_versions.scalars().all():
+                v.is_current = False
             
-            # Atualizar OCR na versão do arquivo
-            if ocr_text:
-                version_result = await db.execute(
-                    select(FileVersion).where(
+            # Contar versões existentes
+            version_count_result = await db.execute(
+                select(FileVersion).where(
+                    FileVersion.server_guid == server.guid,
+                    FileVersion.file_path == item.full_path
+                )
+            )
+            versions_list = version_count_result.scalars().all()
+            next_version_num = len(versions_list) + 1
+            
+            # Criar nova versão
+            file_version = FileVersion(
+                server_guid=server.guid,
+                share_name=item.share_name,
+                file_path=item.full_path,
+                version_number=next_version_num,
+                sha1_hash=sha1_hash,
+                file_size=file_size,
+                mimetype=mimetype,
+                local_path=local_path,
+                is_current=True
+            )
+            db.add(file_version)
+        
+        await db.commit()
+        await db.refresh(downloaded_file)
+        if file_version:
+            await db.refresh(file_version)
+        
+        # Verificar configurações de Auto OCR e adicionar à fila
+        ocr_job_id = None
+        try:
+            from database import AppSettings
+            
+            # Verificar se auto OCR está habilitado
+            enabled_result = await db.execute(
+                select(AppSettings).where(AppSettings.key == 'auto_ocr_enabled')
+            )
+            enabled_setting = enabled_result.scalar_one_or_none()
+            auto_ocr_enabled = enabled_setting.value.lower() in ('true', '1', 'yes', 'on') if enabled_setting else True
+            
+            if auto_ocr_enabled:
+                # Buscar extensões configuradas
+                ext_result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'auto_ocr_extensions')
+                )
+                ext_setting = ext_result.scalar_one_or_none()
+                auto_ocr_extensions = [e.strip().lower() for e in ext_setting.value.split(',') if e.strip()] if ext_setting and ext_setting.value else []
+                
+                # Buscar mimetypes configurados
+                mime_result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'auto_ocr_mimetypes')
+                )
+                mime_setting = mime_result.scalar_one_or_none()
+                auto_ocr_mimetypes = [m.strip().lower() for m in mime_setting.value.split(',') if m.strip()] if mime_setting and mime_setting.value else []
+                
+                # Verificar se deve adicionar à fila de OCR
+                should_ocr = False
+                file_ext = ('.' + item.name.rsplit('.', 1)[-1]).lower() if '.' in item.name else ''
+                mime_lower = (mimetype or '').lower()
+                
+                # Verificar por extensão
+                if file_ext and any(file_ext == ext or file_ext.endswith(ext) for ext in auto_ocr_extensions):
+                    should_ocr = True
+                
+                # Verificar por mimetype (match parcial)
+                if not should_ocr and mime_lower:
+                    for mime_pattern in auto_ocr_mimetypes:
+                        if mime_pattern in mime_lower:
+                            should_ocr = True
+                            break
+                
+                if should_ocr:
+                    from ocr_worker import queue_ocr_job
+                    
+                    version_id = file_version.id if file_version else None
+                    
+                    ocr_job_id = await queue_ocr_job(
+                        db=db,
+                        file_id=downloaded_file.id,
+                        version_id=version_id,
+                        server_id=server.id,
+                        file_path=item.full_path,
+                        file_name=item.name,
+                        local_path=local_path,
+                        ocr_language="eng+por",
+                        priority=1  # Prioridade maior para sync manual
+                    )
+                    logger.info(f"OCR job {ocr_job_id} queued for {item.name}")
+                    
+        except Exception as ocr_err:
+            logger.warning(f"Failed to queue OCR job for {item.name}: {ocr_err}")
+        
+        # Incrementar contador de downloads do servidor se novo arquivo
+        if not existing:
+            server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
+            await db.commit()
                         FileVersion.server_guid == server.guid,
                         FileVersion.file_path == item.full_path,
                         FileVersion.is_current == True
