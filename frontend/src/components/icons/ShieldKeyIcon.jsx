@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * CredentialKeyIcon - Custom icon for credentials/passwords
- * Key with zigzag teeth + password field with asterisks
+ * Key with zigzag teeth (outline style) + password field with asterisks
  */
 const CredentialKeyIcon = ({ className = '', size = 24, ...props }) => {
   return (
@@ -12,68 +12,89 @@ const CredentialKeyIcon = ({ className = '', size = 24, ...props }) => {
       width={size}
       height={size}
       className={className}
-      fill="currentColor"
       {...props}
     >
+      <defs>
+        {/* Clip to prevent lines inside the key head */}
+        <clipPath id="cutHead">
+          <rect width="512" height="512"/>
+          <circle cx="120" cy="170" r="95"/>
+        </clipPath>
+      </defs>
+
       {/* KEY HEAD */}
-      <circle cx="120" cy="170" r="85" />
+      <circle cx="120" cy="170" r="85" fill="currentColor"/>
+      <circle cx="95" cy="170" r="18" fill="var(--background, #1a1a1a)"/>
 
-      {/* KEY HOLE */}
-      <circle cx="95" cy="170" r="18" fill="var(--background, #1a1a1a)" />
+      {/* KEY BODY (outline) */}
+      <g 
+        clipPath="url(#cutHead)"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="18"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      >
+        {/* Body */}
+        <path d="M200 140 H410 V200 H200 Z"/>
 
-      {/* KEY SHAFT */}
-      <rect x="200" y="150" width="210" height="40" />
-
-      {/* KEY TEETH */}
-      <polygon 
-        points="
-          410,150
-          470,150
-          500,180
-          470,210
-          445,210
-          430,195
-          410,210
-          390,210
-          370,190
-          350,210
-          320,210
-          320,190
-          350,150
-        "
-      />
+        {/* Teeth */}
+        <path d="
+          M410 140
+          H470
+          L500 170
+          L470 200
+          H445
+          L430 185
+          L410 200
+          H390
+          L370 180
+          L350 200
+          H320
+          V180
+          L350 140
+          Z"
+        />
+      </g>
 
       {/* PASSWORD BOX */}
-      <rect x="35" y="300" width="465" height="90" />
+      <rect x="35" y="300" width="465" height="90" fill="currentColor"/>
 
       {/* ASTERISKS */}
       <g stroke="var(--background, #1a1a1a)" strokeWidth="8" strokeLinecap="round">
-        <g transform="translate(150,345)">
-          <line x1="-16" y1="0" x2="16" y2="0"/>
-          <line x1="0" y1="-16" x2="0" y2="16"/>
-          <line x1="-12" y1="-12" x2="12" y2="12"/>
-          <line x1="-12" y1="12" x2="12" y2="-12"/>
+        <g transform="translate(110,345)">
+          <line x1="-14" y1="0" x2="14" y2="0"/>
+          <line x1="0" y1="-14" x2="0" y2="14"/>
+          <line x1="-10" y1="-10" x2="10" y2="10"/>
+          <line x1="-10" y1="10" x2="10" y2="-10"/>
         </g>
 
-        <g transform="translate(230,345)">
-          <line x1="-16" y1="0" x2="16" y2="0"/>
-          <line x1="0" y1="-16" x2="0" y2="16"/>
-          <line x1="-12" y1="-12" x2="12" y2="12"/>
-          <line x1="-12" y1="12" x2="12" y2="-12"/>
+        <g transform="translate(185,345)">
+          <line x1="-14" y1="0" x2="14" y2="0"/>
+          <line x1="0" y1="-14" x2="0" y2="14"/>
+          <line x1="-10" y1="-10" x2="10" y2="10"/>
+          <line x1="-10" y1="10" x2="10" y2="-10"/>
         </g>
 
-        <g transform="translate(310,345)">
-          <line x1="-16" y1="0" x2="16" y2="0"/>
-          <line x1="0" y1="-16" x2="0" y2="16"/>
-          <line x1="-12" y1="-12" x2="12" y2="12"/>
-          <line x1="-12" y1="12" x2="12" y2="-12"/>
+        <g transform="translate(260,345)">
+          <line x1="-14" y1="0" x2="14" y2="0"/>
+          <line x1="0" y1="-14" x2="0" y2="14"/>
+          <line x1="-10" y1="-10" x2="10" y2="10"/>
+          <line x1="-10" y1="10" x2="10" y2="-10"/>
         </g>
 
-        <g transform="translate(390,345)">
-          <line x1="-16" y1="0" x2="16" y2="0"/>
-          <line x1="0" y1="-16" x2="0" y2="16"/>
-          <line x1="-12" y1="-12" x2="12" y2="12"/>
-          <line x1="-12" y1="12" x2="12" y2="-12"/>
+        <g transform="translate(335,345)">
+          <line x1="-14" y1="0" x2="14" y2="0"/>
+          <line x1="0" y1="-14" x2="0" y2="14"/>
+          <line x1="-10" y1="-10" x2="10" y2="10"/>
+          <line x1="-10" y1="10" x2="10" y2="-10"/>
+        </g>
+
+        <g transform="translate(410,345)">
+          <line x1="-14" y1="0" x2="14" y2="0"/>
+          <line x1="0" y1="-14" x2="0" y2="14"/>
+          <line x1="-10" y1="-10" x2="10" y2="10"/>
+          <line x1="-10" y1="10" x2="10" y2="-10"/>
         </g>
       </g>
     </svg>
