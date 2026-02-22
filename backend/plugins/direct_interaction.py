@@ -610,23 +610,36 @@ class DirectInteractionPlugin(BasePlugin):
                     is_dir = item.is_directory()
                     size = item.get_filesize() if not is_dir else 0
                     
+                    # Build full path
+                    if dir_path:
+                        item_full_path = f"\\\\{server_ip}\\{share_name}\\{dir_path}\\{name}"
+                    else:
+                        item_full_path = f"\\\\{server_ip}\\{share_name}\\{name}"
+                    
                     # Format timestamps
                     created = None
                     modified = None
                     try:
                         if item.get_ctime_epoch():
-                            created = datetime.fromtimestamp(item.get_ctime_epoch()).isoformat()
+                            created = datetime.fromtimestamp(item.get_ctime_epoch())
                         if item.get_mtime_epoch():
-                            modified = datetime.fromtimestamp(item.get_mtime_epoch()).isoformat()
+                            modified = datetime.fromtimestamp(item.get_mtime_epoch())
                     except Exception:
                         pass
                     
+                    # Get extension for files
+                    extension = ""
+                    if not is_dir and "." in name:
+                        extension = name.rsplit(".", 1)[-1].lower()
+                    
                     items.append(DirectoryItem(
                         name=name,
-                        is_directory=is_dir,
+                        item_type="Directory" if is_dir else "File",
+                        full_path=item_full_path,
                         size=size,
                         modified=modified,
-                        created=created
+                        created=created,
+                        extension=extension
                     ))
                 
                 smb_conn.disconnectTree(tree_id)
