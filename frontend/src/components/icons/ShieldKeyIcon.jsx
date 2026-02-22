@@ -3,6 +3,7 @@ import React from 'react';
 /**
  * CredentialKeyIcon - Custom icon for credentials/passwords
  * Key with zigzag teeth + password field with asterisks
+ * Based on reference image
  */
 const CredentialKeyIcon = ({ className = '', size = 24, ...props }) => {
   return (
@@ -16,32 +17,41 @@ const CredentialKeyIcon = ({ className = '', size = 24, ...props }) => {
       {...props}
     >
       {/* Key head (oval filled) */}
-      <ellipse cx="5" cy="5.5" rx="4" ry="4.5" />
+      <ellipse cx="4.5" cy="5" rx="3.5" ry="4" />
       
       {/* Key hole (cutout) */}
-      <ellipse cx="5" cy="5.5" rx="1" ry="1.2" fill="var(--background, #1a1a1a)" />
+      <circle cx="4.5" cy="5" r="1" fill="var(--background, #1a1a1a)" />
       
-      {/* Key shaft - rectangle part */}
-      <rect x="8" y="4" width="4" height="3" />
+      {/* Key shaft base */}
+      <rect x="7.5" y="3.5" width="3.5" height="3" />
       
-      {/* Key teeth - zigzag pattern */}
-      <path 
-        d="M12 4 L15 4 L15 5 L17 5 L17 4 L19 4 L21 5.5 L19 7 L17 7 L17 6 L15 6 L15 7 L12 7 Z"
-      />
+      {/* Key teeth - zigzag shape pointing right */}
+      <polygon points="11,3.5 14,3.5 14,4.5 16,4.5 16,3.5 18,3.5 20,5 18,6.5 16,6.5 16,5.5 14,5.5 14,6.5 11,6.5" />
       
-      {/* Password field bar */}
-      <rect x="1" y="16" width="22" height="7" rx="0.5" />
+      {/* Password field bar (bottom rectangle) */}
+      <rect x="1" y="15" width="22" height="8" rx="0.8" />
       
-      {/* Asterisks as star shapes */}
-      <g fill="var(--background, #1a1a1a)">
-        {/* Star 1 */}
-        <path d="M4.5 19.5 L4.5 17.5 M3.3 18.2 L5.7 20.8 M5.7 18.2 L3.3 20.8" stroke="var(--background, #1a1a1a)" strokeWidth="0.8" strokeLinecap="round"/>
-        {/* Star 2 */}
-        <path d="M9 19.5 L9 17.5 M7.8 18.2 L10.2 20.8 M10.2 18.2 L7.8 20.8" stroke="var(--background, #1a1a1a)" strokeWidth="0.8" strokeLinecap="round"/>
-        {/* Star 3 */}
-        <path d="M13.5 19.5 L13.5 17.5 M12.3 18.2 L14.7 20.8 M14.7 18.2 L12.3 20.8" stroke="var(--background, #1a1a1a)" strokeWidth="0.8" strokeLinecap="round"/>
-        {/* Star 4 */}
-        <path d="M18 19.5 L18 17.5 M16.8 18.2 L19.2 20.8 M19.2 18.2 L16.8 20.8" stroke="var(--background, #1a1a1a)" strokeWidth="0.8" strokeLinecap="round"/>
+      {/* Asterisks as 6-line stars */}
+      <g stroke="var(--background, #1a1a1a)" strokeWidth="1.2" strokeLinecap="round">
+        {/* Asterisk 1 */}
+        <line x1="5" y1="17" x2="5" y2="21" />
+        <line x1="3" y1="18" x2="7" y2="20" />
+        <line x1="7" y1="18" x2="3" y2="20" />
+        
+        {/* Asterisk 2 */}
+        <line x1="10" y1="17" x2="10" y2="21" />
+        <line x1="8" y1="18" x2="12" y2="20" />
+        <line x1="12" y1="18" x2="8" y2="20" />
+        
+        {/* Asterisk 3 */}
+        <line x1="15" y1="17" x2="15" y2="21" />
+        <line x1="13" y1="18" x2="17" y2="20" />
+        <line x1="17" y1="18" x2="13" y2="20" />
+        
+        {/* Asterisk 4 */}
+        <line x1="20" y1="17" x2="20" y2="21" />
+        <line x1="18" y1="18" x2="22" y2="20" />
+        <line x1="22" y1="18" x2="18" y2="20" />
       </g>
     </svg>
   );
