@@ -3586,6 +3586,11 @@ async def get_download_jobs(
     if server_id:
         query = query.where(DownloadJob.server_id == server_id)
     
+    # Filtrar por status (pode ser múltiplos separados por vírgula)
+    if status:
+        status_list = [s.strip() for s in status.split(',')]
+        query = query.where(DownloadJob.status.in_(status_list))
+    
     if limit:
         query = query.limit(limit)
     
