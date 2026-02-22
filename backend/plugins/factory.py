@@ -180,21 +180,6 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
     
     plugin_type = instance.plugin_type
     plugin_config = instance.config or {}
-            logger.warning(f"Plugin instance {plugin_instance_id} not found, falling back to legacy config")
-    
-    # Fallback to legacy config if no instance
-    if not plugin_type:
-        plugin_type = getattr(server, 'plugin_type', 'soap_api') or 'soap_api'
-        server_plugin_config = getattr(server, 'plugin_config', None)
-        if server_plugin_config:
-            if isinstance(server_plugin_config, dict):
-                plugin_config = server_plugin_config
-            elif isinstance(server_plugin_config, str):
-                import json
-                try:
-                    plugin_config = json.loads(server_plugin_config)
-                except json.JSONDecodeError:
-                    pass
     
     # For SOAP API plugin, validate URL is configured in instance
     if plugin_type == "soap_api" and "soap_url" not in plugin_config:
