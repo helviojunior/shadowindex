@@ -306,6 +306,33 @@ class SoapApiPlugin(BasePlugin):
                     result_elements = root.findall('.//Result')
                     
                     if result_elements:
+                        # First check for error messages
+                        first_result = result_elements[0]
+                        error_message = first_result.findtext('message', '')
+                        stack_trace = first_result.findtext('stacktrace', '')
+                        
+                        if error_message:
+                            error_lower = error_message.lower()
+                            logger.warning(f"SOAP ListShares error: {error_message}")
+                            
+                            # Check for specific error codes
+                            # Code 53 = Network path not found / Server unavailable
+                            if "code: 53" in error_message or "code:53" in error_message:
+                                raise ConnectionException(f"Servidor inacessível (erro de rede 53): {error_message}")
+                            # Code 5 = Access denied
+                            elif "code: 5" in error_message or "code:5" in error_message:
+                                raise AccessDeniedException(f"Acesso negado ao servidor: {error_message}")
+                            # Code 1326 = Logon failure
+                            elif "code: 1326" in error_message or "code:1326" in error_message:
+                                raise AccessDeniedException(f"Falha de autenticação: {error_message}")
+                            # Generic "failed" with code
+                            elif "failed" in error_lower and "code" in error_lower:
+                                raise ConnectionException(f"Falha na operação: {error_message}")
+                            # Access denied keywords
+                            elif "access" in error_lower and "denied" in error_lower:
+                                raise AccessDeniedException(f"Acesso negado: {error_message}")
+                        
+                        # No error, process shares
                         for share_elem in result_elements:
                             # diffgram format: host, name, type, remark
                             name = share_elem.findtext('name', '')
