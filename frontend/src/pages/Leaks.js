@@ -739,30 +739,44 @@ const Leaks = () => {
                                   <Copy className="w-4 h-4" />
                                 </Button>
                               )}
-                              {/* Abrir arquivo */}
-                              {finding.extracted_file_id && (
+                              {/* Abrir arquivo - mostra se tem extracted_file_id OU se tem server_id com server_path */}
+                              {(finding.extracted_file_id || (finding.server_id && (finding.server_path || finding.File))) && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={async () => {
-                                    try {
-                                      // Buscar informações do arquivo para obter o server_id
-                                      const response = await axios.get(`${API}/downloads/${finding.extracted_file_id}`);
-                                      if (response.data && response.data.server_id) {
-                                        window.open(`/servers/${response.data.server_id}/browse?file_id=${finding.extracted_file_id}`, '_blank');
-                                      } else {
-                                        // Fallback: usar server_id do finding se disponível
-                                        const serverId = finding.extracted_server_id || finding.server_id;
-                                        if (serverId) {
-                                          window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                    const serverId = finding.extracted_server_id || finding.server_id;
+                                    
+                                    // Se tem extracted_file_id, usar navegação direta
+                                    if (finding.extracted_file_id) {
+                                      try {
+                                        // Buscar informações do arquivo para obter o server_id
+                                        const response = await axios.get(`${API}/downloads/${finding.extracted_file_id}`);
+                                        if (response.data && response.data.server_id) {
+                                          window.open(`/servers/${response.data.server_id}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                          return;
                                         }
+                                      } catch (error) {
+                                        console.error('Error fetching file info:', error);
                                       }
-                                    } catch (error) {
-                                      console.error('Error opening file:', error);
-                                      // Fallback: usar server_id do finding se disponível
-                                      const serverId = finding.extracted_server_id || finding.server_id;
+                                      // Fallback com server_id do finding
                                       if (serverId) {
                                         window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                        return;
+                                      }
+                                    }
+                                    
+                                    // Para leaks manuais sem extracted_file_id, navegar para o servidor
+                                    // e buscar pelo caminho do arquivo
+                                    if (serverId) {
+                                      const filePath = finding.server_path || finding.File || finding.original_file;
+                                      if (filePath) {
+                                        // Codificar o caminho para a URL
+                                        const encodedPath = encodeURIComponent(filePath);
+                                        window.open(`/servers/${serverId}/browse?path=${encodedPath}`, '_blank');
+                                      } else {
+                                        // Só navegar para o servidor
+                                        window.open(`/servers/${serverId}/browse`, '_blank');
                                       }
                                     }
                                   }}
