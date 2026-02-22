@@ -256,7 +256,7 @@ const ProxyServers = () => {
                       {credentials.map((cred) => (
                         <SelectItem key={cred.id} value={cred.id.toString()}>
                           <div className="flex items-center gap-2">
-                            <CredentialIcon className="w-4 h-4 text-primary" />
+                            <CredentialKeyIcon className="w-4 h-4 text-primary" />
                             {cred.name || `${cred.domain ? cred.domain + '\\' : ''}${cred.username}`}
                           </div>
                         </SelectItem>
