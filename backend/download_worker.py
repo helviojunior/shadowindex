@@ -504,6 +504,7 @@ class DownloadWorker:
             auto_ocr_enabled = True
             auto_ocr_extensions = []
             auto_ocr_mimetypes = []
+            auto_ocr_excluded_extensions = []
             
             try:
                 from database import AppSettings
@@ -531,6 +532,14 @@ class DownloadWorker:
                 mime_setting = mime_result.scalar_one_or_none()
                 if mime_setting and mime_setting.value:
                     auto_ocr_mimetypes = [m.strip().lower() for m in mime_setting.value.split(',') if m.strip()]
+                
+                # Buscar extensões excluídas (precedência sobre inclusão)
+                excluded_result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'auto_ocr_excluded_extensions')
+                )
+                excluded_setting = excluded_result.scalar_one_or_none()
+                if excluded_setting and excluded_setting.value:
+                    auto_ocr_excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
                     
             except Exception as settings_err:
                 logger.warning(f"Could not load auto OCR settings: {settings_err}")
@@ -541,18 +550,31 @@ class DownloadWorker:
                 file_ext = ('.' + job.file_name.rsplit('.', 1)[-1]).lower() if '.' in job.file_name else ''
                 mime_lower = (mimetype or '').lower()
                 
-                # Verificar por extensão
-                if file_ext and any(file_ext == ext or file_ext.endswith(ext) for ext in auto_ocr_extensions):
-                    should_ocr = True
-                    logger.info(f"Auto OCR enabled for {job.file_name} (extension match: {file_ext})")
-                
-                # Verificar por mimetype (match parcial)
-                if not should_ocr and mime_lower:
-                    for mime_pattern in auto_ocr_mimetypes:
-                        if mime_pattern in mime_lower:
-                            should_ocr = True
-                            logger.info(f"Auto OCR enabled for {job.file_name} (mimetype match: {mime_lower})")
+                # PRIMEIRO: Verificar lista de exclusão (tem precedência)
+                is_excluded = False
+                if file_ext and auto_ocr_excluded_extensions:
+                    for excluded_ext in auto_ocr_excluded_extensions:
+                        # Normalizar extensão (adicionar ponto se não tiver)
+                        excluded_ext_normalized = excluded_ext if excluded_ext.startswith('.') else f'.{excluded_ext}'
+                        if file_ext == excluded_ext_normalized:
+                            is_excluded = True
+                            logger.info(f"Auto OCR skipped for {job.file_name} (excluded extension: {file_ext})")
                             break
+                
+                # Se não está excluído, verificar se deve incluir
+                if not is_excluded:
+                    # Verificar por extensão
+                    if file_ext and any(file_ext == ext or file_ext.endswith(ext) for ext in auto_ocr_extensions):
+                        should_ocr = True
+                        logger.info(f"Auto OCR enabled for {job.file_name} (extension match: {file_ext})")
+                    
+                    # Verificar por mimetype (match parcial)
+                    if not should_ocr and mime_lower:
+                        for mime_pattern in auto_ocr_mimetypes:
+                            if mime_pattern in mime_lower:
+                                should_ocr = True
+                                logger.info(f"Auto OCR enabled for {job.file_name} (mimetype match: {mime_lower})")
+                                break
             
             # Adicionar à fila de OCR se configurado
             if should_ocr:
