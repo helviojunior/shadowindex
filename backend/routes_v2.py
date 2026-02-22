@@ -3381,16 +3381,23 @@ async def clear_gitleaks_findings():
 
 @router.post("/gitleaks/findings/reload")
 async def reload_gitleaks_findings():
-    """Recarrega findings dos arquivos de relatório em disco"""
+    """Recarrega findings do banco de dados para o cache em memória"""
     from gitleaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
-    count = service.load_findings_from_disk()
+    
+    # Primeiro carregar do banco de dados
+    db_count = await service.load_findings_from_db()
+    
+    # Depois carregar de arquivos em disco (caso existam novos)
+    disk_count = service.load_findings_from_disk()
     
     return {
         "success": True,
-        "loaded": count,
-        "message": f"{count} findings carregados de disco"
+        "loaded_from_db": db_count,
+        "loaded_from_disk": disk_count,
+        "total_findings": len(service._findings),
+        "message": f"Carregados {db_count} do banco e {disk_count} do disco"
     }
 
 @router.delete("/gitleaks/jobs/clear-finished")
