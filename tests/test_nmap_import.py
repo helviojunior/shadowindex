@@ -11,7 +11,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://sql-exec-hub.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://sql-command-hub.preview.emergentagent.com')
 
 class TestNmapImportEndpoint:
     """Tests for Nmap server import endpoint"""
