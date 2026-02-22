@@ -3892,6 +3892,71 @@ async def get_ocr_stats(db: AsyncSession = Depends(get_db_readonly)):
     }
 
 
+@router.post("/ocr/skip-excluded")
+async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
+    """Marca como skipped todos os jobs de OCR pendentes com extensões na lista de exclusão"""
+    from database import OCRJob, AppSettings
+    from sqlalchemy import update
+    from datetime import datetime, timezone
+    
+    # Carregar lista de extensões excluídas
+    excluded_result = await db.execute(
+        select(AppSettings).where(AppSettings.key == 'auto_ocr_excluded_extensions')
+    )
+    excluded_setting = excluded_result.scalar_one_or_none()
+    
+    if not excluded_setting or not excluded_setting.value:
+        return {"skipped": 0, "message": "Lista de exclusão está vazia"}
+    
+    excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
+    # Normalizar extensões para ter o ponto
+    excluded_extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in excluded_extensions]
+    
+    if not excluded_extensions:
+        return {"skipped": 0, "message": "Lista de exclusão está vazia"}
+    
+    # Buscar jobs pendentes
+    pending_result = await db.execute(
+        select(OCRJob).where(OCRJob.status == 'pending')
+    )
+    pending_jobs = pending_result.scalars().all()
+    
+    skipped_count = 0
+    for job in pending_jobs:
+        import os
+        file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
+        if file_ext in excluded_extensions:
+            job.status = 'skipped'
+            job.error_message = f'Extensão {file_ext} está na lista de exclusão'
+            job.completed_at = datetime.now(timezone.utc)
+            skipped_count += 1
+    
+    await db.commit()
+    
+    return {
+        "skipped": skipped_count,
+        "message": f"{skipped_count} jobs marcados como skipped",
+        "excluded_extensions": excluded_extensions
+    }
+
+
+@router.delete("/ocr/jobs/clear-finished")
+async def clear_finished_ocr_jobs(db: AsyncSession = Depends(get_db)):
+    """Remove todos os jobs de OCR finalizados (completed, failed, skipped)"""
+    from database import OCRJob
+    from sqlalchemy import delete
+    
+    result = await db.execute(
+        delete(OCRJob).where(OCRJob.status.in_(['completed', 'failed', 'skipped']))
+    )
+    await db.commit()
+    
+    return {
+        "deleted": result.rowcount,
+        "message": f"{result.rowcount} jobs removidos"
+    }
+
+
 class ManualLeakCreate(BaseModel):
     """Modelo para criação de leak manual"""
     file_path: str
