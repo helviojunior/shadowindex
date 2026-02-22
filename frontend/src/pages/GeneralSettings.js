@@ -109,6 +109,43 @@ const GeneralSettings = () => {
     handleChange('ignored_extensions', newList);
   };
 
+  // Funções para gerenciar portas de importação
+  const getPortsList = () => {
+    const ports = settings.import_ports || '';
+    return ports.split(',').map(p => p.trim()).filter(p => p);
+  };
+
+  const getPortName = (port) => {
+    const portNum = parseInt(port);
+    if (portNum === DEFAULT_SMB_PORT) return 'SMB';
+    return DEFAULT_DB_PORTS[portNum] || `Porta ${port}`;
+  };
+
+  const addPort = () => {
+    const portNum = parseInt(newPort);
+    if (!portNum || portNum < 1 || portNum > 65535) {
+      toast.error('Porta inválida (1-65535)');
+      return;
+    }
+    
+    const currentList = getPortsList();
+    if (currentList.includes(String(portNum))) {
+      toast.error('Porta já existe na lista');
+      return;
+    }
+    
+    const newList = [...currentList, String(portNum)].join(',');
+    handleChange('import_ports', newList);
+    setNewPort('');
+    setNewPortName('');
+  };
+
+  const removePort = (portToRemove) => {
+    const currentList = getPortsList();
+    const newList = currentList.filter(p => p !== portToRemove).join(',');
+    handleChange('import_ports', newList);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
