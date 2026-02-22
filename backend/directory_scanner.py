@@ -324,7 +324,21 @@ class DirectoryScanner:
                     # Verificar extensão ignorada (apenas se aplicar filtros)
                     if scan_job.apply_filters and ignored_extensions:
                         file_lower = item_name.lower()
-                        should_skip = any(file_lower.endswith(ext) for ext in ignored_extensions)
+                        should_skip = False
+                        for ext in ignored_extensions:
+                            if ext.endswith('.*'):
+                                # Padrão com wildcard: .log.* deve ignorar .log.1, .log.2, etc.
+                                base_ext = ext[:-2]  # Remove .*
+                                if base_ext in file_lower:
+                                    # Verificar se tem algo após o padrão base (ex: .log.1, .log.2)
+                                    import re
+                                    pattern = re.escape(base_ext) + r'\.\d+'
+                                    if re.search(pattern, file_lower):
+                                        should_skip = True
+                                        break
+                            elif file_lower.endswith(ext):
+                                should_skip = True
+                                break
                         if should_skip:
                             logger.debug(f"Skipping file by extension: {item_name}")
                             continue
