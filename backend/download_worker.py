@@ -278,6 +278,14 @@ class DownloadWorker:
         downloaded = 0
         chunks = []
         
+        # Emitir evento de início
+        ws_manager = get_websocket_manager()
+        await ws_manager.emit_download_started(
+            job_id=job.id,
+            file_path=job.file_path,
+            file_name=job.file_name or full_path.split('\\')[-1]
+        )
+        
         while downloaded < total_size:
             file_content = await plugin.download_file(
                 full_path, 
@@ -297,6 +305,15 @@ class DownloadWorker:
             job.total_bytes = total_size
             job.progress = int((downloaded / total_size) * 100)
             await db.commit()
+            
+            # Emitir evento de progresso via WebSocket
+            await ws_manager.emit_download_progress(
+                job_id=job.id,
+                progress=job.progress,
+                downloaded_bytes=downloaded,
+                total_bytes=total_size,
+                file_name=job.file_name
+            )
             
             # Se o plugin indicou que é o último chunk, parar
             if file_content.is_complete or len(file_content.data) < CHUNK_SIZE:
