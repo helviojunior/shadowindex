@@ -271,9 +271,27 @@ async def get_default_soap_service(db: AsyncSession) -> SoapService:
             proxy = result.scalar_one_or_none()
             
             if proxy:
-                # Construir URL do proxy (formato: http://ip:port)
-                proxy_url = f"http://{proxy.ip}:{proxy.port}"
-                logger.info(f"Active proxy configured: {proxy.name} ({proxy_url})")
+                # Obter tipo de proxy (padrão: http)
+                proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
+                username = getattr(proxy, 'username', None)
+                password = getattr(proxy, 'password', None)
+                
+                # Construir URL do proxy baseado no tipo
+                if proxy_type == 'socks5':
+                    if username and password:
+                        proxy_url = f"socks5://{username}:{password}@{proxy.ip}:{proxy.port}"
+                    else:
+                        proxy_url = f"socks5://{proxy.ip}:{proxy.port}"
+                elif proxy_type == 'socks4':
+                    proxy_url = f"socks4://{proxy.ip}:{proxy.port}"
+                else:
+                    # HTTP/HTTPS proxy
+                    if username and password:
+                        proxy_url = f"http://{username}:{password}@{proxy.ip}:{proxy.port}"
+                    else:
+                        proxy_url = f"http://{proxy.ip}:{proxy.port}"
+                
+                logger.info(f"Active proxy configured: {proxy.name} ({proxy_type}) -> {proxy.ip}:{proxy.port}")
         except (ValueError, TypeError) as e:
             logger.warning(f"Invalid proxy_id in config: {e}")
     
