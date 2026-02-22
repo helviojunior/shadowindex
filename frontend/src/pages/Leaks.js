@@ -630,14 +630,25 @@ const Leaks = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
-                              <Badge 
-                                className={`text-xs ${
-                                  finding.job_id ? 'bg-purple-600' : 'bg-green-600'
-                                }`}
-                              >
-                                {finding.job_id ? 'Scan' : 'Manual'}
-                              </Badge>
-                              {detectionSource && (
+                              {/* Tag de fonte da detecção */}
+                              {finding.detection_source === 'manual' ? (
+                                <Badge className="text-xs bg-yellow-600">
+                                  Manual
+                                </Badge>
+                              ) : finding.detection_source === 'auto-pfx' ? (
+                                <Badge className="text-xs bg-orange-600">
+                                  Auto-PFX
+                                </Badge>
+                              ) : (
+                                <Badge 
+                                  className={`text-xs ${
+                                    finding.job_id ? 'bg-purple-600' : 'bg-green-600'
+                                  }`}
+                                >
+                                  {finding.job_id ? 'Scan' : 'GitLeaks'}
+                                </Badge>
+                              )}
+                              {detectionSource && detectionSource !== 'manual' && detectionSource !== 'auto-pfx' && (
                                 <Badge 
                                   className={`text-xs ${
                                     detectionSource === 'ocr' ? 'bg-blue-600' : 'bg-violet-600'
