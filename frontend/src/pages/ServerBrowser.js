@@ -2379,54 +2379,9 @@ const ServerBrowser = () => {
       loadFileVersions(filePath);
       loadServer();
       
-      // Carregar conteúdo do arquivo recém-baixado diretamente
-      // (não usar loadFileContent pois ele lê de selectedItem que pode ter mudado)
-      if (activeTab === 'view' && canPreviewFile(selectedItem.name)) {
-        const fileId = response.data.file_id;
-        const filename = selectedItem.name;
-        
-        setTimeout(async () => {
-          try {
-            setLoadingContent(true);
-            
-            // Para certificados
-            if (isCertificateFile(filename)) {
-              const certResponse = await axios.post(`${API_V2}/servers/${serverId}/files/${fileId}/certificate-info`, {});
-              setFileContent(certResponse.data);
-              setRawFileContent(JSON.stringify(certResponse.data, null, 2));
-              setFilePreviewUrl(null);
-            }
-            // Para imagens e PDFs
-            else if (isImageFile(filename) || isPdfFile(filename)) {
-              const blobResponse = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
-                responseType: 'blob'
-              });
-              const url = window.URL.createObjectURL(new Blob([blobResponse.data]));
-              setFilePreviewUrl(url);
-              setFileContent(null);
-            }
-            // Para arquivos de texto
-            else {
-              const textResponse = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/content`);
-              if (textResponse.data) {
-                setRawFileContent(textResponse.data.content || textResponse.data);
-                // Tentar beautify
-                try {
-                  const highlighted = hljs.highlightAuto(textResponse.data.content || textResponse.data).value;
-                  setFileContent({ ...textResponse.data, content: highlighted });
-                  setBeautified(true);
-                } catch {
-                  setFileContent(textResponse.data);
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error loading file content after download:', error);
-          } finally {
-            setLoadingContent(false);
-          }
-        }, 300);
-      }
+      // O useEffect de carregamento automático vai cuidar de carregar o conteúdo
+      // quando detectar que o arquivo foi adicionado a downloadedFiles
+      // Não precisamos mais do setTimeout aqui para evitar race conditions
     } catch (error) {
       console.error('Error downloading file:', error);
       // Extrair mensagem de erro do response do backend
