@@ -131,13 +131,13 @@ async def get_active_proxy_url(db: AsyncSession) -> Optional[str]:
     return None
 
 
-async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
+async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
     """
     Get the appropriate plugin for a server.
     
     Args:
         db: Database session
-        server: Server model instance
+        server_or_id: Server model instance or server ID
         
     Returns:
         Configured plugin instance
@@ -146,15 +146,29 @@ async def get_plugin_for_server(db: AsyncSession, server) -> BasePlugin:
         CredentialNotSetException: If plugin requires credential but none configured
         ValueError: If server has no plugin_instance_id configured
     """
-    from database import Credential, PluginInstance
+    from database import Credential, PluginInstance, Server
     from .exceptions import CredentialNotSetException
     
-    # Check if server has plugin_instance_id configured (required)
-    plugin_instance_id = getattr(server, 'plugin_instance_id', None)
+    # Se for um ID, buscar o servidor
+    if isinstance(server_or_id, int):
+        result = await db.execute(select(Server).where(Server.id == server_or_id))
+        server = result.scalar_one_or_none()
+        if not server:
+            raise ValueError(f"Servidor ID {server_or_id} não encontrado")
+    else:
+        server = server_or_id
+        # Garantir que os atributos estão carregados
+        try:
+            await db.refresh(server)
+        except Exception:
+            pass  # Pode falhar se já estiver atualizado
+    
+    # Acessar atributos diretamente
+    plugin_instance_id = server.plugin_instance_id
+    server_name = server.name or 'Unknown'
+    server_ip = server.ip or 'Unknown'
     
     if not plugin_instance_id:
-        server_name = getattr(server, 'name', 'Unknown')
-        server_ip = getattr(server, 'ip', 'Unknown')
         raise ValueError(
             f"Servidor '{server_name}' ({server_ip}) não possui instância de plugin configurada. "
             f"Configure uma instância de plugin na página de Servidores."
