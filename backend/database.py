@@ -375,10 +375,12 @@ class ScanJob(Base):
     share_name = Column(String, nullable=False)
     path = Column(String, nullable=False)
     max_depth = Column(Integer, default=10)
+    critical_only = Column(Boolean, default=False)  # Flag para busca crítica
     status = Column(String, default='pending')  # pending, running, completed, failed, cancelled
     total_files = Column(Integer, default=0)
     processed_files = Column(Integer, default=0)
     queued_files = Column(Integer, default=0)
+    critical_files_found = Column(Integer, default=0)  # Contador de arquivos críticos
     error_message = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime, nullable=True)
