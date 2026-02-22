@@ -747,7 +747,7 @@ const Leaks = () => {
                                   size="sm"
                                   onClick={() => {
                                     const serverId = finding.extracted_server_id || finding.server_id;
-                                    window.location.href = `/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`;
+                                    window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`, '_blank');
                                   }}
                                   title="Abrir arquivo no navegador"
                                 >
