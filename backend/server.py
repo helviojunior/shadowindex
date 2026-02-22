@@ -1022,11 +1022,31 @@ async def check_plugin_health(
     db: AsyncSession = Depends(get_db)
 ):
     """Check plugin health with provided configuration"""
-    from plugins.factory import PluginFactory, get_active_proxy_url
+    from plugins.factory import PluginFactory, get_active_proxy_config
     from credential_verification import mark_credential_verified
     
     try:
-        proxy_url = await get_active_proxy_url(db)
+        proxy_config = await get_active_proxy_config(db)
+        proxy_url = proxy_config.get("proxy_url") if proxy_config else None
+        
+        # For direct_interaction, validate proxy type and add credentials
+        if plugin_type == "direct_interaction" and proxy_config:
+            proxy_type = proxy_config.get("proxy_type", "http")
+            proxy_name = proxy_config.get("proxy_name", "Unknown")
+            
+            # Validate proxy type - direct_interaction only supports SOCKS proxies
+            if proxy_type not in ("socks5", "socks4"):
+                return {
+                    "healthy": False,
+                    "message": f"Proxy selecionado '{proxy_name}' não suportado para 'Interação Direta'. "
+                               f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
+                               f"Tipo atual: {proxy_type}",
+                    "details": {"proxy_type": proxy_type, "required": ["socks4", "socks5"]}
+                }
+            
+            config["proxy_user"] = proxy_config.get("proxy_user")
+            config["proxy_pass"] = proxy_config.get("proxy_pass")
+        
         plugin = PluginFactory.create_plugin(plugin_type, config, proxy_url)
         health = await plugin.health_check()
         
