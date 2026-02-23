@@ -34,12 +34,12 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Status colors and icons
 const statusConfig = {
-  pending: { label: 'Pendente', color: 'bg-yellow-500', icon: Clock, textColor: 'text-yellow-500' },
-  downloading: { label: 'Baixando', color: 'bg-blue-500', icon: Download, textColor: 'text-blue-500' },
-  completed: { label: 'Concluído', color: 'bg-green-500', icon: CheckCircle, textColor: 'text-green-500' },
-  failed: { label: 'Falhou', color: 'bg-red-500', icon: XCircle, textColor: 'text-red-500' },
-  cancelled: { label: 'Cancelado', color: 'bg-gray-500', icon: X, textColor: 'text-gray-500' },
-  skipped: { label: 'Ignorado', color: 'bg-orange-500', icon: AlertTriangle, textColor: 'text-orange-500' },
+  pending: { label: 'Pendente', color: 'bg-yellow-500', icon: Clock, textColor: 'text-yellow-500', borderColor: 'border-l-yellow-500' },
+  downloading: { label: 'Baixando', color: 'bg-blue-500', icon: Download, textColor: 'text-blue-500', borderColor: 'border-l-blue-500' },
+  completed: { label: 'Concluído', color: 'bg-green-500', icon: CheckCircle, textColor: 'text-green-500', borderColor: 'border-l-green-500' },
+  failed: { label: 'Falhou', color: 'bg-red-500', icon: XCircle, textColor: 'text-red-500', borderColor: 'border-l-red-500' },
+  cancelled: { label: 'Cancelado', color: 'bg-gray-500', icon: X, textColor: 'text-gray-500', borderColor: 'border-l-gray-500' },
+  skipped: { label: 'Ignorado', color: 'bg-orange-500', icon: AlertTriangle, textColor: 'text-orange-500', borderColor: 'border-l-orange-500' },
 };
 
 // Status config para Scan Jobs
