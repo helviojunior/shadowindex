@@ -702,15 +702,6 @@ const Leaks = () => {
                           {/* Coluna Arquivo */}
                           <TableCell>
                             <div className="flex items-start gap-2">
-                              {detectionSource && (
-                                <div className="flex-shrink-0 mt-0.5">
-                                  {detectionSource === 'ocr' ? (
-                                    <FileSearch className="w-4 h-4 text-blue-400" title="Detectado via OCR" />
-                                  ) : (
-                                    <FileText className="w-4 h-4 text-purple-400" title="Detectado via Metadata" />
-                                  )}
-                                </div>
-                              )}
                               <div className="min-w-0">
                                 <p className="font-medium text-sm text-cyan-400 truncate max-w-[280px]" title={fileName}>
                                   {fileName}
