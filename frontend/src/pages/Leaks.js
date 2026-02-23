@@ -723,7 +723,10 @@ const Leaks = () => {
                       const fileVersion = finding.extracted_version ? `V${finding.extracted_version}` : '';
                       
                       return (
-                        <TableRow key={`${file.file}-${fIndex}`} className="hover:bg-muted/30">
+                        <TableRow 
+                          key={`${file.file}-${fIndex}`} 
+                          className={`hover:bg-muted/30 ${finding.is_false_positive ? 'opacity-50' : ''}`}
+                        >
                           {/* Coluna Servidor */}
                           <TableCell>
                             <div className="min-w-0">
