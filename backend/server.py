@@ -1680,7 +1680,7 @@ async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)
 
 @api_router.get("/servers", response_model=List[ServerResponse])
 async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
-    from database import PluginInstance, GitleaksFinding, ServerShare
+    from database import PluginInstance, GitleaksFinding, ServerShare, ServerItem
     from sqlalchemy import func, desc, nulls_last
     
     # Ordenar por última interação (mais recentes primeiro), depois por nome
@@ -1729,11 +1729,23 @@ async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
     )
     access_denied_by_server = {row.server_guid: row.denied_count for row in access_denied_result}
     
+    # Buscar contagem de itens descobertos (ServerItems) por servidor
+    discovered_items_result = await db.execute(
+        select(
+            ServerItem.server_guid,
+            func.count(ServerItem.id).label('items_count')
+        )
+        .where(ServerItem.server_guid.in_(server_guids))
+        .group_by(ServerItem.server_guid)
+    )
+    discovered_items_by_server = {row.server_guid: row.items_count for row in discovered_items_result}
+    
     # Construir resposta com nomes das instâncias e contagem de leaks
     response = []
     for server in servers:
         leaks_count = leaks_by_server.get(server.id, 0)
         access_denied_shares = access_denied_by_server.get(server.guid, 0)
+        discovered_items = discovered_items_by_server.get(server.guid, 0)
         
         # Calcular índice de risco (0-100)
         # Fórmula: considera leaks (peso maior), shares e arquivos baixados
