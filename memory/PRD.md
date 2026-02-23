@@ -30,6 +30,15 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-23 (Session 42 - Tree View Visual Enhancements)
+- [x] **Coloração de nós visitados/não visitados na Tree View:**
+  - Diretórios **visitados** (já expandidos/explorados): ícone `text-blue-500`, texto `text-blue-400`
+  - Diretórios **não visitados** (nunca explorados): ícone `text-gray-500`, texto `text-gray-500`
+  - Arquivos **baixados**: ícone `text-green-500`, texto cor padrão
+  - Arquivos **não baixados**: ícone `text-gray-500`, texto `text-gray-500`
+  - Acesso negado: ícone e texto `text-red-500`
+  - Baseado no campo `children_fetched` do banco de dados para persistência entre sessões
+
 ### 2026-02-22 (Session 41 - SOCKS Proxy Validation)
 - [x] **Validação de tipo de proxy para plugin de Interação Direta:**
   - Plugin agora valida que o proxy ativo seja do tipo SOCKS (SOCKS4 ou SOCKS5)
