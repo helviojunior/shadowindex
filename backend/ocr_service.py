@@ -122,6 +122,20 @@ class TikaService:
                 # Force UTF-8 encoding interpretation
                 text_response.encoding = 'utf-8'
                 content = text_response.text.strip()
+                
+                # Try to fix double-encoded UTF-8 (UTF-8 interpreted as Latin-1 then encoded again)
+                if content:
+                    try:
+                        # Check for common double-encoding patterns (Ã followed by special chars)
+                        if 'Ã' in content and any(c in content for c in ['§', '£', '©', '³', '¡', '­', '±']):
+                            # Try to fix by encoding as latin-1 and decoding as utf-8
+                            fixed_content = content.encode('latin-1').decode('utf-8')
+                            content = fixed_content
+                            logger.info(f"Fixed double-encoded UTF-8 content for {file_path.name}")
+                    except (UnicodeDecodeError, UnicodeEncodeError):
+                        # Keep original content if fix fails
+                        pass
+                
                 if content:
                     logger.info(f"Extracted {len(content)} characters from {file_path.name}")
             
