@@ -1392,6 +1392,33 @@ const ServerBrowser = () => {
     );
   };
 
+  // Formatar caminho resumido para exibição nos resultados de busca
+  // Formato: share$\..\parentDir\itemName
+  const formatShortPath = (fullPath, shareName, itemName) => {
+    if (!fullPath) return shareName || '';
+    
+    // fullPath formato: \\ip\share\folder1\folder2\folder3\item
+    const parts = fullPath.split('\\').filter(p => p);
+    // parts: [ip, share, folder1, folder2, folder3, item]
+    
+    if (parts.length <= 2) {
+      // Apenas share, sem subpastas
+      return shareName || parts[1] || '';
+    }
+    
+    // Pegar o share e o diretório pai
+    const share = parts[1] || shareName || '';
+    const parentDir = parts.length > 3 ? parts[parts.length - 2] : '';
+    
+    if (!parentDir || parentDir === itemName) {
+      // Item está diretamente no share ou é o próprio diretório pai
+      return `${share}\\${itemName}`;
+    }
+    
+    // Formato: share$\..\parentDir\itemName
+    return `${share}\\..\\${parentDir}\\${itemName}`;
+  };
+
   // Navegar para um resultado de busca
   const navigateToSearchResult = async (result) => {
     // Mostrar overlay de loading
