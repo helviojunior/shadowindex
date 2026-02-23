@@ -337,7 +337,7 @@ const OCRJobs = () => {
       </div>
 
       {/* Tika Server Status Card + Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
+      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
         {/* Tika Server Status */}
         <Card className={cn(
           "border-l-4",
