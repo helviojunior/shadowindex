@@ -265,14 +265,11 @@ class OCRWorker:
                 lines.append("-" * 40)
                 lines.append("SUBJECT (Assunto)")
                 lines.append("-" * 40)
-                subject_cn_found = None
                 for attr in cert_obj.subject:
                     attr_name = attr.oid._name
                     attr_value = attr.value
-                    if attr_name == 'commonName':
-                        subject_cn_found = attr_value
-                        if cert_idx == 0:
-                            main_subject_cn = attr_value
+                    if attr_name == 'commonName' and cert_idx == 0:
+                        main_subject_cn = attr_value
                     # Traduzir nomes comuns
                     name_map = {
                         'commonName': 'Common Name (CN)',
