@@ -711,16 +711,12 @@ const ServerBrowser = () => {
         console.error('Error loading certificate:', error);
         const errorDetail = error.response?.data?.detail || error.message;
         
-        // Verificar se é erro de senha (status 401)
-        if (error.response?.status === 401) {
-          setFileContent({ 
-            error: errorDetail,
-            requires_password: true,
-            message: 'Digite a senha para desbloquear o certificado'
-          });
-        } else {
-          setFileContent({ error: errorDetail });
-        }
+        // Sempre solicitar senha ao usuário quando falhar ao abrir certificado
+        setFileContent({ 
+          error: errorDetail,
+          requires_password: true,
+          message: 'Digite a senha para desbloquear o certificado'
+        });
         setContentLoadError(true);
       } finally {
         setLoadingContent(false);
