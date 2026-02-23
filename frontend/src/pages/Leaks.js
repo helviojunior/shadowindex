@@ -798,6 +798,11 @@ const Leaks = () => {
                                   {detectionSource === 'ocr' ? 'OCR' : 'META'}
                                 </Badge>
                               )}
+                              {finding.is_false_positive && (
+                                <Badge className="text-xs bg-yellow-600">
+                                  FP
+                                </Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
