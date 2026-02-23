@@ -29,6 +29,8 @@ const DEFAULT_SMB_PORT = 445;
 const GeneralSettings = () => {
   const [settings, setSettings] = useState({
     max_simultaneous_downloads: '3',
+    max_simultaneous_ocr_jobs: '2',
+    ocr_auto_cleanup_minutes: '15',
     default_depth_levels: '5',
     default_max_file_size_mb: '100',
     ignored_extensions: '.log,.tmp,.bak,.log.*',
