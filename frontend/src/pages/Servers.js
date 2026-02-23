@@ -107,6 +107,17 @@ const Servers = () => {
           return 0;
         }
         
+        // Ordenação por data (last_verified_at, created_at)
+        const dateFields = ['last_verified_at', 'created_at'];
+        if (dateFields.includes(sortConfig.key)) {
+          const aDate = aValue ? new Date(aValue).getTime() : 0;
+          const bDate = bValue ? new Date(bValue).getTime() : 0;
+          // NULLs vão para o final
+          if (!aValue && bValue) return sortConfig.direction === 'desc' ? 1 : -1;
+          if (aValue && !bValue) return sortConfig.direction === 'desc' ? -1 : 1;
+          return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
+        }
+        
         // Ordenação numérica para campos numéricos
         const numericFields = ['shares_count', 'downloaded_files_count', 'leaks_count', 'risk_score'];
         if (numericFields.includes(sortConfig.key)) {
