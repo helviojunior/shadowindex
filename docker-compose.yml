@@ -8,9 +8,16 @@ services:
     volumes:
       - ./tika-config.xml:/tika-config.xml:ro
     environment:
-      # Timeout de tarefa: 15 minutos (900000ms)
-      - TIKA_CONFIG=/tika-config.xml
-    command: ["--config", "/tika-config.xml"]
+      # Configuração via variáveis de ambiente
+      - TIKA_TASK_TIMEOUT_MILLIS=900000
+      - TIKA_TASK_PULSE_MILLIS=1200000
+    # Usar configuração customizada com timeout de 15 minutos
+    command: >
+      java -jar /tika-server-standard.jar
+      --host 0.0.0.0
+      --port 9998
+      --taskTimeoutMillis 900000
+      --taskPulseMillis 1200000
 
   backend:
     build:
