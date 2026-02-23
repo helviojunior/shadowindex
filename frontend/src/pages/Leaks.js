@@ -302,6 +302,37 @@ const Leaks = () => {
     }
   };
 
+  // Toggle falso positivo
+  const handleToggleFalsePositive = async (fingerprint, currentValue) => {
+    if (!fingerprint) {
+      toast.error('Finding sem fingerprint');
+      return;
+    }
+    
+    try {
+      const newValue = !currentValue;
+      const url = `${API}/gitleaks/findings/${encodeURIComponent(fingerprint)}/false-positive?is_false_positive=${newValue}`;
+      
+      const response = await axios.patch(url);
+      
+      if (response.data.success) {
+        // Atualizar localmente sem recarregar tudo
+        setFindings(prev => prev.map(f => 
+          f.Fingerprint === fingerprint 
+            ? { ...f, is_false_positive: newValue }
+            : f
+        ));
+        toast.success(newValue ? 'Marcado como falso positivo' : 'Desmarcado como falso positivo');
+      } else {
+        toast.error(response.data.message || 'Erro ao atualizar finding');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar finding:', error);
+      const errorMsg = error.response?.data?.detail || error.message;
+      toast.error(`Erro ao atualizar finding: ${errorMsg}`);
+    }
+  };
+
   // Abrir diálogo de confirmação para limpar todos os findings
   const confirmClearAllFindings = () => {
     setConfirmDialog({ open: true, action: 'clearAll', fingerprint: null });
