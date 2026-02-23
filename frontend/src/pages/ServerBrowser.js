@@ -5055,7 +5055,7 @@ const ServerBrowser = () => {
                   data-testid="filter-downloaded-btn"
                   title={showOnlyDownloaded ? "Mostrar todos os arquivos" : "Ver apenas baixados"}
                 >
-                  <Download className="w-4 h-4" />
+                  <Eye className="w-4 h-4" />
                 </Button>
                 
                 {/* Botão de foco - mostra apenas item selecionado */}
