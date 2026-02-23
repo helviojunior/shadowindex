@@ -3062,46 +3062,79 @@ async def download_server_file(
                 }
         else:
             # Primeiro download - criar versão 1
-            if content_base64:
-                full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
-                    server.guid,
-                    share_name,
-                    file_path,
-                    content_base64,
-                    1
+            # Primeiro obter ou criar share para ter o share_id
+            from database import ServerShare
+            share_result = await db.execute(
+                select(ServerShare).where(
+                    ServerShare.server_guid == server.guid,
+                    ServerShare.share_name == share_name
                 )
-            else:
-                # Arquivo vazio
-                full_path, sanitized_path, sha1_hash, file_size = save_empty_file(
-                    server.guid,
-                    share_name,
-                    file_path,
-                    1
+            )
+            share = share_result.scalar_one_or_none()
+            
+            if not share:
+                # Criar share se não existir
+                share = ServerShare(
+                    server_id=server.id,
+                    server_guid=server.guid,
+                    share_name=share_name,
+                    access_denied=False,
+                    has_children=True,
+                    children_fetched=False
                 )
+                db.add(share)
+                await db.flush()  # Obter o ID do share
             
-            # Calcular mimetype
-            mimetype = get_file_mimetype(full_path)
+            share_id = share.id
             
-            # Criar primeira versão
+            # Criar primeira versão no banco primeiro (para obter o ID)
             new_file_version = FileVersion(
                 server_guid=server.guid,
                 share_name=share_name,
                 file_path=file_path,
                 version_number=1,
-                sha1_hash=sha1_hash,
-                file_size=file_size,
-                mimetype=mimetype,
-                local_path=sanitized_path,
+                sha1_hash="",  # Será atualizado
+                file_size=0,
+                mimetype=None,
+                local_path="",  # Será atualizado
                 is_current=True
             )
             db.add(new_file_version)
+            await db.flush()  # Obter o ID da versão
+            
+            # Agora salvar o arquivo usando a estrutura padrão
+            from storage_utils import save_file_with_standard_path, get_standard_relative_path
+            
+            if content_base64:
+                file_content = base64.b64decode(content_base64)
+            else:
+                file_content = b''
+            
+            full_path, sanitized_path, sha1_hash, file_size = save_file_with_standard_path(
+                server.guid,
+                share_id,
+                new_file_version.id,
+                file_content
+            )
+            
+            # Calcular mimetype
+            mimetype = get_file_mimetype(str(full_path))
+            
+            # Atualizar a versão com os dados corretos
+            new_file_version.sha1_hash = sha1_hash
+            new_file_version.file_size = file_size
+            new_file_version.mimetype = mimetype
+            new_file_version.local_path = sanitized_path
             
             # Salvar registro principal
             downloaded_file = DownloadedFile(
                 server_guid=server.guid,
+                server_id=server.id,
                 share_name=share_name,
                 file_path=file_path,
+                file_name=os.path.basename(file_path),
                 sanitized_path=sanitized_path,
+                local_path=str(full_path),
                 file_size=file_size,
                 sha1_hash=sha1_hash,
                 mimetype=mimetype
