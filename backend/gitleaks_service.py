@@ -535,6 +535,9 @@ class GitleaksService:
                                 processed_keys = set()
                                 
                                 for finding in original_findings:
+                                    # Enriquecer com informações do banco de dados
+                                    finding = await enrich_finding_with_db_info(finding)
+                                    
                                     fingerprint = finding.get('Fingerprint')
                                     already_in_cache = any(f.get('Fingerprint') == fingerprint for f in self._findings)
                                     
