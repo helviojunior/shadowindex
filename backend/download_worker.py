@@ -598,6 +598,9 @@ class DownloadWorker:
                 # Incrementar contador do servidor
                 server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
             
+            # Garantir que os diretórios pais existam como ServerItem
+            await ensure_parent_directories(db, server, job.share_name, job.file_path)
+            
             # Criar/atualizar FileVersion (como o sync manual)
             existing_version = await db.execute(
                 select(FileVersion).where(
