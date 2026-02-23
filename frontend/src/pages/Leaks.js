@@ -145,18 +145,31 @@ const Leaks = () => {
   }, []);
 
   // Carregar findings
-  const loadFindings = useCallback(async () => {
-    setLoading(true);
+  const loadFindings = useCallback(async (showRefreshIndicator = false) => {
+    // Apenas mostra loading no carregamento inicial
+    if (isInitialLoad.current) {
+      setLoading(true);
+    } else if (showRefreshIndicator) {
+      setRefreshing(true);
+    }
+    
     try {
       const response = await axios.get(`${API}/gitleaks/findings`);
       setFindings(response.data.findings || []);
       setFiles(response.data.files || []);
       setTotalFindings(response.data.total_findings || 0);
+      errorCountRef.current = 0;
     } catch (error) {
       console.error('Error loading findings:', error);
-      toast.error('Erro ao carregar findings');
+      errorCountRef.current += 1;
+      // Só mostra toast de erro se for ação manual
+      if (showRefreshIndicator) {
+        toast.error('Erro ao carregar findings');
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
+      isInitialLoad.current = false;
     }
   }, []);
 
