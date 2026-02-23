@@ -1051,6 +1051,21 @@ class GitleaksService:
                     except json.JSONDecodeError:
                         job.findings_count = 0
                 
+                # === CRITICAL SEARCH ===
+                # Aplicar regras de Critical Search no mesmo diretório
+                try:
+                    critical_count = await scan_directory_for_critical_files(
+                        target_path=job.target_path,
+                        job_id=job.job_id,
+                        server_id=job.server_id,
+                        service=self
+                    )
+                    if critical_count > 0:
+                        job.findings_count = (job.findings_count or 0) + critical_count
+                        logger.info(f"Critical Search adicionou {critical_count} findings ao job {job.job_id}")
+                except Exception as e:
+                    logger.warning(f"Erro ao executar Critical Search: {e}")
+                
                 logger.info(f"GitLeaks concluído. Job: {job.job_id}, Findings: {job.findings_count}")
             else:
                 job.status = "failed"
