@@ -5082,13 +5082,11 @@ const ServerBrowser = () => {
                               <FileCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm truncate">{highlightSearchTerm(item.name, searchQuery)}</div>
-                                <div className="text-xs text-muted-foreground truncate">
+                                <div className="text-xs text-muted-foreground truncate" title={item.full_path || item.file_path}>
                                   {searchFilters.sha1 && item.sha1_hash ? (
                                     <>SHA1: {highlightSearchTerm(item.sha1_hash, searchFilters.sha1)}</>
-                                  ) : item.sha1_hash ? (
-                                    `SHA1: ${item.sha1_hash.substring(0, 8)}...`
                                   ) : (
-                                    item.share_name
+                                    formatShortPath(item.full_path || item.file_path, item.share_name, item.name)
                                   )}
                                 </div>
                               </div>
