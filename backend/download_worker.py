@@ -32,10 +32,11 @@ WORKER_POLL_INTERVAL = 2  # segundos entre verificações
 _worker_instance: Optional['DownloadWorker'] = None
 
 
-async def ensure_parent_directories(db: AsyncSession, server, share_name: str, file_path: str):
+async def ensure_parent_directories(db: AsyncSession, server, share_name: str, file_path: str, file_size: int = None):
     """
     Garante que todos os diretórios pais de um arquivo existam no banco de dados como ServerItem.
-    Isso permite que a árvore de navegação mostre corretamente os diretórios mesmo quando
+    Também cria o ServerItem do próprio arquivo se não existir.
+    Isso permite que a árvore de navegação mostre corretamente os diretórios e arquivos mesmo quando
     arquivos são baixados via jobs em background.
     
     Args:
@@ -43,9 +44,11 @@ async def ensure_parent_directories(db: AsyncSession, server, share_name: str, f
         server: Objeto Server
         share_name: Nome do share
         file_path: Caminho completo do arquivo (ex: \\\\ip\\share\\folder\\file.txt)
+        file_size: Tamanho do arquivo em bytes (opcional)
     """
     try:
         # Normalizar o caminho
+        original_file_path = file_path
         if not file_path.startswith('\\\\'):
             file_path = f"\\\\{server.ip}\\{share_name}\\{file_path}"
         
@@ -54,53 +57,92 @@ async def ensure_parent_directories(db: AsyncSession, server, share_name: str, f
         # parts: ['', '', 'ip', 'share', 'folder1', 'folder2', 'file.txt']
         
         if len(parts) < 5:
-            # Caminho muito curto (apenas share + arquivo)
-            return
-        
-        # O caminho do share é: \\ip\share
-        share_path = f"\\\\{parts[2]}\\{parts[3]}"
-        
-        # Iterar pelos diretórios intermediários (excluindo o arquivo no final)
-        # Ex: para \\ip\share\a\b\c\file.txt, criar a, b, c como diretórios
-        for i in range(4, len(parts) - 1):
-            dir_name = parts[i]
-            current_full_path = '\\'.join([''] + [''] + parts[2:i+1])  # \\ip\share\a, \\ip\share\a\b, etc
-            parent_path = '\\'.join([''] + [''] + parts[2:i]) if i > 4 else share_path
+            # Caminho muito curto (apenas share + arquivo direto no share)
+            # Ainda precisamos criar o ServerItem do arquivo
+            pass
+        else:
+            # O caminho do share é: \\ip\share
+            share_path = f"\\\\{parts[2]}\\{parts[3]}"
             
-            # Verificar se já existe
-            existing = await db.execute(
-                select(ServerItem).where(
-                    ServerItem.server_guid == server.guid,
-                    ServerItem.full_path == current_full_path
+            # Iterar pelos diretórios intermediários (excluindo o arquivo no final)
+            # Ex: para \\ip\share\a\b\c\file.txt, criar a, b, c como diretórios
+            for i in range(4, len(parts) - 1):
+                dir_name = parts[i]
+                current_full_path = '\\'.join([''] + [''] + parts[2:i+1])  # \\ip\share\a, \\ip\share\a\b, etc
+                parent_path = '\\'.join([''] + [''] + parts[2:i]) if i > 4 else share_path
+                
+                # Verificar se já existe
+                existing = await db.execute(
+                    select(ServerItem).where(
+                        ServerItem.server_guid == server.guid,
+                        ServerItem.full_path == current_full_path
+                    )
                 )
+                existing_item = existing.scalar_one_or_none()
+                
+                if not existing_item:
+                    # Criar o diretório
+                    new_dir = ServerItem(
+                        server_guid=server.guid,
+                        share_name=share_name,
+                        parent_path=parent_path,
+                        item_type='Directory',
+                        name=dir_name,
+                        full_path=current_full_path,
+                        size='---',
+                        modified=None,
+                        access_denied=False,
+                        has_children=True,  # Pelo menos tem o arquivo sendo baixado
+                        children_fetched=False,  # Não foi expandido manualmente
+                        discovered_at=datetime.now(timezone.utc)
+                    )
+                    db.add(new_dir)
+                    logger.debug(f"Created directory ServerItem: {current_full_path}")
+                else:
+                    # Garantir que has_children é True (já que tem pelo menos o arquivo)
+                    if not existing_item.has_children:
+                        existing_item.has_children = True
+        
+        # Agora criar o ServerItem do próprio arquivo
+        file_name = parts[-1] if len(parts) > 0 else original_file_path.split('\\')[-1]
+        file_full_path = file_path
+        file_parent_path = '\\'.join([''] + [''] + parts[2:-1]) if len(parts) > 4 else f"\\\\{parts[2]}\\{parts[3]}"
+        
+        # Verificar se o arquivo já existe como ServerItem
+        existing_file = await db.execute(
+            select(ServerItem).where(
+                ServerItem.server_guid == server.guid,
+                ServerItem.full_path == file_full_path
             )
-            existing_item = existing.scalar_one_or_none()
-            
-            if not existing_item:
-                # Criar o diretório
-                new_dir = ServerItem(
-                    server_guid=server.guid,
-                    share_name=share_name,
-                    parent_path=parent_path,
-                    item_type='Directory',
-                    name=dir_name,
-                    full_path=current_full_path,
-                    size='---',
-                    modified=None,
-                    access_denied=False,
-                    has_children=True,  # Pelo menos tem o arquivo sendo baixado
-                    children_fetched=False,  # Não foi expandido manualmente
-                    discovered_at=datetime.now(timezone.utc)
-                )
-                db.add(new_dir)
-                logger.debug(f"Created directory ServerItem: {current_full_path}")
-            else:
-                # Garantir que has_children é True (já que tem pelo menos o arquivo)
-                if not existing_item.has_children:
-                    existing_item.has_children = True
+        )
+        existing_file_item = existing_file.scalar_one_or_none()
+        
+        if not existing_file_item:
+            # Criar o ServerItem do arquivo
+            size_str = str(file_size) if file_size is not None else '---'
+            new_file = ServerItem(
+                server_guid=server.guid,
+                share_name=share_name,
+                parent_path=file_parent_path,
+                item_type='File',
+                name=file_name,
+                full_path=file_full_path,
+                size=size_str,
+                modified=None,
+                access_denied=False,
+                has_children=False,
+                children_fetched=False,
+                discovered_at=datetime.now(timezone.utc)
+            )
+            db.add(new_file)
+            logger.debug(f"Created file ServerItem: {file_full_path}")
+        else:
+            # Atualizar tamanho se fornecido
+            if file_size is not None:
+                existing_file_item.size = str(file_size)
         
         await db.commit()
-        logger.info(f"Ensured parent directories for: {file_path}")
+        logger.info(f"Ensured parent directories and file item for: {file_path}")
         
     except Exception as e:
         logger.warning(f"Error ensuring parent directories for {file_path}: {e}")
