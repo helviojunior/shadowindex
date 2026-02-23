@@ -944,10 +944,10 @@ const Leaks = () => {
                         if (!serverId) return;
                         
                         if (selectedFinding.extracted_file_id) {
-                          window.open(`/servers/${serverId}/browse?file_id=${selectedFinding.extracted_file_id}`, '_blank');
+                          window.open(`/servers/${serverId}/browse?file_id=${selectedFinding.extracted_file_id}&from=/leaks`, '_blank');
                         } else if (fullPath) {
                           const encodedPath = encodeURIComponent(fullPath);
-                          window.open(`/servers/${serverId}/browse?path=${encodedPath}`, '_blank');
+                          window.open(`/servers/${serverId}/browse?path=${encodedPath}&from=/leaks`, '_blank');
                         }
                       }}
                     >
