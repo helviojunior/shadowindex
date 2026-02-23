@@ -30,6 +30,17 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
+- [x] **Correção crítica de concorrência no OCR Worker:**
+  - Bug de indentação corrigido: código de processamento estava fora do loop `for`
+  - Implementada concorrência real usando `asyncio.create_task` para cada job
+  - Novo método `_process_single_job()` executa cada job em sua própria task assíncrona
+  - Jobs são marcados como 'running' em lote antes de disparar as tasks (evita race condition)
+  - Configuração `max_simultaneous_ocr_jobs` é lida dinamicamente a cada iteração do loop
+  - Alterações na UI de configurações são aplicadas automaticamente sem reiniciar o serviço
+  - Cada job executa com sua própria sessão de banco de dados (isolamento de erros)
+  - Arquivo modificado: `backend/ocr_worker.py`
+
 ### 2026-02-23 (Session 42 - Tree View Visual Enhancements & Download Worker Fix)
 - [x] **Coloração de nós visitados/não visitados na Tree View:**
   - Diretórios **visitados** (já expandidos/explorados): ícone `text-blue-500`, texto `text-blue-400`
