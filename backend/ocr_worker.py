@@ -83,6 +83,235 @@ class OCRWorker:
             await self._ocr_service.initialize()
         return self._ocr_service
     
+    async def _extract_private_key_text(self, file_path: str, file_ext: str, cert_data: bytes, db, 
+                                        server_guid: str = None, share_name: str = None, 
+                                        file_version_id: int = None, file_name: str = None) -> tuple:
+        """
+        Extrai informações de arquivos de chave privada (PEM, DER, PPK, SSH keys).
+        
+        Args:
+            file_path: Caminho do arquivo
+            file_ext: Extensão do arquivo
+            cert_data: Conteúdo binário do arquivo
+            db: Sessão do banco de dados
+            server_guid: GUID do servidor
+            share_name: Nome do share (para enriquecimento de leaks)
+            file_version_id: ID da versão do arquivo (para enriquecimento de leaks)
+            file_name: Nome original do arquivo
+            
+        Returns:
+            Tuple (text, metadata, error)
+        """
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.backends import default_backend
+        from database import Server, ServerShare
+        
+        lines = []
+        private_key = None
+        key_type = None
+        key_description = None
+        is_encrypted = False
+        
+        try:
+            # Tentar decodificar como texto para análise
+            try:
+                text_content = cert_data.decode('utf-8')
+            except UnicodeDecodeError:
+                try:
+                    text_content = cert_data.decode('latin-1')
+                except:
+                    text_content = None
+            
+            # Detectar tipo de chave pelo conteúdo
+            if text_content:
+                # Verificar padrões PEM
+                if "-----BEGIN OPENSSH PRIVATE KEY-----" in text_content:
+                    key_type = "ssh-openssh"
+                    key_description = "Chave Privada SSH (OpenSSH)"
+                elif "-----BEGIN RSA PRIVATE KEY-----" in text_content:
+                    key_type = "ssh-rsa"
+                    key_description = "Chave Privada RSA"
+                    # Verificar se está criptografada
+                    if "Proc-Type:" in text_content and "ENCRYPTED" in text_content:
+                        is_encrypted = True
+                        key_description = "Chave Privada RSA (Criptografada)"
+                elif "-----BEGIN DSA PRIVATE KEY-----" in text_content:
+                    key_type = "ssh-dsa"
+                    key_description = "Chave Privada DSA"
+                elif "-----BEGIN EC PRIVATE KEY-----" in text_content:
+                    key_type = "ssh-ec"
+                    key_description = "Chave Privada EC (Elliptic Curve)"
+                elif "-----BEGIN ED25519 PRIVATE KEY-----" in text_content:
+                    key_type = "ssh-ed25519"
+                    key_description = "Chave Privada Ed25519"
+                elif "-----BEGIN PRIVATE KEY-----" in text_content:
+                    key_type = "pkcs8"
+                    key_description = "Chave Privada PKCS#8"
+                elif "-----BEGIN ENCRYPTED PRIVATE KEY-----" in text_content:
+                    key_type = "pkcs8-encrypted"
+                    key_description = "Chave Privada PKCS#8 (Criptografada)"
+                    is_encrypted = True
+                elif "PuTTY-User-Key-File-" in text_content:
+                    key_type = "ppk"
+                    key_description = "Chave Privada PuTTY (PPK)"
+                    # Verificar se está criptografada
+                    if "Encryption:" in text_content and "none" not in text_content.lower():
+                        is_encrypted = True
+                        key_description = "Chave Privada PuTTY (PPK - Criptografada)"
+                elif "-----BEGIN PGP PRIVATE KEY BLOCK-----" in text_content:
+                    key_type = "pgp"
+                    key_description = "Chave Privada PGP/GPG"
+            
+            # Se não detectou por padrão PEM, tentar carregar como DER
+            if not key_type and file_ext in ['.der', '.p8', '.pkcs8']:
+                try:
+                    private_key = serialization.load_der_private_key(cert_data, password=None, backend=default_backend())
+                    key_type = "der-private"
+                    key_description = f"Chave Privada DER ({type(private_key).__name__})"
+                except Exception:
+                    try:
+                        # Tentar com senha vazia (pode estar criptografada)
+                        private_key = serialization.load_der_private_key(cert_data, password=b'', backend=default_backend())
+                        key_type = "der-private"
+                        key_description = f"Chave Privada DER ({type(private_key).__name__})"
+                    except Exception:
+                        is_encrypted = True
+                        key_type = "der-private-encrypted"
+                        key_description = "Chave Privada DER (Possivelmente Criptografada)"
+            
+            # Se ainda não detectou, tentar pelo nome do arquivo (SSH keys)
+            if not key_type and file_name:
+                base_name = file_name.lower()
+                if 'id_rsa' in base_name:
+                    key_type = "ssh-rsa"
+                    key_description = "Chave Privada SSH RSA"
+                elif 'id_dsa' in base_name:
+                    key_type = "ssh-dsa"
+                    key_description = "Chave Privada SSH DSA"
+                elif 'id_ecdsa' in base_name:
+                    key_type = "ssh-ec"
+                    key_description = "Chave Privada SSH ECDSA"
+                elif 'id_ed25519' in base_name:
+                    key_type = "ssh-ed25519"
+                    key_description = "Chave Privada SSH Ed25519"
+                elif 'ssh_host' in base_name:
+                    key_type = "ssh-host"
+                    key_description = "Chave de Host SSH"
+            
+            # Tentar carregar a chave para obter mais informações
+            if not private_key and text_content and key_type:
+                try:
+                    if not is_encrypted:
+                        private_key = serialization.load_pem_private_key(cert_data, password=None, backend=default_backend())
+                except Exception as e:
+                    logger.debug(f"Não foi possível carregar chave PEM: {e}")
+            
+            # Gerar saída de texto
+            lines.append("=" * 60)
+            lines.append("INFORMAÇÕES DE CHAVE PRIVADA")
+            lines.append("=" * 60)
+            lines.append("")
+            
+            if key_type:
+                lines.append(f"Tipo: {key_description}")
+                lines.append(f"Identificador: {key_type}")
+                lines.append(f"Criptografada: {'SIM' if is_encrypted else 'NÃO'}")
+                lines.append("")
+                lines.append("*** ATENÇÃO: ARQUIVO CONTÉM CHAVE PRIVADA - DADOS SENSÍVEIS! ***")
+            else:
+                lines.append("Tipo: Não identificado")
+                lines.append("O arquivo parece conter dados de chave, mas o formato não foi reconhecido.")
+            
+            lines.append("")
+            lines.append("-" * 40)
+            lines.append("ARQUIVO")
+            lines.append("-" * 40)
+            lines.append(f"  Nome: {file_name or os.path.basename(file_path)}")
+            lines.append(f"  Extensão: {file_ext}")
+            lines.append(f"  Tamanho: {len(cert_data)} bytes")
+            
+            # Se conseguiu carregar a chave, mostrar mais informações
+            if private_key:
+                lines.append("")
+                lines.append("-" * 40)
+                lines.append("DETALHES DA CHAVE")
+                lines.append("-" * 40)
+                lines.append(f"  Algoritmo: {type(private_key).__name__}")
+                
+                # Tentar obter o tamanho da chave
+                try:
+                    if hasattr(private_key, 'key_size'):
+                        lines.append(f"  Tamanho: {private_key.key_size} bits")
+                except:
+                    pass
+            
+            ocr_text = '\n'.join(lines)
+            metadata = {
+                "type": "private_key",
+                "key_type": key_type,
+                "description": key_description,
+                "encrypted": is_encrypted,
+                "file_name": file_name or os.path.basename(file_path)
+            }
+            
+            # REGISTRAR LEAK se detectou chave privada
+            if key_type and server_guid:
+                try:
+                    from routes_v2 import auto_register_private_key_leak
+                    
+                    # Buscar server_id
+                    server_result = await db.execute(
+                        select(Server).where(Server.guid == server_guid)
+                    )
+                    server_obj = server_result.scalar_one_or_none()
+                    server_id = server_obj.id if server_obj else None
+                    
+                    # Buscar share_id
+                    share_id = None
+                    if share_name:
+                        share_result = await db.execute(
+                            select(ServerShare).where(
+                                ServerShare.server_guid == server_guid,
+                                ServerShare.share_name == share_name
+                            )
+                        )
+                        share = share_result.scalar_one_or_none()
+                        if share:
+                            share_id = share.id
+                    
+                    # Conteúdo para preview (primeiras linhas se for texto)
+                    preview_content = key_description or "Chave privada detectada"
+                    if text_content:
+                        preview_lines = text_content.split('\n')[:5]
+                        preview_content = '\n'.join(preview_lines)
+                    
+                    leak_result = await auto_register_private_key_leak(
+                        file_path=file_path,
+                        content=preview_content,
+                        server_id=server_id,
+                        key_type=key_type,
+                        description=key_description,
+                        file_version_id=file_version_id,
+                        share_name=share_name,
+                        server_guid=server_guid,
+                        share_id=share_id
+                    )
+                    
+                    if not leak_result.get("already_exists"):
+                        logger.info(f"Leak auto-registrado para chave privada: {file_path} ({key_type})")
+                        print(f"=== OCR WORKER: LEAK REGISTERED - Private key: {file_path} ({key_type}) ===", flush=True)
+                    else:
+                        logger.debug(f"Leak já existia: {file_path}")
+                        
+                except Exception as e:
+                    logger.warning(f"Erro ao registrar leak de chave privada: {e}")
+            
+            return ocr_text, metadata, None
+            
+        except Exception as e:
+            logger.error(f"Erro ao extrair informações de chave privada: {e}")
+            return None, None, str(e)
+    
     async def _extract_certificate_text(self, file_path: str, file_ext: str, db, server_guid: str = None, share_name: str = None, file_version_id: int = None, file_name: str = None) -> tuple:
         """
         Extrai informações de certificados digitais e chaves privadas em formato texto.
