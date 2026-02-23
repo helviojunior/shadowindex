@@ -2980,6 +2980,42 @@ const ServerBrowser = () => {
     return false;
   };
 
+  // Verifica se um item está nos resultados da busca ou se contém itens dos resultados
+  const isInSearchResults = (item, nodeId) => {
+    if (!searchResults || !showOnlySearchResults) return true;
+    
+    const itemPath = item.fullPath || item.full_path || '';
+    const allSearchPaths = [
+      ...(searchResults.directories || []).map(d => d.full_path),
+      ...(searchResults.files || []).map(f => f.full_path),
+      ...(searchResults.downloaded || []).map(d => d.full_path || d.file_path)
+    ].filter(Boolean);
+    
+    // Verificar se o item está diretamente nos resultados
+    if (allSearchPaths.includes(itemPath)) {
+      return true;
+    }
+    
+    // Verificar se o item é pai de algum resultado (para mostrar o caminho)
+    for (const searchPath of allSearchPaths) {
+      if (searchPath && searchPath.startsWith(itemPath + '\\')) {
+        return true;
+      }
+    }
+    
+    // Para shares, verificar se algum resultado está neste share
+    if (item.share_name) {
+      const sharePath = `\\\\${server?.ip}\\${item.share_name}`;
+      for (const searchPath of allSearchPaths) {
+        if (searchPath && searchPath.startsWith(sharePath)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+
   // Renderiza um nó da árvore com linhas de hierarquia
   const renderTreeNode = (item, depth = 0, shareName = '', isLastChild = true, parentLines = [], focusedNodeId = null) => {
     // Proteção contra recursão infinita - limite de profundidade
