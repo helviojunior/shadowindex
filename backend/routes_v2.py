@@ -3965,12 +3965,12 @@ async def scan_server_storage(
     
     server = await get_server_or_404(db, server_id)
     
-    # Obter caminho do storage do servidor (tentar id primeiro, depois guid)
-    storage_path = get_server_storage_path(server.id)
+    # Obter caminho do storage do servidor (tentar guid primeiro - nova estrutura)
+    storage_path = get_server_storage_path(server.guid)
     
-    # Se não existir, tentar com guid (estrutura legada)
+    # Se não existir, tentar com id (estrutura legada)
     if not os.path.exists(storage_path):
-        storage_path = get_server_storage_path(server.guid)
+        storage_path = get_server_storage_path(server.id)
     
     # Verificar se o diretório existe
     if not os.path.exists(storage_path):
