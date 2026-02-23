@@ -26,7 +26,8 @@ import {
   Plug,
   AlertTriangle,
   RefreshCw,
-  X
+  X,
+  ListTodo
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
