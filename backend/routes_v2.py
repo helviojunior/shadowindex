@@ -2408,75 +2408,196 @@ async def get_certificate_info(
     from cryptography.hazmat.primitives.serialization import pkcs12
     from storage_utils import get_file_path
     import os
+    import traceback
+    
+    # Debug log para rastrear todas as tentativas
+    debug_log = []
+    
+    def log_step(step: str, status: str = "info", details: str = None):
+        entry = {"step": step, "status": status}
+        if details:
+            entry["details"] = details
+        debug_log.append(entry)
     
     server = await get_server_or_404(db, server_id)
     file = await get_downloaded_file_or_404(db, server, file_id)
     
     full_path = get_file_path(server.guid, file.share_name, file.sanitized_path)
+    log_step(f"Arquivo: {file.file_path}", "info")
+    log_step(f"Caminho local: {full_path}", "info")
     
     if not os.path.exists(full_path):
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
+        log_step("Verificar existência do arquivo", "error", "Arquivo não encontrado no storage")
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": True,
+                "message": "Arquivo não encontrado no storage",
+                "debug_log": debug_log
+            }
+        )
     
     file_ext = os.path.splitext(file.file_path)[1].lower()
+    file_size = os.path.getsize(full_path)
+    log_step(f"Extensão: {file_ext}", "info")
+    log_step(f"Tamanho: {file_size} bytes", "info")
     
     try:
+        log_step("Lendo arquivo do disco", "info")
         with open(full_path, 'rb') as f:
             cert_data = f.read()
+        log_step("Arquivo lido com sucesso", "success", f"{len(cert_data)} bytes")
         
         cert = None
         private_key = None
+        chain = None
+        password_used = None
+        passwords_tried = []
         
         if file_ext in ['.pfx', '.p12']:
-            password = request.password.encode() if request.password else None
+            log_step("Tipo de arquivo: PKCS#12 (PFX/P12)", "info")
             
-            # Tentar senha salva se não fornecida
-            if not password:
-                saved_result = await db.execute(
-                    select(PfxPassword).where(
-                        PfxPassword.server_guid == server.guid,
-                        PfxPassword.file_path == file.file_path
-                    )
-                )
-                saved = saved_result.scalar_one_or_none()
-                if saved:
-                    password = saved.password.encode()
+            # Lista de senhas para tentar
+            passwords_to_try = []
             
-            try:
-                private_key, cert, chain = pkcs12.load_key_and_certificates(
-                    cert_data, password, default_backend()
-                )
-            except Exception as e:
-                if "password" in str(e).lower() or "mac" in str(e).lower():
-                    raise HTTPException(status_code=401, detail="Senha incorreta ou não fornecida")
-                raise
-            
-            # Salvar senha se funcionou
+            # 1. Senha fornecida pelo usuário (prioridade máxima)
             if request.password:
+                passwords_to_try.append(("Senha fornecida pelo usuário", request.password))
+                log_step("Senha fornecida pelo usuário", "info", f"'{request.password[:2]}{'*' * (len(request.password)-2)}'" if len(request.password) > 2 else "***")
+            
+            # 2. Senha salva no banco
+            saved_result = await db.execute(
+                select(PfxPassword).where(
+                    PfxPassword.server_guid == server.guid,
+                    PfxPassword.file_path == file.file_path
+                )
+            )
+            saved = saved_result.scalar_one_or_none()
+            if saved:
+                passwords_to_try.append(("Senha salva no banco de dados", saved.password))
+                log_step("Senha encontrada no banco de dados", "info")
+            else:
+                log_step("Nenhuma senha salva no banco para este arquivo", "info")
+            
+            # 3. Tentar sem senha (alguns PFX não têm senha)
+            passwords_to_try.append(("Sem senha (vazio)", ""))
+            passwords_to_try.append(("Sem senha (None)", None))
+            
+            # Tentar cada senha
+            last_exception = None
+            for pwd_source, pwd_value in passwords_to_try:
+                try:
+                    log_step(f"Tentando: {pwd_source}", "info")
+                    pwd_bytes = pwd_value.encode() if pwd_value else None
+                    private_key, cert, chain = pkcs12.load_key_and_certificates(
+                        cert_data, pwd_bytes, default_backend()
+                    )
+                    password_used = pwd_value if pwd_value else "(sem senha)"
+                    log_step(f"SUCESSO com: {pwd_source}", "success")
+                    break
+                except Exception as e:
+                    error_msg = str(e)
+                    # Simplificar mensagem de erro comum
+                    if "mac" in error_msg.lower():
+                        error_msg = "MAC verification failed (senha incorreta)"
+                    elif "password" in error_msg.lower():
+                        error_msg = "Senha requerida ou incorreta"
+                    
+                    log_step(f"FALHA com: {pwd_source}", "error", error_msg)
+                    passwords_tried.append(pwd_source)
+                    last_exception = e
+            
+            # Se nenhuma senha funcionou
+            if cert is None:
+                log_step("Todas as tentativas falharam", "error")
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "error": True,
+                        "message": "Não foi possível abrir o certificado",
+                        "requires_password": True,
+                        "passwords_tried": passwords_tried,
+                        "last_exception": str(last_exception) if last_exception else None,
+                        "exception_type": type(last_exception).__name__ if last_exception else None,
+                        "debug_log": debug_log
+                    }
+                )
+            
+            # Salvar senha se foi fornecida pelo usuário e funcionou
+            if request.password and password_used == request.password:
                 existing_pwd = await db.execute(
                     select(PfxPassword).where(
                         PfxPassword.server_guid == server.guid,
                         PfxPassword.file_path == file.file_path
                     )
                 )
-                if not existing_pwd.scalar_one_or_none():
+                existing = existing_pwd.scalar_one_or_none()
+                if existing:
+                    # Atualizar senha existente
+                    existing.password = request.password
+                    log_step("Senha atualizada no banco de dados", "success")
+                else:
+                    # Criar nova entrada
                     new_pwd = PfxPassword(
                         server_guid=server.guid,
                         file_path=file.file_path,
                         password=request.password
                     )
                     db.add(new_pwd)
-                    await db.commit()
+                    log_step("Senha salva no banco de dados", "success")
+                await db.commit()
                     
         elif file_ext in ['.cer', '.crt', '.pem']:
+            log_step("Tipo de arquivo: Certificado X.509", "info")
+            
+            # Tentar PEM primeiro
             try:
+                log_step("Tentando carregar como PEM", "info")
                 cert = x509.load_pem_x509_certificate(cert_data, default_backend())
-            except Exception:
-                cert = x509.load_der_x509_certificate(cert_data, default_backend())
+                log_step("Carregado como PEM", "success")
+            except Exception as pem_error:
+                log_step("Falha ao carregar como PEM", "error", str(pem_error))
+                
+                # Tentar DER
+                try:
+                    log_step("Tentando carregar como DER", "info")
+                    cert = x509.load_der_x509_certificate(cert_data, default_backend())
+                    log_step("Carregado como DER", "success")
+                except Exception as der_error:
+                    log_step("Falha ao carregar como DER", "error", str(der_error))
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "error": True,
+                            "message": "Não foi possível extrair o certificado",
+                            "pem_error": str(pem_error),
+                            "der_error": str(der_error),
+                            "debug_log": debug_log
+                        }
+                    )
         else:
-            raise HTTPException(status_code=400, detail=f"Tipo de arquivo não suportado: {file_ext}")
+            log_step(f"Extensão não suportada: {file_ext}", "error")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": True,
+                    "message": f"Tipo de arquivo não suportado: {file_ext}",
+                    "debug_log": debug_log
+                }
+            )
         
         if not cert:
-            raise HTTPException(status_code=500, detail="Não foi possível extrair o certificado")
+            log_step("Certificado não extraído", "error")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": True,
+                    "message": "Não foi possível extrair o certificado",
+                    "debug_log": debug_log
+                }
+            )
+        
+        log_step("Certificado extraído com sucesso", "success")
         
         # Extrair informações
         subject_parts = {}
