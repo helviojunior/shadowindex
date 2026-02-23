@@ -83,35 +83,39 @@ def is_critical_file(file_name: str, file_size: int, config: Dict[str, Any]) -> 
             logger.debug(f"Excluded (extension '{ext}'): {file_name}")
             return False
     
-    # 1. Verificar palavras-chave no nome do arquivo
+    # 1. Verificar regras de tamanho primeiro (aplicável a todos os arquivos)
+    if size_rules.get('enabled', True):
+        min_size = size_rules.get('min_bytes', 0)
+        max_size = size_rules.get('max_bytes', 50 * 1024 * 1024)  # 50MB default
+        
+        # Arquivos fora do range de tamanho são ignorados
+        if file_size < min_size:
+            logger.debug(f"Excluded (size {file_size} < min {min_size}): {file_name}")
+            return False
+        if file_size > max_size:
+            logger.debug(f"Excluded (size {file_size} > max {max_size}): {file_name}")
+            return False
+    
+    # 2. Verificar palavras-chave no nome do arquivo
     keywords = file_rules.get('keywords', [])
     for keyword in keywords:
         if keyword.lower() in file_lower:
             logger.debug(f"Critical match (keyword '{keyword}'): {file_name}")
             return True
     
-    # 2. Verificar extensões críticas
+    # 3. Verificar extensões críticas
     extensions = file_rules.get('extensions', [])
     for ext in extensions:
         if file_lower.endswith(ext.lower()):
             logger.debug(f"Critical match (extension '{ext}'): {file_name}")
             return True
     
-    # 3. Verificar nomes de arquivos exatos
+    # 4. Verificar nomes de arquivos exatos
     exact_names = file_rules.get('exact_names', [])
     for exact in exact_names:
         if file_lower == exact.lower():
             logger.debug(f"Critical match (exact name '{exact}'): {file_name}")
             return True
-    
-    # 4. Verificar se tamanho está dentro do range crítico (se configurado)
-    if size_rules.get('enabled', True):
-        min_size = size_rules.get('min_bytes', 0)
-        max_size = size_rules.get('max_bytes', 50 * 1024 * 1024)  # 50MB default
-        
-        # Arquivos muito pequenos ou muito grandes geralmente não são sensíveis
-        if file_size < min_size or file_size > max_size:
-            return False
     
     return False
 
