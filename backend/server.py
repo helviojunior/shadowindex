@@ -1785,6 +1785,8 @@ async def get_server(
     Se refresh=True ou se nunca foi verificado, atualiza IP via SOAP Resolve.
     Se o IP já for válido, não faz o resolve.
     """
+    from sqlalchemy import func
+    
     result = await db.execute(select(Server).where(Server.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
