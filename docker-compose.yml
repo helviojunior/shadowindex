@@ -5,16 +5,6 @@ services:
     image: apache/tika:latest-full
     container_name: ops-integration-tika
     restart: unless-stopped
-    # No port exposure - internal only
-
-  soap-mock:
-    build:
-      context: ./backend/soap_mock
-      dockerfile: Dockerfile
-    container_name: ops-integration-soap-mock
-    ports:
-      - "9999:9999"
-    restart: unless-stopped
 
   backend:
     build:
@@ -28,14 +18,12 @@ services:
     environment:
       - CORS_ORIGINS=*
       - TIKA_SERVER_URL=http://tika:9998
-      - SOAP_MOCK_URL=http://soap-mock:9999/Test.asmx
     extra_hosts:
       - "proxy.local:host-gateway"
     command: uvicorn server:app --host 0.0.0.0 --port 8001
     restart: unless-stopped
     depends_on:
       - tika
-      - soap-mock
 
   frontend:
     build:
@@ -49,4 +37,3 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
