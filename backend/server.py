@@ -1846,6 +1846,17 @@ async def get_server(
         if plugin_instance:
             plugin_instance_name = plugin_instance.name
     
+    # Buscar contagem de shares com acesso negado
+    from database import ServerShare
+    access_denied_result = await db.execute(
+        select(func.count(ServerShare.id))
+        .where(
+            ServerShare.server_guid == server.guid,
+            ServerShare.access_denied == True
+        )
+    )
+    access_denied_shares = access_denied_result.scalar() or 0
+    
     # Retornar resposta com nome da instância
     return ServerResponse(
         id=server.id,
@@ -1855,6 +1866,7 @@ async def get_server(
         verified=server.verified,
         shares_count=server.shares_count,
         downloaded_files_count=server.downloaded_files_count,
+        access_denied_shares_count=access_denied_shares,
         last_verified_at=server.last_verified_at,
         created_at=server.created_at,
         plugin_instance_id=server.plugin_instance_id,
