@@ -2805,6 +2805,21 @@ async def get_ocr_status():
     }
 
 
+@router.get("/system/db-watchdog")
+async def get_db_watchdog_status():
+    """Retorna o status do watchdog de banco de dados"""
+    try:
+        from db_watchdog import get_db_watchdog
+        watchdog = get_db_watchdog()
+        return watchdog.get_status()
+    except Exception as e:
+        return {
+            "error": True,
+            "message": str(e),
+            "running": False
+        }
+
+
 @router.get("/ocr/tika-status")
 async def get_tika_server_status():
     """Verifica status do servidor Tika em tempo real (faz teste de conexão)"""
