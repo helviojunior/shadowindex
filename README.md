@@ -45,7 +45,7 @@ O sistema já está rodando no ambiente Kubernetes:
 # Frontend na porta 3000
 ```
 
-Acesse: https://file-vault-scan.preview.emergentagent.com/
+Acesse: https://security-audit-49.preview.emergentagent.com/
 
 ### Opção 2: Docker Compose (Porta 9090)
 

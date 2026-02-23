@@ -1,5 +1,21 @@
 <analysis>**original_problem_statement:**
-O usuário solicitou inicialmente um painel web para gerenciar credenciais, conexões de banco de dados, servidores proxy e URLs de API SOAP. O projeto evoluiu para uma ferramenta abrangente de gerenciamento e execução de SQL, renomeada para ShadowIndex, com um navegador de arquivos de servidor, um sistema de download, uma arquitetura de plugins para abstrair a comunicação (SOAP, SMB), integração com OCR (Apache Tika), importação de servidores a partir de um arquivo XML do Nmap e integração com a ferramenta de varredura de segredos GitLeaks.
+O usuário solicitou inicialmente um painel web (ShadowIndex) para gerenciar credenciais e executar tarefas em servidores. O projeto evoluiu para uma ferramenta de gerenciamento de SQL e, posteriormente, para uma plataforma de análise de segurança de arquivos com as seguintes funcionalidades:
+- Um painel web com layout em modo escuro.
+- Gerenciamento de múltiplos tipos de credenciais.
+- Arquitetura de plugins para comunicação (SOAP, SMB).
+- Importação de servidores a partir de XML do Nmap.
+- Integração com GitLeaks para varredura e visualização de segredos.
+- Jobs em background para OCR, scan de diretórios e downloads.
+- Configurações globais para OCR e busca de arquivos críticos.
+- Identificação manual e automática de leaks.
+- Um dashboard com monitoramento de jobs em tempo real.
+- Notificações sonoras globais para finalização de jobs.
+- Na exclusão de um servidor, mover seu diretório para uma pasta de deletados e exportar todos os seus dados (incluindo leaks) para um arquivo JSON.
+- Rotina de backup automático do banco de dados na inicialização do backend.
+- Uma página dedicada para gerenciar jobs de OCR.
+- Uma nova funcionalidade de Busca Crítica para encontrar arquivos sensíveis com base em regras configuráveis.
+- Funcionalidade Execute SQL no plugin de interação direta.
+- Edição do nome do servidor diretamente na UI.
 
 **PRODUCT REQUIREMENTS:**
 - Um painel web chamado ShadowIndex com um layout moderno em modo escuro.
@@ -8,166 +24,159 @@ O usuário solicitou inicialmente um painel web para gerenciar credenciais, cone
 - Uma página para importar servidores a partir de um XML do Nmap.
 - Integração com GitLeaks para visualização de resultados e controle de scans.
 - Um sistema de jobs em background para tarefas demoradas como OCR e escaneamento de diretórios.
-- Configurações globais para habilitar o OCR automático baseado em extensões de arquivo ou mimetypes, com uma lista de exclusão que tem precedência.
 - Funcionalidade para identificar leaks manualmente e detectar automaticamente chaves privadas.
-- Um dashboard principal com widgets de visualização de dados.
-- Uma flag  em credenciais.
-- A capacidade de persistir os resultados do GitLeaks no banco de dados.
-- Busca expandida para incluir metadados de arquivos, conteúdo de OCR e findings do GitLeaks.
-- A UI não deve travar durante o carregamento de dados e deve ser resiliente a falhas de backend.
-- Um painel de monitoramento de jobs em tempo real no Dashboard.
-- Notificações sonoras globais para a finalização de todos os jobs de um tipo (Downloads, GitLeaks).
+- Um dashboard principal com widgets e um painel de monitoramento de jobs em tempo real.
+- Na exclusão do servidor, mover seu diretório para , exportar seus dados para JSON e remover os leaks do DB.
+- Rotina de backup automático do banco de dados na inicialização do backend.
+- A UI não deve travar durante o carregamento de dados.
+- Notificações sonoras globais para a finalização de todos os jobs de um tipo.
+- Página de gerenciamento de jobs de OCR com opção para reexecutar jobs falhados.
+- Funcionalidade de Busca Crítica que escaneia arquivos com base em regras e depois executa o GitLeaks.
+- O plugin de Ação Direta deve suportar execução de SQL com proxy SOCKS.
 
 **User's preferred language**: Portuguese. O próximo agente DEVE responder em português.
 
 **what currently exists?**
-Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. A sessão atual focou em implementar novas funcionalidades e otimizar a performance. Foi adicionado um painel de Monitoramento de Jobs em tempo real no Dashboard. Foram feitas otimizações críticas de performance nas páginas de Dashboard e Downloads, que agora carregam dados sob demanda para evitar lentidão e travamentos com grandes volumes de jobs. Diversos bugs foram corrigidos, incluindo a lógica de exclusão do OCR, a conexão WebSocket (agora estável em ), e toasts duplicados na UI. A lógica de parsing do GitLeaks foi aprimorada para priorizar leaks de arquivos originais sobre os de OCR. Uma nova funcionalidade de notificação sonora global foi iniciada.
+Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. Na sessão atual, o agente implementou uma vasta gama de funcionalidades e correções, incluindo:
+-   **Lógica de Proxy SOCKS:** Validou que o plugin direct_interaction só pode ser usado com proxies do tipo SOCKS.
+-   **Melhorias na Tabela de Servidores:** Moveu a edição do nome do servidor para a tabela, adicionou colunas de Risco e Leaks e habilitou a ordenação por múltiplas colunas.
+-   **Busca Crítica Aprimorada:** Adicionou uma UI e lógica de backend para excluir arquivos com extensões específicas (ex: , ) da busca.
+-   **Correção na Exclusão de Servidor:** Garantiu que os findings do GitLeaks sejam corretamente removidos do banco de dados quando um servidor é deletado.
+-   **Confirmação de Ações:** Adicionou diálogos de confirmação para as ações de limpar todos os findings e excluir um finding específico.
+-   **Tratamento de Arquivo Vazio:** Implementou uma lógica no backend (plugin SOAP, download worker) para tratar corretamente arquivos de 0 bytes, que antes eram incorretamente reportados como Arquivo não encontrado.
+-   **Ordenação Padrão:** Alterou a ordenação padrão da lista de servidores para mostrar os que tiveram interação mais recente primeiro.
+-   **Filtro na Tree View:** Adicionou um botão Ver Baixados para filtrar a árvore de arquivos e exibir apenas os diretórios que contêm arquivos já baixados.
+-   **Correção no Parsing do GitLeaks:** Resolveu um bug de regressão onde os resultados do scan do GitLeaks não eram corretamente vinculados ao servidor e arquivo correspondentes, implementando uma função de enriquecimento dos dados.
+-   **Correções Gerais:** Atualizou o , limpou arquivos desnecessários e corrigiu um bug de UI na página de configuração da Busca Crítica.
 
 **Last working item**:
-- **Last item agent was working:** Implementação de um sistema de notificação sonora global para alertar o usuário quando todos os jobs de Download ou GitLeaks forem concluídos. O agente adicionou a lógica de backend para emitir estatísticas de jobs via WebSocket e criou um hook React () e um arquivo de som no frontend.
-- **Status:** IN PROGRESS
-- **Agent Testing Done:** N
-- **Which testing method agent to use?** Both. O agente precisa finalizar a implementação e então testar o fluxo de ponta a ponta: iniciar jobs (downloads e gitleaks), aguardar a finalização e verificar se o som é tocado corretamente em qualquer página da aplicação.
-- **User Testing Done:** N
+-   **Last item agent was working:** O agente recebeu uma nova solicitação de funcionalidade do usuário: colorir os nós na árvore de navegação de arquivos para indicar visualmente quais foram visitados (azul) e quais não foram (cinza).
+-   **Status:** NOT STARTED
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** frontend testing agent. O agente precisará modificar o estado e a renderização do componente em  e verificar a mudança visual com a ferramenta de screenshot.
+-   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0):** A navegação fica travada na página de Downloads quando há uma lista grande de arquivos (>500) e outros jobs de scan estão em execução.
-- **Issue 2 (P2):** A UI de Downloads exibe um número incorreto de downloads simultâneos, e a causa raiz de jobs que ficam travados no estado downloading não foi totalmente resolvida.
+-   **Issue 1: Implementar coloração de nós visitados/não visitados na Tree View (P0)**
+-   **Issue 2: Verificar a correção do erro Arquivo não encontrado para arquivos de 0 bytes (P1)**
 
 **Issues Detail:**
-- **Issue 1: Travamento da navegação na página de Downloads sob carga.**
-    - **Attempted fixes:** O agente refatorou a página para carregar dados sob demanda (inicialmente carrega apenas estatísticas e os 50 jobs mais recentes) para melhorar a performance. Também adicionou lógica para cancelar requisições pendentes ao desmontar componentes ( ref), visando aumentar a estabilidade.
-    - **Next debug checklist:**
-        1.  Verificar se as otimizações implementadas resolveram o problema no ambiente do usuário sob a carga especificada.
-        2.  Usar as ferramentas de profiling do navegador para identificar gargalos de CPU ou memória na página de Downloads durante a navegação.
-        3.  Investigar se o polling contínuo, mesmo que otimizado, ainda interfere com o roteador do React sob certas condições.
-    - **Why fix this issue and what will be achieved with the fix?** Corrigir este bug é crítico para a usabilidade da aplicação, garantindo que a interface permaneça responsiva mesmo com muitos jobs em processamento.
-    - **Status:** IN PROGRESS
-    - **Is recurring issue?** Y
-    - **Should Test frontend/backend/both after fix?** Frontend.
-
-- **Issue 2: Contador de downloads incorreto e jobs travados.**
-    - **Attempted fixes:** Em sessões anteriores, foi adicionada uma lógica para resetar jobs travados na inicialização. Nesta sessão, o usuário pediu para remover um timeout automático que havia sido implementado, pois alguns downloads podem ser demorados. A otimização da página de downloads pode ter mascarado o problema do contador, mas a causa raiz dos jobs travados persiste.
-    - **Next debug checklist:**
-        1.  Revisar o  para encontrar cenários (ex: exceções não tratadas, falhas de comunicação com plugins) onde um job pode permanecer no estado downloading indefinidamente.
-        2.  Adicionar logging mais detalhado no ciclo de vida de um job de download.
-        3.  Considerar implementar um mecanismo de heartbeat ou um timeout configurável pelo usuário para detectar jobs genuinamente travados.
-    - **Why fix this issue and what will be achieved with the fix?** Resolver a causa raiz aumentará a confiabilidade do sistema de downloads e garantirá que a UI sempre reflita o estado real dos jobs.
-    - **Status:** NOT STARTED (nesta sessão)
-    - **Is recurring issue?** Y
-    - **Should Test frontend/backend/both after fix?** Both.
+-   **Issue 1: Implementar coloração de nós visitados/não visitados na Tree View**
+    -   **Attempted fixes:** Nenhum.
+    -   **Next debug checklist:**
+        1.  No arquivo , criar um estado () para armazenar os identificadores (IDs ou paths) dos nós visitados.
+        2.  Modificar a função que lida com o clique/expansão de um nó para adicionar seu identificador ao estado de visitados.
+        3.  Na função , aplicar uma classe CSS condicional (ex:  para visitados,  para não visitados) ao elemento do nó.
+        4.  Considerar o uso de  para persistir o estado de visitados entre recargas da página, uma funcionalidade solicitada anteriormente.
+    -   **Why fix this issue and what will be achieved with the fix?** Melhorar a experiência do usuário, fornecendo um feedback visual claro sobre quais partes do sistema de arquivos de um servidor já foram exploradas.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Blocked on other issue:** None
+-   **Issue 2: Verificar a correção do erro Arquivo não encontrado para arquivos de 0 bytes**
+    -   **Attempted fixes:** O agente modificou  e  para não lançar uma  quando o conteúdo do arquivo retornado for vazio e o tamanho esperado for 0. Foram adicionados logs detalhados para depuração.
+    -   **Next debug checklist:** O agente deve solicitar ao usuário que teste novamente o download de um arquivo de 0 bytes. Se o erro persistir, o agente deve analisar os novos logs do backend para identificar o ponto exato da falha.
+    -   **Why fix this issue and what will be achieved with the fix?** É um bug crítico que impede o download de arquivos vazios legítimos, tratando-os incorretamente como erros.
+    -   **Status:** USER VERIFICATION PENDING
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on other issue:** None
 
 **In progress Task List**:
-- **Task 1: Finalizar o sistema de notificação sonora global (P1).**
-    - **Where to resume:**
-        - **Frontend:** O hook  precisa ser integrado em um componente global que não é desmontado durante a navegação, como  ou . A lógica interna do hook precisa ser finalizada para:
-            1. Manter o estado anterior do número de jobs ativos.
-            2. Comparar o estado anterior com o novo estado recebido via WebSocket.
-            3. Tocar o som () somente quando o número de jobs ativos de um tipo (downloads ou gitleaks) vai de >0 para 0.
-        - **Backend:** Verificar se as chamadas para  e  estão sendo feitas em todos os pontos onde um job pode terminar (ex: , , , ).
-    - **What will be achieved with this?** O usuário receberá uma notificação sonora útil indicando a conclusão de tarefas em segundo plano, melhorando a experiência de usuário multitarefa.
-    - **Status:** IN PROGRESS
-    - **Should Test frontend/backend/both after fix?** Both.
+Nenhum.
 
 **Upcoming and Future Tasks**
-- **Upcoming Tasks:**
-  - (P1) Validar completamente a funcionalidade de proxy SOCKS5, que está implementada e teve a lógica de credenciais corrigida, mas requer um teste de ponta a ponta com um servidor SOCKS5 real.
-  - (P2) Realizar um teste completo do fluxo de OCR, garantindo a comunicação com o servidor Tika e a extração correta de dados.
-- **Future Tasks:**
-  - (P2) Evoluir a arquitetura de plugins, definindo exceções padronizadas e funções base obrigatórias.
-  - (P3) Melhorar o servidor mock SOAP para cobrir mais casos de uso.
+-   **Upcoming Tasks:**
+    -   (P1) Validar completamente a funcionalidade de proxy SOCKS5 com um teste de ponta a ponta.
+    -   (P1) Realizar um teste completo do fluxo de OCR, desde o enfileiramento até a visualização dos dados.
+-   **Future Tasks:**
+    -   (P2) Implementar a persistência do estado visual da Tree View (cores de visitado) entre recargas de página.
+    -   (P2) Evoluir a arquitetura de plugins, definindo exceções padronizadas e funções base obrigatórias.
+    -   (P3) Melhorar o servidor mock SOAP para cobrir mais casos de uso.
 
 **Completed work in this session**
-- **Painel de Monitoramento de Jobs:** Adicionado um novo painel ao Dashboard que exibe em tempo real o status dos jobs de Download, Scan de Diretório, OCR e GitLeaks.
-- **Otimização Crítica de Performance:**
-    - **Página de Downloads:** Refatorada para carregar apenas estatísticas e os 50 jobs mais recentes na carga inicial. O restante dos jobs é carregado sob demanda ao clicar nos filtros, tornando a página extremamente mais rápida.
-    - **Dashboard:** Otimizado para carregar apenas jobs ativos ou recentes, melhorando o tempo de carregamento.
-- **Correções de Bugs:**
-    - **Conexão WebSocket:** Corrigido o endpoint do WebSocket para  no frontend e backend, resolvendo o problema do indicador Offline persistente.
-    - **Lógica do OCR Worker:** O worker agora respeita a lista de exclusão de extensões e ignora arquivos com mimetype , com um fallback para a biblioteca  caso  não esteja disponível.
-    - **Toasts Duplicados:** Removidos toasts de notificação duplicados ao enfileirar downloads.
-- **Melhorias de Funcionalidade:**
-    - **Precedência de Leaks do GitLeaks:** A lógica de análise agora prioriza leaks do arquivo original em detrimento dos encontrados em arquivos , evitando duplicatas.
-    - **Melhoria Visual no Dashboard:** Adicionados divisores visuais entre as seções do dashboard para melhorar a legibilidade.
+-   Refinamento da Lógica de Proxy SOCKS (DONE).
+-   Movida a edição de nome do servidor para a tabela de listagem (DONE).
+-   Adicionadas colunas Risco e Leaks à tabela de servidores com ordenação (DONE).
+-   Adicionada exclusão de extensões na Busca Crítica (DONE).
+-   Adicionada confirmação de exclusão na página de Leaks (DONE).
+-   Corrigido bug na exclusão de servidor que não removia os findings (DONE).
+-   Corrigido bug de UI na página de configuração da Busca Crítica (DONE).
+-   Implementado tratamento para downloads de arquivos de 0 bytes (DONE, pendente de verificação).
+-   Adicionada ordenação padrão por data de interação na listagem de servidores (DONE).
+-   Adicionado filtro Ver Baixados na tree view de arquivos (DONE).
+-   Corrigido o parsing de resultados do GitLeaks para vincular ao servidor/arquivo (DONE).
+-   Atualizações no  e limpeza de arquivos (DONE).
 
 **Earlier issues found/mentioned but not fixed**
-- **Persistência do estado da Tree View:** A persistência de estado visual (cores para nós visitado ou acesso negado) na árvore de arquivos entre recargas de página ainda não foi implementada. O usuário pediu para remover da fila desta sessão, mas o problema permanece em aberto para o futuro.
+-   **Persistência do estado da Tree View:** A funcionalidade para manter o estado visual da árvore de arquivos (nós expandidos, cores de visitado) após recarregar a página ainda não foi implementada. Esta tarefa está diretamente relacionada ao último item de trabalho.
 
 **Known issue recurrence from previous fork**
-- **Estado da Tree View:** A falta de persistência de estado é um problema conhecido de uma sessão anterior e não foi abordado.
-- **Contador de Downloads / Jobs Travados:** Este é um problema recorrente. Embora a performance da UI tenha sido melhorada, a causa raiz que leva os jobs a ficarem presos no estado downloading não foi resolvida.
+-   **Erro no download de arquivos de 0 bytes:** O usuário relatou novamente o erro Arquivo não encontrado para arquivos vazios. O agente implementou uma nova correção, que agora aguarda verificação do usuário.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Carregamento Sob Demanda (On-Demand Loading):** A página de Downloads foi refatorada para carregar uma quantidade mínima de dados inicialmente e buscar o restante apenas sob interação do usuário. Este padrão é crucial para a performance da aplicação.
-- **Estado Global via WebSocket:** O backend agora envia ativamente estatísticas de jobs (, ) via WebSocket. O objetivo é usar esses eventos para acionar ações globais na UI (como notificações sonoras) de forma eficiente.
-- **Fallback de Dependência:** O worker de OCR implementa uma estratégia de fallback: tenta usar a biblioteca  para detecção de mimetype e, em caso de falha (ex:  não instalado), recorre à biblioteca nativa  do Python para evitar que a aplicação quebre.
-- **Cancelamento de Efeitos em React:** Foi implementado um padrão com um  () para verificar se um componente ainda está montado antes de atualizar seu estado dentro de  com dependências assíncronas. Isso previne erros e memory leaks durante a navegação rápida entre páginas que fazem polling.
+-   **Enriquecimento de Dados no Backend:** Após o parsing da saída de uma ferramenta externa (GitLeaks), usar os IDs extraídos (, ) para consultar o banco de dados e popular o objeto de dados com informações relacionadas (, ) antes de salvá-lo.
+-   **Manipulação Segura de Estado no Frontend:** Modificar funções de manipulação de estado (ex: ) para inicializar arrays ou objetos caso não existam na configuração vinda da API, evitando erros de undefined.
+-   **Renderização Condicional da UI:** Utilizar o estado do React para aplicar filtros dinâmicos e alterar a renderização de componentes, como no filtro Ver Baixados que esconde/mostra nós da árvore.
+-   **Ordenação de Banco de Dados com Nulos:** Utilizar  em queries SQLAlchemy () para garantir que registros com valores nulos em campos de ordenação (como ) apareçam no final da lista.
 
 **key DB schema**
-- **app_settings:**  - Armazena configurações globais, incluindo .
-- **download_jobs:** 
-- **ocr_jobs:** 
-- **gitleaks_jobs:** 
-- **findings:** 
+-   Nenhuma alteração de migração no esquema do banco de dados foi realizada. O modelo Pydantic  em  foi estendido com os campos  e , que são calculados dinamicamente na API.
 
 **All files of reference**
-- : Exemplo principal da nova arquitetura de carregamento sob demanda para performance.
-- : Contém o novo painel de monitoramento de jobs.
-- : Arquivo central da funcionalidade de notificação sonora (inacabada).
-- , , : Workers principais que foram modificados para corrigir bugs e adicionar emissão de stats.
-- : Centraliza a lógica de envio de mensagens WebSocket para o frontend.
+-   : Arquivo central para a tree view, onde a nova funcionalidade de coloração de nós visitados será implementada.
+-   : Contém a lógica corrigida para o parsing e enriquecimento dos resultados do GitLeaks.
+-   : Contém a correção para o tratamento de arquivos de 0 bytes.
+-   : Também modificado para a correção do tratamento de arquivos de 0 bytes.
+-   : Contém a tabela de servidores aprimorada com novas colunas e lógica de ordenação.
+-   : Contém o endpoint da lista de servidores atualizado e a lógica de exclusão de servidor corrigida.
 
 **Critical Info for New Agent**
-- **Performance é Prioridade:** O usuário enfrenta problemas de lentidão e travamento com grandes volumes de dados. Continue aplicando o padrão de carregamento sob demanda e otimização de queries em novas funcionalidades ou ao refatorar páginas existentes.
-- **Finalizar Notificação Sonora:** A tarefa de notificação sonora está pela metade. O próximo passo é integrar o hook  em  e completar sua lógica para tocar o som apenas na transição de jobs ativos ativos = 0.
-- **Verificação de Navegação:** O bug de travamento na página de Downloads precisa de verificação no ambiente do usuário, pois não foi reproduzível no ambiente de desenvolvimento após as otimizações.
+-   A tarefa imediata é implementar a funcionalidade de colorir os nós visitados/não visitados na tree view (). Considere implementar a persistência desse estado usando .
+-   Um bug crítico relacionado ao download de arquivos de 0 bytes foi corrigido, mas precisa de verificação do usuário. Este é um problema recorrente, então esteja preparado para depurá-lo novamente, utilizando os novos logs adicionados ao backend, caso o usuário confirme que o erro persiste.
 
 **documents and test reports created in this job**
--  (atualizado)
--  (novo)
+-    foi atualizado ao longo da sessão.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **DONE:** Solicitação para adicionar contadores de jobs de OCR e GitLeaks no painel de monitoramento do Dashboard.
-2.  **DONE:** Pedido para remover um toast de notificação duplicado ao enfileirar um download.
-3.  **DONE:** Reportou que o indicador de WebSocket estava Offline na página de Downloads, mesmo com a página funcionando. (Resolvido corrigindo o endpoint do WS para ).
-4.  **DONE:** Reportou que o OCR worker não estava ignorando as extensões da lista de configuração.
-5.  **DONE:** Pedido para adicionar mais extensões à lista de exclusão do OCR e implementar uma regra para sempre ignorar mimetypes .
-6.  **DONE:** Solicitação para que a lib  seja mantida, usando a outra biblioteca () apenas como fallback.
-7.  **DONE:** Pedido para ajustar a lógica de parsing do GitLeaks para dar precedência a leaks do arquivo original sobre os do arquivo OCR, sem considerar o número da linha na comparação.
-8.  **DONE:** Reportou que os toasts duplicados ainda apareciam em outro fluxo na tree view.
-9.  **IN PROGRESS:** Reportou que a navegação trava na página de Downloads quando há muitos arquivos (>500) e scans em execução.
-10. **IN PROGRESS:** Pedido para adicionar uma notificação sonora global para quando todos os jobs de Download e GitLeaks finalizarem.
+1.  **PENDING:** Solicitou a coloração de nós visitados (azul) e não visitados (cinza) na tree view.
+2.  **DONE:** Reportou que o parsing do GitLeaks não estava vinculando o finding ao servidor/arquivo. O agente corrigiu.
+3.  **INFO:** Informou que o parsing do GitLeaks era uma regressão (já havia funcionado antes).
+4.  **DONE:** Pediu para alterar o ícone do novo filtro da tree view para um olho/lupa. O agente trocou.
+5.  **INFO:** Pediu para adicionar a extensão  à busca crítica. O agente verificou e confirmou que já estava na lista padrão.
+6.  **DONE:** Solicitou um botão Ver Baixados na tree view para filtrar e mostrar apenas arquivos/diretórios baixados. O agente implementou.
+7.  **BUG (FIX PENDING VERIFICATION):** Reportou que o erro Arquivo não encontrado continuava a ocorrer para arquivos SOAP vazios. O agente implementou uma nova correção.
+8.  **DONE:** Solicitou que a lista de servidores fosse ordenada pela data de interação mais recente por padrão. O agente implementou.
+9.  **INFO:** Detalhou como o sistema deveria tratar arquivos de 0 bytes vindos do SOAP.
+10. **BUG:** Mostrou um erro de UI ao tentar adicionar extensões excluídas na Busca Crítica. O agente corrigiu.
 
 **Project Health Check:**
-- **Broken:**
-  - A navegação a partir da página de Downloads pode travar sob carga pesada. As otimizações foram implementadas, mas o problema precisa ser verificado pelo usuário.
-- **Mocked:** N/A.
-- **Needs Verification:**
-    - A solução para o travamento da navegação.
-    - O funcionamento da lógica de exclusão do OCR com as novas regras.
-    - A lógica de precedência do GitLeaks.
-    - A performance da página de Downloads com a nova arquitetura de carregamento sob demanda.
+-   **Broken:** O download de arquivos de 0 bytes via plugin SOAP pode ainda estar quebrado. O usuário relatou que o problema persistia. Uma nova correção foi implementada, mas aguarda verificação.
+-   **Mocked:** N/A
+-   **Needs Verification:**
+    -   A correção do bug de download de arquivos de 0 bytes.
+    -   A correção do parsing dos resultados do GitLeaks.
 
 **3rd Party Integrations**
-- **Apache Tika:** Para OCR.
-- **Impacket:** Para interação SMB.
-- **GitLeaks:** Binário para varredura de segredos.
-- **UI Libraries:** , , , , .
-- **Backend:** To use the fastapi command, please install "fastapi[standard]":
+-   **Apache Tika:** Para OCR.
+-   **Impacket:** Para interação SMB.
+-   **GitLeaks:** Binário para varredura de segredos.
+-   **UI Libraries:** , , , , , .
+-   **Backend:** To use the fastapi command, please install "fastapi[standard]":
 
-	pip install "fastapi[standard]", , usage: websockets [--version | <uri>], , , , , .
+	pip install "fastapi[standard]", , usage: websockets [--version | <uri>], , , , , , , , , , .
 
 **Testing status**
-- **Testing agent used after significant changes:** NO
-- **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** N/A
-- **Known regressions:** Nenhuma identificada. As otimizações de performance e correções de bugs melhoraram a estabilidade geral.
+-   **Testing agent used after significant changes:** NO
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** N/A
+-   **Known regressions:** O parsing do GitLeaks foi uma regressão que o agente corrigiu. O problema com arquivos de 0 bytes é um bug recorrente.
 
 **Credentials to test flow:**
 Não há credenciais estáticas. A aplicação permite criar servidores, credenciais e instâncias de plugin através da UI.
 
 **What agent forgot to execute**
-- O agente não finalizou a implementação da notificação sonora. O hook React foi criado, mas não foi integrado à aplicação nem teve sua lógica interna completada para tocar o som nas condições corretas.</analysis>
+O agente não esqueceu nenhuma tarefa. A última solicitação do usuário (colorir nós da tree view) foi recebida no final da sessão e está corretamente definida como o próximo item de trabalho.</analysis>
