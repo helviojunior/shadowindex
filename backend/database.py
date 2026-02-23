@@ -472,6 +472,8 @@ class AppSettings(Base):
 # Configurações padrão
 DEFAULT_SETTINGS = {
     'max_simultaneous_downloads': ('3', 'Número máximo de downloads simultâneos'),
+    'max_simultaneous_ocr_jobs': ('2', 'Número máximo de jobs OCR simultâneos'),
+    'ocr_auto_cleanup_minutes': ('15', 'Minutos para limpeza automática de jobs OCR finalizados com sucesso'),
     'default_depth_levels': ('5', 'Quantidade padrão de níveis de profundidade'),
     'default_max_file_size_mb': ('100', 'Tamanho máximo padrão de arquivo (MB)'),
     'ignored_extensions': ('.log,.tmp,.bak,.log.*', 'Extensões de arquivo a ignorar no batch download (suporta wildcards como .log.*)'),
