@@ -4861,12 +4861,38 @@ PRIVATE_KEY_PATTERNS = [
     ("-----BEGIN OPENSSH PRIVATE KEY-----", "ssh-openssh", "Chave Privada SSH (OpenSSH)"),
     ("-----BEGIN RSA PRIVATE KEY-----", "ssh-rsa", "Chave Privada RSA"),
     ("-----BEGIN DSA PRIVATE KEY-----", "ssh-dsa", "Chave Privada DSA"),
-    ("-----BEGIN EC PRIVATE KEY-----", "ssh-ec", "Chave Privada EC"),
+    ("-----BEGIN EC PRIVATE KEY-----", "ssh-ec", "Chave Privada EC (Elliptic Curve)"),
+    ("-----BEGIN ED25519 PRIVATE KEY-----", "ssh-ed25519", "Chave Privada Ed25519"),
+    
+    # PKCS#8 (formato genérico para chaves privadas)
     ("-----BEGIN PRIVATE KEY-----", "pkcs8", "Chave Privada PKCS#8"),
     ("-----BEGIN ENCRYPTED PRIVATE KEY-----", "pkcs8-encrypted", "Chave Privada PKCS#8 Criptografada"),
     
     # PuTTY PPK
     ("PuTTY-User-Key-File-", "ppk", "Chave Privada PuTTY (PPK)"),
+    
+    # Outras chaves específicas
+    ("-----BEGIN PGP PRIVATE KEY BLOCK-----", "pgp", "Chave Privada PGP/GPG"),
+    ("-----BEGIN CERTIFICATE REQUEST-----", "csr", "Solicitação de Certificado (CSR)"),
+    ("-----BEGIN NEW CERTIFICATE REQUEST-----", "csr-new", "Solicitação de Certificado (CSR)"),
+]
+
+# Extensões de arquivos que podem conter chaves privadas
+PRIVATE_KEY_EXTENSIONS = [
+    # Chaves SSH
+    '.pem', '.key', '.priv', '.private',
+    # PuTTY
+    '.ppk',
+    # Certificados com chave
+    '.pfx', '.p12',
+    # Outras
+    '.der', '.p8', '.pkcs8',
+]
+
+# Nomes de arquivos comuns para chaves SSH (sem extensão)
+PRIVATE_KEY_FILE_NAMES = [
+    'id_rsa', 'id_dsa', 'id_ecdsa', 'id_ed25519', 'id_ed25519_sk', 'id_ecdsa_sk',
+    'identity', 'ssh_host_rsa_key', 'ssh_host_dsa_key', 'ssh_host_ecdsa_key', 'ssh_host_ed25519_key',
 ]
 
 
