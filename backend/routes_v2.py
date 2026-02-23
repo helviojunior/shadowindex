@@ -4896,15 +4896,78 @@ PRIVATE_KEY_FILE_NAMES = [
 ]
 
 
-def detect_private_key_type(content: str) -> tuple:
+def detect_private_key_type(content: str, file_name: str = None) -> tuple:
     """
-    Detecta se o conteúdo contém uma chave privada SSH/RSA/PPK.
+    Detecta se o conteúdo contém uma chave privada SSH/RSA/PPK/PEM.
     Retorna (tipo, descricao) ou (None, None) se não encontrar.
+    
+    Args:
+        content: Conteúdo do arquivo (texto)
+        file_name: Nome do arquivo (para detectar arquivos SSH sem extensão)
     """
+    # Verificar padrões de texto (PEM, PPK, etc)
     for pattern, key_type, description in PRIVATE_KEY_PATTERNS:
         if pattern in content:
             return key_type, description
+    
+    # Verificar se é um arquivo SSH conhecido pelo nome (sem extensão)
+    if file_name:
+        base_name = os.path.basename(file_name).lower()
+        # Remover extensão se houver
+        name_without_ext = os.path.splitext(base_name)[0]
+        
+        for known_name in PRIVATE_KEY_FILE_NAMES:
+            if base_name == known_name.lower() or name_without_ext == known_name.lower():
+                # Verificar se parece uma chave SSH (começa com marcadores típicos)
+                if content.strip().startswith('-----BEGIN'):
+                    # Já foi capturado acima, ignorar
+                    pass
+                elif 'PRIVATE KEY' in content.upper():
+                    return "ssh-generic", f"Chave Privada SSH ({base_name})"
+    
     return None, None
+
+
+def detect_private_key_binary(file_path: str, file_ext: str) -> tuple:
+    """
+    Detecta chaves privadas em formato binário (DER, etc).
+    Retorna (tipo, descricao, has_private_key) ou (None, None, False).
+    
+    Args:
+        file_path: Caminho do arquivo
+        file_ext: Extensão do arquivo
+    """
+    if file_ext.lower() not in ['.der', '.p8', '.pkcs8']:
+        return None, None, False
+    
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.backends import default_backend
+        from cryptography import x509
+        
+        with open(file_path, 'rb') as f:
+            data = f.read()
+        
+        # Tentar carregar como chave privada DER
+        try:
+            private_key = serialization.load_der_private_key(data, password=None, backend=default_backend())
+            key_type = type(private_key).__name__
+            return "der-private", f"Chave Privada DER ({key_type})", True
+        except Exception:
+            pass
+        
+        # Tentar com senha vazia
+        try:
+            private_key = serialization.load_der_private_key(data, password=b'', backend=default_backend())
+            key_type = type(private_key).__name__
+            return "der-private-encrypted", f"Chave Privada DER Criptografada ({key_type})", True
+        except Exception:
+            pass
+            
+    except Exception as e:
+        logger.debug(f"Erro ao analisar arquivo DER {file_path}: {e}")
+    
+    return None, None, False
 
 
 async def auto_register_private_key_leak(
