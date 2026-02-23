@@ -326,7 +326,9 @@ def get_file_path(server_guid: str, share_name: str, sanitized_path: str) -> str
     Args:
         server_guid: GUID do servidor
         share_name: Nome do compartilhamento
-        sanitized_path: Caminho sanitizado relativo ao storage (pode ser ID-based ou path-based)
+        sanitized_path: Caminho sanitizado relativo ao storage 
+                        Formato novo: "server_guid/share_id/file_version_id"
+                        Formato legado: "server_id/file_id/version" ou "path/to/file"
     
     Returns:
         str: Caminho completo do arquivo
@@ -334,15 +336,39 @@ def get_file_path(server_guid: str, share_name: str, sanitized_path: str) -> str
     if not sanitized_path:
         return ""
     
-    # Se sanitized_path é no formato "server_id/file_id/version", usar estrutura de IDs
     parts = sanitized_path.split('/')
-    if len(parts) == 3 and all(p.isdigit() for p in parts):
-        # Formato: server_id/file_id/version
-        return str(Path(STORAGE_BASE_PATH) / sanitized_path)
     
-    # Caso contrário, é o caminho relativo legado
+    # Novo formato: server_guid/share_id/file_version_id (3 partes, primeira é GUID)
+    if len(parts) == 3:
+        first_part = parts[0]
+        # Verificar se primeira parte é um GUID (36 chars com hífens ou 32 sem)
+        is_guid = (len(first_part) == 36 and first_part.count('-') == 4) or len(first_part) == 32
+        
+        if is_guid:
+            # Novo formato: server_guid/share_id/file_version_id
+            return str(Path(STORAGE_BASE_PATH) / sanitized_path)
+        elif all(p.isdigit() for p in parts):
+            # Formato legado: server_id/file_id/version (todos numéricos)
+            return str(Path(STORAGE_BASE_PATH) / sanitized_path)
+    
+    # Caso contrário, é o caminho relativo legado (path-based)
     # Pode ser GUID-based: "guid/xx/hash" ou path-based: "path/to/file"
-    return str(Path(STORAGE_BASE_PATH) / server_guid / sanitized_path)
+    return str(Path(STORAGE_BASE_PATH) / sanitized_path)
+
+
+def get_file_path_by_standard(server_guid: str, share_id: int, file_version_id: int) -> str:
+    """
+    Retorna o caminho completo de um arquivo usando a estrutura padrão
+    
+    Args:
+        server_guid: GUID do servidor
+        share_id: ID do share
+        file_version_id: ID da versão do arquivo
+    
+    Returns:
+        str: Caminho completo do arquivo
+    """
+    return str(get_standard_file_path(server_guid, share_id, file_version_id))
 
 
 def get_file_path_by_id(server_id: int, file_id: int, version: int = 1) -> str:
