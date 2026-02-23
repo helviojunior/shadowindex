@@ -1376,11 +1376,21 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         # Obter o plugin correto para o servidor
         plugin = await get_plugin_for_server(db, server)
         
-        # Chamar download_file do plugin
-        file_content = await plugin.download_file(item.full_path, ignore_cache=True)
+        # Chamar download_file do plugin passando expected_size para validar arquivos zerados
+        expected_size = item.size if hasattr(item, 'size') else None
+        file_content = await plugin.download_file(
+            item.full_path, 
+            ignore_cache=True,
+            expected_size=expected_size
+        )
         
-        if not file_content or not file_content.data:
-            raise HTTPException(status_code=500, detail="Resposta vazia do servidor")
+        # Aceitar arquivos zerados se o tamanho esperado é 0
+        if not file_content or file_content.data is None:
+            raise HTTPException(status_code=500, detail="Resposta nula do servidor")
+        
+        # Se o conteúdo está vazio mas o tamanho esperado é > 0, pode ser erro
+        if len(file_content.data) == 0 and expected_size and expected_size > 0:
+            raise HTTPException(status_code=500, detail=f"Arquivo vazio com tamanho esperado de {expected_size} bytes")
         
         # ===== AÇÕES PÓS-DOWNLOAD =====
         
