@@ -2625,33 +2625,128 @@ async def get_certificate_info(
                 }
             )
         
-        log_step("Certificado extraído com sucesso", "success")
+        log_step("Processando certificados extraídos", "info")
         
-        # Extrair informações
-        subject_parts = {}
-        for attr in cert.subject:
-            subject_parts[attr.oid._name] = attr.value
+        # Coletar TODOS os certificados (principal + chain)
+        all_certs = []
         
-        issuer_parts = {}
-        for attr in cert.issuer:
-            issuer_parts[attr.oid._name] = attr.value
+        # Certificado principal (se existir)
+        if cert:
+            all_certs.append({
+                "cert": cert,
+                "has_private_key": private_key is not None,
+                "source": "principal"
+            })
+            log_step(f"Certificado principal encontrado (com chave privada: {'Sim' if private_key else 'Não'})", "success")
         
-        thumbprint = cert.fingerprint(hashes.SHA1()).hex().upper()
+        # Certificados da cadeia
+        if chain:
+            for i, chain_cert in enumerate(chain):
+                all_certs.append({
+                    "cert": chain_cert,
+                    "has_private_key": False,
+                    "source": f"chain[{i}]"
+                })
+            log_step(f"Cadeia de certificados: {len(chain)} certificado(s) adicional(is)", "info")
+        
+        if not all_certs:
+            # Se ainda não tem cert mas tem private_key, retornar info da chave
+            if private_key:
+                log_step("Arquivo contém apenas chave privada (sem certificado)", "warning")
+                return {
+                    "type": file_ext.replace('.', '').upper(),
+                    "has_certificate": False,
+                    "has_private_key": True,
+                    "total_certificates": 0,
+                    "certificates": [],
+                    "password_used": password_used,
+                    "debug_log": debug_log,
+                    "message": "Este arquivo contém apenas a chave privada, sem certificado associado"
+                }
+            
+            log_step("Nenhum certificado encontrado", "error")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": True,
+                    "message": "Não foi possível extrair nenhum certificado",
+                    "debug_log": debug_log
+                }
+            )
+        
+        # Ordenar: certificados com chave privada primeiro
+        all_certs.sort(key=lambda x: (not x["has_private_key"], x["source"]))
+        log_step(f"Total de certificados: {len(all_certs)}", "success")
+        
+        # Processar cada certificado
+        certificates_info = []
+        main_thumbprint = None
+        
+        for cert_entry in all_certs:
+            cert_obj = cert_entry["cert"]
+            has_key = cert_entry["has_private_key"]
+            
+            try:
+                # Extrair informações do subject
+                subject_parts = {}
+                for attr in cert_obj.subject:
+                    subject_parts[attr.oid._name] = attr.value
+                
+                # Extrair informações do issuer
+                issuer_parts = {}
+                for attr in cert_obj.issuer:
+                    issuer_parts[attr.oid._name] = attr.value
+                
+                thumbprint = cert_obj.fingerprint(hashes.SHA1()).hex().upper()
+                
+                # Guardar thumbprint do primeiro (para leak)
+                if main_thumbprint is None:
+                    main_thumbprint = thumbprint
+                
+                # Verificar se é auto-assinado
+                is_self_signed = cert_obj.subject == cert_obj.issuer
+                
+                # Verificar validade
+                now = datetime.now(timezone.utc)
+                is_expired = cert_obj.not_valid_after_utc < now
+                is_not_yet_valid = cert_obj.not_valid_before_utc > now
+                
+                cert_info = {
+                    "subject": subject_parts,
+                    "issuer": issuer_parts,
+                    "serial_number": str(cert_obj.serial_number),
+                    "not_before": cert_obj.not_valid_before_utc.isoformat(),
+                    "not_after": cert_obj.not_valid_after_utc.isoformat(),
+                    "thumbprint": thumbprint,
+                    "has_private_key": has_key,
+                    "version": cert_obj.version.value,
+                    "is_self_signed": is_self_signed,
+                    "is_expired": is_expired,
+                    "is_not_yet_valid": is_not_yet_valid,
+                    "source": cert_entry["source"]
+                }
+                
+                certificates_info.append(cert_info)
+                
+            except Exception as cert_error:
+                log_step(f"Erro ao processar certificado {cert_entry['source']}: {str(cert_error)}", "error")
         
         # Se o PFX tem chave privada, registrar automaticamente como leak
         has_private_key = private_key is not None
         leak_registered = False
         
-        if has_private_key and file_ext in ['.pfx', '.p12']:
+        if has_private_key and file_ext in ['.pfx', '.p12'] and main_thumbprint:
             try:
                 from gitleaks_service import get_gitleaks_service
-                from datetime import datetime, timezone
                 import hashlib
                 
                 service = get_gitleaks_service()
                 
+                # Usar subject do primeiro cert com chave privada
+                main_subject = certificates_info[0].get("subject", {}) if certificates_info else {}
+                
                 # Criar fingerprint único
-                fingerprint_source = f"{file.file_path}:pfx_private_key:{thumbprint}"
+                fingerprint_source = f"{file.file_path}:pfx_private_key:{main_thumbprint}"
                 fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
                 
                 # Verificar se já existe
@@ -2661,12 +2756,12 @@ async def get_certificate_info(
                     # Criar finding
                     finding = {
                         "RuleID": "auto-pfx-private-key",
-                        "Description": f"Certificado PFX com chave privada: {subject_parts.get('commonName', 'Unknown')}",
+                        "Description": f"Certificado PFX com chave privada: {main_subject.get('commonName', 'Unknown')}",
                         "File": file.file_path,
                         "StartLine": 1,
                         "EndLine": 1,
-                        "Match": f"[PFX com chave privada - Thumbprint: {thumbprint}]",
-                        "Secret": f"Certificado: {subject_parts.get('commonName', 'Unknown')}",
+                        "Match": f"[PFX com chave privada - Thumbprint: {main_thumbprint}]",
+                        "Secret": f"Certificado: {main_subject.get('commonName', 'Unknown')}",
                         "Fingerprint": f"auto_pfx_{fingerprint}",
                         "Tags": ["certificate", "private-key", "pfx", "auto-detected"],
                         "Severity": "critical",
@@ -2687,18 +2782,18 @@ async def get_certificate_info(
             except Exception as e:
                 logger.warning(f"Erro ao registrar leak de PFX: {e}")
         
+        log_step("Processamento concluído com sucesso", "success")
+        
         return {
+            "type": file_ext.replace('.', '').upper(),
             "success": True,
             "file_id": file_id,
-            "subject": subject_parts,
-            "issuer": issuer_parts,
-            "serial_number": str(cert.serial_number),
-            "not_before": cert.not_valid_before_utc.isoformat(),
-            "not_after": cert.not_valid_after_utc.isoformat(),
-            "thumbprint": thumbprint,
+            "total_certificates": len(certificates_info),
+            "certificates": certificates_info,
             "has_private_key": has_private_key,
-            "version": cert.version.value,
-            "leak_registered": leak_registered
+            "password_used": password_used,
+            "leak_registered": leak_registered,
+            "debug_log": debug_log
         }
         
     except HTTPException:
