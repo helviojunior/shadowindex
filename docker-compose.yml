@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  shadowindex-net:
+    driver: bridge
+
 services:
   tika:
     image: apache/tika:latest-full
@@ -18,6 +22,8 @@ services:
       --port 9998
       --taskTimeoutMillis 900000
       --taskPulseMillis 1200000
+    networks:
+      - shadowindex-net
 
   backend:
     build:
@@ -33,11 +39,12 @@ services:
       - TIKA_SERVER_URL=http://tika:9998
     extra_hosts:
       - "proxy.local:host-gateway"
-      - "tika:shadowindex-tika"
     command: uvicorn server:app --host 0.0.0.0 --port 8001
     restart: unless-stopped
     depends_on:
       - tika
+    networks:
+      - shadowindex-net
 
   frontend:
     build:
@@ -51,3 +58,5 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - shadowindex-net
