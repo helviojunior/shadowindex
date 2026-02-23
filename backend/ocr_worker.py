@@ -398,7 +398,7 @@ class OCRWorker:
             logger.error(f"Error in OCR cleanup: {e}")
     
     async def _process_pending_jobs(self, db: AsyncSession):
-        """Processa jobs pendentes de OCR"""
+        """Processa jobs pendentes de OCR em paralelo"""
         from database import OCRJob, FileVersion, AppSettings
         import mimetypes
         
@@ -422,49 +422,54 @@ class OCRWorker:
         )
         running_count = running_count_result.scalar() or 0
         
-        if running_count >= max_concurrent:
+        # Calcular quantos jobs podemos iniciar
+        slots_available = max_concurrent - running_count
+        
+        if slots_available <= 0:
             # Já atingiu o limite de jobs simultâneos
             return
         
-        # Buscar próximo job pendente (ordenado por prioridade e data)
+        # Buscar próximos jobs pendentes (ordenado por prioridade e data)
         result = await db.execute(
             select(OCRJob)
             .where(OCRJob.status == 'pending')
             .order_by(OCRJob.priority.desc(), OCRJob.created_at.asc())
-            .limit(1)
+            .limit(slots_available)
         )
-        job = result.scalar_one_or_none()
+        jobs = result.scalars().all()
         
-        if not job:
+        if not jobs:
             return
         
-        # Verificar lista de exclusão ANTES de processar
-        import os
-        file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
-        
-        # Carregar lista de extensões excluídas
-        excluded_result = await db.execute(
-            select(AppSettings).where(AppSettings.key == 'auto_ocr_excluded_extensions')
-        )
-        excluded_setting = excluded_result.scalar_one_or_none()
-        auto_ocr_excluded_extensions = []
-        if excluded_setting and excluded_setting.value:
-            auto_ocr_excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
-        
-        # Verificar se a extensão está na lista de exclusão
-        is_excluded = False
-        skip_reason = None
-        if file_ext and auto_ocr_excluded_extensions:
-            for excluded_ext in auto_ocr_excluded_extensions:
-                excluded_ext_normalized = excluded_ext if excluded_ext.startswith('.') else f'.{excluded_ext}'
-                if file_ext == excluded_ext_normalized:
-                    is_excluded = True
-                    skip_reason = f'Extensão {file_ext} está na lista de exclusão'
-                    break
-        
-        # HARD-CODED: Sempre ignorar mimetypes text/* - não faz sentido OCR em texto
-        if not is_excluded and job.local_path and os.path.exists(job.local_path):
-            file_mimetype = None
+        # Processar cada job
+        for job in jobs:
+            # Verificar lista de exclusão ANTES de processar
+            import os
+            file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
+            
+            # Carregar lista de extensões excluídas
+            excluded_result = await db.execute(
+                select(AppSettings).where(AppSettings.key == 'auto_ocr_excluded_extensions')
+            )
+            excluded_setting = excluded_result.scalar_one_or_none()
+            auto_ocr_excluded_extensions = []
+            if excluded_setting and excluded_setting.value:
+                auto_ocr_excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
+            
+            # Verificar se a extensão está na lista de exclusão
+            is_excluded = False
+            skip_reason = None
+            if file_ext and auto_ocr_excluded_extensions:
+                for excluded_ext in auto_ocr_excluded_extensions:
+                    excluded_ext_normalized = excluded_ext if excluded_ext.startswith('.') else f'.{excluded_ext}'
+                    if file_ext == excluded_ext_normalized:
+                        is_excluded = True
+                        skip_reason = f'Extensão {file_ext} está na lista de exclusão'
+                        break
+            
+            # HARD-CODED: Sempre ignorar mimetypes text/* - não faz sentido OCR em texto
+            if not is_excluded and job.local_path and os.path.exists(job.local_path):
+                file_mimetype = None
             
             # Tentar com libmagic primeiro (detecção real pelo conteúdo)
             if has_libmagic:
