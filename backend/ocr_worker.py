@@ -1094,7 +1094,8 @@ class OCRWorker:
                             job.local_path, file_ext, db, 
                             server_guid=server_guid,
                             share_name=share_name,
-                            file_version_id=file_version_id
+                            file_version_id=file_version_id,
+                            file_name=job.file_name
                         )
                     else:
                         # CONDIÇÃO 2: Executar OCR com retry em caso de erro de comunicação
