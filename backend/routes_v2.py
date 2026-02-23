@@ -4856,13 +4856,30 @@ async def auto_register_private_key_leak(
     content: str,
     server_id: int,
     key_type: str,
-    description: str
+    description: str,
+    file_version_id: int = None,
+    share_name: str = None,
+    server_guid: str = None,
+    share_id: int = None
 ) -> dict:
     """
     Registra automaticamente um leak para chave privada detectada.
     Retorna informações do leak registrado ou None se já existir.
+    
+    Args:
+        file_path: Caminho original do arquivo no servidor
+        content: Conteúdo da chave privada
+        server_id: ID do servidor
+        key_type: Tipo da chave (rsa, dsa, ec, etc)
+        description: Descrição da chave
+        file_version_id: ID da versão do arquivo (para enriquecimento)
+        share_name: Nome do share (para enriquecimento)
+        server_guid: GUID do servidor (para enriquecimento)
+        share_id: ID do share (para enriquecimento)
     """
-    from gitleaks_service import get_gitleaks_service
+    from gitleaks_service import get_gitleaks_service, save_finding_to_db, enrich_finding_with_db_info
+    from database import async_session_maker, GitleaksFinding, Server, FileVersion, DownloadedFile
+    from sqlalchemy import select
     from datetime import datetime, timezone
     import hashlib
     
@@ -4873,10 +4890,22 @@ async def auto_register_private_key_leak(
     fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
     full_fingerprint = f"auto_key_{fingerprint}"
     
-    # Verificar se já existe
-    existing = [f for f in service._findings if f.get('Fingerprint') == full_fingerprint]
-    if existing:
-        return {"already_exists": True, "finding": existing[0]}
+    # Verificar se já existe no banco de dados
+    try:
+        async with async_session_maker() as db:
+            existing_db = await db.execute(
+                select(GitleaksFinding).where(GitleaksFinding.fingerprint == full_fingerprint)
+            )
+            if existing_db.scalar_one_or_none():
+                logger.debug(f"Leak {full_fingerprint} já existe no banco de dados")
+                return {"already_exists": True, "finding": None}
+    except Exception as e:
+        logger.warning(f"Erro ao verificar duplicata no banco: {e}")
+    
+    # Verificar se já existe no cache
+    existing_cache = [f for f in service._findings if f.get('Fingerprint') == full_fingerprint]
+    if existing_cache:
+        return {"already_exists": True, "finding": existing_cache[0]}
     
     # Extrair um preview do início da chave
     preview_lines = content.split('\n')[:3]
@@ -4884,7 +4913,63 @@ async def auto_register_private_key_leak(
     if len(preview) > 100:
         preview = preview[:100] + "..."
     
-    # Criar finding
+    # Buscar informações do servidor e arquivo para enriquecimento
+    server_name = None
+    server_ip = None
+    file_name = None
+    server_path = file_path
+    enriched_share_name = share_name
+    
+    try:
+        async with async_session_maker() as db:
+            # Buscar servidor
+            server_result = await db.execute(
+                select(Server).where(Server.id == server_id)
+            )
+            server = server_result.scalar_one_or_none()
+            if server:
+                server_name = server.name
+                server_ip = server.ip
+                if not server_guid:
+                    server_guid = server.guid
+            
+            # Se temos file_version_id, buscar informações do arquivo
+            if file_version_id:
+                version_result = await db.execute(
+                    select(FileVersion).where(FileVersion.id == file_version_id)
+                )
+                file_version = version_result.scalar_one_or_none()
+                if file_version:
+                    file_name = os.path.basename(file_version.file_path) if file_version.file_path else None
+                    server_path = file_version.file_path
+                    if not enriched_share_name:
+                        enriched_share_name = file_version.share_name
+            
+            # Se não temos file_version_id mas temos server_guid, buscar DownloadedFile
+            if not file_name and server_guid:
+                df_result = await db.execute(
+                    select(DownloadedFile).where(
+                        DownloadedFile.server_guid == server_guid,
+                        DownloadedFile.file_path == file_path
+                    )
+                )
+                downloaded_file = df_result.scalar_one_or_none()
+                if downloaded_file:
+                    file_name = downloaded_file.file_name
+                    server_path = downloaded_file.file_path
+                    if not enriched_share_name:
+                        enriched_share_name = downloaded_file.share_name
+            
+            # Se ainda não temos file_name, extrair do path
+            if not file_name:
+                file_name = os.path.basename(file_path)
+                
+    except Exception as e:
+        logger.warning(f"Erro ao enriquecer leak: {e}")
+        # Fallback: extrair nome do arquivo do path
+        file_name = os.path.basename(file_path)
+    
+    # Criar finding com enriquecimento
     finding = {
         "RuleID": f"auto-{key_type}",
         "Description": f"Chave privada detectada automaticamente: {description}",
@@ -4903,11 +4988,33 @@ async def auto_register_private_key_leak(
         "scanned_at": datetime.now(timezone.utc).isoformat(),
         "original_file": file_path,
         "scanned_file": file_path,
-        "detection_source": "auto-key"
+        "detection_source": "auto-key",
+        
+        # Dados enriquecidos
+        "server_name": server_name,
+        "server_ip": server_ip,
+        "file_name": file_name,
+        "server_path": server_path,
+        "share_name": enriched_share_name,
+        
+        # IDs para novo formato (se disponíveis)
+        "extracted_server_guid": server_guid,
+        "extracted_share_id": share_id,
+        "extracted_file_version_id": file_version_id
     }
     
+    # Adicionar ao cache em memória
     service._findings.append(finding)
-    logger.info(f"Leak auto-registrado para chave privada: {file_path} ({key_type})")
+    
+    # Salvar no banco de dados
+    try:
+        saved = await save_finding_to_db(finding)
+        if saved:
+            logger.info(f"Leak auto-registrado para chave privada: {file_path} ({key_type}) - Servidor: {server_name}")
+        else:
+            logger.debug(f"Leak já existia no banco: {file_path}")
+    except Exception as e:
+        logger.warning(f"Erro ao salvar leak no banco: {e}")
     
     return {"already_exists": False, "finding": finding}
 
