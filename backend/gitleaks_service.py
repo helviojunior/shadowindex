@@ -277,6 +277,76 @@ def normalize_file_path(file_path: str) -> Dict[str, Any]:
     }
 
 
+async def enrich_finding_with_db_info(finding: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Enriquece um finding com informações do servidor e arquivo buscando no banco de dados.
+    
+    Usa os IDs extraídos (extracted_server_id, extracted_file_id) para buscar:
+    - server_name, server_ip do servidor
+    - file_name, share_name, server_path do arquivo baixado
+    
+    Args:
+        finding: Dicionário com os dados do finding (deve ter extracted_server_id e/ou extracted_file_id)
+        
+    Returns:
+        Finding enriquecido com informações do banco de dados
+    """
+    from database import async_session_maker, Server, DownloadedFile
+    from sqlalchemy import select
+    
+    extracted_server_id = finding.get('extracted_server_id')
+    extracted_file_id = finding.get('extracted_file_id')
+    server_id = finding.get('server_id')
+    
+    # Usar server_id do job se não tiver extracted_server_id
+    effective_server_id = extracted_server_id or server_id
+    
+    if not effective_server_id and not extracted_file_id:
+        return finding
+    
+    try:
+        async with async_session_maker() as db:
+            # Se temos file_id, buscar informações do arquivo baixado
+            if extracted_file_id:
+                file_result = await db.execute(
+                    select(DownloadedFile).where(DownloadedFile.id == extracted_file_id)
+                )
+                downloaded_file = file_result.scalar_one_or_none()
+                
+                if downloaded_file:
+                    finding['file_name'] = downloaded_file.file_name
+                    finding['share_name'] = downloaded_file.share_name
+                    finding['server_path'] = downloaded_file.file_path
+                    
+                    # Buscar servidor pelo GUID do arquivo
+                    if downloaded_file.server_guid:
+                        server_result = await db.execute(
+                            select(Server).where(Server.guid == downloaded_file.server_guid)
+                        )
+                        server = server_result.scalar_one_or_none()
+                        if server:
+                            finding['server_name'] = server.name
+                            finding['server_ip'] = server.ip
+                            # Atualizar server_id se não estava definido
+                            if not finding.get('extracted_server_id'):
+                                finding['extracted_server_id'] = server.id
+            
+            # Se temos server_id mas ainda não temos server_name/ip, buscar
+            if effective_server_id and not finding.get('server_name'):
+                server_result = await db.execute(
+                    select(Server).where(Server.id == effective_server_id)
+                )
+                server = server_result.scalar_one_or_none()
+                if server:
+                    finding['server_name'] = server.name
+                    finding['server_ip'] = server.ip
+                    
+    except Exception as e:
+        logger.warning(f"Erro ao enriquecer finding: {e}")
+    
+    return finding
+
+
 class GitleaksJob:
     """Representa um job de execução do GitLeaks"""
     
