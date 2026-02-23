@@ -313,8 +313,44 @@ const OCRJobs = () => {
           </CardContent>
         </Card>
 
-        {/* Stats Cards */}
-        <Card className="border-l-4 border-l-blue-500">
+        {/* Stats Cards - Clicáveis para filtrar */}
+        {Object.entries(statusConfig).map(([status, config]) => {
+          const count = stats[status] || 0;
+          const isActive = activeFilter === status;
+          const Icon = config.icon;
+          
+          return (
+            <Card 
+              key={status}
+              className={cn(
+                "cursor-pointer transition-all hover:shadow-md border-2",
+                isActive ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
+              )}
+              onClick={() => setActiveFilter(isActive ? null : status)}
+              data-testid={`filter-${status}`}
+            >
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold">{count}</p>
+                    <p className={cn("text-xs uppercase", config.textColor)}>{config.label}</p>
+                  </div>
+                  <Icon className={cn("w-6 h-6 opacity-60", config.textColor)} />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        
+        {/* Total card */}
+        <Card 
+          className={cn(
+            "cursor-pointer transition-all hover:shadow-md border-2",
+            activeFilter === null ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
+          )}
+          onClick={() => setActiveFilter(null)}
+          data-testid="filter-all"
+        >
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -325,67 +361,23 @@ const OCRJobs = () => {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-l-4 border-l-yellow-500">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold">{stats.pending || 0}</p>
-                <p className="text-xs text-muted-foreground uppercase">Pendentes</p>
-              </div>
-              <Clock className="w-6 h-6 text-yellow-500 opacity-60" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-cyan-500">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold">{stats.running || 0}</p>
-                <p className="text-xs text-muted-foreground uppercase">Executando</p>
-              </div>
-              <Play className="w-6 h-6 text-cyan-500 opacity-60" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold">{stats.completed || 0}</p>
-                <p className="text-xs text-muted-foreground uppercase">Concluídos</p>
-              </div>
-              <CheckCircle className="w-6 h-6 text-green-500 opacity-60" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-red-500">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold">{stats.failed || 0}</p>
-                <p className="text-xs text-muted-foreground uppercase">Falhados</p>
-              </div>
-              <XCircle className="w-6 h-6 text-red-500 opacity-60" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-gray-500">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold">{stats.skipped || 0}</p>
-                <p className="text-xs text-muted-foreground uppercase">Ignorados</p>
-              </div>
-              <SkipForward className="w-6 h-6 text-gray-500 opacity-60" />
-            </div>
-          </CardContent>
-        </Card>
       </div>
+
+      {/* Active filter indicator */}
+      {activeFilter && (
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Filter className="w-3 h-3" />
+            Filtro: {statusConfig[activeFilter]?.label}
+            <button 
+              onClick={() => setActiveFilter(null)}
+              className="ml-1 hover:text-destructive"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
 
       {/* Filters and Actions */}
       <Card>
