@@ -91,39 +91,51 @@ const FileNavigation = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {filteredServers.map((server) => (
-            <div
-              key={server.id}
-              onClick={() => handleServerClick(server.id)}
-              className="group cursor-pointer"
-              data-testid={`server-card-${server.id}`}
-            >
-              <div className="h-full p-4 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
-                {/* Server Icon */}
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
-                  <HardDrive className="w-8 h-8 text-primary" />
+          {filteredServers.map((server) => {
+            // Servidor é considerado "visitado" se tem shares ou downloads
+            const isVisited = (server.shares_count > 0) || (server.downloaded_files_count > 0);
+            
+            // Classes de cor baseadas no status de visitado
+            const iconBgClass = isVisited 
+              ? 'bg-gradient-to-br from-blue-500/20 to-blue-500/5 group-hover:from-blue-500/30 group-hover:to-blue-500/10'
+              : 'bg-gradient-to-br from-gray-500/20 to-gray-500/5 group-hover:from-gray-500/30 group-hover:to-gray-500/10';
+            const iconColorClass = isVisited ? 'text-blue-500' : 'text-gray-500';
+            const nameColorClass = isVisited ? 'text-blue-400' : 'text-gray-500';
+            
+            return (
+              <div
+                key={server.id}
+                onClick={() => handleServerClick(server.id)}
+                className="group cursor-pointer"
+                data-testid={`server-card-${server.id}`}
+              >
+                <div className="h-full p-4 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
+                  {/* Server Icon */}
+                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center mb-3 transition-all ${iconBgClass}`}>
+                    <HardDrive className={`w-8 h-8 ${iconColorClass}`} />
+                  </div>
+                  
+                  {/* Server Name */}
+                  <h3 className={`font-semibold text-sm truncate w-full mb-1 ${nameColorClass}`} title={server.name}>
+                    {server.name}
+                  </h3>
+                  
+                  {/* Server IP */}
+                  <p className="text-xs text-muted-foreground font-mono truncate w-full" title={server.ip}>
+                    {server.ip}
+                  </p>
+                  
+                  {/* Plugin Badge - Nome da instância ou tipo */}
+                  {(server.plugin_instance_name || server.plugin_type) && (
+                    <Badge variant="outline" className="mt-2 text-[10px]">
+                      {server.plugin_instance_name || 
+                        (server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type)}
+                    </Badge>
+                  )}
                 </div>
-                
-                {/* Server Name */}
-                <h3 className="font-semibold text-sm truncate w-full mb-1" title={server.name}>
-                  {server.name}
-                </h3>
-                
-                {/* Server IP */}
-                <p className="text-xs text-muted-foreground font-mono truncate w-full" title={server.ip}>
-                  {server.ip}
-                </p>
-                
-                {/* Plugin Badge - Nome da instância ou tipo */}
-                {(server.plugin_instance_name || server.plugin_type) && (
-                  <Badge variant="outline" className="mt-2 text-[10px]">
-                    {server.plugin_instance_name || 
-                      (server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type)}
-                  </Badge>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
