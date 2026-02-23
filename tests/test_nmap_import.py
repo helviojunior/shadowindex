@@ -11,7 +11,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://security-audit-49.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://leak-scanner-3.preview.emergentagent.com')
 
 class TestNmapImportEndpoint:
     """Tests for Nmap server import endpoint"""
