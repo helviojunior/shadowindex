@@ -75,9 +75,7 @@ const menuStructure = [
     label: 'Arquivos',
     children: [
       { id: 'navigation', path: '/files/browse', label: 'Navegação' },
-      { id: 'downloads', path: '/downloads', label: 'Downloads' },
       { id: 'leaks', path: '/leaks', label: 'Leaks' },
-      { id: 'ocr', path: '/ocr', label: 'OCR Jobs' },
     ]
   },
   { 
@@ -87,6 +85,15 @@ const menuStructure = [
     children: [
       { id: 'connections', path: '/sql', label: 'Conexões' },
       { id: 'presets', path: '/sql/presets', label: 'Presets' },
+    ]
+  },
+  { 
+    id: 'jobs',
+    icon: ListTodo, 
+    label: 'Jobs',
+    children: [
+      { id: 'downloads', path: '/downloads', label: 'Downloads' },
+      { id: 'ocr', path: '/ocr', label: 'OCR' },
     ]
   },
   { 
