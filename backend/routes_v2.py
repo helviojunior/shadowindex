@@ -3943,10 +3943,22 @@ async def list_ocr_jobs(
     limit: int = 50,
     db: AsyncSession = Depends(get_db)
 ):
-    """Lista jobs de OCR"""
+    """Lista jobs de OCR ordenados: running primeiro, depois pending (por prioridade), depois outros"""
     from database import OCRJob
+    from sqlalchemy import case
     
-    query = select(OCRJob).order_by(OCRJob.created_at.desc())
+    # Ordenação customizada: running (0), pending (1), outros (2)
+    status_order = case(
+        (OCRJob.status == 'running', 0),
+        (OCRJob.status == 'pending', 1),
+        else_=2
+    )
+    
+    query = select(OCRJob).order_by(
+        status_order,
+        OCRJob.priority.desc(),
+        OCRJob.created_at.asc()
+    )
     
     if server_id:
         query = query.where(OCRJob.server_id == server_id)
