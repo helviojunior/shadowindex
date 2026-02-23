@@ -2808,9 +2808,21 @@ async def get_file_ocr(
             "ocr_processed_at": None
         }
     
+    # Fix double-encoded UTF-8 content if detected
+    ocr_content = version.ocr_content
+    if ocr_content:
+        try:
+            # Check for common double-encoding patterns (Ã followed by special chars)
+            if 'Ã' in ocr_content and any(c in ocr_content for c in ['§', '£', '©', '³', '¡', '­', '±']):
+                # Try to fix by encoding as latin-1 and decoding as utf-8
+                ocr_content = ocr_content.encode('latin-1').decode('utf-8')
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            # Keep original content if fix fails
+            pass
+    
     return {
         "ocr_processed": version.ocr_processed or False,
-        "ocr_content": version.ocr_content,
+        "ocr_content": ocr_content,
         "ocr_metadata": version.ocr_metadata,
         "ocr_error": version.ocr_error,
         "ocr_processed_at": version.ocr_processed_at.isoformat() if version.ocr_processed_at else None
