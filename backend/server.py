@@ -1703,13 +1703,16 @@ async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
         for pi in plugin_result.scalars().all():
             plugin_names[pi.id] = pi.name
     
-    # Buscar contagem de leaks por servidor
+    # Buscar contagem de leaks por servidor (excluindo falsos positivos)
     leaks_result = await db.execute(
         select(
             GitleaksFinding.server_id,
             func.count(GitleaksFinding.id).label('leaks_count')
         )
-        .where(GitleaksFinding.server_id.isnot(None))
+        .where(
+            GitleaksFinding.server_id.isnot(None),
+            GitleaksFinding.is_false_positive == False
+        )
         .group_by(GitleaksFinding.server_id)
     )
     leaks_by_server = {row.server_id: row.leaks_count for row in leaks_result}
