@@ -904,6 +904,32 @@ const Servers = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de confirmação de IP duplicado */}
+      <AlertDialog open={duplicateConfirmDialog.open} onOpenChange={(open) => !open && handleCancelDuplicate()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-yellow-500" />
+              IP Duplicado Detectado
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Já existe no cadastro um servidor com o IP <strong className="text-foreground">{duplicateConfirmDialog.existingServer?.ip}</strong> com nome <strong className="text-foreground">"{duplicateConfirmDialog.existingServer?.name}"</strong>.
+              </p>
+              <p>Deseja continuar com o cadastro duplicado?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDuplicate}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDuplicate} className="bg-yellow-600 hover:bg-yellow-700">
+              Sim, cadastrar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
