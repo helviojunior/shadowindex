@@ -194,6 +194,18 @@ const OCRJobs = () => {
     }
   };
 
+  // Priorizar job para execução imediata
+  const prioritizeJob = async (jobId) => {
+    try {
+      const response = await axios.post(`${API}/ocr/jobs/${jobId}/prioritize`);
+      toast.success(response.data.message);
+      loadJobs();
+    } catch (error) {
+      console.error('Error prioritizing job:', error);
+      toast.error(error.response?.data?.detail || 'Erro ao priorizar job');
+    }
+  };
+
   // Reexecutar jobs falhados
   const retryFailedJobs = async () => {
     setRetrying(true);
