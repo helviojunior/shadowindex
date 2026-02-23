@@ -619,7 +619,15 @@ const Servers = () => {
                         {getSortIcon('downloaded_files_count')}
                       </div>
                     </th>
-                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">Última Verificação</th>
+                    <th 
+                      className="text-left p-3 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => handleSort('last_verified_at')}
+                    >
+                      <div className="flex items-center">
+                        Última Verificação
+                        {getSortIcon('last_verified_at')}
+                      </div>
+                    </th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">Ações</th>
                   </tr>
                 </thead>
