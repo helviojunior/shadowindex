@@ -491,6 +491,7 @@ class ServerResponse(BaseModel):
     downloaded_files_count: int
     leaks_count: int = 0  # Quantidade de leaks encontrados
     risk_score: float = 0.0  # Índice de risco (0-100)
+    access_denied_shares_count: int = 0  # Quantidade de shares com acesso negado
     last_verified_at: Optional[datetime]
     created_at: datetime
     plugin_instance_id: Optional[int] = None
