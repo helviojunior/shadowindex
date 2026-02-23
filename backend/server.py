@@ -1763,6 +1763,7 @@ async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
             downloaded_files_count=server.downloaded_files_count,
             leaks_count=leaks_count,
             risk_score=round(risk_score, 1),
+            access_denied_shares_count=access_denied_shares,
             last_verified_at=server.last_verified_at,
             created_at=server.created_at,
             plugin_instance_id=server.plugin_instance_id,
