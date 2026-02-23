@@ -239,8 +239,13 @@ const Servers = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Função para verificar se existe servidor com mesmo IP
+  const checkDuplicateIp = (ip) => {
+    return servers.find(server => server.ip === ip);
+  };
+
+  // Função para criar o servidor (chamada após confirmação ou se não houver duplicata)
+  const createServer = async () => {
     setLoading(true);
 
     try {
@@ -265,6 +270,34 @@ const Servers = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Verificar se já existe servidor com mesmo IP
+    const existingServer = checkDuplicateIp(formData.ip);
+    
+    if (existingServer) {
+      // Mostrar dialog de confirmação
+      setDuplicateConfirmDialog({
+        open: true,
+        existingServer
+      });
+      return;
+    }
+    
+    // Se não houver duplicata, criar diretamente
+    await createServer();
+  };
+
+  const handleConfirmDuplicate = async () => {
+    setDuplicateConfirmDialog({ open: false, existingServer: null });
+    await createServer();
+  };
+
+  const handleCancelDuplicate = () => {
+    setDuplicateConfirmDialog({ open: false, existingServer: null });
   };
 
   const handleDelete = async (id) => {
