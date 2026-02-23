@@ -804,7 +804,7 @@ const Leaks = () => {
                                 </Badge>
                               )}
                               {finding.is_false_positive && (
-                                <Badge className="text-xs bg-yellow-600">
+                                <Badge className="text-xs bg-green-600">
                                   FP
                                 </Badge>
                               )}
