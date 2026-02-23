@@ -175,9 +175,15 @@ async def load_findings_from_db() -> List[Dict[str, Any]]:
                     'File': f.file_path,
                     'original_file': f.original_file,
                     'detection_source': f.detection_source,
+                    # IDs formato legado
                     'extracted_server_id': f.extracted_server_id,
                     'extracted_file_id': f.extracted_file_id,
                     'extracted_version': f.extracted_version,
+                    # IDs formato novo
+                    'extracted_server_guid': f.extracted_server_guid,
+                    'extracted_share_id': f.extracted_share_id,
+                    'extracted_file_version_id': f.extracted_file_version_id,
+                    # Dados enriquecidos
                     'server_name': f.server_name,
                     'server_ip': f.server_ip,
                     'file_name': f.file_name,
