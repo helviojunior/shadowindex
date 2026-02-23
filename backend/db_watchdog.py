@@ -107,7 +107,7 @@ class DatabaseWatchdog:
                 f.write(f"RESTART TRIGGERED AT: {datetime.now(timezone.utc).isoformat()}\n")
                 f.write(f"First error: {self.first_error_time}\n")
                 f.write(f"Consecutive errors: {self.consecutive_errors}\n")
-                f.write(f"Recent errors:\n")
+                f.write("Recent errors:\n")
                 for err in list(self.error_history)[-10:]:
                     f.write(f"  - {err['time']}: {err['error'][:100]}\n")
                 f.write(f"{'='*60}\n")
