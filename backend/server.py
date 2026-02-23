@@ -1679,9 +1679,15 @@ async def create_server(server: ServerCreate, db: AsyncSession = Depends(get_db)
 @api_router.get("/servers", response_model=List[ServerResponse])
 async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
     from database import PluginInstance, GitleaksFinding
-    from sqlalchemy import func
+    from sqlalchemy import func, desc, nulls_last
     
-    result = await db.execute(select(Server))
+    # Ordenar por última interação (mais recentes primeiro), depois por nome
+    result = await db.execute(
+        select(Server).order_by(
+            nulls_last(desc(Server.last_verified_at)),
+            Server.name
+        )
+    )
     servers = result.scalars().all()
     
     # Buscar nomes das instâncias de plugin
