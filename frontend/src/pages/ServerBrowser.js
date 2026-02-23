@@ -4822,9 +4822,9 @@ const ServerBrowser = () => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/servers')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate(backDestination)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+            {backLabel}
           </Button>
           <div>
             <h1 className="text-xl font-semibold">{server.name}</h1>
