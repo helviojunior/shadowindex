@@ -38,6 +38,10 @@ Portuguese (pt-BR)
   - Arquivos **não baixados**: ícone `text-gray-500`, texto `text-gray-500`
   - Acesso negado: ícone e texto `text-red-500`
   - Baseado no campo `children_fetched` do banco de dados para persistência entre sessões
+- [x] **Coloração de cards de servidores na página Navegação de Arquivos:**
+  - Servidores **visitados** (shares_count > 0 ou downloaded_files_count > 0): ícone e nome em **azul**
+  - Servidores **não visitados** (sem shares e sem downloads): ícone e nome em **cinza**
+  - Arquivo modificado: `frontend/src/pages/FileNavigation.js`
 - [x] **Correção: Downloads em background criam ServerItem para diretórios e arquivos:**
   - Nova função `ensure_parent_directories()` no `download_worker.py`
   - Ao baixar arquivo, cria automaticamente objetos `ServerItem` para todos os diretórios pais
