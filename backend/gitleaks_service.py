@@ -591,13 +591,6 @@ class GitleaksService:
                                     # Enriquecer finding com informações do servidor
                                     finding = await enrich_finding_with_server_info(finding, job.server_id)
                                     
-                                    # Extrair IDs do caminho físico para posterior enriquecimento
-                                    ids = extract_ids_from_path(file_info['original_file'])
-                                    if ids:
-                                        finding['extracted_server_id'] = ids[0]
-                                        finding['extracted_file_id'] = ids[1]
-                                        finding['extracted_version'] = ids[2]
-                                    
                                     # Separar por fonte de detecção
                                     if file_info['source'] == 'ocr':
                                         ocr_findings.append(finding)
