@@ -82,8 +82,7 @@ import { toast } from 'sonner';
 import { ShieldKeyIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api/v2`;
+import { BACKEND_URL, API_V2 as API } from '@/lib/api';
 
 const Leaks = () => {
   // State para findings
