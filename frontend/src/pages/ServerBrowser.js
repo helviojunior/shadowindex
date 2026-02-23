@@ -3038,6 +3038,11 @@ const ServerBrowser = () => {
       return null;
     }
     
+    // Aplicar filtro "Ver apenas resultados da busca"
+    if (showOnlySearchResults && !isInSearchResults(item, nodeId)) {
+      return null;
+    }
+    
     const safeTestId = nodeId.replace(/\$/g, '_dollar_');
     const isExpanded = expandedNodes[nodeId];
     const isLoading = loadingNodes[nodeId];
