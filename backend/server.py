@@ -1863,7 +1863,7 @@ async def get_server(
             plugin_instance_name = plugin_instance.name
     
     # Buscar contagem de shares com acesso negado
-    from database import ServerShare
+    from database import ServerShare, ServerItem
     access_denied_result = await db.execute(
         select(func.count(ServerShare.id))
         .where(
@@ -1872,6 +1872,13 @@ async def get_server(
         )
     )
     access_denied_shares = access_denied_result.scalar() or 0
+    
+    # Buscar contagem de itens descobertos (ServerItems)
+    discovered_items_result = await db.execute(
+        select(func.count(ServerItem.id))
+        .where(ServerItem.server_guid == server.guid)
+    )
+    discovered_items = discovered_items_result.scalar() or 0
     
     # Retornar resposta com nome da instância
     return ServerResponse(
@@ -1883,6 +1890,7 @@ async def get_server(
         shares_count=server.shares_count,
         downloaded_files_count=server.downloaded_files_count,
         access_denied_shares_count=access_denied_shares,
+        discovered_items_count=discovered_items,
         last_verified_at=server.last_verified_at,
         created_at=server.created_at,
         plugin_instance_id=server.plugin_instance_id,
