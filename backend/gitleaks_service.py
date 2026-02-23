@@ -192,18 +192,28 @@ async def load_findings_from_db() -> List[Dict[str, Any]]:
         return []
 
 
-def extract_ids_from_path(file_path: str) -> Optional[Tuple[int, int, int]]:
+def extract_ids_from_path(file_path: str) -> Optional[Dict[str, Any]]:
     """
-    Extrai server_id, file_id e version de um caminho de arquivo físico.
+    Extrai informações de identificação de um caminho de arquivo físico.
     
-    O caminho físico segue o padrão: {storage_base}/{server_id}/{file_id}/{version}
+    Formato NOVO: {storage_base}/{server_guid}/{share_id}/{file_version_id}
+    Formato LEGADO: {storage_base}/{server_id}/{file_id}/{version}
+    
     Pode ter extensões como .ocr ou .metadata no final.
     
     Args:
         file_path: Caminho físico do arquivo
         
     Returns:
-        Tuple[server_id, file_id, version] ou None se não conseguir extrair
+        Dict com:
+            - server_guid: GUID do servidor (novo formato) ou None
+            - share_id: ID do share (novo formato) ou None
+            - file_version_id: ID da versão do arquivo (novo formato) ou None
+            - server_id: ID do servidor (formato legado) ou None
+            - file_id: ID do arquivo (formato legado) ou None
+            - version: Versão (formato legado) ou None
+            - format: 'new' ou 'legacy'
+        Ou None se não conseguir extrair
     """
     if not file_path:
         return None
@@ -217,23 +227,47 @@ def extract_ids_from_path(file_path: str) -> Optional[Tuple[int, int, int]]:
     elif path.lower().endswith('.metadata'):
         path = path[:-9]
     
-    # Tentar encontrar o padrão {storage_base}/.../server_id/file_id/version
-    # O padrão é: qualquer coisa seguida de /numero/numero/numero no final
-    match = re.search(r'/(\d+)/(\d+)/(\d+)$', path)
-    if match:
-        return int(match.group(1)), int(match.group(2)), int(match.group(3))
-    
-    # Tentar padrão alternativo apenas com server_id/file_id/version (sem prefixo)
     parts = path.split('/')
-    if len(parts) >= 3:
-        try:
-            # Pegar os últimos 3 componentes
-            version = int(parts[-1])
-            file_id = int(parts[-2])
-            server_id = int(parts[-3])
-            return server_id, file_id, version
-        except (ValueError, IndexError):
-            pass
+    
+    # Precisamos de pelo menos 3 partes no final: guid_ou_id/id/id
+    if len(parts) < 3:
+        return None
+    
+    # Pegar as últimas 3 partes relevantes
+    last_three = parts[-3:]
+    
+    # Verificar se a primeira parte é um GUID (36 chars com hífens ou 32 sem)
+    first_part = last_three[0]
+    is_guid = (len(first_part) == 36 and first_part.count('-') == 4) or \
+              (len(first_part) == 32 and first_part.isalnum())
+    
+    try:
+        if is_guid:
+            # Novo formato: server_guid/share_id/file_version_id
+            share_id = int(last_three[1])
+            file_version_id = int(last_three[2])
+            return {
+                'server_guid': first_part,
+                'share_id': share_id,
+                'file_version_id': file_version_id,
+                'server_id': None,
+                'file_id': None,
+                'version': None,
+                'format': 'new'
+            }
+        elif all(p.isdigit() for p in last_three):
+            # Formato legado: server_id/file_id/version
+            return {
+                'server_guid': None,
+                'share_id': None,
+                'file_version_id': None,
+                'server_id': int(last_three[0]),
+                'file_id': int(last_three[1]),
+                'version': int(last_three[2]),
+                'format': 'legacy'
+            }
+    except (ValueError, IndexError):
+        pass
     
     return None
 
