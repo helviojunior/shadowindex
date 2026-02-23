@@ -2486,6 +2486,7 @@ async def get_certificate_info(
             
             # Tentar cada senha
             last_exception = None
+            success = False
             for pwd_source, pwd_value in passwords_to_try:
                 try:
                     log_step(f"Tentando: {pwd_source}", "info")
@@ -2495,6 +2496,7 @@ async def get_certificate_info(
                     )
                     password_used = pwd_value if pwd_value else "(sem senha)"
                     log_step(f"SUCESSO com: {pwd_source}", "success")
+                    success = True
                     break
                 except Exception as e:
                     error_msg = str(e)
@@ -2509,7 +2511,7 @@ async def get_certificate_info(
                     last_exception = e
             
             # Se nenhuma senha funcionou
-            if cert is None:
+            if not success:
                 log_step("Todas as tentativas falharam", "error")
                 return JSONResponse(
                     status_code=401,
@@ -2523,6 +2525,12 @@ async def get_certificate_info(
                         "debug_log": debug_log
                     }
                 )
+            
+            # Log do que foi extraído
+            log_step(f"Certificado extraído: {'Sim' if cert else 'Não'}", "info" if cert else "warning")
+            log_step(f"Chave privada extraída: {'Sim' if private_key else 'Não'}", "info" if private_key else "warning")
+            if chain:
+                log_step(f"Cadeia de certificados: {len(chain)} certificado(s)", "info")
             
             # Salvar senha se foi fornecida pelo usuário e funcionou
             if request.password and password_used == request.password:
