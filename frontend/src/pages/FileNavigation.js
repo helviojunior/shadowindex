@@ -95,28 +95,28 @@ const FileNavigation = () => {
       className="group cursor-pointer"
       data-testid={`server-card-compact-${server.id}`}
     >
-      <div className="h-full p-2.5 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
+      <div className="h-full p-2 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
         {/* Server Icon - Menor */}
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-500/20 to-gray-500/5 flex items-center justify-center mb-2 group-hover:from-gray-500/30 group-hover:to-gray-500/10 transition-all">
-          <HardDrive className="w-5 h-5 text-gray-500" />
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gray-500/20 to-gray-500/5 flex items-center justify-center mb-1.5 group-hover:from-gray-500/30 group-hover:to-gray-500/10 transition-all">
+          <HardDrive className="w-4 h-4 text-gray-500" />
         </div>
         
         {/* Server Name */}
-        <h3 className="font-medium text-xs truncate w-full mb-0.5 text-gray-400" title={server.name}>
+        <h3 className="font-medium text-[11px] truncate w-full mb-0.5 text-gray-400" title={server.name}>
           {server.name}
         </h3>
         
         {/* Server IP */}
-        <p className="text-[10px] text-muted-foreground font-mono truncate w-full" title={server.ip}>
+        <p className="text-[9px] text-muted-foreground font-mono truncate w-full" title={server.ip}>
           {server.ip}
         </p>
         
-        {/* Plugin Badge - Menor */}
+        {/* Plugin Badge - Muito pequeno */}
         {(server.plugin_instance_name || server.plugin_type) && (
-          <Badge variant="outline" className="mt-1.5 text-[9px] px-1.5 py-0">
+          <span className="mt-1 text-[8px] text-muted-foreground/70 truncate w-full">
             {server.plugin_instance_name || 
               (server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type)}
-          </Badge>
+          </span>
         )}
       </div>
     </div>
