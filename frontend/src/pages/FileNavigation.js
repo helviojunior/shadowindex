@@ -52,9 +52,12 @@ const FileNavigation = () => {
               !(server.access_denied_shares_count > 0 && server.discovered_items_count === 0)
   );
   
-  // Não acessados: nunca teve acesso verificado (sem shares e sem downloads e sem itens)
+  // Não acessados: nunca teve acesso verificado (sem shares, sem downloads, sem itens E sem tentativas de acesso negado)
   const notAccessedServers = filteredServers.filter(
-    server => server.shares_count === 0 && server.downloaded_files_count === 0 && server.discovered_items_count === 0
+    server => server.shares_count === 0 && 
+              server.downloaded_files_count === 0 && 
+              server.discovered_items_count === 0 &&
+              server.access_denied_shares_count === 0
   );
 
   const handleServerClick = (serverId) => {
