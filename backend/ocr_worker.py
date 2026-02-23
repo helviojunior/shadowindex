@@ -335,6 +335,14 @@ class OCRWorker:
         from sqlalchemy.exc import OperationalError
         
         cleanup_counter = 0  # Contador para executar cleanup periodicamente
+        watchdog_counter = 0  # Contador para executar watchdog periodicamente
+        
+        # Reset jobs travados na inicialização
+        try:
+            async with AsyncSessionLocal() as db:
+                await self._reset_stale_running_jobs(db, startup=True)
+        except Exception as e:
+            logger.error(f"Error resetting stale jobs on startup: {e}")
         
         while self.running:
             try:
@@ -344,6 +352,12 @@ class OCRWorker:
                     if cleanup_counter >= 12:
                         await self._cleanup_old_completed_jobs(db)
                         cleanup_counter = 0
+                    
+                    # Executar watchdog a cada 24 iterações (aproximadamente 2 minutos)
+                    watchdog_counter += 1
+                    if watchdog_counter >= 24:
+                        await self._reset_stale_running_jobs(db, startup=False)
+                        watchdog_counter = 0
                     
                     await self._process_pending_jobs(db)
             except OperationalError as e:
@@ -358,6 +372,62 @@ class OCRWorker:
             
             # Aguardar antes de verificar novamente
             await asyncio.sleep(5)
+    
+    async def _reset_stale_running_jobs(self, db: AsyncSession, startup: bool = False):
+        """
+        Watchdog: Reseta jobs 'running' que estão travados.
+        - No startup: reseta todos os jobs 'running' (pois o worker foi reiniciado)
+        - Durante execução: reseta jobs 'running' há mais de 10 minutos sem atualização
+        """
+        from database import OCRJob
+        from sqlalchemy import update
+        from datetime import timedelta
+        
+        try:
+            if startup:
+                # No startup, resetar TODOS os jobs 'running' pois o worker reiniciou
+                result = await db.execute(
+                    update(OCRJob)
+                    .where(OCRJob.status == 'running')
+                    .values(
+                        status='pending',
+                        started_at=None,
+                        error_message=None
+                    )
+                )
+                await db.commit()
+                
+                if result.rowcount > 0:
+                    logger.info(f"OCR Watchdog (startup): Reset {result.rowcount} stale running jobs to pending")
+                    print(f"=== OCR WATCHDOG: Reset {result.rowcount} stale jobs on startup ===", flush=True)
+                    await emit_ocr_stats()
+            else:
+                # Durante execução, resetar jobs 'running' há mais de 10 minutos
+                stale_cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+                
+                result = await db.execute(
+                    update(OCRJob)
+                    .where(
+                        and_(
+                            OCRJob.status == 'running',
+                            OCRJob.started_at < stale_cutoff
+                        )
+                    )
+                    .values(
+                        status='pending',
+                        started_at=None,
+                        error_message='Reset pelo watchdog (timeout de 10 minutos)'
+                    )
+                )
+                await db.commit()
+                
+                if result.rowcount > 0:
+                    logger.warning(f"OCR Watchdog: Reset {result.rowcount} stale running jobs (>10min) to pending")
+                    print(f"=== OCR WATCHDOG: Reset {result.rowcount} stale jobs (timeout) ===", flush=True)
+                    await emit_ocr_stats()
+                    
+        except Exception as e:
+            logger.error(f"Error in OCR watchdog: {e}")
     
     async def _cleanup_old_completed_jobs(self, db: AsyncSession):
         """Remove jobs finalizados com sucesso há mais de X minutos"""
