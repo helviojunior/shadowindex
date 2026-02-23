@@ -4997,8 +4997,23 @@ const ServerBrowser = () => {
             <div className="p-3 border-b border-border flex items-center justify-between">
               <h3 className="text-sm font-medium text-muted-foreground">
                 Arquivos
+                {showOnlyDownloaded && (
+                  <span className="ml-2 text-xs text-green-500">(Somente Baixados)</span>
+                )}
               </h3>
               <div className="flex items-center gap-1">
+                {/* Botão para filtrar apenas baixados */}
+                <Button 
+                  variant={showOnlyDownloaded ? "default" : "ghost"}
+                  size="icon"
+                  className={`h-7 w-7 ${showOnlyDownloaded ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                  onClick={() => setShowOnlyDownloaded(!showOnlyDownloaded)}
+                  data-testid="filter-downloaded-btn"
+                  title={showOnlyDownloaded ? "Mostrar todos os arquivos" : "Ver apenas baixados"}
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+                
                 {/* Botão de foco - mostra apenas item selecionado */}
                 {selectedItem && (
                   <Button 
