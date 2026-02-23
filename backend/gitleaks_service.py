@@ -113,9 +113,15 @@ async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
                 file_path=finding.get('File'),
                 original_file=finding.get('original_file'),
                 detection_source=finding.get('detection_source'),
+                # IDs formato legado
                 extracted_server_id=finding.get('extracted_server_id'),
                 extracted_file_id=finding.get('extracted_file_id'),
                 extracted_version=finding.get('extracted_version'),
+                # IDs formato novo
+                extracted_server_guid=finding.get('extracted_server_guid'),
+                extracted_share_id=finding.get('extracted_share_id'),
+                extracted_file_version_id=finding.get('extracted_file_version_id'),
+                # Dados enriquecidos
                 server_name=finding.get('server_name'),
                 server_ip=finding.get('server_ip'),
                 file_name=finding.get('file_name'),
