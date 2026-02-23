@@ -819,13 +819,13 @@ const Leaks = () => {
                                     
                                     // Se tem extracted_file_id, usar navegação direta por file_id
                                     if (finding.extracted_file_id) {
-                                      window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}`, '_blank');
+                                      window.open(`/servers/${serverId}/browse?file_id=${finding.extracted_file_id}&from=/leaks`, '_blank');
                                     } else {
                                       // Fallback: navegar pelo path do arquivo
                                       const filePath = finding.server_path || finding.File || finding.original_file;
                                       if (filePath) {
                                         const encodedPath = encodeURIComponent(filePath);
-                                        window.open(`/servers/${serverId}/browse?path=${encodedPath}`, '_blank');
+                                        window.open(`/servers/${serverId}/browse?path=${encodedPath}&from=/leaks`, '_blank');
                                       }
                                     }
                                   }}
