@@ -405,52 +405,62 @@ class OCRWorker:
             # REGISTRAR LEAK se tem chave privada
             if private_key is not None and server_guid:
                 try:
-                    from gitleaks_service import get_gitleaks_service
-                    import hashlib
+                    from routes_v2 import auto_register_private_key_leak
+                    from database import Server, ServerShare
                     
-                    service = get_gitleaks_service()
+                    # Buscar server_id e outras informações
+                    server_result = await db.execute(
+                        select(Server).where(Server.guid == server_guid)
+                    )
+                    server_obj = server_result.scalar_one_or_none()
+                    server_id = server_obj.id if server_obj else None
                     
-                    # Criar fingerprint único
-                    fingerprint_source = f"{file_path}:pfx_private_key:{main_thumbprint or 'unknown'}"
-                    fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
-                    
-                    # Verificar se já existe
-                    existing = [f for f in service._findings if f.get('Fingerprint') == f"auto_pfx_{fingerprint}"]
-                    
-                    if not existing:
-                        # Buscar server_id
-                        from database import Server
-                        server_result = await db.execute(
-                            select(Server).where(Server.guid == server_guid)
+                    # Buscar share_id
+                    share_id = None
+                    if share_name:
+                        share_result = await db.execute(
+                            select(ServerShare).where(
+                                ServerShare.server_guid == server_guid,
+                                ServerShare.share_name == share_name
+                            )
                         )
-                        server_obj = server_result.scalar_one_or_none()
-                        server_id = server_obj.id if server_obj else None
-                        
-                        # Criar finding
-                        finding = {
-                            "RuleID": "auto-pfx-private-key",
-                            "Description": f"Certificado PFX com chave privada: {main_subject_cn or 'Unknown'}",
-                            "File": file_path,
-                            "StartLine": 1,
-                            "EndLine": 1,
-                            "Match": f"[PFX com chave privada - Thumbprint: {main_thumbprint or 'N/A'}]",
-                            "Secret": f"Certificado: {main_subject_cn or 'Unknown'} ({len(all_certs)} cert(s))",
-                            "Fingerprint": f"auto_pfx_{fingerprint}",
-                            "Tags": ["certificate", "private-key", "pfx", "auto-detected"],
-                            "Severity": "critical",
-                            
-                            # Metadados adicionais
-                            "job_id": "auto-pfx",
-                            "server_id": server_id,
-                            "scanned_at": datetime.now(timezone.utc).isoformat(),
-                            "original_file": file_path,
-                            "scanned_file": file_path,
-                            "detection_source": "auto-pfx"
-                        }
-                        
-                        service._findings.append(finding)
+                        share = share_result.scalar_one_or_none()
+                        if share:
+                            share_id = share.id
+                    
+                    # Buscar file_version_id
+                    file_version_id = None
+                    version_result = await db.execute(
+                        select(FileVersion).where(
+                            FileVersion.server_guid == server_guid,
+                            FileVersion.file_path == file_path,
+                            FileVersion.is_current == True
+                        )
+                    )
+                    current_version = version_result.scalar_one_or_none()
+                    if current_version:
+                        file_version_id = current_version.id
+                    
+                    # Criar descrição enriquecida
+                    key_description = f"Certificado PFX com chave privada: {main_subject_cn or 'Unknown'} (Thumbprint: {main_thumbprint or 'N/A'})"
+                    
+                    leak_result = await auto_register_private_key_leak(
+                        file_path=file_path,
+                        content=f"Certificado: {main_subject_cn or 'Unknown'} ({len(all_certs)} cert(s))",
+                        server_id=server_id,
+                        key_type="pfx-private-key",
+                        description=key_description,
+                        file_version_id=file_version_id,
+                        share_name=share_name,
+                        server_guid=server_guid,
+                        share_id=share_id
+                    )
+                    
+                    if not leak_result.get("already_exists"):
                         logger.info(f"Leak auto-registrado para PFX com chave privada: {file_path}")
                         print(f"=== OCR WORKER: LEAK REGISTERED - PFX with private key: {file_path} ===", flush=True)
+                    else:
+                        logger.debug(f"Leak PFX já existia: {file_path}")
                         
                 except Exception as e:
                     logger.warning(f"Erro ao registrar leak de PFX: {e}")
