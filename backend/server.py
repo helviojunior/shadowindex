@@ -4779,6 +4779,14 @@ async def startup_event():
         print("=== STARTUP: OCR worker started successfully ===", flush=True)
     except Exception as e:
         print(f"=== STARTUP ERROR: Failed to start OCR worker: {e} ===", flush=True)
+    
+    # Iniciar watchdog de banco de dados
+    try:
+        from db_watchdog import start_db_watchdog
+        await start_db_watchdog()
+        print("=== STARTUP: Database watchdog started successfully ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP ERROR: Failed to start DB watchdog: {e} ===", flush=True)
 
 
 async def create_default_plugin_instances():
