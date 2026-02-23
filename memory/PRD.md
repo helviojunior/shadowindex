@@ -1047,6 +1047,9 @@ Portuguese (pt-BR)
 - **SOCKS5 Proxy:** Needs testing with real SOCKS5 proxy server (implementation complete, waiting for test environment)
 - **OCR with Tika:** Needs testing with real files when Tika service is running
 
+### Completed (Session 43)
+- ✅ **Bug de download de arquivos de 0 bytes:** Confirmado como corrigido pelo usuário
+
 ### Completed (Session 19)
 - ✅ **Importação de Servidores via Nmap XML:** Endpoint e UI completamente funcionais
 
