@@ -96,6 +96,13 @@ class TikaService:
         if not file_path.exists():
             return None, None, f"File not found: {file_path}"
         
+        # Calcular timeout baseado no tamanho do arquivo
+        file_size = file_path.stat().st_size
+        # Base: 120s + 30s por cada 10MB
+        base_timeout = 120
+        size_timeout = (file_size // (10 * 1024 * 1024)) * 30
+        text_timeout = min(base_timeout + size_timeout, 600)  # Max 10 minutos
+        
         try:
             # Headers for OCR configuration
             headers = {
@@ -108,13 +115,15 @@ class TikaService:
             with open(file_path, 'rb') as f:
                 file_content = f.read()
             
+            logger.info(f"Sending {len(file_content)} bytes to Tika (timeout: {text_timeout}s)")
+            
             # Extract text content
             text_response = await asyncio.to_thread(
                 requests.put,
                 f"{self.server_url}/tika",
                 data=file_content,
                 headers=headers,
-                timeout=120  # OCR can be slow
+                timeout=text_timeout
             )
             
             content = None
@@ -138,8 +147,14 @@ class TikaService:
                 
                 if content:
                     logger.info(f"Extracted {len(content)} characters from {file_path.name}")
+            elif text_response.status_code == 422:
+                # Arquivo não suportado pelo Tika
+                return None, None, f"Tika não suporta este tipo de arquivo (HTTP 422)"
+            elif text_response.status_code >= 500:
+                # Erro do servidor Tika
+                return None, None, f"Erro no servidor Tika (HTTP {text_response.status_code})"
             
-            # Extract metadata
+            # Extract metadata (timeout menor, é mais rápido)
             metadata_headers = {
                 "Accept": "application/json"
             }
@@ -171,11 +186,16 @@ class TikaService:
             return content, metadata, None
             
         except requests.exceptions.Timeout:
-            error = "Tika processing timeout"
+            file_size_mb = file_size / (1024 * 1024)
+            error = f"Timeout no processamento Tika (arquivo: {file_size_mb:.1f}MB, timeout: {text_timeout}s)"
+            logger.error(f"{error} for {file_path}")
+            return None, None, error
+        except requests.exceptions.ConnectionError as e:
+            error = f"Erro de conexão com Tika: {str(e)}"
             logger.error(f"{error} for {file_path}")
             return None, None, error
         except Exception as e:
-            error = f"Tika processing error: {str(e)}"
+            error = f"Erro no processamento Tika: {str(e)}"
             logger.error(f"{error} for {file_path}")
             return None, None, error
     
