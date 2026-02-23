@@ -139,6 +139,7 @@ const ServerBrowser = () => {
   const [itemsSortConfig, setItemsSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [focusedItem, setFocusedItem] = useState(null); // Item focado (oculta os demais) - {nodeId, shareName, path}
   const [showOnlyDownloaded, setShowOnlyDownloaded] = useState(false); // Filtro para mostrar apenas baixados
+  const [showOnlySearchResults, setShowOnlySearchResults] = useState(false); // Filtro para mostrar apenas resultados da busca
   const [pfxPassword, setPfxPassword] = useState(''); // Senha para arquivos PFX
   const [singleDownloadProgress, setSingleDownloadProgress] = useState(null); // Progresso do download individual (0-100)
   const singleDownloadCancelledRef = useRef(false); // Ref para cancelamento do sync individual
