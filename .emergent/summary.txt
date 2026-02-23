@@ -16,6 +16,10 @@ O usuário solicitou inicialmente um painel web (ShadowIndex) para gerenciar cre
 - Funcionalidade Execute SQL no plugin de interação direta.
 - Edição do nome do servidor diretamente na UI.
 - Funcionalidade para marcar findings do GitLeaks como falso positivo.
+- Processamento concorrente de jobs de OCR.
+- Visualização de certificados PFX com desbloqueio por senha e log de depuração.
+- Watchdogs para garantir a estabilidade dos jobs e da conexão com o banco de dados.
+- Registro automático de leaks para chaves privadas encontradas em arquivos PFX.
 
 **PRODUCT REQUIREMENTS:**
 - Um painel web chamado ShadowIndex com um layout moderno em modo escuro.
@@ -23,55 +27,46 @@ O usuário solicitou inicialmente um painel web (ShadowIndex) para gerenciar cre
 - Uma arquitetura de plugins instanciáveis.
 - Uma página para importar servidores a partir de um XML do Nmap.
 - Integração com GitLeaks para visualização de resultados e controle de scans.
-- Um sistema de jobs em background para tarefas demoradas como OCR e escaneamento de diretórios.
-- Funcionalidade para identificar leaks manualmente e detectar automaticamente chaves privadas.
+- Um sistema de jobs em background para tarefas demoradas como OCR e escaneamento de diretórios, com suporte a processamento paralelo.
+- Funcionalidade para identificar leaks manualmente e detectar automaticamente chaves privadas em arquivos PFX.
 - Um dashboard principal com widgets e um painel de monitoramento de jobs em tempo real.
 - Na exclusão do servidor, mover seu diretório para , exportar seus dados para JSON e remover os leaks do DB.
 - Rotina de backup automático do banco de dados (com verificação de fragmentação e  condicional) na inicialização do backend.
-- A UI não deve travar durante o carregamento de dados (indicadores de loading foram adicionados).
-- Notificações sonoras globais para a finalização de todos os jobs de um tipo.
-- Página de gerenciamento de jobs de OCR com ordenação customizada e limpeza automática.
+- A UI não deve travar durante o carregamento de dados.
+- Página de gerenciamento de jobs de OCR com ordenação customizada, limpeza automática, priorização de jobs e filtros interativos.
 - Funcionalidade de Busca Crítica que escaneia arquivos com base em regras e depois executa o GitLeaks.
 - O plugin de Ação Direta deve suportar execução de SQL com proxy SOCKS.
-- Funcionalidade para marcar findings como Falso Positivo, removendo-os das contagens do dashboard.
+- Funcionalidade para marcar findings como Falso Positivo.
+- Visualizador de certificados PFX robusto que lida com senhas, exibe todos os certificados (principal e cadeia) e fornece logs detalhados de depuração.
+- Mecanismos de watchdog para resetar jobs travados e para reiniciar o serviço do backend em caso de falha persistente de conexão com o banco de dados.
+- Ambiente de desenvolvimento e produção totalmente conteinerizado com Docker Compose.
 
 **User's preferred language**: Portuguese. O próximo agente DEVE responder em português.
 
 **what currently exists?**
-Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. A sessão anterior focou em várias melhorias de funcionalidades, correções de bugs e otimizações de performance, incluindo a implementação completa da funcionalidade de Falso Positivo para leaks, otimizações no banco de dados com novos índices e  condicional, e diversas melhorias de usabilidade na interface, como novas abas, filtros e indicadores de carregamento.
+Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. A sessão anterior implementou uma série de funcionalidades críticas e melhorias de robustez. Foi corrigido o problema de concorrência de jobs OCR, implementados múltiplos watchdogs para garantir a estabilidade do sistema (reset de jobs travados e restart do backend em caso de falha de DB), e o visualizador de certificados PFX foi completamente refeito para ser mais funcional e informativo. A interface do usuário das páginas de Jobs foi padronizada e melhorada. Finalmente, toda a configuração do Docker Compose foi reestruturada para maior clareza e robustez, incluindo healthchecks e uma rede dedicada.
 
 **Last working item**:
--   **Last item agent was working:** O agente estava investigando por que o worker de OCR não inicia múltiplos jobs concorrentes, mesmo quando a configuração  é maior que 1. O usuário também pediu para garantir que a alteração dessa configuração seja aplicada sem a necessidade de reiniciar o serviço.
--   **Status:** IN PROGRESS
+-   **Last item agent was working:** O agente estava corrigindo o URL do backend nos arquivos  e . O frontend, que roda no navegador do usuário, precisa acessar o backend pela porta exposta no host (), e não pelo nome do container e porta interna ().
+-   **Status:** USER VERIFICATION PENDING
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** backend testing agent. Será necessário modificar  para processar jobs de forma assíncrona (usando ) e depois verificar se múltiplos jobs são executados em paralelo.
+-   **Which testing method agent to use?** Manual testing by user. O usuário precisa derrubar e reconstruir os containers () e verificar se a aplicação carrega corretamente no navegador em .
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Jobs de OCR não rodam em paralelo (P0)**
--   **Issue 2: Verificação do bug de download de arquivos de 0 bytes (P1)**
+-   **Issue 1: Verificação da configuração do Docker Compose (P0)**
 
 **Issues Detail:**
--   **Issue 1: Jobs de OCR não rodam em paralelo**
-    -   **Attempted fixes:** O agente diagnosticou que o problema está na lógica síncrona do loop principal do worker em , que processa apenas um job por iteração, impedindo a concorrência real.
+-   **Issue 1: Verificação da configuração do Docker Compose**
+    -   **Attempted fixes:** O agente alterou a variável de ambiente  nos arquivos  e  de  para .
     -   **Next debug checklist:**
-        1.  Modificar o loop principal em .
-        2.  Buscar a configuração  de dentro do loop para garantir que as alterações sejam aplicadas dinamicamente.
-        3.  Buscar múltiplos jobs  até o limite de concorrência disponível.
-        4.  Para cada job, iniciar uma tarefa assíncrona com  para executar a lógica de processamento do OCR.
-        5.  Garantir que o erro em um job não interrompa o worker.
-    -   **Why fix this issue and what will be achieved with the fix?** Acelerar massivamente o processamento de OCR, permitindo que a aplicação utilize os recursos do sistema de forma mais eficiente.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Backend
-    -   **Blocked on other issue:** None
--   **Issue 2: Verificar a correção do erro Arquivo não encontrado para arquivos de 0 bytes**
-    -   **Attempted fixes:** Uma correção foi implementada em uma sessão anterior (, ) para tratar arquivos de 0 bytes, e logs detalhados foram adicionados para depuração.
-    -   **Next debug checklist:** Solicitar ao usuário que teste o cenário novamente. Se o erro persistir, analisar os logs do backend para identificar a falha.
-    -   **Why fix this issue and what will be achieved with the fix?** É um bug crítico que impede o download de arquivos vazios legítimos.
+        1.  Instruir o usuário a reconstruir e reiniciar os containers Docker com o comando: .
+        2.  Pedir ao usuário para acessar a aplicação em  e confirmar que a comunicação entre frontend e backend está funcionando.
+        3.  Se o problema persistir, analisar o console de desenvolvedor do navegador em busca de erros de rede (CORS, 404, etc.).
+    -   **Why fix this issue and what will be achieved with the fix?** É um bloqueador crítico que impede o usuário de executar o ambiente de desenvolvimento/produção localmente usando o Docker. A correção permite que o frontend (no navegador) se comunique com o backend (no container) através da porta exposta no host.
     -   **Status:** USER VERIFICATION PENDING
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Both (teste end-to-end)
     -   **Blocked on other issue:** None
 
 **In progress Task List**:
@@ -86,79 +81,97 @@ Nenhum.
     -   (P3) Melhorar o servidor mock SOAP para cobrir mais casos de uso.
 
 **Completed work in this session**
--   **Funcionalidade de Falso Positivo (FP):** Implementado botão de toggle na UI (), endpoint (), campo no DB () e lógica para excluir FPs das estatísticas.
--   **Otimização de Performance do DB:**
-    -   Adicionados múltiplos índices em tabelas críticas (, ) para acelerar queries.
-    -   Implementado  condicional no startup (), que só roda se a fragmentação do DB for > 20%.
--   **Melhorias no Worker de OCR:**
-    -   Adicionada limpeza automática de jobs antigos e bem-sucedidos ().
-    -   Adicionada configuração de jobs simultâneos na UI () e backend ().
-    -   Melhorada a ordenação e limitação de registros na página de Jobs OCR (, ).
--   **Correções de Regressão e Bugs:**
-    -   Corrigido bug no parsing do GitLeaks que não vinculava o finding ao arquivo/servidor ().
-    -   Corrigido bug na UI que não atualizava a linha da tabela automaticamente ao marcar/desmarcar um FP ().
-    -   Corrigido bug no  que não criava os diretórios pais () durante o download de arquivos.
--   **Melhorias de UI/UX:**
-    -   Adicionado um indicador de carregamento na página  ().
-    -   Refatorada a página de navegação de arquivos () para usar abas (Acessados, Acesso Negado, Não Acessados).
-    -   Implementado botão Voltar contextual no .
-    -   Adicionado filtro na tree view para exibir apenas os resultados de uma busca ().
-    -   Melhorado o formato de exibição do caminho do arquivo nos resultados da busca ().
--   **Outras Mudanças:**
-    -    removido do  de produção.
+-   **Concorrência de OCR:** Corrigido bug que impedia jobs paralelos e resolvido o esgotamento do pool de conexões do DB.
+-   **Robustez dos Workers:**
+    -   Implementado um **OCR Watchdog** para resetar jobs travados () no startup ou após um timeout de 10 minutos.
+    -   Adicionada lógica para que o OCR worker ignore/delete jobs de servidores já excluídos.
+    -   Implementado um **Database Watchdog** () que monitora a saúde da conexão com o DB e reinicia o serviço do backend se erros persistirem por mais de 2 minutos.
+-   **Manuseio de Certificados PFX:**
+    -   No OCR, implementada lógica de força bruta para tentar abrir PFX com senhas comuns e senhas salvas no DB.
+    -   **Leak Automático:** Ao encontrar uma chave privada em um PFX durante o OCR, um finding de leak é criado automaticamente.
+    -   Na UI, o visualizador de PFX agora lida com erros de senha, exibe um log de depuração detalhado e formatado, e mostra todos os certificados do arquivo (principal e cadeia).
+-   **Melhorias na UI/UX:**
+    -   Reorganizado o menu lateral, criando a seção Jobs.
+    -   Páginas de OCR Jobs e Downloads foram padronizadas com cards de estatísticas clicáveis para filtragem e estilo consistente.
+    -   Corrigido bug na página de OCR Jobs que exibia o ID do servidor em vez do nome.
+    -   Adicionado botão Executar agora (priorizar) na tabela de jobs OCR.
+    -   Corrigido o encoding de caracteres na visualização do resultado do OCR.
+    -   Ajustado o gráfico spider no dashboard para ter eixos verticais.
+-   **Melhorias no Tika OCR:**
+    -   Implementado timeout dinâmico para o processamento Tika, baseado no tamanho do arquivo.
+    -   Implementada estratégia de fallback (tentar sem OCR) e retentativas para erros de processamento de PDFs.
+    -   Aumentado o timeout do lado do servidor Tika via arquivo de configuração () e .
+-   **Configuração do Docker:**
+    -   Todos os serviços nos arquivos  e  foram renomeados (prefixo ).
+    -   Criada uma rede dedicada () para todos os serviços.
+    -   Adicionado  ao serviço Tika e  no backend.
+    -   Corrigida a variável  para permitir que o frontend no navegador acesse o backend.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Persistência do estado da Tree View:** A funcionalidade para manter o estado visual da árvore de arquivos (nós expandidos) após recarregar a página ainda não foi implementada.
 
 **Known issue recurrence from previous fork**
--   **Erro no download de arquivos de 0 bytes:** Este bug recorrente teve uma nova correção implementada, mas ainda aguarda a verificação final do usuário.
+-   O bug de download de arquivos de 0 bytes, que estava pendente de verificação, foi confirmado pelo usuário como **RESOLVED**.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Processamento Assíncrono:** A próxima tarefa exige a mudança de um loop síncrono para tarefas assíncronas () para permitir a concorrência de jobs.
--   **Indexação de Banco de Dados:** Foram adicionados múltiplos índices aos modelos SQLAlchemy () para otimizar o desempenho das consultas mais frequentes.
--   **Manutenção Condicional de Banco de Dados:** Uso de comandos  do SQLite para verificar a fragmentação e executar  apenas quando necessário, melhorando o tempo de inicialização.
--   **Cálculos Dinâmicos no Backend:** Campos como  são calculados em tempo real via queries SQL no momento da requisição da API, garantindo que os dados estejam sempre atualizados sem a necessidade de triggers ou atualizações manuais.
+-   **Processamento Assíncrono:** Uso intensivo de  e gerenciamento de pool de conexões de banco de dados para tarefas concorrentes (OCR).
+-   **Padrão Watchdog:** Implementação de múltiplos workers em background para monitorar a saúde do sistema (jobs de OCR travados, conexão com o DB) e tomar ações corretivas (reset, restart).
+-   **Robustez de Serviços Externos:** Estratégias de retry, fallback () e timeouts dinâmicos para lidar com a instabilidade e lentidão do serviço Tika.
+-   **Configuração de Docker Compose Avançada:** Uso de , , redes customizadas e montagem de volumes de configuração.
+-   **Depuração Detalhada:** Geração e exibição de logs de depuração detalhados e formatados na UI para operações complexas como a abertura de certificados PFX.
 
 **key DB schema**
--   **gitleaks_findings:** Adicionada a coluna  (BOOLEAN).
--   **Índices:** Vários índices foram adicionados a tabelas como , , , e  para melhorar a performance das buscas e ordenações.
+Nenhuma alteração no esquema do banco de dados nesta sessão. A lógica utilizou tabelas existentes como  e .
 
 **changes in tech stack**
 Nenhuma.
 
 **All files of reference**
--   : Arquivo central para a correção do bug de concorrência.
--   : Contém as definições dos modelos e os novos índices de performance.
--   : Onde o usuário configura a concorrência de OCR.
--    & : Arquivos relacionados ao bug de download de 0 bytes que aguarda verificação.
+-   : Contém a lógica central de concorrência, watchdogs e processamento de PFX.
+-   : Contém a lógica de interação com o Tika, incluindo timeouts e fallbacks.
+-   : Novo arquivo com a lógica do watchdog do banco de dados.
+-   : Contém o endpoint refeito para visualização de certificados.
+-   : Contém a UI refatorada da página de jobs OCR.
+-   : Contém a UI refatorada do visualizador de certificados.
+-   , : Contêm a nova configuração da infraestrutura.
+-   : Arquivo de configuração para o servidor Tika.
+
+**Areas that need refactoring**:
+Nenhum.
+
+**key api endpoints**
+-   : Prioriza um job de OCR.
+-   : Endpoint modificado para retornar logs de depuração detalhados para certificados PFX.
+-   : Retorna o status do novo watchdog de banco de dados.
+-   : Endpoint modificado para incluir o nome do servidor ().
 
 **Critical Info for New Agent**
--   Sua tarefa imediata é corrigir o  para que ele execute jobs de OCR em paralelo, de acordo com a configuração . A abordagem deve ser mudar a lógica síncrona para uma assíncrona usando .
--   Garanta que a nova implementação leia a configuração de concorrência dinamicamente (a cada iteração do loop), para que a mudança na UI seja refletida sem precisar reiniciar o serviço.
--   Esteja ciente de que um bug recorrente (download de arquivos de 0 bytes) tem uma correção pendente de verificação pelo usuário. Se ele reportar o problema novamente, sua prioridade deve ser depurá-lo usando os logs do backend.
+-   Sua tarefa imediata é orientar o usuário a testar a correção final no ambiente Docker Compose. O usuário deve executar  para aplicar as mudanças nos nomes dos containers, na rede e nas variáveis de ambiente, e então verificar se a aplicação está funcional em .
+-   Muitas funcionalidades críticas (OCR, PFX, watchdogs) foram adicionadas ou significativamente alteradas. Elas funcionam com base nos testes do agente, mas podem ter casos de borda não cobertos. Esteja preparado para depurar essas áreas.
+-   A configuração do Tika agora depende de um arquivo  e de parâmetros no . Se houver problemas de timeout no OCR, verifique esses dois locais.
 
 **documents and test reports created in this job**
 -    foi atualizado.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **PENDING:** Verificar se quando é alterado a configuração os jobs ja respeitam automaticamente, sem necessidade de reboot (Check if when the configuration is changed the jobs respect it automatically, without needing a reboot).
-2.  **PENDING:** Verificar porque não está sendo iniciado mais de um OCR Jobs se ja config está 4 (Check why more than one OCR Job is not being started if the config is 4).
-3.  **DONE:** Pedido para filtrar a árvore para mostrar apenas os itens de uma busca.
-4.  **DONE:** Pedido para melhorar o formato de exibição dos resultados da busca.
-5.  **DONE:** Pedido para garantir que um endpoint de busca use uma conexão de banco de dados somente leitura.
-6.  **DONE:** Pedido para executar o comando  apenas se a fragmentação for maior que 20%.
-7.  **DONE:** Pedido para adicionar mensagens de debug para  e backup.
-8.  **DONE:** Pedido para executar  no startup da aplicação.
-9.  **DONE:** Pedido para implementar índices no banco de dados para melhorar a performance.
-10. **DONE:** Forneceu uma query SQL e pediu nova ordenação/limite para a página de jobs OCR.
+1.  **DONE**: Solicitação para ajustar o  final (healthcheck, depends_on, etc).
+2.  **DONE**: Solicitação para replicar os ajustes do  para o arquivo .
+3.  **PENDING VERIFICATION**: Reportou que o frontend estava chamando o backend na porta errada (8001). O agente aplicou uma correção.
+4.  **DONE**: Solicitação para colocar todos os serviços Docker na mesma rede .
+5.  **DONE**: Solicitação para renomear os containers de  para .
+6.  **ADDRESSED**: Reportou um erro de resolução de nome do Tika (), que o agente explicou ser esperado no ambiente de preview.
+7.  **DONE**: Solicitação para que o OCR de PDFs tente 3 vezes com OCR antes de fazer fallback para extração de texto simples ().
+8.  **DONE**: Solicitação para ajustar os parâmetros do servidor Tika se necessário.
+9.  **ADDRESSED**: Compartilhou logs de erro de timeout do Tika. O agente implementou timeouts dinâmicos e aumentou os limites do servidor.
+10. **DONE**: Solicitou que, durante o OCR, o sistema tentasse abrir arquivos PFX com senhas do banco de dados e registrasse um leak se uma chave privada fosse encontrada.
 
 **Project Health Check:**
--   **Broken:** A funcionalidade de concorrência de jobs de OCR não está funcionando.
--   **Mocked:** O serviço  está disponível para desenvolvimento no arquivo .
--   **Needs Verification:** A correção para o bug de download de arquivos de 0 bytes aguarda confirmação do usuário.
+-   **Broken:** O ambiente local via Docker Compose estava quebrado devido a um  incorreto.
+-   **Mocked:** O serviço  continua disponível para desenvolvimento no arquivo .
+-   **Needs Verification:** A correção para o  no Docker Compose aguarda validação do usuário.
 
 **3rd Party Integrations**
 -   **Apache Tika:** Para OCR.
@@ -173,10 +186,10 @@ Nenhuma.
 -   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** N/A
--   **Known regressions:** O parsing do GitLeaks era uma regressão que foi corrigida. O problema com arquivos de 0 bytes é um bug recorrente.
+-   **Known regressions:** Nenhuma regressão conhecida. Problemas anteriores foram corrigidos.
 
 **Credentials to test flow:**
 Não há credenciais estáticas. A aplicação permite criar servidores, credenciais e instâncias de plugin através da UI.
 
 **What agent forgot to execute**
-O agente identificou corretamente as últimas solicitações do usuário (corrigir a concorrência do OCR e garantir a atualização dinâmica da configuração) como a próxima tarefa, mas a sessão terminou antes de iniciar a implementação.</analysis>
+O agente foi muito completo ao seguir as solicitações do usuário. O único ponto menor foi não instruir explicitamente o usuário a reiniciar os containers Docker () após a última alteração no , o que é um passo necessário para que a correção tenha efeito.</analysis>
