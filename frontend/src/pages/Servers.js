@@ -551,7 +551,11 @@ const Servers = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {servers.length === 0 ? (
+          {loadingServers ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : servers.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">Nenhum servidor cadastrado</p>
           ) : filteredAndSortedServers.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">Nenhum servidor encontrado para "{searchTerm}"</p>
