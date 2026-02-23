@@ -3796,12 +3796,17 @@ async def scan_all_servers_storage(
 async def get_gitleaks_stats(db: AsyncSession = Depends(get_db_readonly)):
     """
     Retorna estatísticas gerais do GitLeaks para o Dashboard.
+    Falsos positivos são excluídos das contagens.
     """
     from gitleaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
-    findings = service.get_all_findings()
+    all_findings = service.get_all_findings()
     jobs = service.get_all_jobs()
+    
+    # Filtrar falsos positivos para as estatísticas
+    findings = [f for f in all_findings if not f.get('is_false_positive', False)]
+    false_positive_count = len(all_findings) - len(findings)
     
     # Contagem de severidades
     severity_counts = {
@@ -3850,6 +3855,7 @@ async def get_gitleaks_stats(db: AsyncSession = Depends(get_db_readonly)):
     
     return {
         "total_findings": len(findings),
+        "total_false_positives": false_positive_count,
         "total_files_affected": len(set(f.get('File', '') for f in findings)),
         "severity_counts": severity_counts,
         "total_servers": len(servers),
