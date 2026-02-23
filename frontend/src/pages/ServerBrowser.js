@@ -95,6 +95,27 @@ const ServerBrowser = () => {
   const location = useLocation();
   const { ignoreCache } = useApp();
   
+  // Determinar a origem da navegação para o botão "Voltar"
+  const getBackDestination = () => {
+    // Verificar se veio via state do React Router
+    if (location.state?.from) {
+      return location.state.from;
+    }
+    // Verificar query parameter
+    const params = new URLSearchParams(location.search);
+    const from = params.get('from');
+    if (from) {
+      return from;
+    }
+    // Default: /servers
+    return '/servers';
+  };
+  
+  const backDestination = getBackDestination();
+  const backLabel = backDestination === '/files/browse' ? 'Navegação' 
+                  : backDestination === '/leaks' ? 'Leaks' 
+                  : 'Servidores';
+  
   const [server, setServer] = useState(null);
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(false);
