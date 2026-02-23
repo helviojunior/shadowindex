@@ -50,7 +50,7 @@ const Servers = () => {
   
   // Estados para busca e ordenação
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'last_verified_at', direction: 'desc' });
 
   useEffect(() => {
     loadServers();
