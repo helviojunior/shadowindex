@@ -32,6 +32,80 @@ WORKER_POLL_INTERVAL = 2  # segundos entre verificações
 _worker_instance: Optional['DownloadWorker'] = None
 
 
+async def ensure_parent_directories(db: AsyncSession, server, share_name: str, file_path: str):
+    """
+    Garante que todos os diretórios pais de um arquivo existam no banco de dados como ServerItem.
+    Isso permite que a árvore de navegação mostre corretamente os diretórios mesmo quando
+    arquivos são baixados via jobs em background.
+    
+    Args:
+        db: Sessão do banco de dados
+        server: Objeto Server
+        share_name: Nome do share
+        file_path: Caminho completo do arquivo (ex: \\\\ip\\share\\folder\\file.txt)
+    """
+    try:
+        # Normalizar o caminho
+        if not file_path.startswith('\\\\'):
+            file_path = f"\\\\{server.ip}\\{share_name}\\{file_path}"
+        
+        # Dividir o caminho em partes
+        parts = file_path.split('\\')
+        # parts: ['', '', 'ip', 'share', 'folder1', 'folder2', 'file.txt']
+        
+        if len(parts) < 5:
+            # Caminho muito curto (apenas share + arquivo)
+            return
+        
+        # O caminho do share é: \\ip\share
+        share_path = f"\\\\{parts[2]}\\{parts[3]}"
+        
+        # Iterar pelos diretórios intermediários (excluindo o arquivo no final)
+        # Ex: para \\ip\share\a\b\c\file.txt, criar a, b, c como diretórios
+        for i in range(4, len(parts) - 1):
+            dir_name = parts[i]
+            current_full_path = '\\'.join([''] + [''] + parts[2:i+1])  # \\ip\share\a, \\ip\share\a\b, etc
+            parent_path = '\\'.join([''] + [''] + parts[2:i]) if i > 4 else share_path
+            
+            # Verificar se já existe
+            existing = await db.execute(
+                select(ServerItem).where(
+                    ServerItem.server_guid == server.guid,
+                    ServerItem.full_path == current_full_path
+                )
+            )
+            existing_item = existing.scalar_one_or_none()
+            
+            if not existing_item:
+                # Criar o diretório
+                new_dir = ServerItem(
+                    server_guid=server.guid,
+                    share_name=share_name,
+                    parent_path=parent_path,
+                    item_type='Directory',
+                    name=dir_name,
+                    full_path=current_full_path,
+                    size='---',
+                    modified=None,
+                    access_denied=False,
+                    has_children=True,  # Pelo menos tem o arquivo sendo baixado
+                    children_fetched=False,  # Não foi expandido manualmente
+                    discovered_at=datetime.now(timezone.utc)
+                )
+                db.add(new_dir)
+                logger.debug(f"Created directory ServerItem: {current_full_path}")
+            else:
+                # Garantir que has_children é True (já que tem pelo menos o arquivo)
+                if not existing_item.has_children:
+                    existing_item.has_children = True
+        
+        await db.commit()
+        logger.info(f"Ensured parent directories for: {file_path}")
+        
+    except Exception as e:
+        logger.warning(f"Error ensuring parent directories for {file_path}: {e}")
+
+
 async def emit_download_stats():
     """Busca e emite estatísticas de downloads via WebSocket"""
     from database import async_session_maker, DownloadJob
