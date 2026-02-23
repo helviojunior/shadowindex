@@ -82,6 +82,7 @@ const Leaks = () => {
   const [files, setFiles] = useState([]);
   const [totalFindings, setTotalFindings] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // Estado para indicar refresh sem bloquear UI
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFinding, setSelectedFinding] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -97,6 +98,7 @@ const Leaks = () => {
   const [polling, setPolling] = useState(false);
   const [showScanPanel, setShowScanPanel] = useState(true);
   const errorCountRef = useRef(0);
+  const isInitialLoad = useRef(true);
   
   // State para diálogo de confirmação
   const [confirmDialog, setConfirmDialog] = useState({ 
