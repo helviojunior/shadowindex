@@ -4497,18 +4497,103 @@ async def skip_excluded_ocr_jobs(db: AsyncSession = Depends(get_db)):
 
 @router.delete("/ocr/jobs/clear-finished")
 async def clear_finished_ocr_jobs(db: AsyncSession = Depends(get_db)):
-    """Remove todos os jobs de OCR finalizados (completed, failed, skipped)"""
+    """Remove todos os jobs de OCR finalizados (completed, failed, skipped, cancelled)"""
     from database import OCRJob
     from sqlalchemy import delete
     
     result = await db.execute(
-        delete(OCRJob).where(OCRJob.status.in_(['completed', 'failed', 'skipped']))
+        delete(OCRJob).where(OCRJob.status.in_(['completed', 'failed', 'skipped', 'cancelled']))
     )
     await db.commit()
     
     return {
         "deleted": result.rowcount,
         "message": f"{result.rowcount} jobs removidos"
+    }
+
+
+@router.post("/ocr/jobs/{job_id}/retry")
+async def retry_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Reexecuta um job de OCR específico (cancelled ou failed)"""
+    from database import OCRJob
+    from datetime import datetime, timezone
+    
+    result = await db.execute(
+        select(OCRJob).where(OCRJob.id == job_id)
+    )
+    job = result.scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    
+    if job.status not in ['cancelled', 'failed']:
+        raise HTTPException(status_code=400, detail=f"Apenas jobs cancelados ou falhados podem ser reexecutados. Status atual: {job.status}")
+    
+    # Reset do job para pending
+    job.status = 'pending'
+    job.error_message = None
+    job.completed_at = None
+    job.ocr_text = None
+    job.updated_at = datetime.now(timezone.utc)
+    
+    await db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Job {job_id} reenfileirado para processamento"
+    }
+
+
+@router.delete("/ocr/jobs/{job_id}")
+async def delete_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Remove um job de OCR específico"""
+    from database import OCRJob
+    from sqlalchemy import delete
+    
+    result = await db.execute(
+        select(OCRJob).where(OCRJob.id == job_id)
+    )
+    job = result.scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    
+    if job.status in ['pending', 'running']:
+        raise HTTPException(status_code=400, detail="Não é possível deletar jobs pendentes ou em execução. Cancele primeiro.")
+    
+    await db.execute(delete(OCRJob).where(OCRJob.id == job_id))
+    await db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Job {job_id} removido com sucesso"
+    }
+
+
+@router.post("/ocr/retry-cancelled")
+async def retry_cancelled_ocr_jobs(db: AsyncSession = Depends(get_db)):
+    """Reexecuta todos os jobs de OCR cancelados"""
+    from database import OCRJob
+    from datetime import datetime, timezone
+    from sqlalchemy import update
+    
+    result = await db.execute(
+        update(OCRJob)
+        .where(OCRJob.status == 'cancelled')
+        .values(
+            status='pending',
+            error_message=None,
+            completed_at=None,
+            ocr_text=None,
+            updated_at=datetime.now(timezone.utc)
+        )
+    )
+    await db.commit()
+    
+    return {
+        "success": True,
+        "count": result.rowcount,
+        "message": f"{result.rowcount} jobs cancelados reenfileirados para processamento"
     }
 
 
