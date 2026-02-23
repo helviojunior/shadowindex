@@ -74,7 +74,8 @@ const OCRJobs = () => {
     running: { label: 'Executando', icon: Play, textColor: 'text-cyan-500', borderColor: 'border-l-cyan-500', ringColor: 'ring-cyan-500' },
     completed: { label: 'Concluídos', icon: CheckCircle, textColor: 'text-green-500', borderColor: 'border-l-green-500', ringColor: 'ring-green-500' },
     failed: { label: 'Falhados', icon: XCircle, textColor: 'text-red-500', borderColor: 'border-l-red-500', ringColor: 'ring-red-500' },
-    skipped: { label: 'Ignorados', icon: SkipForward, textColor: 'text-gray-400', borderColor: 'border-l-gray-500', ringColor: 'ring-gray-500' }
+    skipped: { label: 'Ignorados', icon: SkipForward, textColor: 'text-gray-400', borderColor: 'border-l-gray-500', ringColor: 'ring-gray-500' },
+    cancelled: { label: 'Cancelados', icon: StopCircle, textColor: 'text-orange-500', borderColor: 'border-l-orange-500', ringColor: 'ring-orange-500' }
   };
 
   // Carregar status do Tika
