@@ -612,11 +612,18 @@ class GitleaksService:
                                     finding['File'] = file_info['original_file']
                                     
                                     # Extrair IDs do caminho físico para posterior enriquecimento
-                                    ids = extract_ids_from_path(file_info['original_file'])
-                                    if ids:
-                                        finding['extracted_server_id'] = ids[0]
-                                        finding['extracted_file_id'] = ids[1]
-                                        finding['extracted_version'] = ids[2]
+                                    ids_info = extract_ids_from_path(file_info['original_file'])
+                                    if ids_info:
+                                        if ids_info['format'] == 'new':
+                                            # Novo formato: server_guid/share_id/file_version_id
+                                            finding['extracted_server_guid'] = ids_info['server_guid']
+                                            finding['extracted_share_id'] = ids_info['share_id']
+                                            finding['extracted_file_version_id'] = ids_info['file_version_id']
+                                        else:
+                                            # Formato legado: server_id/file_id/version
+                                            finding['extracted_server_id'] = ids_info['server_id']
+                                            finding['extracted_file_id'] = ids_info['file_id']
+                                            finding['extracted_version'] = ids_info['version']
                                     
                                     # Separar por fonte de detecção
                                     if file_info['source'] == 'ocr':
