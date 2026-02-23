@@ -83,17 +83,18 @@ class OCRWorker:
             await self._ocr_service.initialize()
         return self._ocr_service
     
-    async def _extract_certificate_text(self, file_path: str, file_ext: str, db, server_guid: str = None, share_name: str = None, file_version_id: int = None) -> tuple:
+    async def _extract_certificate_text(self, file_path: str, file_ext: str, db, server_guid: str = None, share_name: str = None, file_version_id: int = None, file_name: str = None) -> tuple:
         """
-        Extrai informações de certificados digitais em formato texto.
+        Extrai informações de certificados digitais e chaves privadas em formato texto.
         
         Args:
-            file_path: Caminho do arquivo do certificado
-            file_ext: Extensão do arquivo (.pfx, .p12, .cer, .crt, .pem)
+            file_path: Caminho do arquivo do certificado/chave
+            file_ext: Extensão do arquivo (.pfx, .p12, .cer, .crt, .pem, .key, .ppk, etc)
             db: Sessão do banco de dados
             server_guid: GUID do servidor (para buscar senhas específicas)
             share_name: Nome do share (para enriquecimento de leaks)
             file_version_id: ID da versão do arquivo (para enriquecimento de leaks)
+            file_name: Nome original do arquivo (para detectar SSH keys)
             
         Returns:
             Tuple (text, metadata, error)
@@ -112,6 +113,25 @@ class OCRWorker:
             cert = None
             private_key = None
             chain = None
+            
+            # Verificar se é arquivo de chave privada puro (não certificado)
+            private_key_only_extensions = ['.key', '.priv', '.private', '.ppk', '.der', '.p8', '.pkcs8']
+            ssh_key_names = ['id_rsa', 'id_dsa', 'id_ecdsa', 'id_ed25519', 'id_ed25519_sk', 'id_ecdsa_sk',
+                            'identity', 'ssh_host_rsa_key', 'ssh_host_dsa_key', 'ssh_host_ecdsa_key', 'ssh_host_ed25519_key']
+            
+            # Detectar arquivo SSH por nome
+            is_ssh_file = file_name and any(
+                file_name.lower() == name.lower() or file_name.lower().startswith(name.lower() + '.')
+                for name in ssh_key_names
+            )
+            
+            # Verificar se é arquivo de chave privada (sem certificado)
+            if file_ext in private_key_only_extensions or is_ssh_file:
+                return await self._extract_private_key_text(
+                    file_path, file_ext, cert_data, db, 
+                    server_guid=server_guid, share_name=share_name, 
+                    file_version_id=file_version_id, file_name=file_name
+                )
             
             if file_ext in ['.pfx', '.p12']:
                 passwords_to_try = []
