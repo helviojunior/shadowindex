@@ -793,6 +793,9 @@ class OCRWorker:
                     if file_ext in certificate_extensions:
                         # Buscar server_guid para pesquisa de senhas
                         server_guid = None
+                        share_name = None
+                        file_version_id = None
+                        
                         if job.server_id:
                             server_result = await db.execute(
                                 select(Server).where(Server.id == job.server_id)
@@ -801,9 +804,38 @@ class OCRWorker:
                             if server_obj:
                                 server_guid = server_obj.guid
                         
+                        # Buscar share_name e file_version_id do DownloadedFile
+                        if job.file_id:
+                            from database import DownloadedFile
+                            df_result = await db.execute(
+                                select(DownloadedFile).where(DownloadedFile.id == job.file_id)
+                            )
+                            downloaded_file = df_result.scalar_one_or_none()
+                            if downloaded_file:
+                                share_name = downloaded_file.share_name
+                        
+                        # Buscar file_version_id
+                        if job.version_id:
+                            file_version_id = job.version_id
+                        elif server_guid and job.file_path:
+                            from database import FileVersion
+                            version_result = await db.execute(
+                                select(FileVersion).where(
+                                    FileVersion.server_guid == server_guid,
+                                    FileVersion.file_path == job.file_path,
+                                    FileVersion.is_current == True
+                                )
+                            )
+                            current_version = version_result.scalar_one_or_none()
+                            if current_version:
+                                file_version_id = current_version.id
+                        
                         # Extrair dados do certificado em formato texto
                         ocr_text, ocr_metadata, error = await self._extract_certificate_text(
-                            job.local_path, file_ext, db, server_guid=server_guid
+                            job.local_path, file_ext, db, 
+                            server_guid=server_guid,
+                            share_name=share_name,
+                            file_version_id=file_version_id
                         )
                     else:
                         # CONDIÇÃO 2: Executar OCR com retry em caso de erro de comunicação
