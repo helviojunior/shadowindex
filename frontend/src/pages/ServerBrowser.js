@@ -719,7 +719,6 @@ const ServerBrowser = () => {
             message: 'Digite a senha para desbloquear o certificado'
           });
         } else {
-          toast.error('Erro ao carregar informações do certificado');
           setFileContent({ error: errorDetail });
         }
         setContentLoadError(true);
