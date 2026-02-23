@@ -4619,6 +4619,8 @@ def vacuum_database():
     import sqlite3
     from database import DATABASE_PATH
     
+    print("=== VACUUM: Iniciando otimização do banco de dados... ===", flush=True)
+    
     try:
         if not os.path.exists(DATABASE_PATH):
             print("=== VACUUM: Database file not found, skipping ===", flush=True)
