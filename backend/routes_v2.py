@@ -4075,6 +4075,39 @@ async def cancel_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.post("/ocr/jobs/{job_id}/prioritize")
+async def prioritize_ocr_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Coloca um job de OCR como prioridade máxima para execução imediata"""
+    from database import OCRJob
+    from sqlalchemy import func
+    
+    result = await db.execute(select(OCRJob).where(OCRJob.id == job_id))
+    job = result.scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    
+    if job.status != 'pending':
+        raise HTTPException(status_code=400, detail=f"Apenas jobs pendentes podem ser priorizados (status atual: '{job.status}')")
+    
+    # Buscar a maior prioridade atual e adicionar 1
+    max_priority_result = await db.execute(
+        select(func.max(OCRJob.priority)).where(OCRJob.status == 'pending')
+    )
+    max_priority = max_priority_result.scalar() or 0
+    
+    # Definir prioridade máxima + 1
+    job.priority = max_priority + 1
+    await db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Job priorizado com sucesso (prioridade: {job.priority})",
+        "job_id": job_id,
+        "new_priority": job.priority
+    }
+
+
 @router.post("/ocr/cancel-all")
 async def cancel_all_ocr_jobs(db: AsyncSession = Depends(get_db)):
     """Cancela todos os jobs de OCR pendentes ou em execução"""
