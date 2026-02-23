@@ -83,7 +83,7 @@ class OCRWorker:
             await self._ocr_service.initialize()
         return self._ocr_service
     
-    async def _extract_certificate_text(self, file_path: str, file_ext: str, db) -> tuple:
+    async def _extract_certificate_text(self, file_path: str, file_ext: str, db, server_guid: str = None) -> tuple:
         """
         Extrai informações de certificados digitais em formato texto.
         
@@ -91,6 +91,7 @@ class OCRWorker:
             file_path: Caminho do arquivo do certificado
             file_ext: Extensão do arquivo (.pfx, .p12, .cer, .crt, .pem)
             db: Sessão do banco de dados
+            server_guid: GUID do servidor (para buscar senhas específicas)
             
         Returns:
             Tuple (text, metadata, error)
@@ -100,7 +101,7 @@ class OCRWorker:
         from cryptography.hazmat.backends import default_backend
         from cryptography.hazmat.primitives.serialization import pkcs12
         from database import PfxPassword
-        from sqlalchemy import select
+        from sqlalchemy import select, distinct
         
         try:
             with open(file_path, 'rb') as f:
@@ -109,36 +110,94 @@ class OCRWorker:
             cert = None
             private_key = None
             chain = None
+            password_used = None
             
             if file_ext in ['.pfx', '.p12']:
-                # Tentar sem senha primeiro
-                passwords_to_try = [None, b'', b'password', b'123456', b'changeit']
+                passwords_to_try = []
                 
-                # Buscar senhas salvas no banco
+                # 1. Buscar senha específica para este arquivo
+                if server_guid:
+                    try:
+                        specific_result = await db.execute(
+                            select(PfxPassword).where(
+                                PfxPassword.server_guid == server_guid,
+                                PfxPassword.file_path == file_path
+                            )
+                        )
+                        specific_pwd = specific_result.scalar_one_or_none()
+                        if specific_pwd and specific_pwd.password:
+                            passwords_to_try.append(("específica do arquivo", specific_pwd.password.encode()))
+                            logger.info(f"Found specific password for {file_path}")
+                    except Exception as e:
+                        logger.warning(f"Error fetching specific password: {e}")
+                
+                # 2. Tentar sem senha
+                passwords_to_try.append(("sem senha (None)", None))
+                passwords_to_try.append(("sem senha (vazio)", b''))
+                
+                # 3. Senhas comuns
+                common_passwords = ['password', '123456', 'changeit', '1234', 'admin', 'senha', '12345678']
+                for pwd in common_passwords:
+                    passwords_to_try.append((f"comum: {pwd}", pwd.encode()))
+                
+                # 4. Buscar TODAS as senhas distintas do banco para força bruta
                 try:
-                    # Extrair informações do path para buscar senha
-                    saved_result = await db.execute(
-                        select(PfxPassword)
+                    all_passwords_result = await db.execute(
+                        select(distinct(PfxPassword.password))
                     )
-                    saved_passwords = saved_result.scalars().all()
-                    for saved in saved_passwords:
-                        if saved.password:
-                            passwords_to_try.insert(1, saved.password.encode())
-                except Exception:
-                    pass
+                    all_passwords = all_passwords_result.scalars().all()
+                    
+                    for saved_pwd in all_passwords:
+                        if saved_pwd:
+                            # Evitar duplicatas
+                            pwd_bytes = saved_pwd.encode()
+                            if not any(p[1] == pwd_bytes for p in passwords_to_try):
+                                passwords_to_try.append((f"banco de dados", pwd_bytes))
+                    
+                    if all_passwords:
+                        logger.info(f"Found {len(all_passwords)} distinct passwords in database for brute force")
+                except Exception as e:
+                    logger.warning(f"Error fetching all passwords: {e}")
                 
                 # Tentar cada senha
-                for pwd in passwords_to_try:
+                logger.info(f"Attempting to open PFX with {len(passwords_to_try)} passwords")
+                for pwd_source, pwd in passwords_to_try:
                     try:
                         private_key, cert, chain = pkcs12.load_key_and_certificates(
                             cert_data, pwd, default_backend()
                         )
+                        password_used = pwd.decode() if pwd else "(sem senha)"
+                        logger.info(f"Successfully opened PFX with password from: {pwd_source}")
+                        
+                        # Salvar a senha que funcionou (se não for a específica já salva)
+                        if server_guid and pwd and pwd_source != "específica do arquivo":
+                            try:
+                                # Verificar se já existe
+                                existing = await db.execute(
+                                    select(PfxPassword).where(
+                                        PfxPassword.server_guid == server_guid,
+                                        PfxPassword.file_path == file_path
+                                    )
+                                )
+                                if not existing.scalar_one_or_none():
+                                    # Salvar nova senha
+                                    new_pwd = PfxPassword(
+                                        server_guid=server_guid,
+                                        file_path=file_path,
+                                        password=pwd.decode()
+                                    )
+                                    db.add(new_pwd)
+                                    await db.commit()
+                                    logger.info(f"Saved discovered password for {file_path}")
+                            except Exception as e:
+                                logger.warning(f"Error saving discovered password: {e}")
+                        
                         break
                     except Exception:
                         continue
                 
-                if not cert:
-                    return None, None, "Não foi possível abrir o certificado PFX/P12 (senha incorreta?)"
+                if not cert and not private_key:
+                    return None, None, f"Não foi possível abrir o certificado PFX/P12 (tentadas {len(passwords_to_try)} senhas)"
                     
             elif file_ext in ['.cer', '.crt', '.pem']:
                 try:
