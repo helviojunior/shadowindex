@@ -57,7 +57,8 @@ const OCRJobs = () => {
     running: 0,
     completed: 0,
     failed: 0,
-    skipped: 0
+    skipped: 0,
+    cancelled: 0
   });
   const [tikaStatus, setTikaStatus] = useState({ online: null, server_url: '', error: null });
   const [loading, setLoading] = useState(true);
