@@ -2893,6 +2893,44 @@ const ServerBrowser = () => {
     return downloadedFiles.includes(filePath);
   };
 
+  // Verifica recursivamente se um item ou seus filhos têm arquivos baixados
+  const hasDownloadedContent = (item, nodeId) => {
+    const isShare = !!item.share_name;
+    const itemType = (item.type || item.itemType || '').toLowerCase();
+    const isFile = itemType === 'file';
+    const isDirectory = isShare || itemType === 'directory' || itemType === 'dir' || itemType === 'folder';
+    
+    // Se é arquivo, verificar se está baixado
+    if (isFile) {
+      return downloadedFiles.includes(item.fullPath || item.full_path);
+    }
+    
+    // Se é diretório/share, verificar filhos
+    if (isDirectory || isShare) {
+      const children = nodeChildren[nodeId] || [];
+      for (const child of children) {
+        const childNodeId = child.id || `item-${(child.fullPath || child.full_path || child.name || '').replace(/[^a-zA-Z0-9]/g, '_')}`;
+        if (hasDownloadedContent(child, String(childNodeId))) {
+          return true;
+        }
+      }
+      
+      // Também verificar se há algum arquivo baixado neste caminho
+      const itemPath = isShare 
+        ? `\\\\${server.ip}\\${item.share_name}`
+        : (item.fullPath || item.full_path || '');
+      
+      // Verificar se algum arquivo baixado começa com este caminho
+      for (const downloadedPath of downloadedFiles) {
+        if (downloadedPath && downloadedPath.startsWith(itemPath + '\\')) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+
   // Renderiza um nó da árvore com linhas de hierarquia
   const renderTreeNode = (item, depth = 0, shareName = '', isLastChild = true, parentLines = [], focusedNodeId = null) => {
     // Proteção contra recursão infinita - limite de profundidade
