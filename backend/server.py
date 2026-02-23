@@ -4611,6 +4611,42 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+def vacuum_database():
+    """
+    Executa VACUUM no banco de dados para otimizar e recuperar espaço em disco.
+    Deve ser executado antes do backup.
+    """
+    import sqlite3
+    from database import DATABASE_PATH
+    
+    try:
+        if not os.path.exists(DATABASE_PATH):
+            print("=== VACUUM: Database file not found, skipping ===", flush=True)
+            return False
+        
+        # Obter tamanho antes
+        size_before = os.path.getsize(DATABASE_PATH)
+        
+        # Executar VACUUM
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.execute("VACUUM;")
+        conn.close()
+        
+        # Obter tamanho depois
+        size_after = os.path.getsize(DATABASE_PATH)
+        saved = size_before - size_after
+        
+        if saved > 0:
+            print(f"=== VACUUM: Database optimized, saved {saved} bytes ({saved/1024:.1f} KB) ===", flush=True)
+        else:
+            print("=== VACUUM: Database already optimized ===", flush=True)
+        
+        return True
+    except Exception as e:
+        print(f"=== VACUUM ERROR: Failed to vacuum database: {e} ===", flush=True)
+        return False
+
+
 def backup_database():
     """
     Cria um backup comprimido do banco de dados na pasta ./backups/
