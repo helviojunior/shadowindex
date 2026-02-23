@@ -674,7 +674,7 @@ const Servers = () => {
                             <div>
                               <div 
                                 className="font-medium cursor-pointer hover:text-primary transition-colors"
-                                onClick={() => navigate(`/servers/${server.id}/browse`)}
+                                onClick={() => navigate(`/servers/${server.id}/browse?from=/servers`)}
                               >
                                 {server.name}
                               </div>
