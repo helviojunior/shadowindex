@@ -505,7 +505,9 @@ const OCRJobs = () => {
                       <TableCell className="text-xs">
                         {job.status === 'completed' ? (
                           <span className="text-green-500">{(job.ocr_text?.length || 0).toLocaleString()}</span>
-                        ) : job.error_message ? (
+                        ) : job.status === 'cancelled' || job.status === 'skipped' ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : job.status === 'failed' && job.error_message ? (
                           <span className="text-red-500" title={job.error_message}>Erro</span>
                         ) : (
                           '-'
