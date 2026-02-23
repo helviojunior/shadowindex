@@ -2608,9 +2608,11 @@ async def get_certificate_info(
                 "source": "principal"
             })
             log_step(f"Certificado principal encontrado (com chave privada: {'Sim' if private_key else 'Não'})", "success")
+        else:
+            log_step("Certificado principal: NÃO ENCONTRADO", "warning")
         
         # Certificados da cadeia
-        if chain:
+        if chain and len(chain) > 0:
             for i, chain_cert in enumerate(chain):
                 all_certs.append({
                     "cert": chain_cert,
@@ -2618,11 +2620,19 @@ async def get_certificate_info(
                     "source": f"chain[{i}]"
                 })
             log_step(f"Cadeia de certificados: {len(chain)} certificado(s) adicional(is)", "info")
+        else:
+            log_step("Cadeia de certificados: VAZIA", "info")
+        
+        # Log sobre chave privada
+        if private_key:
+            log_step("Chave privada: ENCONTRADA", "success")
+        else:
+            log_step("Chave privada: NÃO ENCONTRADA", "info")
         
         if not all_certs:
             # Se ainda não tem cert mas tem private_key, retornar info da chave
             if private_key:
-                log_step("Arquivo contém apenas chave privada (sem certificado)", "warning")
+                log_step("RESULTADO: Arquivo contém apenas chave privada (sem certificado)", "warning")
                 return {
                     "type": file_ext.replace('.', '').upper(),
                     "has_certificate": False,
@@ -2634,19 +2644,25 @@ async def get_certificate_info(
                     "message": "Este arquivo contém apenas a chave privada, sem certificado associado"
                 }
             
-            log_step("Nenhum certificado encontrado", "error")
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "error": True,
-                    "message": "Não foi possível extrair nenhum certificado",
-                    "debug_log": debug_log
-                }
-            )
+            # Não tem NADA - nem certificado nem chave privada
+            log_step("RESULTADO: Arquivo não contém certificados nem chave privada", "error")
+            log_step("O arquivo pode estar corrompido ou não ser um certificado válido", "error")
+            return {
+                "error": True,
+                "type": file_ext.replace('.', '').upper(),
+                "has_certificate": False,
+                "has_private_key": False,
+                "total_certificates": 0,
+                "certificates": [],
+                "password_used": password_used,
+                "debug_log": debug_log,
+                "message": "O arquivo foi aberto com sucesso mas não contém certificados nem chave privada. O arquivo pode estar corrompido ou não ser um certificado válido.",
+                "requires_password": False
+            }
         
         # Ordenar: certificados com chave privada primeiro
         all_certs.sort(key=lambda x: (not x["has_private_key"], x["source"]))
-        log_step(f"Total de certificados: {len(all_certs)}", "success")
+        log_step(f"Total de certificados a processar: {len(all_certs)}", "success")
         
         # Processar cada certificado
         certificates_info = []
