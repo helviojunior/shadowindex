@@ -112,25 +112,36 @@ class TikaService:
         with open(file_path, 'rb') as f:
             file_content = f.read()
         
-        # Lista de estratégias para tentar em caso de erro
-        strategies_to_try = [
-            (pdf_strategy, "estratégia padrão"),
-            ("no_ocr", "sem OCR (apenas texto)"),
-        ]
+        # Verificar se é PDF para aplicar lógica de retry especial
+        is_pdf = file_path.suffix.lower() == '.pdf'
         
         last_error = None
         content = None
         metadata = None
         
-        for strategy, strategy_name in strategies_to_try:
+        # Para PDFs: tentar 3x com OCR antes de desabilitar
+        # Para outros arquivos: apenas uma tentativa
+        if is_pdf:
+            strategies_to_try = [
+                (pdf_strategy, "com OCR (tentativa 1/3)", 1),
+                (pdf_strategy, "com OCR (tentativa 2/3)", 2),
+                (pdf_strategy, "com OCR (tentativa 3/3)", 3),
+                ("no_ocr", "sem OCR (fallback)", 4),
+            ]
+        else:
+            strategies_to_try = [
+                (pdf_strategy, "estratégia padrão", 1),
+            ]
+        
+        for strategy, strategy_name, attempt in strategies_to_try:
             try:
-                logger.info(f"Trying Tika with {strategy_name} (timeout: {text_timeout}s, tika_timeout: {tika_timeout_ms}ms)")
+                logger.info(f"Trying Tika with {strategy_name} for {file_path.name} (timeout: {text_timeout}s)")
                 
                 # Headers for OCR configuration
                 headers = {
                     "X-Tika-OCRLanguage": ocr_language,
                     "X-Tika-PDFocrStrategy": strategy,
-                    "X-Tika-Timeout-Millis": str(tika_timeout_ms),  # Timeout do servidor Tika
+                    "X-Tika-Timeout-Millis": str(tika_timeout_ms),
                     "Accept": "text/plain; charset=UTF-8"
                 }
                 
@@ -164,19 +175,21 @@ class TikaService:
                     else:
                         last_error = f"Tika returned empty content with {strategy_name}"
                         logger.warning(last_error)
+                        # Continuar para próxima tentativa
                         
                 elif text_response.status_code == 422:
                     last_error = "Tika não suporta este tipo de arquivo (HTTP 422)"
-                    break  # Não adianta tentar outra estratégia
+                    break  # Não adianta tentar mais
                 elif text_response.status_code == 500:
                     # Erro interno do Tika - pode ser problema com o arquivo
-                    error_text = text_response.text[:500] if text_response.text else "Unknown error"
+                    error_text = text_response.text[:200] if text_response.text else "Unknown error"
                     last_error = f"Erro interno do Tika (HTTP 500): {error_text}"
-                    logger.warning(f"Tika internal error with {strategy_name}, trying next strategy: {error_text[:100]}")
-                    # Continuar para próxima estratégia
+                    logger.warning(f"Tika error on {strategy_name}: {error_text[:100]}")
+                    # Continuar para próxima tentativa
                 elif text_response.status_code >= 500:
                     last_error = f"Erro no servidor Tika (HTTP {text_response.status_code})"
                     logger.warning(f"Tika server error with {strategy_name}: HTTP {text_response.status_code}")
+                    # Continuar para próxima tentativa
                 else:
                     last_error = f"Resposta inesperada do Tika: HTTP {text_response.status_code}"
                     logger.warning(last_error)
@@ -184,17 +197,21 @@ class TikaService:
             except requests.exceptions.Timeout:
                 last_error = f"Timeout no processamento Tika com {strategy_name} (arquivo: {file_size_mb:.1f}MB, timeout: {text_timeout}s)"
                 logger.warning(last_error)
-                # Continuar para próxima estratégia (sem OCR é mais rápido)
+                # Continuar para próxima tentativa
                 
             except requests.exceptions.ConnectionError as e:
                 last_error = f"Erro de conexão com Tika: {str(e)}"
                 logger.error(last_error)
-                break  # Erro de conexão, não adianta tentar outra estratégia
+                break  # Erro de conexão, não adianta tentar mais
                 
             except Exception as e:
                 last_error = f"Erro no processamento Tika com {strategy_name}: {str(e)}"
                 logger.warning(last_error)
-                # Continuar para próxima estratégia
+                # Continuar para próxima tentativa
+            
+            # Pequeno delay entre tentativas (exceto na última)
+            if is_pdf and attempt < 4 and not content:
+                await asyncio.sleep(2)
         
         # Se não conseguiu extrair texto
         if not content:
