@@ -5057,7 +5057,9 @@ const ServerBrowser = () => {
                               <File className="w-4 h-4 text-blue-400 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm truncate">{highlightSearchTerm(item.name, searchQuery)}</div>
-                                <div className="text-xs text-muted-foreground truncate">{item.share_name}</div>
+                                <div className="text-xs text-muted-foreground truncate" title={item.full_path}>
+                                  {formatShortPath(item.full_path, item.share_name, item.name)}
+                                </div>
                               </div>
                             </div>
                           ))}
