@@ -678,8 +678,8 @@ const Leaks = () => {
                   className="pl-10 w-64"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={loadFindings}>
-                <RefreshCw className="w-4 h-4" />
+              <Button variant="outline" size="sm" onClick={() => loadFindings(true)} disabled={refreshing}>
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               </Button>
               {totalFindings > 0 && (
                 <Button variant="destructive" size="sm" onClick={confirmClearAllFindings}>
