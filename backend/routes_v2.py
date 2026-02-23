@@ -1378,18 +1378,24 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         
         # Chamar download_file do plugin passando expected_size para validar arquivos zerados
         expected_size = item.size if hasattr(item, 'size') else None
+        logger.info(f"Downloading {item.full_path} with expected_size={expected_size}")
+        
         file_content = await plugin.download_file(
             item.full_path, 
             ignore_cache=True,
             expected_size=expected_size
         )
         
-        # Aceitar arquivos zerados se o tamanho esperado é 0
+        # Aceitar arquivos zerados - não é erro se o plugin retornou sucesso
         if not file_content or file_content.data is None:
             raise HTTPException(status_code=500, detail="Resposta nula do servidor")
         
+        # Log do resultado
+        logger.info(f"Downloaded {item.full_path}: got {len(file_content.data)} bytes (expected={expected_size})")
+        
         # Se o conteúdo está vazio mas o tamanho esperado é > 0, pode ser erro
-        if len(file_content.data) == 0 and expected_size and expected_size > 0:
+        # Se expected_size é 0 ou None, aceitar arquivo vazio como válido
+        if len(file_content.data) == 0 and expected_size is not None and expected_size > 0:
             raise HTTPException(status_code=500, detail=f"Arquivo vazio com tamanho esperado de {expected_size} bytes")
         
         # ===== AÇÕES PÓS-DOWNLOAD =====
