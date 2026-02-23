@@ -2595,7 +2595,26 @@ async def get_certificate_info(
                 }
             )
         
+        # Para PFX, se cert é None mas há chain, usar o primeiro da chain
+        if not cert and chain and len(chain) > 0:
+            cert = chain[0]
+            log_step("Usando primeiro certificado da cadeia", "info")
+        
         if not cert:
+            # Se ainda não tem cert mas tem private_key, retornar info da chave
+            if private_key:
+                log_step("Arquivo contém apenas chave privada (sem certificado)", "warning")
+                return {
+                    "type": file_ext.replace('.', '').upper(),
+                    "has_certificate": False,
+                    "has_private_key": True,
+                    "total_certificates": 0,
+                    "certificates": [],
+                    "password_used": password_used,
+                    "debug_log": debug_log,
+                    "message": "Este arquivo contém apenas a chave privada, sem certificado associado"
+                }
+            
             log_step("Certificado não extraído", "error")
             return JSONResponse(
                 status_code=500,
