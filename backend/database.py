@@ -430,6 +430,7 @@ class GitleaksFinding(Base):
     
     # Dados adicionais
     raw_data = Column(JSON, nullable=True)  # JSON completo do finding original
+    is_false_positive = Column(Boolean, default=False, nullable=False)  # Marcado como falso positivo
     
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
