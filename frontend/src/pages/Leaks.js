@@ -66,7 +66,9 @@ import {
   FileText,
   FileSearch,
   Key,
-  ExternalLink
+  ExternalLink,
+  ShieldOff,
+  ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShieldKeyIcon } from '@/components/icons';
