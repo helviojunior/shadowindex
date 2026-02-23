@@ -1284,6 +1284,7 @@ const ServerBrowser = () => {
       itemType: ''
     });
     setShowAdvancedSearch(false);
+    setShowOnlySearchResults(false);
   };
 
   // Exportar resultados da busca para JSON
