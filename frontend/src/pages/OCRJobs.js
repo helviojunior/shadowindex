@@ -454,7 +454,7 @@ const OCRJobs = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button 
                 variant="outline" 
                 size="sm"
@@ -466,14 +466,28 @@ const OCRJobs = () => {
                 ) : (
                   <RotateCcw className="w-4 h-4 mr-2" />
                 )}
-                Reexecutar Falhados
+                Reexecutar Falhados ({stats.failed || 0})
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setConfirmDialog({ open: true, action: 'retryCancelled', jobId: null })}
+                disabled={stats.cancelled === 0 || retrying}
+                className="text-orange-500 border-orange-500/50 hover:bg-orange-500/10"
+              >
+                {retrying ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                Reexecutar Cancelados ({stats.cancelled || 0})
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => setConfirmDialog({ open: true, action: 'cancelAll', jobId: null })}
                 disabled={(stats.pending || 0) + (stats.running || 0) === 0}
-                className="text-orange-500 border-orange-500/50 hover:bg-orange-500/10"
+                className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
               >
                 <StopCircle className="w-4 h-4 mr-2" />
                 Cancelar Todos
@@ -482,7 +496,7 @@ const OCRJobs = () => {
                 variant="destructive" 
                 size="sm"
                 onClick={() => setConfirmDialog({ open: true, action: 'clear', jobId: null })}
-                disabled={stats.completed === 0 && stats.failed === 0 && stats.skipped === 0}
+                disabled={stats.completed === 0 && stats.failed === 0 && stats.skipped === 0 && stats.cancelled === 0}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Limpar Finalizados
