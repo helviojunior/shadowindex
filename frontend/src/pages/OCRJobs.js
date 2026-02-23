@@ -94,7 +94,7 @@ const OCRJobs = () => {
   const loadJobs = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      params.append('limit', '100');
+      params.append('limit', '50');
       if (filter !== 'all') {
         params.append('status', filter);
       }
