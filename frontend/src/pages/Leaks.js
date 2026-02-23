@@ -321,12 +321,23 @@ const Leaks = () => {
       });
       
       if (response.data.success) {
-        // Atualizar localmente sem recarregar tudo
+        // Atualizar findings
         setFindings(prev => prev.map(f => 
           f.Fingerprint === fingerprint 
             ? { ...f, is_false_positive: newValue }
             : f
         ));
+        
+        // Atualizar files (que contém os findings agrupados)
+        setFiles(prev => prev.map(file => ({
+          ...file,
+          findings: file.findings.map(f => 
+            f.Fingerprint === fingerprint 
+              ? { ...f, is_false_positive: newValue }
+              : f
+          )
+        })));
+        
         toast.success(newValue ? 'Marcado como falso positivo' : 'Desmarcado como falso positivo');
       } else {
         toast.error(response.data.message || 'Erro ao atualizar finding');
