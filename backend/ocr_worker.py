@@ -110,7 +110,6 @@ class OCRWorker:
             cert = None
             private_key = None
             chain = None
-            password_used = None
             
             if file_ext in ['.pfx', '.p12']:
                 passwords_to_try = []
