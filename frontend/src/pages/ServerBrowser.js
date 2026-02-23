@@ -2996,23 +2996,35 @@ const ServerBrowser = () => {
     const isNotFetched = isDirectory && !childrenFetched;
     
     // Cor do ícone baseada no status de acesso, download e fetch
+    // Visitados (fetched) = azul, Não visitados = cinza
     const getIconColor = () => {
       if (isAccessDenied) return 'text-red-500';
-      if (isNotFetched) return 'text-muted-foreground';
+      if (isNotFetched) return 'text-gray-500';
       return 'text-blue-500';
     };
     
     const getFileIconColor = () => {
       if (isAccessDenied) return 'text-red-500';
       if (isDownloaded) return 'text-green-500';
-      return 'text-muted-foreground';
+      return 'text-gray-500';
     };
     
     const iconColor = getIconColor();
     const fileIconColor = getFileIconColor();
     
-    // Cor do texto baseada no status de fetch
-    const textColor = isAccessDenied ? 'text-red-500' : (isNotFetched ? 'text-muted-foreground' : '');
+    // Cor do texto baseada no status de fetch/download
+    // Diretórios: visitados = azul, não visitados = cinza
+    // Arquivos: baixados = normal, não baixados = cinza
+    const getTextColor = () => {
+      if (isAccessDenied) return 'text-red-500';
+      if (isDirectory) {
+        return isNotFetched ? 'text-gray-500' : 'text-blue-400';
+      }
+      // Arquivos
+      if (isDownloaded) return ''; // cor padrão
+      return 'text-gray-500';
+    };
+    const textColor = getTextColor();
     
     // Handler para clique no item - seleciona e expande se for diretório
     const handleNodeClick = async () => {
