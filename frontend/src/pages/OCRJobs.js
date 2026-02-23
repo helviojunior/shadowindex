@@ -602,6 +602,28 @@ const OCRJobs = () => {
                               <StopCircle className="w-4 h-4" />
                             </Button>
                           )}
+                          {(job.status === 'cancelled' || job.status === 'failed') && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => retryJob(job.id)}
+                                className="h-7 w-7 p-0 text-blue-500 hover:text-blue-600"
+                                title="Reexecutar job"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmDialog({ open: true, action: 'delete', jobId: job.id })}
+                                className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                                title="Remover job"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
