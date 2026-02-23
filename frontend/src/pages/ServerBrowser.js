@@ -4088,15 +4088,15 @@ const ServerBrowser = () => {
                       <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg space-y-4">
                         <div className="flex items-center gap-2 text-yellow-500">
                           <AlertTriangle className="w-5 h-5" />
-                          <span className="font-medium">{fileContent.error}</span>
+                          <span className="font-medium">{fileContent.message || fileContent.error}</span>
                         </div>
                         {fileContent.requires_password && (
                           <>
                             <p className="text-sm text-muted-foreground">
-                              {fileContent.message}
-                              {fileContent.known_passwords > 0 && (
+                              Digite a senha para desbloquear o certificado
+                              {fileContent.passwords_tried?.length > 0 && (
                                 <span className="ml-2 text-xs">
-                                  ({fileContent.known_passwords} senha(s) conhecida(s) testada(s))
+                                  ({fileContent.passwords_tried.length} tentativa(s) falhada(s))
                                 </span>
                               )}
                             </p>
@@ -4126,6 +4126,55 @@ const ServerBrowser = () => {
                               </Button>
                             </div>
                           </>
+                        )}
+                        
+                        {/* Debug Log */}
+                        {fileContent.debug_log && fileContent.debug_log.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-yellow-500/20">
+                            <details className="group">
+                              <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
+                                <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+                                Debug: {fileContent.debug_log.length} passos
+                              </summary>
+                              <div className="mt-3 space-y-1 pl-6">
+                                {fileContent.debug_log.map((entry, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className={`text-xs font-mono flex items-start gap-2 py-1 ${
+                                      entry.status === 'success' ? 'text-green-500' :
+                                      entry.status === 'error' ? 'text-red-400' :
+                                      'text-muted-foreground'
+                                    }`}
+                                  >
+                                    <span className="w-4 flex-shrink-0">
+                                      {entry.status === 'success' ? '✓' :
+                                       entry.status === 'error' ? '✗' : '•'}
+                                    </span>
+                                    <span className="flex-1">
+                                      {entry.step}
+                                      {entry.details && (
+                                        <span className="ml-2 text-muted-foreground">
+                                          → {entry.details}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                            
+                            {/* Exception Details */}
+                            {fileContent.last_exception && (
+                              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded text-xs">
+                                <div className="font-medium text-red-400 mb-1">
+                                  Exception: {fileContent.exception_type || 'Unknown'}
+                                </div>
+                                <pre className="text-red-300/80 whitespace-pre-wrap break-all font-mono">
+                                  {fileContent.last_exception}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     ) : (
