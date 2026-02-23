@@ -517,9 +517,10 @@ const Dashboard = () => {
                       tick={{ fill: '#999', fontSize: 10 }}
                     />
                     <PolarRadiusAxis 
-                      angle={30} 
+                      angle={90} 
                       domain={[0, 'auto']}
                       tick={{ fill: '#666', fontSize: 9 }}
+                      axisLine={false}
                     />
                     <Radar
                       name="Leaks"
