@@ -187,12 +187,15 @@ const Servers = () => {
   };
 
   const loadServers = async () => {
+    setLoadingServers(true);
     try {
       const response = await axios.get(`${API}/servers`);
       setServers(response.data);
     } catch (error) {
       console.error('Error loading servers:', error);
       toast.error('Erro ao carregar servidores');
+    } finally {
+      setLoadingServers(false);
     }
   };
 
