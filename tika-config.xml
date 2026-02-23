@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Tika Server Configuration
+  https://tika.apache.org/3.0.0/configuring.html
+-->
+<properties>
+  <!-- Timeout for parsing tasks in milliseconds (15 minutes) -->
+  <taskTimeoutMillis>900000</taskTimeoutMillis>
+  
+  <!-- Timeout for the entire parse operation in milliseconds (20 minutes) -->
+  <taskPulseMillis>1200000</taskPulseMillis>
+  
+  <!-- Maximum number of concurrent parse tasks -->
+  <maxFiles>100</maxFiles>
+  
+  <!-- Maximum size of the request (500MB) -->
+  <maxRestartFiles>25</maxRestartFiles>
+  
+  <!-- Number of times to restart forked process -->
+  <numRestarts>-1</numRestarts>
+  
+  <!-- Enable digest calculation -->
+  <digest>sha256</digest>
+  
+  <!-- Emit stack traces in response -->
+  <enableUnsecureFeatures>true</enableUnsecureFeatures>
+  
+  <!-- Log level -->
+  <logLevel>info</logLevel>
+</properties>
