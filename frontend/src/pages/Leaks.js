@@ -533,19 +533,57 @@ const Leaks = () => {
               {/* Scan Options */}
               <div className="flex items-end gap-4">
                 {scanMode === 'server' && (
-                  <div className="flex-1 max-w-xs">
-                    <Select value={selectedServer} onValueChange={setSelectedServer}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um servidor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {servers.map((server) => (
-                          <SelectItem key={server.id} value={server.id.toString()}>
-                            {server.name} ({server.ip})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex-1 max-w-sm">
+                    <Popover open={serverComboOpen} onOpenChange={setServerComboOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={serverComboOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          {selectedServerData ? (
+                            <span className="truncate">
+                              {selectedServerData.name} ({selectedServerData.ip})
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">Buscar servidor por nome ou IP...</span>
+                          )}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Digite nome ou IP do servidor..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum servidor encontrado.</CommandEmpty>
+                            <CommandGroup>
+                              {servers.map((server) => (
+                                <CommandItem
+                                  key={server.id}
+                                  value={`${server.name} ${server.ip}`}
+                                  onSelect={() => {
+                                    setSelectedServer(server.id.toString());
+                                    setServerComboOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedServer === server.id.toString() ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{server.name}</span>
+                                    <span className="text-xs text-muted-foreground">{server.ip}</span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
                 
