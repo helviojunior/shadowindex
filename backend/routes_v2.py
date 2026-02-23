@@ -333,7 +333,7 @@ async def quick_search(
     server_id: int,
     q: str,
     limit: int = 50,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db_readonly)
 ):
     """
     Busca rápida por:
