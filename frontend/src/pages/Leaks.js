@@ -101,6 +101,7 @@ const Leaks = () => {
   const [jobs, setJobs] = useState([]);
   const [servers, setServers] = useState([]);
   const [selectedServer, setSelectedServer] = useState('');
+  const [serverComboOpen, setServerComboOpen] = useState(false);
   const [customPath, setCustomPath] = useState('');
   const [scanMode, setScanMode] = useState('all'); // 'all', 'server', 'custom'
   const [scanning, setScanning] = useState(false);
@@ -108,6 +109,12 @@ const Leaks = () => {
   const [showScanPanel, setShowScanPanel] = useState(true);
   const errorCountRef = useRef(0);
   const isInitialLoad = useRef(true);
+
+  // Memoizar o servidor selecionado para exibição
+  const selectedServerData = useMemo(() => {
+    if (!selectedServer) return null;
+    return servers.find(s => s.id.toString() === selectedServer);
+  }, [selectedServer, servers]);
   
   // State para diálogo de confirmação
   const [confirmDialog, setConfirmDialog] = useState({ 
