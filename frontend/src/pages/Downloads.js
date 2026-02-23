@@ -510,26 +510,28 @@ const Downloads = () => {
             <Card 
               key={status}
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md border-2 relative",
+                "cursor-pointer transition-all hover:shadow-md border-2",
                 isActive ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
               )}
               onClick={() => handleFilterClick(status)}
               data-testid={`filter-${status}`}
             >
-              <CardContent className="p-4 pt-4">
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 absolute top-3 right-3 animate-spin text-muted-foreground" />
-                ) : (
-                  <Icon className={cn("w-5 h-5 absolute top-3 right-3", config.textColor)} />
-                )}
-                <div>
-                  <p className="text-2xl font-bold">{count}</p>
-                  <p className={cn("text-sm font-medium", config.textColor)}>
-                    {config.label}
-                    {!isLoaded && !['downloading', 'pending'].includes(status) && count > 0 && (
-                      <span className="text-xs text-muted-foreground ml-1">(clique)</span>
-                    )}
-                  </p>
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold">{count}</p>
+                    <p className={cn("text-xs uppercase", config.textColor)}>
+                      {config.label}
+                      {!isLoaded && !['downloading', 'pending'].includes(status) && count > 0 && (
+                        <span className="text-muted-foreground ml-1">(clique)</span>
+                      )}
+                    </p>
+                  </div>
+                  {isLoading ? (
+                    <Loader2 className="w-6 h-6 opacity-60 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Icon className={cn("w-6 h-6 opacity-60", config.textColor)} />
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -539,17 +541,19 @@ const Downloads = () => {
         {/* Total card */}
         <Card 
           className={cn(
-            "cursor-pointer transition-all hover:shadow-md border-2 relative",
+            "cursor-pointer transition-all hover:shadow-md border-2",
             activeFilter === null ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
           )}
           onClick={() => setActiveFilter(null)}
           data-testid="filter-all"
         >
-          <CardContent className="p-4 pt-4">
-            <Download className="w-5 h-5 absolute top-3 right-3 text-muted-foreground" />
-            <div>
-              <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-sm text-muted-foreground font-medium">Total</p>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-xs text-muted-foreground uppercase">Total</p>
+              </div>
+              <Download className="w-6 h-6 text-muted-foreground opacity-60" />
             </div>
           </CardContent>
         </Card>
