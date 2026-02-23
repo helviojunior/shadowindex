@@ -524,7 +524,7 @@ class OCRWorker:
     
     async def _process_single_job(self, job_id: int):
         """Processa um único job de OCR (executado como task assíncrona)"""
-        from database import AsyncSessionLocal, OCRJob, FileVersion, AppSettings
+        from database import AsyncSessionLocal, OCRJob, FileVersion, AppSettings, Server
         import mimetypes
         import os
         
@@ -546,6 +546,22 @@ class OCRWorker:
                 if not job:
                     logger.error(f"OCR job {job_id} not found")
                     return
+                
+                # CONDIÇÃO 1: Verificar se o servidor ainda existe
+                if job.server_id:
+                    server_result = await db.execute(
+                        select(Server).where(Server.id == job.server_id)
+                    )
+                    server = server_result.scalar_one_or_none()
+                    
+                    if not server:
+                        # Servidor foi excluído - remover o job
+                        logger.info(f"OCR job {job_id} - Server {job.server_id} was deleted, removing job")
+                        print(f"=== OCR WORKER: Job {job_id} removed - server was deleted ===", flush=True)
+                        await db.delete(job)
+                        await db.commit()
+                        await emit_ocr_stats()
+                        return
                 
                 file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
                 
