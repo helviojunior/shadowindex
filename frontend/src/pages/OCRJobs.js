@@ -323,8 +323,9 @@ const OCRJobs = () => {
             <Card 
               key={status}
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md border-2",
-                isActive ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
+                "cursor-pointer transition-all hover:shadow-md border-2 border-l-4",
+                config.borderColor,
+                isActive ? "ring-2 ring-primary border-primary border-l-4 " + config.borderColor : "border-transparent hover:border-muted-foreground/30"
               )}
               onClick={() => setActiveFilter(isActive ? null : status)}
               data-testid={`filter-${status}`}
