@@ -5047,17 +5047,29 @@ const ServerBrowser = () => {
                         <span className="text-xs font-medium text-muted-foreground">
                           {searchResults.total} resultado(s) encontrado(s)
                         </span>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                          onClick={exportSearchResultsToJson}
-                          data-testid="export-search-btn"
-                          title="Exportar resultados para JSON"
-                        >
-                          <FileJson className="w-3 h-3 mr-1" />
-                          Exportar
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant={showOnlySearchResults ? "default" : "ghost"}
+                            size="sm"
+                            className={`h-6 w-6 p-0 ${showOnlySearchResults ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                            onClick={() => setShowOnlySearchResults(!showOnlySearchResults)}
+                            data-testid="filter-search-results-btn"
+                            title={showOnlySearchResults ? "Mostrar toda a árvore" : "Filtrar árvore pelos resultados"}
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={exportSearchResultsToJson}
+                            data-testid="export-search-btn"
+                            title="Exportar resultados para JSON"
+                          >
+                            <FileJson className="w-3 h-3 mr-1" />
+                            Exportar
+                          </Button>
+                        </div>
                       </div>
                       
                       {/* Diretórios */}
