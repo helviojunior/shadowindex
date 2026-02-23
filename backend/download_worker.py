@@ -543,9 +543,9 @@ class DownloadWorker:
         await self._save_file_content_bytes(db, job, full_content, server)
     
     async def _save_file_content_bytes(self, db: AsyncSession, job, content: bytes, server):
-        """Salva o conteúdo do arquivo (bytes) no storage"""
-        from database import DownloadedFile
-        from storage_utils import get_server_storage_path
+        """Salva o conteúdo do arquivo (bytes) no storage usando estrutura padrão"""
+        from database import DownloadedFile, ServerShare
+        from storage_utils import save_file_with_standard_path, get_standard_relative_path
         import magic
         
         try:
@@ -557,59 +557,43 @@ class DownloadWorker:
             sha1_hash = hashlib.sha1(file_bytes).hexdigest()
             logger.info(f"Calculated SHA1: {sha1_hash}, size: {len(file_bytes)} bytes")
             
-            # Criar estrutura de diretórios
-            storage_base = get_server_storage_path(server.guid)
-            
-            # Sanitizar o file_path removendo prefixo UNC e caracteres especiais
-            file_path = job.file_path
-            
-            # Remover prefixo UNC se existir (ex: \\127.0.0.1\D$\...)
-            if file_path.startswith('\\\\'):
-                # Remove \\server\share\ do início
-                parts = file_path.split('\\')
-                # parts será ['', '', 'server', 'share', 'rest', 'of', 'path']
-                if len(parts) > 4:
-                    file_path = '\\'.join(parts[4:])  # Pega do 5º elemento em diante
-                else:
-                    file_path = parts[-1] if parts else job.file_name or 'unknown_file'
-            
-            # Converter barras e remover caracteres problemáticos
-            relative_path = file_path.replace('\\', '/').lstrip('/')
-            
-            # Remover caracteres especiais do Windows que não são válidos em Linux
-            relative_path = relative_path.replace('$', '_').replace(':', '_')
-            
-            full_storage_path = storage_base / relative_path
-            logger.info(f"Storage path: {full_storage_path}")
-            
-            # Criar diretórios
-            full_storage_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Salvar arquivo
-            with open(full_storage_path, 'wb') as f:
-                f.write(file_bytes)
-            
-            logger.info(f"File saved successfully: {full_storage_path}")
-            
             # Calcular mimetype por extensão primeiro (mais confiável no ambiente)
             mimetype = None
             import mimetypes
             try:
-                mimetype, _ = mimetypes.guess_type(str(full_storage_path))
+                mimetype, _ = mimetypes.guess_type(job.file_name or job.file_path)
                 logger.info(f"Calculated mimetype (extension): {mimetype}")
             except Exception as e:
                 logger.warning(f"Could not calculate mimetype by extension: {e}")
             
-            # Tentar libmagic como fallback se extensão não funcionou
+            # Fallback para application/octet-stream
             if not mimetype:
-                try:
-                    mime = magic.Magic(mime=True)
-                    mimetype = mime.from_file(str(full_storage_path))
-                    logger.info(f"Calculated mimetype (libmagic): {mimetype}")
-                except Exception as e:
-                    logger.warning(f"Could not calculate mimetype with libmagic: {e}")
-                    # Fallback final: application/octet-stream
-                    mimetype = 'application/octet-stream'
+                mimetype = 'application/octet-stream'
+            
+            # Obter share_id do banco
+            share_result = await db.execute(
+                select(ServerShare).where(
+                    ServerShare.server_guid == server.guid,
+                    ServerShare.share_name == job.share_name
+                )
+            )
+            share = share_result.scalar_one_or_none()
+            
+            if not share:
+                # Criar share se não existir
+                share = ServerShare(
+                    server_id=server.id,
+                    server_guid=server.guid,
+                    share_name=job.share_name,
+                    access_denied=False,
+                    has_children=True,
+                    children_fetched=False
+                )
+                db.add(share)
+                await db.flush()  # Obter o ID do share
+                logger.info(f"Created new ServerShare id={share.id} for {job.share_name}")
+            
+            share_id = share.id
             
             # Atualizar job
             job.downloaded_bytes = len(file_bytes)
@@ -626,6 +610,68 @@ class DownloadWorker:
             )
             downloaded_file = existing.scalar_one_or_none()
             
+            # Verificar se já existe uma versão com mesmo hash
+            existing_version = await db.execute(
+                select(FileVersion).where(
+                    FileVersion.server_guid == server.guid,
+                    FileVersion.share_name == job.share_name,
+                    FileVersion.file_path == job.file_path,
+                    FileVersion.sha1_hash == sha1_hash
+                )
+            )
+            version = existing_version.scalar_one_or_none()
+            
+            if not version:
+                # Marcar versões anteriores como não-atuais
+                all_versions_result = await db.execute(
+                    select(FileVersion).where(
+                        FileVersion.server_guid == server.guid,
+                        FileVersion.file_path == job.file_path
+                    )
+                )
+                versions_list = all_versions_result.scalars().all()
+                for v in versions_list:
+                    v.is_current = False
+                next_version_number = len(versions_list) + 1
+                
+                # Criar nova versão primeiro (para obter o ID)
+                version = FileVersion(
+                    server_guid=server.guid,
+                    share_name=job.share_name,
+                    file_path=job.file_path,
+                    version_number=next_version_number,
+                    sha1_hash=sha1_hash,
+                    file_size=len(file_bytes),
+                    mimetype=mimetype,
+                    local_path="",  # Será atualizado após salvar
+                    is_current=True
+                )
+                db.add(version)
+                await db.flush()  # Obter o ID da versão
+                logger.info(f"Created new FileVersion id={version.id}, #{next_version_number} for {job.file_path}")
+            
+            # Agora salvar o arquivo usando a estrutura padrão: server_guid/share_id/file_version_id
+            full_storage_path, relative_path, _, _ = save_file_with_standard_path(
+                server.guid,
+                share_id,
+                version.id,
+                file_bytes
+            )
+            logger.info(f"File saved at: {full_storage_path} (relative: {relative_path})")
+            
+            # Atualizar local_path da versão
+            version.local_path = relative_path
+            
+            # Tentar calcular mimetype via libmagic se ainda é genérico
+            if mimetype == 'application/octet-stream':
+                try:
+                    mime = magic.Magic(mime=True)
+                    mimetype = mime.from_file(str(full_storage_path))
+                    version.mimetype = mimetype
+                    logger.info(f"Updated mimetype (libmagic): {mimetype}")
+                except Exception as e:
+                    logger.warning(f"Could not calculate mimetype with libmagic: {e}")
+            
             if downloaded_file:
                 # Atualizar existente
                 logger.info(f"Updating existing DownloadedFile id={downloaded_file.id}")
@@ -638,7 +684,7 @@ class DownloadWorker:
                 downloaded_file.file_name = job.file_name
                 downloaded_file.server_id = server.id
             else:
-                # Criar novo registro - usar relative_path que já foi sanitizado
+                # Criar novo registro
                 logger.info("Creating new DownloadedFile record")
                 downloaded_file = DownloadedFile(
                     server_id=server.id,
@@ -661,57 +707,9 @@ class DownloadWorker:
             # Garantir que os diretórios pais existam como ServerItem
             await ensure_parent_directories(db, server, job.share_name, job.file_path, len(file_bytes))
             
-            # Criar/atualizar FileVersion (como o sync manual)
-            existing_version = await db.execute(
-                select(FileVersion).where(
-                    FileVersion.server_guid == server.guid,
-                    FileVersion.share_name == job.share_name,
-                    FileVersion.file_path == job.file_path,
-                    FileVersion.sha1_hash == sha1_hash
-                )
-            )
-            version = existing_version.scalar_one_or_none()
-            
-            if not version:
-                # Marcar versões anteriores como não-atuais
-                await db.execute(
-                    select(FileVersion).where(
-                        FileVersion.server_guid == server.guid,
-                        FileVersion.file_path == job.file_path,
-                        FileVersion.is_current.is_(True)
-                    )
-                )
-                # Contar versões existentes
-                version_count = await db.execute(
-                    select(FileVersion).where(
-                        FileVersion.server_guid == server.guid,
-                        FileVersion.file_path == job.file_path
-                    )
-                )
-                versions_list = version_count.scalars().all()
-                for v in versions_list:
-                    v.is_current = False
-                next_version = len(versions_list) + 1
-                
-                # Criar nova versão
-                version = FileVersion(
-                    server_guid=server.guid,
-                    share_name=job.share_name,
-                    file_path=job.file_path,
-                    version_number=next_version,
-                    sha1_hash=sha1_hash,
-                    file_size=len(file_bytes),
-                    mimetype=mimetype,
-                    local_path=str(full_storage_path),
-                    is_current=True
-                )
-                db.add(version)
-                logger.info(f"Created new FileVersion #{next_version} for {job.file_path}")
-            
             await db.commit()
             await db.refresh(downloaded_file)
-            if version:
-                await db.refresh(version)
+            await db.refresh(version)
             logger.info(f"DownloadedFile record saved successfully for {job.file_path}")
             
             # Verificar configurações de Auto OCR
