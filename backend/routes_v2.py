@@ -2346,12 +2346,41 @@ async def get_file_content(server_id: int, file_id: int, db: AsyncSession = Depe
         key_type, key_description = detect_private_key_type(content)
         if key_type:
             try:
+                # Buscar file_version_id para enriquecimento
+                file_version_id = None
+                version_result = await db.execute(
+                    select(FileVersion).where(
+                        FileVersion.server_guid == server.guid,
+                        FileVersion.file_path == file.file_path,
+                        FileVersion.is_current == True
+                    )
+                )
+                current_version = version_result.scalar_one_or_none()
+                if current_version:
+                    file_version_id = current_version.id
+                
+                # Buscar share_id para enriquecimento
+                share_id = None
+                share_result = await db.execute(
+                    select(ServerShare).where(
+                        ServerShare.server_guid == server.guid,
+                        ServerShare.share_name == file.share_name
+                    )
+                )
+                share = share_result.scalar_one_or_none()
+                if share:
+                    share_id = share.id
+                
                 leak_result = await auto_register_private_key_leak(
                     file_path=file.file_path,
                     content=content,
                     server_id=server_id,
                     key_type=key_type,
-                    description=key_description
+                    description=key_description,
+                    file_version_id=file_version_id,
+                    share_name=file.share_name,
+                    server_guid=server.guid,
+                    share_id=share_id
                 )
                 if not leak_result.get("already_exists"):
                     leak_registered = {
