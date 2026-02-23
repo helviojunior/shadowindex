@@ -418,12 +418,30 @@ class OCRWorker:
                     
                     await self._process_pending_jobs(db)
             except OperationalError as e:
-                if "database is locked" in str(e):
+                error_msg = str(e)
+                # Reportar erro ao DB watchdog
+                try:
+                    from db_watchdog import report_db_error
+                    report_db_error(error_msg)
+                except Exception:
+                    pass
+                
+                if "database is locked" in error_msg:
                     logger.warning("Database locked in OCR worker, retrying in 5s...")
                     await asyncio.sleep(5)
                 else:
                     logger.error(f"Database error in OCR worker loop: {e}")
             except Exception as e:
+                error_msg = str(e)
+                # Verificar se é erro de pool/conexão e reportar
+                error_lower = error_msg.lower()
+                if any(x in error_lower for x in ['pool', 'connection', 'database', 'sqlite']):
+                    try:
+                        from db_watchdog import report_db_error
+                        report_db_error(error_msg)
+                    except Exception:
+                        pass
+                
                 logger.error(f"Error in OCR worker loop: {e}")
                 print(f"=== OCR WORKER ERROR: {e} ===", flush=True)
             
