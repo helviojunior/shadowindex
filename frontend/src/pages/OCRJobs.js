@@ -62,10 +62,19 @@ const OCRJobs = () => {
   const [tikaStatus, setTikaStatus] = useState({ online: null, server_url: '', error: null });
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ open: false, action: null, jobId: null });
   const isMounted = useRef(true);
+
+  // Configuração de status para os cards
+  const statusConfig = {
+    pending: { label: 'Pendentes', icon: Clock, textColor: 'text-yellow-500' },
+    running: { label: 'Executando', icon: Play, textColor: 'text-cyan-500' },
+    completed: { label: 'Concluídos', icon: CheckCircle, textColor: 'text-green-500' },
+    failed: { label: 'Falhados', icon: XCircle, textColor: 'text-red-500' },
+    skipped: { label: 'Ignorados', icon: SkipForward, textColor: 'text-gray-400' }
+  };
 
   // Carregar status do Tika
   const loadTikaStatus = useCallback(async () => {
