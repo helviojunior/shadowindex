@@ -334,9 +334,17 @@ class OCRWorker:
         from database import AsyncSessionLocal
         from sqlalchemy.exc import OperationalError
         
+        cleanup_counter = 0  # Contador para executar cleanup periodicamente
+        
         while self.running:
             try:
                 async with AsyncSessionLocal() as db:
+                    # Executar limpeza a cada 12 iterações (aproximadamente 1 minuto)
+                    cleanup_counter += 1
+                    if cleanup_counter >= 12:
+                        await self._cleanup_old_completed_jobs(db)
+                        cleanup_counter = 0
+                    
                     await self._process_pending_jobs(db)
             except OperationalError as e:
                 if "database is locked" in str(e):
@@ -350,6 +358,44 @@ class OCRWorker:
             
             # Aguardar antes de verificar novamente
             await asyncio.sleep(5)
+    
+    async def _cleanup_old_completed_jobs(self, db: AsyncSession):
+        """Remove jobs finalizados com sucesso há mais de X minutos"""
+        from database import OCRJob, AppSettings
+        from sqlalchemy import delete
+        from datetime import timedelta
+        
+        try:
+            # Buscar configuração de tempo de limpeza
+            result = await db.execute(
+                select(AppSettings).where(AppSettings.key == 'ocr_auto_cleanup_minutes')
+            )
+            setting = result.scalar_one_or_none()
+            cleanup_minutes = int(setting.value) if setting and setting.value else 15
+            
+            if cleanup_minutes <= 0:
+                return  # Limpeza desabilitada
+            
+            cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=cleanup_minutes)
+            
+            # Deletar jobs completados antes do cutoff
+            delete_result = await db.execute(
+                delete(OCRJob).where(
+                    and_(
+                        OCRJob.status == 'completed',
+                        OCRJob.updated_at < cutoff_time
+                    )
+                )
+            )
+            await db.commit()
+            
+            if delete_result.rowcount > 0:
+                logger.info(f"OCR cleanup: Removed {delete_result.rowcount} old completed jobs")
+                print(f"=== OCR WORKER: Cleaned up {delete_result.rowcount} old completed jobs ===", flush=True)
+                await emit_ocr_stats()
+                
+        except Exception as e:
+            logger.error(f"Error in OCR cleanup: {e}")
     
     async def _process_pending_jobs(self, db: AsyncSession):
         """Processa jobs pendentes de OCR"""
