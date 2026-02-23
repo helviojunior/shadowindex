@@ -3,6 +3,10 @@ version: '3.8'
 # Docker-compose for development/testing
 # Includes SOAP mock server and Tika for OCR
 
+networks:
+  shadowindex-net:
+    driver: bridge
+
 services:
   tika:
     image: apache/tika:latest-full
@@ -17,6 +21,8 @@ services:
       --port 9998
       --taskTimeoutMillis 900000
       --taskPulseMillis 1200000
+    networks:
+      - shadowindex-net
 
   soap-mock:
     build:
@@ -26,6 +32,8 @@ services:
     ports:
       - "9999:9999"
     restart: unless-stopped
+    networks:
+      - shadowindex-net
 
   backend:
     build:
@@ -42,12 +50,13 @@ services:
       - SOAP_MOCK_URL=http://soap-mock:9999/Test.asmx
     extra_hosts:
       - "proxy.local:host-gateway"
-      - "tika:shadowindex-tika-dev"
     command: uvicorn server:app --host 0.0.0.0 --port 8001 --reload
     restart: unless-stopped
     depends_on:
       - tika
       - soap-mock
+    networks:
+      - shadowindex-net
 
   frontend:
     build:
@@ -61,3 +70,5 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - shadowindex-net
