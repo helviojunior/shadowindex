@@ -463,38 +463,36 @@ const Downloads = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Downloads</h1>
-          <p className="text-muted-foreground flex items-center gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">Downloads</h1>
+          <p className="text-muted-foreground mt-1">
             Gerencie os downloads de arquivos dos servidores
-            {loading && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Atualizando...
-              </span>
-            )}
-            {!loading && isConnected ? (
-              <span className="flex items-center gap-1 text-xs text-green-500">
-                <Wifi className="w-3 h-3" />
-                Tempo real
-              </span>
-            ) : !loading && (
-              <span className="flex items-center gap-1 text-xs text-yellow-500">
-                <WifiOff className="w-3 h-3" />
-                Offline
-              </span>
-            )}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={loading}
-          data-testid="refresh-downloads"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          {loading && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Atualizando...
+            </span>
+          )}
+          <Badge 
+            variant={isConnected ? "outline" : "secondary"} 
+            className={`text-xs ${isConnected ? 'border-green-600 text-green-600' : 'text-muted-foreground'}`}
+          >
+            <span className={`w-2 h-2 rounded-full mr-1.5 ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            {isConnected ? 'Tempo real' : 'Offline'}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading}
+            data-testid="refresh-downloads"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
