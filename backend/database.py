@@ -411,10 +411,15 @@ class GitleaksFinding(Base):
     original_file = Column(String, nullable=True)  # Caminho original (sem .ocr/.metadata)
     detection_source = Column(String, nullable=True)  # "ocr", "metadata" ou null
     
-    # IDs extraídos do caminho
+    # IDs extraídos do caminho (formato legado)
     extracted_server_id = Column(Integer, nullable=True)
     extracted_file_id = Column(Integer, nullable=True)
     extracted_version = Column(Integer, nullable=True)
+    
+    # IDs extraídos do caminho (novo formato)
+    extracted_server_guid = Column(String, nullable=True, index=True)  # GUID do servidor
+    extracted_share_id = Column(Integer, nullable=True)  # ID do share
+    extracted_file_version_id = Column(Integer, nullable=True)  # ID da versão do arquivo
     
     # Dados do servidor/arquivo (enriquecidos)
     server_name = Column(String, nullable=True)
