@@ -41,21 +41,18 @@ const FileNavigation = () => {
   });
 
   // Separar por status de acesso
-  // Acessados: tem shares OU downloads (e não está na categoria de acesso negado puro)
+  // Acesso Negado: tem pelo menos 1 share com acesso negado E nenhum arquivo baixado
+  const accessDeniedServers = filteredServers.filter(
+    server => server.access_denied_shares_count > 0 && server.downloaded_files_count === 0
+  );
+  
+  // Acessados: tem shares OU downloads (excluindo os que estão em "Acesso Negado")
   const accessedServers = filteredServers.filter(
     server => (server.shares_count > 0 || server.downloaded_files_count > 0) && 
-              !(server.access_denied_shares_count > 0 && server.downloaded_files_count === 0 && server.shares_count === server.access_denied_shares_count)
+              !(server.access_denied_shares_count > 0 && server.downloaded_files_count === 0)
   );
   
-  // Acesso Negado: tem pelo menos um share com acesso negado E não tem nenhum arquivo/diretório baixado
-  // E todos os shares são de acesso negado (ou seja, shares_count === access_denied_shares_count)
-  const accessDeniedServers = filteredServers.filter(
-    server => server.access_denied_shares_count > 0 && 
-              server.downloaded_files_count === 0 &&
-              server.shares_count === server.access_denied_shares_count
-  );
-  
-  // Não acessados: nunca teve acesso verificado
+  // Não acessados: nunca teve acesso verificado (sem shares e sem downloads)
   const notAccessedServers = filteredServers.filter(
     server => server.shares_count === 0 && server.downloaded_files_count === 0
   );
