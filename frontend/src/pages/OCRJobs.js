@@ -224,6 +224,48 @@ const OCRJobs = () => {
     }
   };
 
+  // Reexecutar jobs cancelados
+  const retryCancelledJobs = async () => {
+    setRetrying(true);
+    try {
+      const response = await axios.post(`${API}/ocr/retry-cancelled`);
+      toast.success(response.data.message);
+      loadJobs();
+      loadStats();
+    } catch (error) {
+      console.error('Error retrying cancelled jobs:', error);
+      toast.error('Erro ao reexecutar jobs cancelados');
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  // Reexecutar um job específico
+  const retryJob = async (jobId) => {
+    try {
+      const response = await axios.post(`${API}/ocr/jobs/${jobId}/retry`);
+      toast.success(response.data.message);
+      loadJobs();
+      loadStats();
+    } catch (error) {
+      console.error('Error retrying job:', error);
+      toast.error(error.response?.data?.detail || 'Erro ao reexecutar job');
+    }
+  };
+
+  // Deletar um job específico
+  const deleteJob = async (jobId) => {
+    try {
+      const response = await axios.delete(`${API}/ocr/jobs/${jobId}`);
+      toast.success(response.data.message);
+      loadJobs();
+      loadStats();
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      toast.error(error.response?.data?.detail || 'Erro ao deletar job');
+    }
+  };
+
   // Filtrar jobs por termo de busca
   const filteredJobs = jobs.filter(job => {
     if (!searchTerm) return true;
