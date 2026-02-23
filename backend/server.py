@@ -4658,6 +4658,8 @@ def backup_database():
     import shutil
     from database import DATABASE_PATH, DATA_DIR
     
+    print("=== BACKUP: Iniciando backup do banco de dados... ===", flush=True)
+    
     try:
         # Criar diretório de backups se não existir
         backup_dir = os.path.join(DATA_DIR, "backups")
