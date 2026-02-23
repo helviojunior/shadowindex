@@ -4539,7 +4539,7 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             "private", "privado", "cert",
             "conexao", "connection", "conn",
             "usuario", "user", "admin",
-            "cofre", "safe"
+            "cofre", "safe", "ldap"
         ],
         "extensions": [
             ".pfx", ".p12", ".jks", ".keystore",  # Certificados e keystores
