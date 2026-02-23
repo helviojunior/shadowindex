@@ -92,6 +92,10 @@ const CriticalSearchSettings = () => {
     }
     
     const lastKey = keys[keys.length - 1];
+    // Inicializar array se não existir
+    if (!Array.isArray(current[lastKey])) {
+      current[lastKey] = [];
+    }
     if (!current[lastKey].includes(value.trim())) {
       current[lastKey] = [...current[lastKey], value.trim()];
       setConfig(newConfig);
@@ -109,8 +113,11 @@ const CriticalSearchSettings = () => {
     }
     
     const lastKey = keys[keys.length - 1];
-    current[lastKey] = current[lastKey].filter((_, i) => i !== index);
-    setConfig(newConfig);
+    // Verificar se o array existe
+    if (Array.isArray(current[lastKey])) {
+      current[lastKey] = current[lastKey].filter((_, i) => i !== index);
+      setConfig(newConfig);
+    }
   };
 
   const updateNestedValue = (path, value) => {
