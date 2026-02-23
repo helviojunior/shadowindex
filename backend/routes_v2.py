@@ -2310,6 +2310,7 @@ async def get_downloaded_file(server_id: int, file_id: int, db: AsyncSession = D
 async def get_file_content(server_id: int, file_id: int, db: AsyncSession = Depends(get_db)):
     """Obtém o conteúdo de um arquivo baixado"""
     from storage_utils import get_file_path
+    from database import FileVersion, ServerShare
     import os
     
     server = await get_server_or_404(db, server_id)
