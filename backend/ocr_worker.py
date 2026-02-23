@@ -631,23 +631,70 @@ class OCRWorker:
                         # Extrair dados do certificado em formato texto
                         ocr_text, ocr_metadata, error = await self._extract_certificate_text(job.local_path, file_ext, db)
                     else:
-                        # Executar OCR normal via Tika
-                        ocr_service = await self._get_ocr_service()
+                        # CONDIÇÃO 2: Executar OCR com retry em caso de erro de comunicação
+                        max_retries = 5
+                        retry_delay = 10  # segundos
+                        ocr_text = None
+                        ocr_metadata = None
+                        error = None
                         
-                        if not ocr_service.is_available:
-                            job.status = 'failed'
-                            job.error_message = "Serviço OCR não disponível"
-                            job.completed_at = datetime.now(timezone.utc)
-                            await db.commit()
-                            print(f"=== OCR WORKER: Service unavailable for job {job.id} ===", flush=True)
-                            await emit_ocr_stats()
-                            return
-                        
-                        # Executar OCR
-                        ocr_text, ocr_metadata, error = await ocr_service.extract_text_and_metadata(
-                            job.local_path,
-                            ocr_language=job.ocr_language
-                        )
+                        for attempt in range(1, max_retries + 1):
+                            try:
+                                ocr_service = await self._get_ocr_service()
+                                
+                                if not ocr_service.is_available:
+                                    if attempt < max_retries:
+                                        print(f"=== OCR WORKER: Job {job.id} - Tika unavailable, retry {attempt}/{max_retries} in {retry_delay}s ===", flush=True)
+                                        logger.warning(f"OCR job {job.id} - Tika unavailable, retry {attempt}/{max_retries}")
+                                        await asyncio.sleep(retry_delay)
+                                        # Forçar nova verificação do serviço
+                                        self._ocr_service = None
+                                        continue
+                                    else:
+                                        error = "Serviço OCR não disponível após 5 tentativas"
+                                        break
+                                
+                                # Executar OCR
+                                ocr_text, ocr_metadata, error = await ocr_service.extract_text_and_metadata(
+                                    job.local_path,
+                                    ocr_language=job.ocr_language
+                                )
+                                
+                                # Se chegou aqui sem exceção, sucesso
+                                break
+                                
+                            except (ConnectionError, TimeoutError, OSError) as conn_error:
+                                # Erro de comunicação - fazer retry
+                                error_msg = str(conn_error)
+                                if attempt < max_retries:
+                                    print(f"=== OCR WORKER: Job {job.id} - Connection error, retry {attempt}/{max_retries} in {retry_delay}s: {error_msg} ===", flush=True)
+                                    logger.warning(f"OCR job {job.id} - Connection error, retry {attempt}/{max_retries}: {error_msg}")
+                                    await asyncio.sleep(retry_delay)
+                                    # Forçar nova verificação do serviço
+                                    self._ocr_service = None
+                                else:
+                                    error = f"Erro de comunicação com Tika após {max_retries} tentativas: {error_msg}"
+                                    logger.error(f"OCR job {job.id} - Failed after {max_retries} retries: {error_msg}")
+                            
+                            except Exception as tika_error:
+                                # Verificar se é erro de conexão (pode vir encapsulado)
+                                error_str = str(tika_error).lower()
+                                is_connection_error = any(x in error_str for x in [
+                                    'connection', 'timeout', 'refused', 'reset', 'broken pipe',
+                                    'network', 'unreachable', 'name resolution', 'max retries'
+                                ])
+                                
+                                if is_connection_error and attempt < max_retries:
+                                    print(f"=== OCR WORKER: Job {job.id} - Tika error, retry {attempt}/{max_retries} in {retry_delay}s: {tika_error} ===", flush=True)
+                                    logger.warning(f"OCR job {job.id} - Tika error, retry {attempt}/{max_retries}: {tika_error}")
+                                    await asyncio.sleep(retry_delay)
+                                    self._ocr_service = None
+                                else:
+                                    # Não é erro de conexão ou esgotou tentativas
+                                    error = str(tika_error)
+                                    if is_connection_error:
+                                        error = f"Erro de comunicação com Tika após {max_retries} tentativas: {tika_error}"
+                                    break
                     
                     if ocr_text is not None:
                         job.ocr_text = ocr_text
