@@ -4582,12 +4582,13 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
         "excluded_extensions": [
             ".exe", ".msi", ".dll", ".sys", ".drv",  # Executáveis Windows
             ".so", ".dylib",  # Bibliotecas Linux/Mac
-            ".bin", ".dat",  # Binários genéricos
+            ".bin", ".dat", ".pdb",  # Binários genéricos
             ".mp3", ".mp4", ".avi", ".mkv", ".mov", ".wmv",  # Mídia
             ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".webp",  # Imagens
             ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz",  # Arquivos compactados
             ".iso", ".img",  # Imagens de disco
-            ".cab", ".msp", ".msm"  # Pacotes Windows
+            ".cab", ".msp", ".msm",  # Pacotes Windows
+            ".css"  # Estilos
         ]
     },
     
