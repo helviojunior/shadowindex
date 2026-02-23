@@ -877,7 +877,7 @@ const Leaks = () => {
                                 size="sm"
                                 onClick={() => handleToggleFalsePositive(finding.Fingerprint, finding.is_false_positive)}
                                 title={finding.is_false_positive ? "Desmarcar como falso positivo" : "Marcar como falso positivo"}
-                                className={finding.is_false_positive ? "text-yellow-500 hover:text-yellow-600" : "text-muted-foreground hover:text-yellow-500"}
+                                className={finding.is_false_positive ? "text-green-500 hover:text-green-600" : "text-muted-foreground hover:text-green-500"}
                               >
                                 {finding.is_false_positive ? (
                                   <ShieldCheck className="w-4 h-4" />
