@@ -48,6 +48,360 @@ async def emit_gitleaks_stats(service: 'GitleaksService'):
         logger.error(f"Error emitting gitleaks stats: {e}")
 
 
+async def get_critical_search_config() -> dict:
+    """Obtém a configuração de Critical Search do banco de dados ou usa o padrão"""
+    from database import async_session_maker, AppSettings
+    from sqlalchemy import select
+    
+    # Configuração padrão inline (simplificada)
+    default_config = {
+        "enabled": True,
+        "file_rules": {
+            "keywords": [
+                "senha", "password", "pwd", "pass",
+                "acesso", "access", "login", "auth",
+                "credencial", "credential", "cred",
+                "secret", "segredo", "chave", "key",
+                "token", "api_key", "apikey",
+                "config", "configuracao", "settings",
+                "backup", "dump", "export",
+                "private", "privado", "cert",
+                "conexao", "connection", "conn",
+                "usuario", "user", "admin",
+                "cofre", "safe", "ldap"
+            ],
+            "extensions": [
+                ".pfx", ".p12", ".jks", ".keystore",
+                ".pem", ".crt", ".cer", ".der",
+                ".kdbx", ".kdb", ".psafe", ".psafe3",
+                ".cmd", ".bat", ".sh", ".ps1", ".psm1",
+                ".conf", ".ini", ".env", ".yml", ".yaml",
+                ".properties", ".cfg", ".config",
+                ".htpasswd", ".htaccess",
+                ".npmrc", ".pypirc", ".netrc",
+                ".pgpass", ".my.cnf",
+                ".aws", ".boto",
+                ".ssh", ".gnupg",
+                ".ppk", ".key", ".priv"
+            ],
+            "exact_names": [
+                ".env", ".env.local", ".env.production",
+                "web.config", "app.config", "appsettings.json",
+                "settings.py", "config.py", "secrets.yaml",
+                "credentials.json", "service-account.json",
+                "id_rsa", "id_rsa.pub", "id_dsa", "id_ecdsa", "id_ed25519",
+                "credentials", "shadow", "passwd", "htpasswd"
+            ],
+            "excluded_extensions": [
+                ".exe", ".msi", ".dll", ".sys", ".drv",
+                ".so", ".dylib",
+                ".bin", ".dat", ".pdb",
+                ".mp3", ".mp4", ".avi", ".mkv", ".mov", ".wmv",
+                ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".webp",
+                ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz",
+                ".iso", ".img",
+                ".cab", ".msp", ".msm",
+                ".css"
+            ]
+        }
+    }
+    
+    try:
+        async with async_session_maker() as db:
+            result = await db.execute(
+                select(AppSettings).where(AppSettings.key == "critical_search_config")
+            )
+            setting = result.scalar_one_or_none()
+            
+            if setting:
+                return json.loads(setting.value)
+    except Exception as e:
+        logger.warning(f"Erro ao carregar config de Critical Search: {e}")
+    
+    return default_config
+
+
+def check_file_matches_critical_rules(file_path: str, config: dict) -> tuple:
+    """
+    Verifica se um arquivo corresponde às regras do Critical Search.
+    
+    Args:
+        file_path: Caminho completo do arquivo
+        config: Configuração do Critical Search
+        
+    Returns:
+        Tuple (matches: bool, rule_type: str, rule_value: str, description: str)
+    """
+    if not config.get("enabled", True):
+        return False, None, None, None
+    
+    file_rules = config.get("file_rules", {})
+    
+    # Extrair nome e extensão do arquivo
+    file_name = os.path.basename(file_path)
+    file_name_lower = file_name.lower()
+    _, file_ext = os.path.splitext(file_name_lower)
+    
+    # Verificar extensões excluídas primeiro
+    excluded_extensions = file_rules.get("excluded_extensions", [])
+    if file_ext in excluded_extensions:
+        return False, None, None, None
+    
+    # 1. Verificar nomes exatos
+    exact_names = file_rules.get("exact_names", [])
+    for exact_name in exact_names:
+        if file_name_lower == exact_name.lower() or file_name_lower.startswith(exact_name.lower() + '.'):
+            return True, "exact_name", exact_name, f"Arquivo crítico: nome exato '{exact_name}'"
+    
+    # 2. Verificar extensões críticas
+    critical_extensions = file_rules.get("extensions", [])
+    if file_ext in critical_extensions:
+        return True, "extension", file_ext, f"Arquivo crítico: extensão '{file_ext}'"
+    
+    # 3. Verificar keywords no nome do arquivo
+    keywords = file_rules.get("keywords", [])
+    for keyword in keywords:
+        if keyword.lower() in file_name_lower:
+            return True, "keyword", keyword, f"Arquivo crítico: contém keyword '{keyword}'"
+    
+    return False, None, None, None
+
+
+async def register_critical_file_finding(
+    file_path: str,
+    rule_type: str,
+    rule_value: str,
+    description: str,
+    job_id: str,
+    server_id: int = None
+) -> dict:
+    """
+    Registra um finding para arquivo crítico detectado pelas regras do Critical Search.
+    
+    Args:
+        file_path: Caminho físico do arquivo
+        rule_type: Tipo da regra que correspondeu (exact_name, extension, keyword)
+        rule_value: Valor da regra que correspondeu
+        description: Descrição do motivo da detecção
+        job_id: ID do job do GitLeaks
+        server_id: ID do servidor (opcional)
+        
+    Returns:
+        Dict com informações do finding ou None se já existir
+    """
+    import hashlib
+    from database import async_session_maker, GitleaksFinding, Server, FileVersion, DownloadedFile, ServerShare
+    from sqlalchemy import select
+    
+    file_name = os.path.basename(file_path)
+    
+    # Gerar fingerprint único
+    fingerprint_source = f"{file_path}:critical_search:{rule_type}:{rule_value}"
+    fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
+    full_fingerprint = f"critical_{fingerprint}"
+    
+    # Verificar se já existe no banco
+    try:
+        async with async_session_maker() as db:
+            existing = await db.execute(
+                select(GitleaksFinding).where(GitleaksFinding.fingerprint == full_fingerprint)
+            )
+            if existing.scalar_one_or_none():
+                logger.debug(f"Critical finding já existe: {file_path}")
+                return {"already_exists": True}
+    except Exception as e:
+        logger.warning(f"Erro ao verificar duplicata: {e}")
+    
+    # Extrair IDs do caminho para enriquecimento
+    ids_info = extract_ids_from_path(file_path)
+    
+    # Preparar dados de enriquecimento
+    server_name = None
+    server_ip = None
+    enriched_file_name = file_name
+    server_path = file_path
+    share_name = None
+    extracted_server_guid = None
+    extracted_share_id = None
+    extracted_file_version_id = None
+    
+    try:
+        async with async_session_maker() as db:
+            if ids_info:
+                if ids_info['format'] == 'new':
+                    extracted_server_guid = ids_info['server_guid']
+                    extracted_share_id = ids_info['share_id']
+                    extracted_file_version_id = ids_info['file_version_id']
+                    
+                    # Buscar servidor pelo GUID
+                    server_result = await db.execute(
+                        select(Server).where(Server.guid == extracted_server_guid)
+                    )
+                    server = server_result.scalar_one_or_none()
+                    if server:
+                        server_name = server.name
+                        server_ip = server.ip
+                    
+                    # Buscar FileVersion
+                    if extracted_file_version_id:
+                        version_result = await db.execute(
+                            select(FileVersion).where(FileVersion.id == extracted_file_version_id)
+                        )
+                        version = version_result.scalar_one_or_none()
+                        if version:
+                            enriched_file_name = os.path.basename(version.file_path) if version.file_path else file_name
+                            server_path = version.file_path
+                            share_name = version.share_name
+                    
+                    # Buscar share_name se não tiver
+                    if not share_name and extracted_share_id:
+                        share_result = await db.execute(
+                            select(ServerShare).where(ServerShare.id == extracted_share_id)
+                        )
+                        share = share_result.scalar_one_or_none()
+                        if share:
+                            share_name = share.share_name
+                else:
+                    # Formato legado
+                    if ids_info['server_id']:
+                        server_result = await db.execute(
+                            select(Server).where(Server.id == ids_info['server_id'])
+                        )
+                        server = server_result.scalar_one_or_none()
+                        if server:
+                            server_name = server.name
+                            server_ip = server.ip
+                    
+                    if ids_info['file_id']:
+                        df_result = await db.execute(
+                            select(DownloadedFile).where(DownloadedFile.id == ids_info['file_id'])
+                        )
+                        downloaded_file = df_result.scalar_one_or_none()
+                        if downloaded_file:
+                            enriched_file_name = downloaded_file.file_name or file_name
+                            server_path = downloaded_file.file_path
+                            share_name = downloaded_file.share_name
+            
+            # Se temos server_id mas não conseguiu enriquecer, buscar servidor
+            if server_id and not server_name:
+                server_result = await db.execute(
+                    select(Server).where(Server.id == server_id)
+                )
+                server = server_result.scalar_one_or_none()
+                if server:
+                    server_name = server.name
+                    server_ip = server.ip
+                    
+    except Exception as e:
+        logger.warning(f"Erro ao enriquecer critical finding: {e}")
+    
+    # Criar finding
+    finding = {
+        "RuleID": f"critical-{rule_type}",
+        "Description": description,
+        "File": file_path,
+        "StartLine": 1,
+        "EndLine": 1,
+        "Match": f"[{rule_type}: {rule_value}]",
+        "Secret": f"Arquivo sensível detectado: {enriched_file_name}",
+        "Fingerprint": full_fingerprint,
+        "Tags": ["critical-search", rule_type, "auto-detected"],
+        "Severity": "high",
+        
+        # Metadados
+        "job_id": job_id,
+        "server_id": server_id,
+        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "original_file": file_path,
+        "scanned_file": file_path,
+        "detection_source": "critical-search",
+        
+        # Dados enriquecidos
+        "server_name": server_name,
+        "server_ip": server_ip,
+        "file_name": enriched_file_name,
+        "server_path": server_path,
+        "share_name": share_name,
+        
+        # IDs
+        "extracted_server_guid": extracted_server_guid,
+        "extracted_share_id": extracted_share_id,
+        "extracted_file_version_id": extracted_file_version_id
+    }
+    
+    # Salvar no banco
+    if await save_finding_to_db(finding):
+        logger.info(f"Critical finding registrado: {enriched_file_name} ({rule_type}: {rule_value})")
+        return {"already_exists": False, "finding": finding}
+    else:
+        return {"already_exists": True}
+
+
+async def scan_directory_for_critical_files(
+    target_path: str,
+    job_id: str,
+    server_id: int = None,
+    service: 'GitleaksService' = None
+) -> int:
+    """
+    Escaneia um diretório aplicando as regras do Critical Search.
+    
+    Args:
+        target_path: Caminho do diretório a escanear
+        job_id: ID do job do GitLeaks
+        server_id: ID do servidor (opcional)
+        service: Instância do GitleaksService para adicionar findings ao cache
+        
+    Returns:
+        Número de findings críticos encontrados
+    """
+    config = await get_critical_search_config()
+    
+    if not config.get("enabled", True):
+        logger.info("Critical Search está desabilitado")
+        return 0
+    
+    found_count = 0
+    
+    try:
+        for root, dirs, files in os.walk(target_path):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+                
+                # Verificar se corresponde às regras
+                matches, rule_type, rule_value, description = check_file_matches_critical_rules(file_path, config)
+                
+                if matches:
+                    result = await register_critical_file_finding(
+                        file_path=file_path,
+                        rule_type=rule_type,
+                        rule_value=rule_value,
+                        description=description,
+                        job_id=job_id,
+                        server_id=server_id
+                    )
+                    
+                    if result and not result.get("already_exists"):
+                        found_count += 1
+                        
+                        # Adicionar ao cache do service se fornecido
+                        if service and result.get("finding"):
+                            already_in_cache = any(
+                                f.get('Fingerprint') == result["finding"].get('Fingerprint') 
+                                for f in service._findings
+                            )
+                            if not already_in_cache:
+                                service._findings.append(result["finding"])
+                                
+    except Exception as e:
+        logger.error(f"Erro ao escanear diretório para arquivos críticos: {e}")
+    
+    if found_count > 0:
+        logger.info(f"Critical Search encontrou {found_count} arquivos críticos em {target_path}")
+    
+    return found_count
+
+
 async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
     """
     Salva um finding no banco de dados.
