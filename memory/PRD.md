@@ -30,7 +30,7 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2026-02-23 (Session 42 - Tree View Visual Enhancements)
+### 2026-02-23 (Session 42 - Tree View Visual Enhancements & Download Worker Fix)
 - [x] **Coloração de nós visitados/não visitados na Tree View:**
   - Diretórios **visitados** (já expandidos/explorados): ícone `text-blue-500`, texto `text-blue-400`
   - Diretórios **não visitados** (nunca explorados): ícone `text-gray-500`, texto `text-gray-500`
@@ -38,6 +38,11 @@ Portuguese (pt-BR)
   - Arquivos **não baixados**: ícone `text-gray-500`, texto `text-gray-500`
   - Acesso negado: ícone e texto `text-red-500`
   - Baseado no campo `children_fetched` do banco de dados para persistência entre sessões
+- [x] **Correção: Downloads em background criam ServerItem para diretórios e arquivos:**
+  - Nova função `ensure_parent_directories()` no `download_worker.py`
+  - Ao baixar arquivo, cria automaticamente objetos `ServerItem` para todos os diretórios pais
+  - Também cria o `ServerItem` do próprio arquivo baixado
+  - Permite que a Tree View mostre corretamente a estrutura de pastas mesmo para arquivos baixados via jobs
 
 ### 2026-02-22 (Session 41 - SOCKS Proxy Validation)
 - [x] **Validação de tipo de proxy para plugin de Interação Direta:**
