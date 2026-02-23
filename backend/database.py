@@ -21,12 +21,12 @@ DATABASE_URL_READONLY = f"sqlite+aiosqlite:///{DATABASE_PATH}?mode=ro"
 engine = create_async_engine(
     DATABASE_URL, 
     echo=False,
-    pool_size=1,  # SQLite só permite 1 escritor por vez
-    max_overflow=2,
-    pool_timeout=60,
+    pool_size=5,  # Aumentado para suportar jobs paralelos (WAL mode permite concorrência)
+    max_overflow=10,
+    pool_timeout=120,  # Timeout aumentado para jobs longos
     pool_recycle=1800,
     connect_args={
-        "timeout": 60,
+        "timeout": 120,
         "check_same_thread": False
     }
 )
