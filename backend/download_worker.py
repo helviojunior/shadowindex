@@ -349,15 +349,31 @@ class DownloadWorker:
             file_name=job.file_name or full_path.split('\\')[-1]
         )
         
+        # Se o arquivo tem tamanho 0, não precisa fazer loop de chunks
+        if total_size == 0:
+            logger.info(f"Zero-byte file detected: {full_path}")
+            await self._save_file_content_bytes(db, job, b'', server)
+            return
+        
         while downloaded < total_size:
+            # Calcular expected_size para este chunk
+            remaining = total_size - downloaded
+            expected_chunk_size = min(CHUNK_SIZE, remaining)
+            
             file_content = await plugin.download_file(
                 full_path, 
                 offset=downloaded, 
                 length=CHUNK_SIZE, 
-                ignore_cache=True
+                ignore_cache=True,
+                expected_size=expected_chunk_size
             )
             
-            if not file_content or not file_content.data:
+            if not file_content or file_content.data is None:
+                break
+            
+            # Se retornou vazio mas esperava conteúdo, é um erro
+            if len(file_content.data) == 0 and expected_chunk_size > 0:
+                logger.warning(f"Empty chunk for file {full_path} at offset {downloaded}")
                 break
             
             chunks.append(file_content.data)
