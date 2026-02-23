@@ -179,7 +179,8 @@ async def load_findings_from_db() -> List[Dict[str, Any]]:
                     'share_name': f.share_name,
                     'job_id': f.job_id,
                     'server_id': f.server_id,
-                    'scanned_at': f.scanned_at.isoformat() if f.scanned_at else None
+                    'scanned_at': f.scanned_at.isoformat() if f.scanned_at else None,
+                    'is_false_positive': f.is_false_positive
                 })
                 findings_list.append(finding_dict)
             
