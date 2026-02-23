@@ -4614,23 +4614,46 @@ logging.basicConfig(
 def vacuum_database():
     """
     Executa VACUUM no banco de dados para otimizar e recuperar espaço em disco.
+    Só executa se a fragmentação for maior que 20%.
     Deve ser executado antes do backup.
     """
     import sqlite3
     from database import DATABASE_PATH
     
-    print("=== VACUUM: Iniciando otimização do banco de dados... ===", flush=True)
+    print("=== VACUUM: Verificando fragmentação do banco de dados... ===", flush=True)
     
     try:
         if not os.path.exists(DATABASE_PATH):
             print("=== VACUUM: Database file not found, skipping ===", flush=True)
             return False
         
+        # Verificar fragmentação
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                freelist_count * 100.0 / page_count AS fragmentation_percent
+            FROM
+                pragma_freelist_count(),
+                pragma_page_count();
+        """)
+        result = cursor.fetchone()
+        fragmentation = result[0] if result and result[0] else 0
+        
+        print(f"=== VACUUM: Fragmentação atual: {fragmentation:.2f}% ===", flush=True)
+        
+        # Só executar VACUUM se fragmentação > 20%
+        if fragmentation <= 20:
+            print(f"=== VACUUM: Fragmentação abaixo de 20%, VACUUM não necessário ===", flush=True)
+            conn.close()
+            return True
+        
+        print(f"=== VACUUM: Fragmentação acima de 20%, iniciando otimização... ===", flush=True)
+        
         # Obter tamanho antes
         size_before = os.path.getsize(DATABASE_PATH)
         
         # Executar VACUUM
-        conn = sqlite3.connect(DATABASE_PATH)
         conn.execute("VACUUM;")
         conn.close()
         
@@ -4641,7 +4664,7 @@ def vacuum_database():
         if saved > 0:
             print(f"=== VACUUM: Database optimized, saved {saved} bytes ({saved/1024:.1f} KB) ===", flush=True)
         else:
-            print("=== VACUUM: Database already optimized ===", flush=True)
+            print("=== VACUUM: Database optimized ===", flush=True)
         
         return True
     except Exception as e:
