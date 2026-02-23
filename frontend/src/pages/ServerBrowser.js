@@ -2947,6 +2947,12 @@ const ServerBrowser = () => {
       ? `share-${item.share_name}` 
       : (item.id || `item-${(item.fullPath || item.full_path || item.name || '').replace(/[^a-zA-Z0-9]/g, '_')}`);
     const nodeId = String(rawNodeId);
+    
+    // Aplicar filtro "Ver apenas baixados"
+    if (showOnlyDownloaded && !hasDownloadedContent(item, nodeId)) {
+      return null;
+    }
+    
     const safeTestId = nodeId.replace(/\$/g, '_dollar_');
     const isExpanded = expandedNodes[nodeId];
     const isLoading = loadingNodes[nodeId];
