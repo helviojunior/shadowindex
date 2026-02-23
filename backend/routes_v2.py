@@ -4396,6 +4396,29 @@ async def delete_leak_finding(fingerprint: str):
         return {"success": False, "message": "Leak não encontrado"}
 
 
+@router.patch("/gitleaks/findings/{fingerprint}/false-positive")
+async def toggle_finding_false_positive(
+    fingerprint: str,
+    is_false_positive: bool = True
+):
+    """
+    Marca ou desmarca um finding como falso positivo.
+    Findings marcados como falso positivo não são contabilizados nos gráficos do dashboard.
+    """
+    from gitleaks_service import get_gitleaks_service
+    from urllib.parse import unquote
+    
+    decoded_fingerprint = unquote(fingerprint)
+    service = get_gitleaks_service()
+    
+    success = await service.toggle_false_positive(decoded_fingerprint, is_false_positive)
+    
+    if success:
+        status = "marcado" if is_false_positive else "desmarcado"
+        return {"success": True, "message": f"Leak {status} como falso positivo"}
+    else:
+        return {"success": False, "message": "Leak não encontrado"}
+
 
 # ==========================================
 # Auto-detection of Private Keys (SSH, RSA, PPK)
