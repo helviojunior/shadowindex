@@ -233,19 +233,10 @@ class TikaService:
             
             return content, metadata, None
             
-        except requests.exceptions.Timeout:
-            file_size_mb = file_size / (1024 * 1024)
-            error = f"Timeout no processamento Tika (arquivo: {file_size_mb:.1f}MB, timeout: {text_timeout}s)"
-            logger.error(f"{error} for {file_path}")
-            return None, None, error
-        except requests.exceptions.ConnectionError as e:
-            error = f"Erro de conexão com Tika: {str(e)}"
-            logger.error(f"{error} for {file_path}")
-            return None, None, error
         except Exception as e:
-            error = f"Erro no processamento Tika: {str(e)}"
-            logger.error(f"{error} for {file_path}")
-            return None, None, error
+            # Erro na extração de metadados (mas já temos o conteúdo)
+            logger.warning(f"Error extracting metadata (content was extracted): {e}")
+            return content, None, None
     
     async def get_supported_types(self) -> list:
         """Get list of MIME types supported by Tika"""
