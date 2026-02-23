@@ -83,7 +83,7 @@ class OCRWorker:
             await self._ocr_service.initialize()
         return self._ocr_service
     
-    async def _extract_certificate_text(self, file_path: str, file_ext: str, db, server_guid: str = None) -> tuple:
+    async def _extract_certificate_text(self, file_path: str, file_ext: str, db, server_guid: str = None, share_name: str = None, file_version_id: int = None) -> tuple:
         """
         Extrai informações de certificados digitais em formato texto.
         
@@ -92,6 +92,8 @@ class OCRWorker:
             file_ext: Extensão do arquivo (.pfx, .p12, .cer, .crt, .pem)
             db: Sessão do banco de dados
             server_guid: GUID do servidor (para buscar senhas específicas)
+            share_name: Nome do share (para enriquecimento de leaks)
+            file_version_id: ID da versão do arquivo (para enriquecimento de leaks)
             
         Returns:
             Tuple (text, metadata, error)
