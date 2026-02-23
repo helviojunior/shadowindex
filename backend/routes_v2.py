@@ -2085,9 +2085,11 @@ async def download_chunk(
         plugin = await get_plugin_for_server(db, server)
         
         # Chamar download_file do plugin com offset e length
+        # Para chunks, não passamos expected_size porque não sabemos o tamanho total aqui
         file_content = await plugin.download_file(file_path, offset=offset, length=chunk_size, ignore_cache=True)
         
-        if not file_content or not file_content.data:
+        # Para chunks, aceitar resposta vazia como fim do arquivo
+        if not file_content or file_content.data is None:
             return {
                 "success": True,
                 "data": "",
