@@ -152,7 +152,7 @@ class OCRWorker:
                             # Evitar duplicatas
                             pwd_bytes = saved_pwd.encode()
                             if not any(p[1] == pwd_bytes for p in passwords_to_try):
-                                passwords_to_try.append((f"banco de dados", pwd_bytes))
+                                passwords_to_try.append(("banco de dados", pwd_bytes))
                     
                     if all_passwords:
                         logger.info(f"Found {len(all_passwords)} distinct passwords in database for brute force")
@@ -166,7 +166,6 @@ class OCRWorker:
                         private_key, cert, chain = pkcs12.load_key_and_certificates(
                             cert_data, pwd, default_backend()
                         )
-                        password_used = pwd.decode() if pwd else "(sem senha)"
                         logger.info(f"Successfully opened PFX with password from: {pwd_source}")
                         
                         # Salvar a senha que funcionou (se não for a específica já salva)
