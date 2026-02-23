@@ -1798,12 +1798,11 @@ async def download_file_by_path(
         
         try:
             plugin = await get_plugin_for_server(db, server)
-            # Tentar obter expected_size do item se disponível
-            expected_size = item.size if item and hasattr(item, 'size') else None
+            # Usar expected_size passado como parâmetro para validar arquivos zerados
             file_content = await plugin.download_file(
                 file_path, 
                 ignore_cache=True,
-                expected_size=expected_size
+                expected_size=expected_size if expected_size > 0 else None
             )
             
             # Aceitar arquivos zerados se o tamanho esperado é 0
@@ -1811,7 +1810,7 @@ async def download_file_by_path(
                 raise HTTPException(status_code=500, detail="Resposta nula do servidor")
             
             # Se o conteúdo está vazio mas o tamanho esperado é > 0, pode ser erro
-            if len(file_content.data) == 0 and expected_size and expected_size > 0:
+            if len(file_content.data) == 0 and expected_size > 0:
                 raise HTTPException(status_code=500, detail=f"Arquivo vazio com tamanho esperado de {expected_size} bytes")
             
             content_bytes = file_content.data
