@@ -4693,6 +4693,9 @@ def backup_database():
 async def startup_event():
     print("=== STARTUP: Starting application ===", flush=True)
     
+    # Otimizar banco de dados (VACUUM)
+    vacuum_database()
+    
     # Backup do banco de dados antes de qualquer operação
     backup_database()
     
