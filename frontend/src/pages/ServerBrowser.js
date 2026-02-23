@@ -70,7 +70,7 @@ import { ShieldKeyIcon } from '@/components/icons';
 // Configurar o worker do PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-import { BACKEND_URL } from '@/lib/api';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 const API_V2 = `${BACKEND_URL}/api/v2`;  // API V2 com endpoints baseados em IDs
 

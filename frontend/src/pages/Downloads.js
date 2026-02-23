@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useWebSocket, useDownloadEvents, useScanEvents } from '@/hooks/useWebSocket';
 
-import { API } from '@/lib/api';
+const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Status colors and icons
 const statusConfig = {

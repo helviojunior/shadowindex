@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX } from 'lucide-react';
 
-import { BACKEND_URL } from '@/lib/api';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const FileNavigation = () => {
