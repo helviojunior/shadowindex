@@ -562,6 +562,9 @@ class GitleaksService:
                                         logger.debug(f"OCR finding ignorado (já existe no original): {finding.get('original_file')}")
                                         continue
                                     
+                                    # Enriquecer com informações do banco de dados
+                                    finding = await enrich_finding_with_db_info(finding)
+                                    
                                     fingerprint = finding.get('Fingerprint')
                                     already_in_cache = any(f.get('Fingerprint') == fingerprint for f in self._findings)
                                     
