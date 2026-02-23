@@ -709,13 +709,18 @@ const ServerBrowser = () => {
         }
       } catch (error) {
         console.error('Error loading certificate:', error);
-        const errorDetail = error.response?.data?.detail || error.message;
         
-        // Sempre solicitar senha ao usuário quando falhar ao abrir certificado
+        // Capturar response data completo do backend (inclui debug_log)
+        const responseData = error.response?.data || {};
+        
         setFileContent({ 
-          error: errorDetail,
-          requires_password: true,
-          message: 'Digite a senha para desbloquear o certificado'
+          error: true,
+          message: responseData.message || error.response?.data?.detail || error.message,
+          requires_password: responseData.requires_password || true,
+          debug_log: responseData.debug_log || [],
+          passwords_tried: responseData.passwords_tried || [],
+          last_exception: responseData.last_exception,
+          exception_type: responseData.exception_type
         });
         setContentLoadError(true);
       } finally {
