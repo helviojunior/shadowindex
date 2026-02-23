@@ -579,22 +579,19 @@ class SoapApiPlugin(BasePlugin):
                 ignore_cache=True  # Don't cache file downloads
             )
             
+            # Log para debug
+            logger.debug(f"SOAP DownloadFile result for {path}: empty={not result}, result_len={len(result) if result else 0}, expected_size={expected_size}")
+            
             # Handle empty result - <DownloadFileResult /> returns empty string
             # This can be valid for zero-byte files
             if not result:
-                # If we know the expected size is 0, this is a valid empty file
-                if expected_size is not None and expected_size == 0:
-                    logger.info(f"Valid zero-byte file: {path}")
-                    return FileContent(
-                        data=b'',
-                        size=0,
-                        is_complete=True,
-                        offset=offset,
-                        total_size=0
-                    )
-                # If expected_size is None or > 0, log warning but still return empty
-                # Let the caller decide based on their knowledge of expected_size
-                logger.warning(f"Empty result for file {path} (expected_size={expected_size})")
+                # Se expected_size é 0 ou se estamos aceitando arquivos vazios, retorna conteúdo vazio
+                # Não lançar exceção - deixar o caller decidir se isso é aceitável
+                if expected_size == 0:
+                    logger.info(f"Valid zero-byte file (expected_size=0): {path}")
+                else:
+                    logger.info(f"Empty SOAP result for file {path} (expected_size={expected_size}) - treating as zero-byte file")
+                
                 return FileContent(
                     data=b'',
                     size=0,
