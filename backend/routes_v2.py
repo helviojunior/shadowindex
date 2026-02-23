@@ -3944,8 +3944,9 @@ async def list_ocr_jobs(
     db: AsyncSession = Depends(get_db)
 ):
     """Lista jobs de OCR ordenados: running primeiro, depois pending (por prioridade), depois outros"""
-    from database import OCRJob
+    from database import OCRJob, Server
     from sqlalchemy import case
+    from sqlalchemy.orm import selectinload
     
     # Ordenação customizada: running (0), pending (1), outros (2)
     status_order = case(
@@ -3954,10 +3955,15 @@ async def list_ocr_jobs(
         else_=2
     )
     
-    query = select(OCRJob).order_by(
-        status_order,
-        OCRJob.priority.desc(),
-        OCRJob.created_at.asc()
+    # Join com Server para obter o nome
+    query = (
+        select(OCRJob, Server.name.label('server_name'))
+        .outerjoin(Server, OCRJob.server_id == Server.id)
+        .order_by(
+            status_order,
+            OCRJob.priority.desc(),
+            OCRJob.created_at.asc()
+        )
     )
     
     if server_id:
@@ -3968,7 +3974,7 @@ async def list_ocr_jobs(
     query = query.limit(limit)
     
     result = await db.execute(query)
-    jobs = result.scalars().all()
+    rows = result.all()
     
     return [
         {
@@ -3976,6 +3982,7 @@ async def list_ocr_jobs(
             "file_id": job.file_id,
             "version_id": job.version_id,
             "server_id": job.server_id,
+            "server_name": server_name or f"Server #{job.server_id}",
             "file_path": job.file_path,
             "file_name": job.file_name,
             "ocr_language": job.ocr_language,
@@ -3987,7 +3994,7 @@ async def list_ocr_jobs(
             "completed_at": job.completed_at.isoformat() if job.completed_at else None,
             "has_text": bool(job.ocr_text)
         }
-        for job in jobs
+        for job, server_name in rows
     ]
 
 
