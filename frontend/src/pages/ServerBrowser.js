@@ -709,8 +709,19 @@ const ServerBrowser = () => {
         }
       } catch (error) {
         console.error('Error loading certificate:', error);
-        toast.error('Erro ao carregar informações do certificado');
-        setFileContent({ error: error.response?.data?.detail || error.message });
+        const errorDetail = error.response?.data?.detail || error.message;
+        
+        // Verificar se é erro de senha (status 401)
+        if (error.response?.status === 401) {
+          setFileContent({ 
+            error: errorDetail,
+            requires_password: true,
+            message: 'Digite a senha para desbloquear o certificado'
+          });
+        } else {
+          toast.error('Erro ao carregar informações do certificado');
+          setFileContent({ error: errorDetail });
+        }
         setContentLoadError(true);
       } finally {
         setLoadingContent(false);
