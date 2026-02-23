@@ -60,10 +60,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Para comunicação interna entre containers:
-      REACT_APP_BACKEND_URL: "http://backend:8001"
-      # Se o frontend no browser precisa chamar pelo HOST:
-      # REACT_APP_BACKEND_URL: "http://localhost:9090"
+      # Frontend roda no browser, precisa chamar pela porta exposta do host
+      REACT_APP_BACKEND_URL: "http://localhost:9090"
     depends_on:
       - backend
     networks:
