@@ -505,7 +505,9 @@ const OCRJobs = () => {
                       <TableCell>
                         <div className="flex items-center gap-1 text-xs">
                           <Server className="w-3 h-3" />
-                          {job.server_id}
+                          <span className="truncate max-w-[100px]" title={job.server_name}>
+                            {job.server_name}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
