@@ -194,8 +194,14 @@ class OCRWorker:
                     except Exception:
                         continue
                 
-                if not cert and not private_key:
+                if not cert and not private_key and not chain:
                     return None, None, f"Não foi possível abrir o certificado PFX/P12 (tentadas {len(passwords_to_try)} senhas)"
+                
+                # Se não tem cert principal mas tem chain, usar o primeiro da chain
+                if not cert and chain and len(chain) > 0:
+                    cert = chain[0]
+                    chain = chain[1:] if len(chain) > 1 else []
+                    logger.info("Using first certificate from chain as main certificate")
                     
             elif file_ext in ['.cer', '.crt', '.pem']:
                 try:
@@ -206,150 +212,172 @@ class OCRWorker:
                     except Exception as e:
                         return None, None, f"Não foi possível carregar o certificado: {e}"
             
-            if not cert:
+            # Coletar TODOS os certificados
+            all_certs = []
+            if cert:
+                all_certs.append({"cert": cert, "has_private_key": private_key is not None, "source": "principal"})
+            if chain:
+                for i, chain_cert in enumerate(chain):
+                    all_certs.append({"cert": chain_cert, "has_private_key": False, "source": f"chain[{i}]"})
+            
+            if not all_certs and not private_key:
                 return None, None, "Não foi possível extrair informações do certificado"
             
-            # Extrair informações do certificado
+            # Extrair informações de TODOS os certificados
             lines = []
             lines.append("=" * 60)
             lines.append("INFORMAÇÕES DO CERTIFICADO DIGITAL")
             lines.append("=" * 60)
             lines.append("")
             
-            # Thumbprint/Fingerprint
-            thumbprint = cert.fingerprint(hashes.SHA1()).hex().upper()
-            thumbprint_formatted = ':'.join(thumbprint[i:i+2] for i in range(0, len(thumbprint), 2))
-            lines.append(f"Thumbprint (SHA1): {thumbprint_formatted}")
+            # Resumo
+            lines.append(f"Total de certificados: {len(all_certs)}")
+            lines.append(f"Contém chave privada: {'SIM - DADOS SENSÍVEIS!' if private_key else 'NÃO'}")
             lines.append("")
             
-            # Subject (Assunto)
-            lines.append("-" * 40)
-            lines.append("SUBJECT (Assunto)")
-            lines.append("-" * 40)
-            for attr in cert.subject:
-                attr_name = attr.oid._name
-                attr_value = attr.value
-                # Traduzir nomes comuns
-                name_map = {
-                    'commonName': 'Common Name (CN)',
-                    'organizationName': 'Organization (O)',
-                    'organizationalUnitName': 'Organizational Unit (OU)',
-                    'countryName': 'Country (C)',
-                    'stateOrProvinceName': 'State (ST)',
-                    'localityName': 'Locality (L)',
-                    'emailAddress': 'Email',
-                    'serialNumber': 'Serial Number',
-                }
-                display_name = name_map.get(attr_name, attr_name)
-                lines.append(f"  {display_name}: {attr_value}")
-            lines.append("")
+            # Thumbprint do certificado principal para registro de leak
+            main_thumbprint = None
+            main_subject_cn = None
             
-            # Issuer (Emissor)
-            lines.append("-" * 40)
-            lines.append("ISSUER (Emissor)")
-            lines.append("-" * 40)
-            for attr in cert.issuer:
-                attr_name = attr.oid._name
-                attr_value = attr.value
-                name_map = {
-                    'commonName': 'Common Name (CN)',
-                    'organizationName': 'Organization (O)',
-                    'organizationalUnitName': 'Organizational Unit (OU)',
-                    'countryName': 'Country (C)',
-                    'stateOrProvinceName': 'State (ST)',
-                    'localityName': 'Locality (L)',
-                    'emailAddress': 'Email',
-                }
-                display_name = name_map.get(attr_name, attr_name)
-                lines.append(f"  {display_name}: {attr_value}")
-            lines.append("")
-            
-            # Validade
-            lines.append("-" * 40)
-            lines.append("VALIDADE")
-            lines.append("-" * 40)
-            lines.append(f"  Válido de: {cert.not_valid_before_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            lines.append(f"  Válido até: {cert.not_valid_after_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            
-            # Verificar se está expirado
-            from datetime import datetime, timezone
-            now = datetime.now(timezone.utc)
-            if now > cert.not_valid_after_utc:
-                lines.append("  Status: EXPIRADO")
-            elif now < cert.not_valid_before_utc:
-                lines.append("  Status: AINDA NÃO VÁLIDO")
-            else:
-                days_left = (cert.not_valid_after_utc - now).days
-                lines.append(f"  Status: VÁLIDO ({days_left} dias restantes)")
-            lines.append("")
-            
-            # Informações técnicas
-            lines.append("-" * 40)
-            lines.append("INFORMAÇÕES TÉCNICAS")
-            lines.append("-" * 40)
-            lines.append(f"  Versão: {cert.version.name} (v{cert.version.value + 1})")
-            lines.append(f"  Número de Série: {cert.serial_number}")
-            lines.append(f"  Algoritmo de Assinatura: {cert.signature_algorithm_oid._name}")
-            lines.append("")
-            
-            # Chave privada
-            lines.append("-" * 40)
-            lines.append("CHAVE PRIVADA")
-            lines.append("-" * 40)
-            if private_key is not None:
-                lines.append("  Contém chave privada: SIM")
-                lines.append("  *** ATENÇÃO: Este arquivo contém a chave privada! ***")
-                # Tipo da chave
-                key_type = type(private_key).__name__
-                lines.append(f"  Tipo da chave: {key_type}")
-            else:
-                lines.append("  Contém chave privada: NÃO")
-            lines.append("")
-            
-            # Chain de certificados (se PFX)
-            if chain:
-                lines.append("-" * 40)
-                lines.append(f"CADEIA DE CERTIFICADOS ({len(chain)} certificados)")
-                lines.append("-" * 40)
-                for i, chain_cert in enumerate(chain, 1):
-                    chain_cn = None
-                    for attr in chain_cert.subject:
-                        if attr.oid._name == 'commonName':
-                            chain_cn = attr.value
-                            break
-                    lines.append(f"  [{i}] {chain_cn or 'Unknown'}")
+            # Processar cada certificado
+            for cert_idx, cert_entry in enumerate(all_certs):
+                cert_obj = cert_entry["cert"]
+                has_key = cert_entry["has_private_key"]
+                source = cert_entry["source"]
+                
+                # Thumbprint/Fingerprint
+                thumbprint = cert_obj.fingerprint(hashes.SHA1()).hex().upper()
+                thumbprint_formatted = ':'.join(thumbprint[i:i+2] for i in range(0, len(thumbprint), 2))
+                
+                if cert_idx == 0:
+                    main_thumbprint = thumbprint
+                
+                lines.append("=" * 60)
+                lines.append(f"CERTIFICADO #{cert_idx + 1} ({source})")
+                if has_key:
+                    lines.append("*** CONTÉM CHAVE PRIVADA ***")
+                lines.append("=" * 60)
                 lines.append("")
-            
-            # Extensões (se houver)
-            try:
-                extensions = cert.extensions
-                if extensions:
-                    lines.append("-" * 40)
-                    lines.append("EXTENSÕES")
-                    lines.append("-" * 40)
-                    for ext in extensions:
-                        ext_name = ext.oid._name
-                        lines.append(f"  {ext_name}: {ext.critical and '[CRÍTICA]' or ''}")
-                        # Algumas extensões comuns
-                        if ext_name == 'keyUsage':
-                            usages = []
-                            if ext.value.digital_signature:
-                                usages.append("Digital Signature")
-                            if ext.value.key_encipherment:
-                                usages.append("Key Encipherment")
-                            if ext.value.data_encipherment:
-                                usages.append("Data Encipherment")
-                            if hasattr(ext.value, 'key_cert_sign') and ext.value.key_cert_sign:
-                                usages.append("Certificate Signing")
-                            if hasattr(ext.value, 'crl_sign') and ext.value.crl_sign:
-                                usages.append("CRL Signing")
-                            lines.append(f"    Usos: {', '.join(usages)}")
-                        elif ext_name == 'subjectAltName':
-                            for name in ext.value:
-                                lines.append(f"    {type(name).__name__}: {name.value}")
-                    lines.append("")
-            except Exception:
-                pass
+                lines.append(f"Thumbprint (SHA1): {thumbprint_formatted}")
+                lines.append("")
+                
+                # Subject (Assunto)
+                lines.append("-" * 40)
+                lines.append("SUBJECT (Assunto)")
+                lines.append("-" * 40)
+                subject_cn = None
+                for attr in cert_obj.subject:
+                    attr_name = attr.oid._name
+                    attr_value = attr.value
+                    if attr_name == 'commonName':
+                        subject_cn = attr_value
+                        if cert_idx == 0:
+                            main_subject_cn = attr_value
+                    # Traduzir nomes comuns
+                    name_map = {
+                        'commonName': 'Common Name (CN)',
+                        'organizationName': 'Organization (O)',
+                        'organizationalUnitName': 'Organizational Unit (OU)',
+                        'countryName': 'Country (C)',
+                        'stateOrProvinceName': 'State (ST)',
+                        'localityName': 'Locality (L)',
+                        'emailAddress': 'Email',
+                        'serialNumber': 'Serial Number',
+                    }
+                    display_name = name_map.get(attr_name, attr_name)
+                    lines.append(f"  {display_name}: {attr_value}")
+                lines.append("")
+                
+                # Issuer (Emissor)
+                lines.append("-" * 40)
+                lines.append("ISSUER (Emissor)")
+                lines.append("-" * 40)
+                for attr in cert_obj.issuer:
+                    attr_name = attr.oid._name
+                    attr_value = attr.value
+                    name_map = {
+                        'commonName': 'Common Name (CN)',
+                        'organizationName': 'Organization (O)',
+                        'organizationalUnitName': 'Organizational Unit (OU)',
+                        'countryName': 'Country (C)',
+                        'stateOrProvinceName': 'State (ST)',
+                        'localityName': 'Locality (L)',
+                        'emailAddress': 'Email',
+                    }
+                    display_name = name_map.get(attr_name, attr_name)
+                    lines.append(f"  {display_name}: {attr_value}")
+                lines.append("")
+                
+                # Validade
+                lines.append("-" * 40)
+                lines.append("VALIDADE")
+                lines.append("-" * 40)
+                lines.append(f"  Válido de: {cert_obj.not_valid_before_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                lines.append(f"  Válido até: {cert_obj.not_valid_after_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                
+                # Verificar se está expirado
+                from datetime import datetime, timezone
+                now = datetime.now(timezone.utc)
+                if now > cert_obj.not_valid_after_utc:
+                    lines.append("  Status: EXPIRADO")
+                elif now < cert_obj.not_valid_before_utc:
+                    lines.append("  Status: AINDA NÃO VÁLIDO")
+                else:
+                    days_left = (cert_obj.not_valid_after_utc - now).days
+                    lines.append(f"  Status: VÁLIDO ({days_left} dias restantes)")
+                lines.append("")
+                
+                # Informações técnicas
+                lines.append("-" * 40)
+                lines.append("INFORMAÇÕES TÉCNICAS")
+                lines.append("-" * 40)
+                lines.append(f"  Versão: {cert_obj.version.name} (v{cert_obj.version.value + 1})")
+                lines.append(f"  Número de Série: {cert_obj.serial_number}")
+                lines.append(f"  Algoritmo de Assinatura: {cert_obj.signature_algorithm_oid._name}")
+                
+                # Tipo da chave privada (se tiver)
+                if has_key and private_key is not None:
+                    key_type = type(private_key).__name__
+                    lines.append(f"  Tipo da Chave Privada: {key_type}")
+                lines.append("")
+                
+                # Extensões (se houver)
+                try:
+                    extensions = cert_obj.extensions
+                    if extensions:
+                        lines.append("-" * 40)
+                        lines.append("EXTENSÕES")
+                        lines.append("-" * 40)
+                        for ext in extensions:
+                            ext_name = ext.oid._name
+                            lines.append(f"  {ext_name}: {ext.critical and '[CRÍTICA]' or ''}")
+                            # Algumas extensões comuns
+                            if ext_name == 'keyUsage':
+                                usages = []
+                                try:
+                                    if ext.value.digital_signature:
+                                        usages.append("Digital Signature")
+                                    if ext.value.key_encipherment:
+                                        usages.append("Key Encipherment")
+                                    if ext.value.data_encipherment:
+                                        usages.append("Data Encipherment")
+                                    if hasattr(ext.value, 'key_cert_sign') and ext.value.key_cert_sign:
+                                        usages.append("Certificate Signing")
+                                    if hasattr(ext.value, 'crl_sign') and ext.value.crl_sign:
+                                        usages.append("CRL Signing")
+                                except Exception:
+                                    pass
+                                if usages:
+                                    lines.append(f"    Usos: {', '.join(usages)}")
+                            elif ext_name == 'subjectAltName':
+                                try:
+                                    for name in ext.value:
+                                        lines.append(f"    {type(name).__name__}: {name.value}")
+                                except Exception:
+                                    pass
+                        lines.append("")
+                except Exception:
+                    pass
             
             lines.append("=" * 60)
             lines.append("FIM DO CERTIFICADO")
@@ -361,25 +389,76 @@ class OCRWorker:
             metadata = {
                 'type': 'certificate',
                 'format': file_ext,
-                'thumbprint': thumbprint,
+                'thumbprint': main_thumbprint,
                 'has_private_key': private_key is not None,
-                'subject_cn': None,
+                'total_certificates': len(all_certs),
+                'subject_cn': main_subject_cn,
                 'issuer_cn': None,
-                'not_before': cert.not_valid_before_utc.isoformat(),
-                'not_after': cert.not_valid_after_utc.isoformat(),
+                'not_before': all_certs[0]["cert"].not_valid_before_utc.isoformat() if all_certs else None,
+                'not_after': all_certs[0]["cert"].not_valid_after_utc.isoformat() if all_certs else None,
             }
             
-            # Extrair CN
-            for attr in cert.subject:
-                if attr.oid._name == 'commonName':
-                    metadata['subject_cn'] = attr.value
-                    break
-            for attr in cert.issuer:
-                if attr.oid._name == 'commonName':
-                    metadata['issuer_cn'] = attr.value
-                    break
+            # Extrair Issuer CN
+            if all_certs:
+                for attr in all_certs[0]["cert"].issuer:
+                    if attr.oid._name == 'commonName':
+                        metadata['issuer_cn'] = attr.value
+                        break
             
-            print("=== OCR WORKER: Certificate extracted successfully ===", flush=True)
+            # REGISTRAR LEAK se tem chave privada
+            if private_key is not None and server_guid:
+                try:
+                    from gitleaks_service import get_gitleaks_service
+                    import hashlib
+                    
+                    service = get_gitleaks_service()
+                    
+                    # Criar fingerprint único
+                    fingerprint_source = f"{file_path}:pfx_private_key:{main_thumbprint or 'unknown'}"
+                    fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
+                    
+                    # Verificar se já existe
+                    existing = [f for f in service._findings if f.get('Fingerprint') == f"auto_pfx_{fingerprint}"]
+                    
+                    if not existing:
+                        # Buscar server_id
+                        from database import Server
+                        server_result = await db.execute(
+                            select(Server).where(Server.guid == server_guid)
+                        )
+                        server_obj = server_result.scalar_one_or_none()
+                        server_id = server_obj.id if server_obj else None
+                        
+                        # Criar finding
+                        finding = {
+                            "RuleID": "auto-pfx-private-key",
+                            "Description": f"Certificado PFX com chave privada: {main_subject_cn or 'Unknown'}",
+                            "File": file_path,
+                            "StartLine": 1,
+                            "EndLine": 1,
+                            "Match": f"[PFX com chave privada - Thumbprint: {main_thumbprint or 'N/A'}]",
+                            "Secret": f"Certificado: {main_subject_cn or 'Unknown'} ({len(all_certs)} cert(s))",
+                            "Fingerprint": f"auto_pfx_{fingerprint}",
+                            "Tags": ["certificate", "private-key", "pfx", "auto-detected"],
+                            "Severity": "critical",
+                            
+                            # Metadados adicionais
+                            "job_id": "auto-pfx",
+                            "server_id": server_id,
+                            "scanned_at": datetime.now(timezone.utc).isoformat(),
+                            "original_file": file_path,
+                            "scanned_file": file_path,
+                            "detection_source": "auto-pfx"
+                        }
+                        
+                        service._findings.append(finding)
+                        logger.info(f"Leak auto-registrado para PFX com chave privada: {file_path}")
+                        print(f"=== OCR WORKER: LEAK REGISTERED - PFX with private key: {file_path} ===", flush=True)
+                        
+                except Exception as e:
+                    logger.warning(f"Erro ao registrar leak de PFX: {e}")
+            
+            print(f"=== OCR WORKER: Certificate extracted successfully ({len(all_certs)} certs, has_key={private_key is not None}) ===", flush=True)
             return text, metadata, None
             
         except Exception as e:
