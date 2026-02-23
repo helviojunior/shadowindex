@@ -32,6 +32,7 @@ const Servers = () => {
   const [servers, setServers] = useState([]);
   const [formData, setFormData] = useState({ name: '', ip: '', plugin_instance_id: '' });
   const [loading, setLoading] = useState(false);
+  const [loadingServers, setLoadingServers] = useState(true);
   const [resolvingIp, setResolvingIp] = useState(false);
   const [editingServer, setEditingServer] = useState(null);
   const [editIp, setEditIp] = useState('');
