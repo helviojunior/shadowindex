@@ -277,147 +277,6 @@ def normalize_file_path(file_path: str) -> Dict[str, Any]:
     }
 
 
-def extract_server_info_from_unc(file_path: str) -> Dict[str, Any]:
-    """
-    Extrai informações do servidor de um caminho UNC.
-    
-    Formato esperado: \\\\server_ip\\share_name\\path\\to\\file.ext
-    Ou formato físico: /data/storage/{server_id}/{file_id}/{version}
-    
-    Args:
-        file_path: Caminho do arquivo (UNC ou físico)
-        
-    Returns:
-        {
-            "server_ip": str|None - IP do servidor
-            "share_name": str|None - Nome do compartilhamento
-            "server_path": str|None - Caminho completo no servidor
-            "file_name": str|None - Nome do arquivo
-        }
-    """
-    result = {
-        "server_ip": None,
-        "share_name": None,
-        "server_path": None,
-        "file_name": None
-    }
-    
-    if not file_path:
-        return result
-    
-    # Normalizar separadores
-    normalized_path = file_path.replace('/', '\\')
-    
-    # Verificar se é caminho UNC (\\server\share\...)
-    if normalized_path.startswith('\\\\'):
-        # Remover os \\ iniciais
-        path_parts = normalized_path[2:].split('\\')
-        
-        if len(path_parts) >= 1:
-            result["server_ip"] = path_parts[0]
-        
-        if len(path_parts) >= 2:
-            result["share_name"] = path_parts[1]
-        
-        if len(path_parts) >= 3:
-            result["file_name"] = path_parts[-1]
-            result["server_path"] = '\\\\' + '\\'.join(path_parts)
-    
-    # Verificar se é caminho físico do storage (/data/storage/...)
-    elif '/data/storage/' in file_path or '\\data\\storage\\' in file_path:
-        # Extrair IDs do caminho físico
-        ids = extract_ids_from_path(file_path)
-        if ids:
-            result["extracted_server_id"] = ids[0]
-            result["extracted_file_id"] = ids[1]
-            result["extracted_version"] = ids[2]
-        
-        # Extrair nome do arquivo
-        path_parts = file_path.replace('\\', '/').split('/')
-        if path_parts:
-            result["file_name"] = path_parts[-1]
-    
-    return result
-
-
-async def enrich_finding_with_server_info(finding: Dict[str, Any], server_id: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Enriquece um finding com informações do servidor buscando no banco de dados.
-    
-    Args:
-        finding: Dicionário com os dados do finding
-        server_id: ID do servidor (se conhecido)
-        
-    Returns:
-        Finding enriquecido com informações do servidor
-    """
-    from database import async_session_maker, Server, DownloadedFile
-    from sqlalchemy import select
-    
-    file_path = finding.get('File', '') or finding.get('original_file', '')
-    
-    # Primeiro, extrair informações do caminho
-    server_info = extract_server_info_from_unc(file_path)
-    finding.update({k: v for k, v in server_info.items() if v is not None})
-    
-    # Se temos server_id, buscar informações do servidor
-    if server_id:
-        try:
-            async with async_session_maker() as db:
-                result = await db.execute(select(Server).where(Server.id == server_id))
-                server = result.scalar_one_or_none()
-                if server:
-                    finding['server_name'] = server.name
-                    finding['server_ip'] = server.ip
-                    finding['extracted_server_id'] = server.id
-        except Exception as e:
-            logger.warning(f"Erro ao buscar servidor {server_id}: {e}")
-    
-    # Se temos server_ip mas não server_id, tentar buscar pelo IP
-    elif server_info.get('server_ip'):
-        try:
-            async with async_session_maker() as db:
-                result = await db.execute(
-                    select(Server).where(Server.ip == server_info['server_ip'])
-                )
-                server = result.scalar_one_or_none()
-                if server:
-                    finding['server_name'] = server.name
-                    finding['server_id'] = server.id
-                    finding['extracted_server_id'] = server.id
-        except Exception as e:
-            logger.warning(f"Erro ao buscar servidor por IP {server_info['server_ip']}: {e}")
-    
-    # Se temos extracted_server_id do caminho físico, buscar servidor
-    elif server_info.get('extracted_server_id'):
-        try:
-            async with async_session_maker() as db:
-                # Buscar arquivo baixado para obter o file_path original
-                if server_info.get('extracted_file_id'):
-                    file_result = await db.execute(
-                        select(DownloadedFile).where(DownloadedFile.id == server_info['extracted_file_id'])
-                    )
-                    downloaded_file = file_result.scalar_one_or_none()
-                    if downloaded_file:
-                        finding['server_path'] = downloaded_file.file_path
-                        finding['file_name'] = downloaded_file.file_name
-                        finding['share_name'] = downloaded_file.share_name
-                        
-                        # Buscar servidor pelo GUID
-                        server_result = await db.execute(
-                            select(Server).where(Server.guid == downloaded_file.server_guid)
-                        )
-                        server = server_result.scalar_one_or_none()
-                        if server:
-                            finding['server_name'] = server.name
-                            finding['server_ip'] = server.ip
-                            finding['server_id'] = server.id
-        except Exception as e:
-            logger.warning(f"Erro ao enriquecer finding com dados do arquivo: {e}")
-    
-    return finding
-
-
 class GitleaksJob:
     """Representa um job de execução do GitLeaks"""
     
@@ -588,8 +447,12 @@ class GitleaksService:
                                     # Atualizar o File para mostrar o arquivo original
                                     finding['File'] = file_info['original_file']
                                     
-                                    # Enriquecer finding com informações do servidor
-                                    finding = await enrich_finding_with_server_info(finding, job.server_id)
+                                    # Extrair IDs do caminho físico para posterior enriquecimento
+                                    ids = extract_ids_from_path(file_info['original_file'])
+                                    if ids:
+                                        finding['extracted_server_id'] = ids[0]
+                                        finding['extracted_file_id'] = ids[1]
+                                        finding['extracted_version'] = ids[2]
                                     
                                     # Separar por fonte de detecção
                                     if file_info['source'] == 'ocr':
