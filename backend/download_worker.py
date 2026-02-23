@@ -318,19 +318,25 @@ class DownloadWorker:
         
         # Passar expected_size para o plugin para validar arquivos zerados
         expected_size = job.file_size if hasattr(job, 'file_size') else None
+        logger.info(f"Downloading file {full_path} with expected_size={expected_size}")
+        
         file_content = await plugin.download_file(
             full_path, 
             ignore_cache=True,
             expected_size=expected_size
         )
         
-        # Aceitar arquivos zerados se o tamanho esperado é 0
+        # Aceitar arquivos zerados - não é erro se o plugin retornou sucesso
         if not file_content or file_content.data is None:
             raise Exception("Null response from plugin")
         
+        # Log do resultado
+        logger.info(f"Downloaded {full_path}: got {len(file_content.data)} bytes (expected={expected_size})")
+        
         # Se o conteúdo está vazio mas o tamanho esperado é > 0, é um erro
-        if len(file_content.data) == 0 and expected_size and expected_size > 0:
-            raise Exception(f"Empty response for file with expected size {expected_size}")
+        # Se expected_size é 0 ou None, aceitar arquivo vazio como válido
+        if len(file_content.data) == 0 and expected_size is not None and expected_size > 0:
+            raise Exception(f"Empty response for file with expected size {expected_size} bytes")
         
         # Salvar arquivo (pode ser zerado)
         await self._save_file_content_bytes(db, job, file_content.data, server)
