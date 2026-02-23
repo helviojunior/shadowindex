@@ -787,10 +787,20 @@ class OCRWorker:
                     if not job.local_path or not os.path.exists(job.local_path):
                         raise FileNotFoundError(f"Arquivo não encontrado: {job.local_path}")
                     
-                    # Verificar se é certificado digital
+                    # Verificar se é certificado digital ou arquivo de chave privada
                     certificate_extensions = ['.pfx', '.p12', '.cer', '.crt', '.pem']
+                    private_key_extensions = ['.key', '.priv', '.private', '.ppk', '.der', '.p8', '.pkcs8']
+                    ssh_key_names = ['id_rsa', 'id_dsa', 'id_ecdsa', 'id_ed25519', 'id_ed25519_sk', 'id_ecdsa_sk',
+                                    'identity', 'ssh_host_rsa_key', 'ssh_host_dsa_key', 'ssh_host_ecdsa_key', 'ssh_host_ed25519_key']
                     
-                    if file_ext in certificate_extensions:
+                    # Verificar se é arquivo de chave SSH pelo nome
+                    is_ssh_key_file = job.file_name and any(
+                        job.file_name.lower() == name.lower() or 
+                        job.file_name.lower().startswith(name.lower() + '.')
+                        for name in ssh_key_names
+                    )
+                    
+                    if file_ext in certificate_extensions or file_ext in private_key_extensions or is_ssh_key_file:
                         # Buscar server_guid para pesquisa de senhas
                         server_guid = None
                         share_name = None
