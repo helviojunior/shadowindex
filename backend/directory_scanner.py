@@ -422,7 +422,7 @@ class DirectoryScanner:
         
         # Iniciar GitLeaks
         try:
-            from gitleaks_service import start_gitleaks_scan
+            from leaks_service import start_gitleaks_scan
             await start_gitleaks_scan(root_scan_job.server_id)
             print(f"=== SCANNER: GitLeaks scan started for server {root_scan_job.server_id} ===", flush=True)
         except Exception as e:

@@ -2753,7 +2753,7 @@ async def get_certificate_info(
         
         if has_private_key and file_ext in ['.pfx', '.p12'] and main_thumbprint:
             try:
-                from gitleaks_service import get_gitleaks_service
+                from leaks_service import get_gitleaks_service
                 import hashlib
                 
                 service = get_gitleaks_service()
@@ -3684,7 +3684,7 @@ async def get_gitleaks_status():
 @router.post("/gitleaks/scan")
 async def start_gitleaks_scan(request: GitleaksScanRequest):
     """Inicia um scan do GitLeaks em background"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
     
@@ -3707,7 +3707,7 @@ async def start_gitleaks_scan(request: GitleaksScanRequest):
 @router.get("/gitleaks/jobs")
 async def list_gitleaks_jobs(active_only: bool = False):
     """Lista todos os jobs do GitLeaks"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
     
@@ -3724,7 +3724,7 @@ async def list_gitleaks_jobs(active_only: bool = False):
 @router.get("/gitleaks/jobs/{job_id}")
 async def get_gitleaks_job(job_id: str):
     """Obtém detalhes de um job específico"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
     job = service.get_job(job_id)
@@ -3738,7 +3738,7 @@ async def get_gitleaks_job(job_id: str):
 @router.get("/gitleaks/jobs/{job_id}/report")
 async def get_gitleaks_job_report(job_id: str):
     """Retorna o JSON completo do relatório do GitLeaks para um job específico"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     import json
     
     service = get_gitleaks_service()
@@ -3775,7 +3775,7 @@ async def get_gitleaks_job_report(job_id: str):
 @router.post("/gitleaks/jobs/{job_id}/cancel")
 async def cancel_gitleaks_job(job_id: str):
     """Cancela um job em execução"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
     success = await service.cancel_job(job_id)
@@ -3795,7 +3795,7 @@ async def get_gitleaks_findings(
     db: AsyncSession = Depends(get_db)
 ):
     """Retorna findings do GitLeaks enriquecidos com dados do banco"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     from database import DownloadedFile, FileVersion, Server
     
     service = get_gitleaks_service()
@@ -3897,7 +3897,7 @@ async def get_gitleaks_findings(
 @router.delete("/gitleaks/findings")
 async def clear_gitleaks_findings():
     """Limpa todos os findings do cache e do banco de dados"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
     
@@ -3918,7 +3918,7 @@ async def clear_gitleaks_findings():
 @router.post("/gitleaks/findings/reload")
 async def reload_gitleaks_findings():
     """Recarrega findings do banco de dados para o cache em memória"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
     
@@ -3939,7 +3939,7 @@ async def reload_gitleaks_findings():
 @router.delete("/gitleaks/jobs/clear-finished")
 async def clear_finished_gitleaks_jobs():
     """Remove jobs finalizados (completed, failed, cancelled)"""
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
     count = service.clear_old_jobs()
@@ -3960,7 +3960,7 @@ async def scan_server_storage(
     Inicia um scan do GitLeaks no storage de um servidor específico.
     Escaneia todos os arquivos baixados desse servidor.
     """
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     from storage_utils import get_server_storage_path
     
     server = await get_server_or_404(db, server_id)
@@ -4006,7 +4006,7 @@ async def scan_all_servers_storage(
     Inicia scans do GitLeaks em TODOS os servidores que têm arquivos baixados.
     Escaneia apenas os arquivos já baixados, não interage com os servidores remotos.
     """
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     from storage_utils import get_server_storage_path
     
     # Buscar todos os servidores
@@ -4085,7 +4085,7 @@ async def get_gitleaks_stats(db: AsyncSession = Depends(get_db_readonly)):
     Retorna estatísticas gerais do GitLeaks para o Dashboard.
     Falsos positivos são excluídos das contagens.
     """
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
     all_findings = service.get_all_findings()
@@ -4656,7 +4656,7 @@ async def register_manual_leak(leak: ManualLeakCreate, db: AsyncSession = Depend
     Registra um leak manualmente identificado pelo usuário.
     Útil quando o GitLeaks não detectou automaticamente.
     """
-    from gitleaks_service import get_gitleaks_service, save_finding_to_db, extract_ids_from_path
+    from leaks_service import get_gitleaks_service, save_finding_to_db, extract_ids_from_path
     from datetime import datetime, timezone
     from database import Server, DownloadedFile
     import hashlib
@@ -4810,7 +4810,7 @@ async def delete_leak_finding(fingerprint: str):
     Remove um leak específico pelo fingerprint (do cache e do banco de dados).
     O fingerprint pode conter caracteres especiais como / e :
     """
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     from urllib.parse import unquote
     
     # Decodificar o fingerprint (pode vir URL-encoded)
@@ -4836,7 +4836,7 @@ async def toggle_finding_false_positive(
     Marca ou desmarca um finding como falso positivo.
     Findings marcados como falso positivo não são contabilizados nos gráficos do dashboard.
     """
-    from gitleaks_service import get_gitleaks_service
+    from leaks_service import get_gitleaks_service
     from urllib.parse import unquote
     
     decoded_fingerprint = unquote(fingerprint)
@@ -4996,7 +4996,7 @@ async def auto_register_private_key_leak(
         server_guid: GUID do servidor (para enriquecimento)
         share_id: ID do share (para enriquecimento)
     """
-    from gitleaks_service import get_gitleaks_service, save_finding_to_db, enrich_finding_with_db_info
+    from leaks_service import get_gitleaks_service, save_finding_to_db, enrich_finding_with_db_info
     from database import async_session_maker, GitleaksFinding, Server, FileVersion, DownloadedFile
     from sqlalchemy import select
     from datetime import datetime, timezone

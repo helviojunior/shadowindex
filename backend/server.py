@@ -4812,7 +4812,7 @@ async def startup_event():
     
     # Carregar findings do GitLeaks do banco de dados
     try:
-        from gitleaks_service import get_gitleaks_service
+        from leaks_service import get_gitleaks_service
         service = get_gitleaks_service()
         db_count = await service.load_findings_from_db()
         print(f"=== STARTUP: GitLeaks findings loaded from database: {db_count} ===", flush=True)
