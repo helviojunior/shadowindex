@@ -316,12 +316,23 @@ class DownloadWorker:
             file_name=job.file_name or full_path.split('\\')[-1]
         )
         
-        file_content = await plugin.download_file(full_path, ignore_cache=True)
+        # Passar expected_size para o plugin para validar arquivos zerados
+        expected_size = job.file_size if hasattr(job, 'file_size') else None
+        file_content = await plugin.download_file(
+            full_path, 
+            ignore_cache=True,
+            expected_size=expected_size
+        )
         
-        if not file_content or not file_content.data:
-            raise Exception("Empty response from plugin")
+        # Aceitar arquivos zerados se o tamanho esperado é 0
+        if not file_content or file_content.data is None:
+            raise Exception("Null response from plugin")
         
-        # Salvar arquivo
+        # Se o conteúdo está vazio mas o tamanho esperado é > 0, é um erro
+        if len(file_content.data) == 0 and expected_size and expected_size > 0:
+            raise Exception(f"Empty response for file with expected size {expected_size}")
+        
+        # Salvar arquivo (pode ser zerado)
         await self._save_file_content_bytes(db, job, file_content.data, server)
     
     async def _download_chunked_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
