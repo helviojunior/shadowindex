@@ -677,24 +677,34 @@ class OCRWorker:
                                     logger.error(f"OCR job {job.id} - Failed after {max_retries} retries: {error_msg}")
                             
                             except Exception as tika_error:
-                                # Verificar se é erro de conexão (pode vir encapsulado)
+                                # Verificar se é erro de conexão ou timeout (pode vir encapsulado)
                                 error_str = str(tika_error).lower()
                                 is_connection_error = any(x in error_str for x in [
-                                    'connection', 'timeout', 'refused', 'reset', 'broken pipe',
+                                    'connection', 'refused', 'reset', 'broken pipe',
                                     'network', 'unreachable', 'name resolution', 'max retries'
                                 ])
+                                is_timeout_error = 'timeout' in error_str
                                 
                                 if is_connection_error and attempt < max_retries:
-                                    print(f"=== OCR WORKER: Job {job.id} - Tika error, retry {attempt}/{max_retries} in {retry_delay}s: {tika_error} ===", flush=True)
-                                    logger.warning(f"OCR job {job.id} - Tika error, retry {attempt}/{max_retries}: {tika_error}")
+                                    print(f"=== OCR WORKER: Job {job.id} - Tika connection error, retry {attempt}/{max_retries} in {retry_delay}s: {tika_error} ===", flush=True)
+                                    logger.warning(f"OCR job {job.id} - Tika connection error, retry {attempt}/{max_retries}: {tika_error}")
                                     await asyncio.sleep(retry_delay)
                                     self._ocr_service = None
+                                elif is_timeout_error:
+                                    # Timeout não faz retry - provavelmente arquivo muito grande
+                                    error = str(tika_error)
+                                    logger.warning(f"OCR job {job.id} - Timeout processing file (file may be too large): {tika_error}")
+                                    break
                                 else:
-                                    # Não é erro de conexão ou esgotou tentativas
+                                    # Outro tipo de erro
                                     error = str(tika_error)
                                     if is_connection_error:
                                         error = f"Erro de comunicação com Tika após {max_retries} tentativas: {tika_error}"
                                     break
+                        
+                        # Verificar se o erro retornado pelo OCR service é de timeout
+                        if error and 'timeout' in error.lower():
+                            logger.warning(f"OCR job {job.id} - Processing timeout (no retry)")
                     
                     if ocr_text is not None:
                         job.ocr_text = ocr_text
