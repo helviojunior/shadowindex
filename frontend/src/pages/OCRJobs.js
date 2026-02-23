@@ -503,16 +503,30 @@ const OCRJobs = () => {
                         {formatDate(job.created_at)}
                       </TableCell>
                       <TableCell>
-                        {(job.status === 'pending' || job.status === 'running') && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id })}
-                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-                          >
-                            <StopCircle className="w-4 h-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {job.status === 'pending' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => prioritizeJob(job.id)}
+                              className="h-7 w-7 p-0 text-green-500 hover:text-green-600"
+                              title="Executar agora (prioridade máxima)"
+                            >
+                              <Play className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {(job.status === 'pending' || job.status === 'running') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id })}
+                              className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                              title="Cancelar job"
+                            >
+                              <StopCircle className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
