@@ -2996,40 +2996,69 @@ async def download_server_file(
                 # Marcar versão atual como não-atual
                 current_version.is_current = False
                 
-                # Salvar nova versão no storage
-                if content_base64:
-                    full_path, sanitized_path, sha1_hash, file_size = save_downloaded_file(
-                        server.guid,
-                        share_name,
-                        file_path,
-                        content_base64,
-                        new_version_number
+                # Obter share_id
+                from database import ServerShare
+                share_result = await db.execute(
+                    select(ServerShare).where(
+                        ServerShare.server_guid == server.guid,
+                        ServerShare.share_name == share_name
                     )
-                else:
-                    # Arquivo vazio
-                    full_path, sanitized_path, sha1_hash, file_size = save_empty_file(
-                        server.guid,
-                        share_name,
-                        file_path,
-                        new_version_number
+                )
+                share = share_result.scalar_one_or_none()
+                
+                if not share:
+                    # Criar share se não existir
+                    share = ServerShare(
+                        server_id=server.id,
+                        server_guid=server.guid,
+                        share_name=share_name,
+                        access_denied=False,
+                        has_children=True,
+                        children_fetched=False
                     )
+                    db.add(share)
+                    await db.flush()
                 
-                # Calcular mimetype
-                mimetype = get_file_mimetype(full_path)
+                share_id = share.id
                 
-                # Criar nova versão no banco
+                # Criar nova versão no banco primeiro (para obter o ID)
                 new_file_version = FileVersion(
                     server_guid=server.guid,
                     share_name=share_name,
                     file_path=file_path,
                     version_number=new_version_number,
-                    sha1_hash=sha1_hash,
-                    file_size=file_size,
-                    mimetype=mimetype,
-                    local_path=sanitized_path,
+                    sha1_hash="",
+                    file_size=0,
+                    mimetype=None,
+                    local_path="",
                     is_current=True
                 )
                 db.add(new_file_version)
+                await db.flush()
+                
+                # Salvar arquivo usando estrutura padrão
+                from storage_utils import save_file_with_standard_path
+                
+                if content_base64:
+                    file_content = base64.b64decode(content_base64)
+                else:
+                    file_content = b''
+                
+                full_path, sanitized_path, sha1_hash, file_size = save_file_with_standard_path(
+                    server.guid,
+                    share_id,
+                    new_file_version.id,
+                    file_content
+                )
+                
+                # Calcular mimetype
+                mimetype = get_file_mimetype(str(full_path))
+                
+                # Atualizar a versão com os dados corretos
+                new_file_version.sha1_hash = sha1_hash
+                new_file_version.file_size = file_size
+                new_file_version.mimetype = mimetype
+                new_file_version.local_path = sanitized_path
                 
                 # Atualizar downloaded_file principal
                 result = await db.execute(
@@ -3043,6 +3072,7 @@ async def download_server_file(
                     downloaded_file.sha1_hash = sha1_hash
                     downloaded_file.file_size = file_size
                     downloaded_file.sanitized_path = sanitized_path
+                    downloaded_file.local_path = str(full_path)
                     downloaded_file.mimetype = mimetype
                     downloaded_file.downloaded_at = datetime.now(timezone.utc)
                 
