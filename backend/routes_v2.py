@@ -2344,7 +2344,7 @@ async def get_file_content(server_id: int, file_id: int, db: AsyncSession = Depe
         
         # Detecção automática de chaves privadas
         leak_registered = None
-        key_type, key_description = detect_private_key_type(content)
+        key_type, key_description = detect_private_key_type(content, file.file_name)
         if key_type:
             try:
                 # Buscar file_version_id para enriquecimento
