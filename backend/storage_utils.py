@@ -21,6 +21,82 @@ def sanitize_path_component(name: str) -> str:
     sanitized = sanitized.strip('_')
     return sanitized if sanitized else 'unnamed'
 
+
+def get_standard_file_path(server_guid: str, share_id: int, file_version_id: int) -> Path:
+    """
+    Retorna o caminho padrão para armazenar um arquivo.
+    Estrutura: {storage_base}/{server_guid}/{share_id}/{file_version_id}
+    
+    Esta é a função PADRÃO que deve ser usada por todas as funções de download.
+    
+    Args:
+        server_guid: GUID do servidor
+        share_id: ID do share no banco de dados
+        file_version_id: ID da versão do arquivo no banco de dados
+    
+    Returns:
+        Path: Caminho completo do arquivo
+    """
+    return Path(STORAGE_BASE_PATH) / server_guid / str(share_id) / str(file_version_id)
+
+
+def get_standard_relative_path(server_guid: str, share_id: int, file_version_id: int) -> str:
+    """
+    Retorna o caminho relativo padrão para armazenar no banco de dados.
+    Formato: {server_guid}/{share_id}/{file_version_id}
+    
+    Args:
+        server_guid: GUID do servidor
+        share_id: ID do share no banco de dados
+        file_version_id: ID da versão do arquivo no banco de dados
+    
+    Returns:
+        str: Caminho relativo
+    """
+    return f"{server_guid}/{share_id}/{file_version_id}"
+
+
+def save_file_with_standard_path(
+    server_guid: str,
+    share_id: int,
+    file_version_id: int,
+    content: bytes
+) -> Tuple[Path, str, str, int]:
+    """
+    Salva um arquivo usando a estrutura padrão de diretórios.
+    Estrutura: {storage_base}/{server_guid}/{share_id}/{file_version_id}
+    
+    Esta é a função CENTRALIZADA que deve ser usada por todas as funções de download.
+    
+    Args:
+        server_guid: GUID do servidor
+        share_id: ID do share no banco de dados
+        file_version_id: ID da versão do arquivo no banco de dados
+        content: Conteúdo do arquivo em bytes
+    
+    Returns:
+        tuple[Path, str, str, int]: (caminho completo, caminho relativo, sha1_hash, tamanho)
+    """
+    # Calcular SHA1 hash
+    sha1_hash = hashlib.sha1(content).hexdigest()
+    file_size = len(content)
+    
+    # Gerar caminhos
+    full_path = get_standard_file_path(server_guid, share_id, file_version_id)
+    relative_path = get_standard_relative_path(server_guid, share_id, file_version_id)
+    
+    # Garantir que o diretório existe
+    full_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Salvar arquivo
+    try:
+        with open(full_path, 'wb') as f:
+            f.write(content)
+    except Exception as e:
+        raise Exception(f"Erro ao salvar arquivo: {str(e)}")
+    
+    return full_path, relative_path, sha1_hash, file_size
+
 def get_server_storage_path(server_id_or_guid) -> Path:
     """Retorna o caminho base do servidor usando ID ou GUID"""
     return Path(STORAGE_BASE_PATH) / str(server_id_or_guid)
