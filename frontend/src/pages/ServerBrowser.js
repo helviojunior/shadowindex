@@ -4342,6 +4342,45 @@ const ServerBrowser = () => {
                           </div>
                         ))}
                         </div>
+                        
+                        {/* Debug Log - também exibido em caso de sucesso */}
+                        {fileContent.debug_log && fileContent.debug_log.length > 0 && (
+                          <div className="mt-6 pt-4 border-t border-border">
+                            <details className="group">
+                              <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
+                                <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+                                Debug: {fileContent.debug_log.length} passos
+                              </summary>
+                              <div className="mt-3 space-y-1 pl-6">
+                                {fileContent.debug_log.map((entry, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className={`text-xs font-mono flex items-start gap-2 py-1 ${
+                                      entry.status === 'success' ? 'text-green-500' :
+                                      entry.status === 'error' ? 'text-red-400' :
+                                      entry.status === 'warning' ? 'text-yellow-500' :
+                                      'text-muted-foreground'
+                                    }`}
+                                  >
+                                    <span className="w-4 flex-shrink-0">
+                                      {entry.status === 'success' ? '✓' :
+                                       entry.status === 'error' ? '✗' :
+                                       entry.status === 'warning' ? '⚠' : '•'}
+                                    </span>
+                                    <span className="flex-1">
+                                      {entry.step}
+                                      {entry.details && (
+                                        <span className="ml-2 text-muted-foreground">
+                                          → {entry.details}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
