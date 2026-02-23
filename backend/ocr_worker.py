@@ -398,18 +398,10 @@ class OCRWorker:
             logger.error(f"Error in OCR cleanup: {e}")
     
     async def _process_pending_jobs(self, db: AsyncSession):
-        """Processa jobs pendentes de OCR em paralelo"""
-        from database import OCRJob, FileVersion, AppSettings
-        import mimetypes
+        """Busca jobs pendentes e dispara tarefas paralelas para processá-los"""
+        from database import OCRJob, AppSettings
         
-        # Tentar importar python-magic, fallback para mimetypes
-        try:
-            import magic
-            has_libmagic = True
-        except ImportError:
-            has_libmagic = False
-        
-        # Verificar limite de jobs simultâneos
+        # Verificar limite de jobs simultâneos (lido dinamicamente a cada chamada)
         max_concurrent_result = await db.execute(
             select(AppSettings).where(AppSettings.key == 'max_simultaneous_ocr_jobs')
         )
@@ -441,148 +433,189 @@ class OCRWorker:
         if not jobs:
             return
         
-        # Processar cada job
+        print(f"=== OCR WORKER: Starting {len(jobs)} jobs in parallel (max_concurrent={max_concurrent}, running={running_count}) ===", flush=True)
+        
+        # Marcar todos como 'running' ANTES de disparar as tasks para evitar race condition
+        job_ids = []
         for job in jobs:
-            # Verificar lista de exclusão ANTES de processar
-            import os
-            file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
-            
-            # Carregar lista de extensões excluídas
-            excluded_result = await db.execute(
-                select(AppSettings).where(AppSettings.key == 'auto_ocr_excluded_extensions')
-            )
-            excluded_setting = excluded_result.scalar_one_or_none()
-            auto_ocr_excluded_extensions = []
-            if excluded_setting and excluded_setting.value:
-                auto_ocr_excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
-            
-            # Verificar se a extensão está na lista de exclusão
-            is_excluded = False
-            skip_reason = None
-            if file_ext and auto_ocr_excluded_extensions:
-                for excluded_ext in auto_ocr_excluded_extensions:
-                    excluded_ext_normalized = excluded_ext if excluded_ext.startswith('.') else f'.{excluded_ext}'
-                    if file_ext == excluded_ext_normalized:
-                        is_excluded = True
-                        skip_reason = f'Extensão {file_ext} está na lista de exclusão'
-                        break
-            
-            # HARD-CODED: Sempre ignorar mimetypes text/* - não faz sentido OCR em texto
-            if not is_excluded and job.local_path and os.path.exists(job.local_path):
-                file_mimetype = None
-            
-            # Tentar com libmagic primeiro (detecção real pelo conteúdo)
-            if has_libmagic:
-                try:
-                    mime = magic.Magic(mime=True)
-                    file_mimetype = mime.from_file(job.local_path)
-                except Exception as e:
-                    logger.warning(f"libmagic failed for {job.file_name}: {e}, trying mimetypes fallback")
-            
-            # Fallback para mimetypes (baseado em extensão)
-            if not file_mimetype:
-                file_mimetype, _ = mimetypes.guess_type(job.local_path)
-            
-            if file_mimetype and file_mimetype.startswith('text/'):
-                is_excluded = True
-                skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
-        
-        if is_excluded:
-            # Marcar como skipped e não processar
-            job.status = 'skipped'
-            job.error_message = skip_reason
-            job.completed_at = datetime.now(timezone.utc)
-            await db.commit()
-            print(f"=== OCR WORKER: Skipping job {job.id} for {job.file_name} ({skip_reason}) ===", flush=True)
-            logger.info(f"OCR job {job.id} skipped for {job.file_name} ({skip_reason})")
-            return
-        
-        print(f"=== OCR WORKER: Processing job {job.id} for {job.file_name} ===", flush=True)
-        logger.info(f"Processing OCR job {job.id} for {job.file_name}")
-        
-        # Marcar como em execução
-        job.status = 'running'
-        job.started_at = datetime.now(timezone.utc)
+            job.status = 'running'
+            job.started_at = datetime.now(timezone.utc)
+            job_ids.append(job.id)
         await db.commit()
         
+        # Disparar tasks em paralelo para cada job
+        tasks = []
+        for job_id in job_ids:
+            task = asyncio.create_task(self._process_single_job(job_id))
+            tasks.append(task)
+        
+        # Não aguardamos aqui - as tasks rodam em background
+        # Isso permite que o loop principal continue verificando novos jobs
+    
+    async def _process_single_job(self, job_id: int):
+        """Processa um único job de OCR (executado como task assíncrona)"""
+        from database import AsyncSessionLocal, OCRJob, FileVersion, AppSettings
+        import mimetypes
+        import os
+        
+        # Tentar importar python-magic, fallback para mimetypes
         try:
-            # Verificar se o arquivo existe
-            if not job.local_path or not os.path.exists(job.local_path):
-                raise FileNotFoundError(f"Arquivo não encontrado: {job.local_path}")
-            
-            # Verificar se é certificado digital
-            certificate_extensions = ['.pfx', '.p12', '.cer', '.crt', '.pem']
-            
-            if file_ext in certificate_extensions:
-                # Extrair dados do certificado em formato texto
-                ocr_text, ocr_metadata, error = await self._extract_certificate_text(job.local_path, file_ext, db)
-            else:
-                # Executar OCR normal via Tika
-                ocr_service = await self._get_ocr_service()
+            import magic
+            has_libmagic = True
+        except ImportError:
+            has_libmagic = False
+        
+        try:
+            async with AsyncSessionLocal() as db:
+                # Buscar o job pelo ID
+                result = await db.execute(
+                    select(OCRJob).where(OCRJob.id == job_id)
+                )
+                job = result.scalar_one_or_none()
                 
-                if not ocr_service.is_available:
-                    job.status = 'failed'
-                    job.error_message = "Serviço OCR não disponível"
-                    job.completed_at = datetime.now(timezone.utc)
-                    await db.commit()
-                    print(f"=== OCR WORKER: Service unavailable for job {job.id} ===", flush=True)
+                if not job:
+                    logger.error(f"OCR job {job_id} not found")
                     return
                 
-                # Executar OCR
-                ocr_text, ocr_metadata, error = await ocr_service.extract_text_and_metadata(
-                    job.local_path,
-                    ocr_language=job.ocr_language
+                file_ext = os.path.splitext(job.file_name)[1].lower() if job.file_name else ''
+                
+                # Carregar lista de extensões excluídas
+                excluded_result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'auto_ocr_excluded_extensions')
                 )
-            
-            if ocr_text is not None:
-                job.ocr_text = ocr_text
-                job.ocr_metadata = ocr_metadata
-                job.status = 'completed'
+                excluded_setting = excluded_result.scalar_one_or_none()
+                auto_ocr_excluded_extensions = []
+                if excluded_setting and excluded_setting.value:
+                    auto_ocr_excluded_extensions = [e.strip().lower() for e in excluded_setting.value.split(',') if e.strip()]
                 
-                # Salvar também em arquivo .ocr
+                # Verificar se a extensão está na lista de exclusão
+                is_excluded = False
+                skip_reason = None
+                if file_ext and auto_ocr_excluded_extensions:
+                    for excluded_ext in auto_ocr_excluded_extensions:
+                        excluded_ext_normalized = excluded_ext if excluded_ext.startswith('.') else f'.{excluded_ext}'
+                        if file_ext == excluded_ext_normalized:
+                            is_excluded = True
+                            skip_reason = f'Extensão {file_ext} está na lista de exclusão'
+                            break
+                
+                # HARD-CODED: Sempre ignorar mimetypes text/* - não faz sentido OCR em texto
+                if not is_excluded and job.local_path and os.path.exists(job.local_path):
+                    file_mimetype = None
+                    
+                    # Tentar com libmagic primeiro (detecção real pelo conteúdo)
+                    if has_libmagic:
+                        try:
+                            mime = magic.Magic(mime=True)
+                            file_mimetype = mime.from_file(job.local_path)
+                        except Exception as e:
+                            logger.warning(f"libmagic failed for {job.file_name}: {e}, trying mimetypes fallback")
+                    
+                    # Fallback para mimetypes (baseado em extensão)
+                    if not file_mimetype:
+                        file_mimetype, _ = mimetypes.guess_type(job.local_path)
+                    
+                    if file_mimetype and file_mimetype.startswith('text/'):
+                        is_excluded = True
+                        skip_reason = f'Mimetype {file_mimetype} é texto (não requer OCR)'
+                
+                if is_excluded:
+                    # Marcar como skipped e não processar
+                    job.status = 'skipped'
+                    job.error_message = skip_reason
+                    job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+                    print(f"=== OCR WORKER: Skipping job {job.id} for {job.file_name} ({skip_reason}) ===", flush=True)
+                    logger.info(f"OCR job {job.id} skipped for {job.file_name} ({skip_reason})")
+                    await emit_ocr_stats()
+                    return
+                
+                print(f"=== OCR WORKER: Processing job {job.id} for {job.file_name} ===", flush=True)
+                logger.info(f"Processing OCR job {job.id} for {job.file_name}")
+                
                 try:
-                    ocr_file_path = job.local_path + '.ocr'
-                    with open(ocr_file_path, 'w', encoding='utf-8') as f:
-                        f.write(ocr_text)
-                    print(f"=== OCR WORKER: Saved OCR text to {ocr_file_path} ===", flush=True)
+                    # Verificar se o arquivo existe
+                    if not job.local_path or not os.path.exists(job.local_path):
+                        raise FileNotFoundError(f"Arquivo não encontrado: {job.local_path}")
+                    
+                    # Verificar se é certificado digital
+                    certificate_extensions = ['.pfx', '.p12', '.cer', '.crt', '.pem']
+                    
+                    if file_ext in certificate_extensions:
+                        # Extrair dados do certificado em formato texto
+                        ocr_text, ocr_metadata, error = await self._extract_certificate_text(job.local_path, file_ext, db)
+                    else:
+                        # Executar OCR normal via Tika
+                        ocr_service = await self._get_ocr_service()
+                        
+                        if not ocr_service.is_available:
+                            job.status = 'failed'
+                            job.error_message = "Serviço OCR não disponível"
+                            job.completed_at = datetime.now(timezone.utc)
+                            await db.commit()
+                            print(f"=== OCR WORKER: Service unavailable for job {job.id} ===", flush=True)
+                            await emit_ocr_stats()
+                            return
+                        
+                        # Executar OCR
+                        ocr_text, ocr_metadata, error = await ocr_service.extract_text_and_metadata(
+                            job.local_path,
+                            ocr_language=job.ocr_language
+                        )
+                    
+                    if ocr_text is not None:
+                        job.ocr_text = ocr_text
+                        job.ocr_metadata = ocr_metadata
+                        job.status = 'completed'
+                        
+                        # Salvar também em arquivo .ocr
+                        try:
+                            ocr_file_path = job.local_path + '.ocr'
+                            with open(ocr_file_path, 'w', encoding='utf-8') as f:
+                                f.write(ocr_text)
+                            print(f"=== OCR WORKER: Saved OCR text to {ocr_file_path} ===", flush=True)
+                        except Exception as e:
+                            logger.warning(f"Failed to save OCR file: {e}")
+                        
+                        # Atualizar a versão do arquivo com o texto OCR
+                        if job.version_id:
+                            version_result = await db.execute(
+                                select(FileVersion).where(FileVersion.id == job.version_id)
+                            )
+                            version = version_result.scalar_one_or_none()
+                            if version:
+                                version.ocr_content = job.ocr_text
+                                version.ocr_processed = True
+                                version.ocr_processed_at = datetime.now(timezone.utc)
+                        
+                        print(f"=== OCR WORKER: Job {job.id} completed, {len(job.ocr_text or '')} chars extracted ===", flush=True)
+                        logger.info(f"OCR job {job.id} completed: {len(job.ocr_text or '')} chars")
+                    else:
+                        job.status = 'failed'
+                        job.error_message = error or 'OCR failed - no text extracted'
+                        print(f"=== OCR WORKER: Job {job.id} failed: {job.error_message} ===", flush=True)
+                    
+                except FileNotFoundError as e:
+                    job.status = 'failed'
+                    job.error_message = str(e)
+                    logger.warning(f"OCR job {job.id} file not found: {e}")
+                    print(f"=== OCR WORKER: Job {job.id} file not found ===", flush=True)
+                    
                 except Exception as e:
-                    logger.warning(f"Failed to save OCR file: {e}")
+                    job.status = 'failed'
+                    job.error_message = str(e)
+                    logger.error(f"OCR job {job.id} failed: {e}")
+                    print(f"=== OCR WORKER: Job {job.id} error: {e} ===", flush=True)
                 
-                # Atualizar a versão do arquivo com o texto OCR
-                if job.version_id:
-                    version_result = await db.execute(
-                        select(FileVersion).where(FileVersion.id == job.version_id)
-                    )
-                    version = version_result.scalar_one_or_none()
-                    if version:
-                        version.ocr_content = job.ocr_text
-                        version.ocr_processed = True
-                        version.ocr_processed_at = datetime.now(timezone.utc)
-                
-                print(f"=== OCR WORKER: Job {job.id} completed, {len(job.ocr_text or '')} chars extracted ===", flush=True)
-                logger.info(f"OCR job {job.id} completed: {len(job.ocr_text or '')} chars")
-            else:
-                job.status = 'failed'
-                job.error_message = error or 'OCR failed - no text extracted'
-                print(f"=== OCR WORKER: Job {job.id} failed: {job.error_message} ===", flush=True)
-            
-        except FileNotFoundError as e:
-            job.status = 'failed'
-            job.error_message = str(e)
-            logger.warning(f"OCR job {job.id} file not found: {e}")
-            print(f"=== OCR WORKER: Job {job.id} file not found ===", flush=True)
-            
+                finally:
+                    job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+                    # Emitir estatísticas atualizadas via WebSocket
+                    await emit_ocr_stats()
+                    
         except Exception as e:
-            job.status = 'failed'
-            job.error_message = str(e)
-            logger.error(f"OCR job {job.id} failed: {e}")
-            print(f"=== OCR WORKER: Job {job.id} error: {e} ===", flush=True)
-        
-        finally:
-            job.completed_at = datetime.now(timezone.utc)
-            await db.commit()
-            # Emitir estatísticas atualizadas via WebSocket
-            await emit_ocr_stats()
+            logger.error(f"Critical error processing OCR job {job_id}: {e}")
+            print(f"=== OCR WORKER: Critical error for job {job_id}: {e} ===", flush=True)
 
 
 # Instância global do worker
