@@ -5,6 +5,12 @@ services:
     image: apache/tika:latest-full
     container_name: ops-integration-tika
     restart: unless-stopped
+    volumes:
+      - ./tika-config.xml:/tika-config.xml:ro
+    environment:
+      # Timeout de tarefa: 15 minutos (900000ms)
+      - TIKA_CONFIG=/tika-config.xml
+    command: ["--config", "/tika-config.xml"]
 
   backend:
     build:
