@@ -679,6 +679,38 @@ class GitleaksService:
             logger.error(f"Erro ao remover finding {fingerprint}: {e}")
             return False
     
+    async def toggle_false_positive(self, fingerprint: str, is_false_positive: bool) -> bool:
+        """Marca ou desmarca um finding como falso positivo"""
+        from database import async_session_maker, GitleaksFinding
+        from sqlalchemy import select
+        
+        try:
+            async with async_session_maker() as db:
+                result = await db.execute(
+                    select(GitleaksFinding).where(GitleaksFinding.fingerprint == fingerprint)
+                )
+                finding = result.scalar_one_or_none()
+                
+                if not finding:
+                    logger.warning(f"Finding {fingerprint} não encontrado")
+                    return False
+                
+                finding.is_false_positive = is_false_positive
+                await db.commit()
+                
+                # Atualizar também no cache em memória
+                for f in self._findings:
+                    if f.get('Fingerprint') == fingerprint:
+                        f['is_false_positive'] = is_false_positive
+                        break
+                
+                logger.info(f"Finding {fingerprint} marcado como falso_positivo={is_false_positive}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Erro ao atualizar finding {fingerprint}: {e}")
+            return False
+    
     async def load_findings_from_db(self) -> int:
         """Carrega findings do banco de dados para o cache em memória"""
         findings = await load_findings_from_db()
