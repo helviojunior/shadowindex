@@ -392,10 +392,13 @@ const Downloads = () => {
   const clearFinished = async () => {
     try {
       await axios.post(`${API}/downloads/clear-finished`);
-      loadStats();
+      // Recarregar stats do servidor (forçar atualização)
+      const response = await axios.get(`${API}/downloads/stats`);
+      setStats(response.data);
       // Resetar cache de status finalizados
       setLoadedStatuses(new Set(['downloading', 'pending']));
       setDownloadJobs(prev => prev.filter(j => ['downloading', 'pending'].includes(j.status)));
+      toast.success('Histórico limpo com sucesso');
     } catch (error) {
       console.error('Error clearing finished:', error);
       toast.error('Erro ao limpar histórico');
