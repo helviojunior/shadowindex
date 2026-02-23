@@ -4402,7 +4402,7 @@ async def delete_leak_finding(fingerprint: str):
         return {"success": False, "message": "Leak não encontrado"}
 
 
-@router.patch("/gitleaks/findings/{fingerprint}/false-positive")
+@router.post("/gitleaks/findings/toggle-false-positive")
 async def toggle_finding_false_positive(
     fingerprint: str,
     is_false_positive: bool = True
