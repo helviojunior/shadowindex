@@ -439,6 +439,11 @@ class GitleaksFinding(Base):
 class OCRJob(Base):
     """Jobs de OCR em background"""
     __tablename__ = "ocr_jobs"
+    __table_args__ = (
+        Index('idx_ocr_jobs_status', 'status'),
+        Index('idx_ocr_jobs_status_priority_created', 'status', 'priority', 'created_at'),
+        Index('idx_ocr_jobs_file_id', 'file_id'),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     file_id = Column(Integer, ForeignKey("downloaded_files.id"), nullable=False)
@@ -456,6 +461,7 @@ class OCRJob(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class AppSettings(Base):
