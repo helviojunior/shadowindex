@@ -211,6 +211,46 @@ const GeneralSettings = () => {
               </p>
             </div>
 
+            {/* Max Simultaneous OCR Jobs */}
+            <div className="space-y-2">
+              <Label htmlFor="max_simultaneous_ocr_jobs" className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-muted-foreground" />
+                Jobs OCR Simultâneos
+              </Label>
+              <Input
+                id="max_simultaneous_ocr_jobs"
+                type="number"
+                min="1"
+                max="5"
+                value={settings.max_simultaneous_ocr_jobs}
+                onChange={(e) => handleChange('max_simultaneous_ocr_jobs', e.target.value)}
+                data-testid="max-ocr-jobs-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                Número máximo de jobs OCR em paralelo (1-5).
+              </p>
+            </div>
+
+            {/* OCR Auto Cleanup Minutes */}
+            <div className="space-y-2">
+              <Label htmlFor="ocr_auto_cleanup_minutes" className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-muted-foreground" />
+                Limpeza Auto OCR (min)
+              </Label>
+              <Input
+                id="ocr_auto_cleanup_minutes"
+                type="number"
+                min="0"
+                max="1440"
+                value={settings.ocr_auto_cleanup_minutes}
+                onChange={(e) => handleChange('ocr_auto_cleanup_minutes', e.target.value)}
+                data-testid="ocr-cleanup-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                Minutos para excluir jobs OCR finalizados com sucesso. 0 = desabilitado.
+              </p>
+            </div>
+
             {/* Default Depth Levels */}
             <div className="space-y-2">
               <Label htmlFor="default_depth_levels" className="flex items-center gap-2">
