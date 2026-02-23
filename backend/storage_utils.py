@@ -346,14 +346,19 @@ def get_file_path(server_guid: str, share_name: str, sanitized_path: str) -> str
         
         if is_guid:
             # Novo formato: server_guid/share_id/file_version_id
+            # O sanitized_path já contém o caminho completo relativo ao storage
             return str(Path(STORAGE_BASE_PATH) / sanitized_path)
         elif all(p.isdigit() for p in parts):
             # Formato legado: server_id/file_id/version (todos numéricos)
             return str(Path(STORAGE_BASE_PATH) / sanitized_path)
     
+    # Verificar se o sanitized_path já começa com o server_guid (evitar duplicação)
+    if sanitized_path.startswith(server_guid + '/'):
+        return str(Path(STORAGE_BASE_PATH) / sanitized_path)
+    
     # Caso contrário, é o caminho relativo legado (path-based)
-    # Pode ser GUID-based: "guid/xx/hash" ou path-based: "path/to/file"
-    return str(Path(STORAGE_BASE_PATH) / sanitized_path)
+    # Adiciona o server_guid como prefixo
+    return str(Path(STORAGE_BASE_PATH) / server_guid / sanitized_path)
 
 
 def get_file_path_by_standard(server_guid: str, share_id: int, file_version_id: int) -> str:
