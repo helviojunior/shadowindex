@@ -4406,7 +4406,8 @@ async def get_ocr_stats(db: AsyncSession = Depends(get_db_readonly)):
         "running": status_counts.get('running', 0),
         "completed": status_counts.get('completed', 0),
         "failed": status_counts.get('failed', 0),
-        "skipped": status_counts.get('skipped', 0)
+        "skipped": status_counts.get('skipped', 0),
+        "cancelled": status_counts.get('cancelled', 0)
     }
 
 
