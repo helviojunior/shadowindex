@@ -19,7 +19,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from database import FileVersion
+from database import FileVersion, ServerItem
 from websocket_manager import get_websocket_manager
 
 logger = logging.getLogger(__name__)
