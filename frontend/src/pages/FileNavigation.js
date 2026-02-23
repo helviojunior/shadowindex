@@ -58,7 +58,7 @@ const FileNavigation = () => {
   );
 
   const handleServerClick = (serverId) => {
-    navigate(`/servers/${serverId}/browse`);
+    navigate(`/servers/${serverId}/browse?from=/files/browse`);
   };
 
   // Componente de card de servidor (tamanho normal)
