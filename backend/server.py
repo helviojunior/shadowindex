@@ -4832,6 +4832,14 @@ async def create_default_plugin_instances():
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    # Parar watchdog de banco de dados
+    try:
+        from db_watchdog import stop_db_watchdog
+        await stop_db_watchdog()
+        logging.info("DB watchdog stopped")
+    except Exception as e:
+        logging.warning(f"Error stopping DB watchdog: {e}")
+    
     # Parar worker de downloads
     from download_worker import stop_download_worker
     await stop_download_worker()
