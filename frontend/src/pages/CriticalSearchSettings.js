@@ -35,13 +35,57 @@ const CriticalSearchSettings = () => {
     loadConfig();
   }, []);
 
+  // Configuração padrão para merge com dados do servidor
+  const defaultConfig = {
+    enabled: true,
+    file_rules: {
+      keywords: [],
+      extensions: [],
+      exact_names: [],
+      mime_types: [],
+      excluded_extensions: []
+    },
+    size_rules: {
+      enabled: true,
+      min_bytes: 10,
+      max_bytes: 52428800
+    },
+    log_detection: {
+      enabled: true,
+      min_similar_files: 10,
+      log_patterns: [],
+      log_extensions: []
+    },
+    auto_gitleaks: {
+      enabled: true,
+      delay_seconds: 5
+    }
+  };
+
+  // Função para fazer deep merge da configuração
+  const mergeConfig = (target, source) => {
+    const result = { ...target };
+    for (const key in source) {
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        result[key] = mergeConfig(target[key] || {}, source[key]);
+      } else if (source[key] !== undefined) {
+        result[key] = source[key];
+      }
+    }
+    return result;
+  };
+
   const loadConfig = async () => {
     try {
       const response = await axios.get(`${API}/settings/critical-search`);
-      setConfig(response.data);
+      // Merge com configuração padrão para garantir que novos campos existam
+      const mergedConfig = mergeConfig(defaultConfig, response.data);
+      setConfig(mergedConfig);
     } catch (error) {
       console.error('Error loading critical search config:', error);
       toast.error('Erro ao carregar configuração');
+      // Em caso de erro, usar configuração padrão
+      setConfig(defaultConfig);
     } finally {
       setLoading(false);
     }
