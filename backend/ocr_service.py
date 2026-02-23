@@ -98,61 +98,109 @@ class TikaService:
         
         # Calcular timeout baseado no tamanho do arquivo
         file_size = file_path.stat().st_size
-        # Base: 120s + 30s por cada 10MB
-        base_timeout = 120
-        size_timeout = (file_size // (10 * 1024 * 1024)) * 30
-        text_timeout = min(base_timeout + size_timeout, 600)  # Max 10 minutos
+        file_size_mb = file_size / (1024 * 1024)
+        
+        # Base: 180s + 60s por cada 10MB (mais generoso)
+        base_timeout = 180
+        size_timeout = (file_size // (10 * 1024 * 1024)) * 60
+        text_timeout = min(base_timeout + size_timeout, 900)  # Max 15 minutos
+        
+        # Timeout em milissegundos para o Tika (um pouco menor que o nosso para evitar conflito)
+        tika_timeout_ms = (text_timeout - 30) * 1000
+        
+        # Read file content once
+        with open(file_path, 'rb') as f:
+            file_content = f.read()
+        
+        # Lista de estratégias para tentar em caso de erro
+        strategies_to_try = [
+            (pdf_strategy, "estratégia padrão"),
+            ("no_ocr", "sem OCR (apenas texto)"),
+        ]
+        
+        last_error = None
+        content = None
+        metadata = None
+        
+        for strategy, strategy_name in strategies_to_try:
+            try:
+                logger.info(f"Trying Tika with {strategy_name} (timeout: {text_timeout}s, tika_timeout: {tika_timeout_ms}ms)")
+                
+                # Headers for OCR configuration
+                headers = {
+                    "X-Tika-OCRLanguage": ocr_language,
+                    "X-Tika-PDFocrStrategy": strategy,
+                    "X-Tika-Timeout-Millis": str(tika_timeout_ms),  # Timeout do servidor Tika
+                    "Accept": "text/plain; charset=UTF-8"
+                }
+                
+                # Extract text content
+                text_response = await asyncio.to_thread(
+                    requests.put,
+                    f"{self.server_url}/tika",
+                    data=file_content,
+                    headers=headers,
+                    timeout=text_timeout
+                )
+                
+                if text_response.status_code == 200:
+                    # Force UTF-8 encoding interpretation
+                    text_response.encoding = 'utf-8'
+                    content = text_response.text.strip()
+                    
+                    # Try to fix double-encoded UTF-8
+                    if content:
+                        try:
+                            if 'Ã' in content and any(c in content for c in ['§', '£', '©', '³', '¡', '­', '±']):
+                                fixed_content = content.encode('latin-1').decode('utf-8')
+                                content = fixed_content
+                                logger.info(f"Fixed double-encoded UTF-8 content for {file_path.name}")
+                        except (UnicodeDecodeError, UnicodeEncodeError):
+                            pass
+                    
+                    if content:
+                        logger.info(f"Extracted {len(content)} characters from {file_path.name} with {strategy_name}")
+                        break  # Sucesso, sair do loop
+                    else:
+                        last_error = f"Tika returned empty content with {strategy_name}"
+                        logger.warning(last_error)
+                        
+                elif text_response.status_code == 422:
+                    last_error = "Tika não suporta este tipo de arquivo (HTTP 422)"
+                    break  # Não adianta tentar outra estratégia
+                elif text_response.status_code == 500:
+                    # Erro interno do Tika - pode ser problema com o arquivo
+                    error_text = text_response.text[:500] if text_response.text else "Unknown error"
+                    last_error = f"Erro interno do Tika (HTTP 500): {error_text}"
+                    logger.warning(f"Tika internal error with {strategy_name}, trying next strategy: {error_text[:100]}")
+                    # Continuar para próxima estratégia
+                elif text_response.status_code >= 500:
+                    last_error = f"Erro no servidor Tika (HTTP {text_response.status_code})"
+                    logger.warning(f"Tika server error with {strategy_name}: HTTP {text_response.status_code}")
+                else:
+                    last_error = f"Resposta inesperada do Tika: HTTP {text_response.status_code}"
+                    logger.warning(last_error)
+                    
+            except requests.exceptions.Timeout:
+                last_error = f"Timeout no processamento Tika com {strategy_name} (arquivo: {file_size_mb:.1f}MB, timeout: {text_timeout}s)"
+                logger.warning(last_error)
+                # Continuar para próxima estratégia (sem OCR é mais rápido)
+                
+            except requests.exceptions.ConnectionError as e:
+                last_error = f"Erro de conexão com Tika: {str(e)}"
+                logger.error(last_error)
+                break  # Erro de conexão, não adianta tentar outra estratégia
+                
+            except Exception as e:
+                last_error = f"Erro no processamento Tika com {strategy_name}: {str(e)}"
+                logger.warning(last_error)
+                # Continuar para próxima estratégia
+        
+        # Se não conseguiu extrair texto
+        if not content:
+            return None, None, last_error or "Falha ao extrair texto do arquivo"
         
         try:
-            # Headers for OCR configuration
-            headers = {
-                "X-Tika-OCRLanguage": ocr_language,
-                "X-Tika-PDFocrStrategy": pdf_strategy,
-                "Accept": "text/plain; charset=UTF-8"  # Get plain text content with UTF-8
-            }
-            
-            # Read file and send to Tika
-            with open(file_path, 'rb') as f:
-                file_content = f.read()
-            
-            logger.info(f"Sending {len(file_content)} bytes to Tika (timeout: {text_timeout}s)")
-            
-            # Extract text content
-            text_response = await asyncio.to_thread(
-                requests.put,
-                f"{self.server_url}/tika",
-                data=file_content,
-                headers=headers,
-                timeout=text_timeout
-            )
-            
-            content = None
-            if text_response.status_code == 200:
-                # Force UTF-8 encoding interpretation
-                text_response.encoding = 'utf-8'
-                content = text_response.text.strip()
-                
-                # Try to fix double-encoded UTF-8 (UTF-8 interpreted as Latin-1 then encoded again)
-                if content:
-                    try:
-                        # Check for common double-encoding patterns (Ã followed by special chars)
-                        if 'Ã' in content and any(c in content for c in ['§', '£', '©', '³', '¡', '­', '±']):
-                            # Try to fix by encoding as latin-1 and decoding as utf-8
-                            fixed_content = content.encode('latin-1').decode('utf-8')
-                            content = fixed_content
-                            logger.info(f"Fixed double-encoded UTF-8 content for {file_path.name}")
-                    except (UnicodeDecodeError, UnicodeEncodeError):
-                        # Keep original content if fix fails
-                        pass
-                
-                if content:
-                    logger.info(f"Extracted {len(content)} characters from {file_path.name}")
-            elif text_response.status_code == 422:
-                # Arquivo não suportado pelo Tika
-                return None, None, f"Tika não suporta este tipo de arquivo (HTTP 422)"
-            elif text_response.status_code >= 500:
-                # Erro do servidor Tika
-                return None, None, f"Erro no servidor Tika (HTTP {text_response.status_code})"
             
             # Extract metadata (timeout menor, é mais rápido)
             metadata_headers = {
