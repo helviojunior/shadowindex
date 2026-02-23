@@ -316,65 +316,124 @@ async def enrich_finding_with_db_info(finding: Dict[str, Any]) -> Dict[str, Any]
     """
     Enriquece um finding com informações do servidor e arquivo buscando no banco de dados.
     
-    Usa os IDs extraídos (extracted_server_id, extracted_file_id) para buscar:
+    Suporta dois formatos de identificação:
+    - Novo formato: server_guid, share_id, file_version_id
+    - Formato legado: extracted_server_id, extracted_file_id
+    
+    Busca:
     - server_name, server_ip do servidor
     - file_name, share_name, server_path do arquivo baixado
     
     Args:
-        finding: Dicionário com os dados do finding (deve ter extracted_server_id e/ou extracted_file_id)
+        finding: Dicionário com os dados do finding
         
     Returns:
         Finding enriquecido com informações do banco de dados
     """
-    from database import async_session_maker, Server, DownloadedFile
+    from database import async_session_maker, Server, DownloadedFile, FileVersion, ServerShare
     from sqlalchemy import select
     
+    # Dados extraídos do caminho
+    extracted_server_guid = finding.get('extracted_server_guid')
+    extracted_share_id = finding.get('extracted_share_id')
+    extracted_file_version_id = finding.get('extracted_file_version_id')
+    
+    # Dados legados
     extracted_server_id = finding.get('extracted_server_id')
     extracted_file_id = finding.get('extracted_file_id')
     server_id = finding.get('server_id')
     
-    # Usar server_id do job se não tiver extracted_server_id
-    effective_server_id = extracted_server_id or server_id
-    
-    if not effective_server_id and not extracted_file_id:
-        return finding
+    # Determinar qual formato usar
+    use_new_format = extracted_server_guid is not None and extracted_file_version_id is not None
     
     try:
         async with async_session_maker() as db:
-            # Se temos file_id, buscar informações do arquivo baixado
-            if extracted_file_id:
-                file_result = await db.execute(
-                    select(DownloadedFile).where(DownloadedFile.id == extracted_file_id)
-                )
-                downloaded_file = file_result.scalar_one_or_none()
+            if use_new_format:
+                # Novo formato: buscar por server_guid e file_version_id
                 
-                if downloaded_file:
-                    finding['file_name'] = downloaded_file.file_name
-                    finding['share_name'] = downloaded_file.share_name
-                    finding['server_path'] = downloaded_file.file_path
-                    
-                    # Buscar servidor pelo GUID do arquivo
-                    if downloaded_file.server_guid:
-                        server_result = await db.execute(
-                            select(Server).where(Server.guid == downloaded_file.server_guid)
-                        )
-                        server = server_result.scalar_one_or_none()
-                        if server:
-                            finding['server_name'] = server.name
-                            finding['server_ip'] = server.ip
-                            # Atualizar server_id se não estava definido
-                            if not finding.get('extracted_server_id'):
-                                finding['extracted_server_id'] = server.id
-            
-            # Se temos server_id mas ainda não temos server_name/ip, buscar
-            if effective_server_id and not finding.get('server_name'):
+                # Buscar servidor pelo GUID
                 server_result = await db.execute(
-                    select(Server).where(Server.id == effective_server_id)
+                    select(Server).where(Server.guid == extracted_server_guid)
                 )
                 server = server_result.scalar_one_or_none()
+                
                 if server:
                     finding['server_name'] = server.name
                     finding['server_ip'] = server.ip
+                    finding['extracted_server_id'] = server.id  # Compatibilidade
+                
+                # Buscar FileVersion pelo ID
+                version_result = await db.execute(
+                    select(FileVersion).where(FileVersion.id == extracted_file_version_id)
+                )
+                file_version = version_result.scalar_one_or_none()
+                
+                if file_version:
+                    finding['file_name'] = os.path.basename(file_version.file_path) if file_version.file_path else None
+                    finding['share_name'] = file_version.share_name
+                    finding['server_path'] = file_version.file_path
+                    
+                    # Buscar DownloadedFile para informações adicionais
+                    df_result = await db.execute(
+                        select(DownloadedFile).where(
+                            DownloadedFile.server_guid == file_version.server_guid,
+                            DownloadedFile.file_path == file_version.file_path
+                        )
+                    )
+                    downloaded_file = df_result.scalar_one_or_none()
+                    if downloaded_file:
+                        finding['file_name'] = downloaded_file.file_name or finding.get('file_name')
+                        finding['extracted_file_id'] = downloaded_file.id  # Compatibilidade
+                
+                # Se temos share_id, buscar nome do share
+                if extracted_share_id and not finding.get('share_name'):
+                    share_result = await db.execute(
+                        select(ServerShare).where(ServerShare.id == extracted_share_id)
+                    )
+                    share = share_result.scalar_one_or_none()
+                    if share:
+                        finding['share_name'] = share.share_name
+                
+            else:
+                # Formato legado: buscar por server_id e file_id
+                effective_server_id = extracted_server_id or server_id
+                
+                if not effective_server_id and not extracted_file_id:
+                    return finding
+                
+                # Se temos file_id, buscar informações do arquivo baixado
+                if extracted_file_id:
+                    file_result = await db.execute(
+                        select(DownloadedFile).where(DownloadedFile.id == extracted_file_id)
+                    )
+                    downloaded_file = file_result.scalar_one_or_none()
+                    
+                    if downloaded_file:
+                        finding['file_name'] = downloaded_file.file_name
+                        finding['share_name'] = downloaded_file.share_name
+                        finding['server_path'] = downloaded_file.file_path
+                        
+                        # Buscar servidor pelo GUID do arquivo
+                        if downloaded_file.server_guid:
+                            server_result = await db.execute(
+                                select(Server).where(Server.guid == downloaded_file.server_guid)
+                            )
+                            server = server_result.scalar_one_or_none()
+                            if server:
+                                finding['server_name'] = server.name
+                                finding['server_ip'] = server.ip
+                                if not finding.get('extracted_server_id'):
+                                    finding['extracted_server_id'] = server.id
+                
+                # Se temos server_id mas ainda não temos server_name/ip, buscar
+                if effective_server_id and not finding.get('server_name'):
+                    server_result = await db.execute(
+                        select(Server).where(Server.id == effective_server_id)
+                    )
+                    server = server_result.scalar_one_or_none()
+                    if server:
+                        finding['server_name'] = server.name
+                        finding['server_ip'] = server.ip
                     
     except Exception as e:
         logger.warning(f"Erro ao enriquecer finding: {e}")
