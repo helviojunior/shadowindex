@@ -5216,7 +5216,7 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
     # Regras de tamanho
     "size_rules": {
         "enabled": True,
-        "min_bytes": 10,  # Mínimo 10 bytes (ignora arquivos vazios)
+        "min_bytes": 0,  # Mínimo 0 bytes (inclui arquivos vazios)
         "max_bytes": 52428800  # 50MB
     },
     
