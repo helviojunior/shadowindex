@@ -96,8 +96,8 @@ const OCRJobs = () => {
     try {
       const params = new URLSearchParams();
       params.append('limit', '50');
-      if (filter !== 'all') {
-        params.append('status', filter);
+      if (activeFilter) {
+        params.append('status', activeFilter);
       }
       
       const response = await axios.get(`${API}/ocr/jobs?${params.toString()}`);
@@ -107,7 +107,7 @@ const OCRJobs = () => {
     } catch (error) {
       console.error('Error loading OCR jobs:', error);
     }
-  }, [filter]);
+  }, [activeFilter]);
 
   // Carregar estatísticas
   const loadStats = useCallback(async () => {
