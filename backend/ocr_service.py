@@ -101,7 +101,7 @@ class TikaService:
             headers = {
                 "X-Tika-OCRLanguage": ocr_language,
                 "X-Tika-PDFocrStrategy": pdf_strategy,
-                "Accept": "text/plain"  # Get plain text content
+                "Accept": "text/plain; charset=UTF-8"  # Get plain text content with UTF-8
             }
             
             # Read file and send to Tika
@@ -119,6 +119,8 @@ class TikaService:
             
             content = None
             if text_response.status_code == 200:
+                # Force UTF-8 encoding interpretation
+                text_response.encoding = 'utf-8'
                 content = text_response.text.strip()
                 if content:
                     logger.info(f"Extracted {len(content)} characters from {file_path.name}")
