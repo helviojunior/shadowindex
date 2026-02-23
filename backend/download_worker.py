@@ -260,12 +260,30 @@ class DownloadWorker:
             try:
                 await self._process_pending_jobs()
             except OperationalError as e:
-                if "database is locked" in str(e):
+                error_msg = str(e)
+                # Reportar erro ao DB watchdog
+                try:
+                    from db_watchdog import report_db_error
+                    report_db_error(error_msg)
+                except Exception:
+                    pass
+                
+                if "database is locked" in error_msg:
                     logger.warning("Database locked in download worker, retrying in 3s...")
                     await asyncio.sleep(3)
                 else:
                     logger.error(f"Database error in download worker loop: {e}")
             except Exception as e:
+                error_msg = str(e)
+                # Verificar se é erro de pool/conexão e reportar
+                error_lower = error_msg.lower()
+                if any(x in error_lower for x in ['pool', 'connection', 'database', 'sqlite']):
+                    try:
+                        from db_watchdog import report_db_error
+                        report_db_error(error_msg)
+                    except Exception:
+                        pass
+                
                 logger.error(f"Error in download worker loop: {e}")
             
             await asyncio.sleep(WORKER_POLL_INTERVAL)
