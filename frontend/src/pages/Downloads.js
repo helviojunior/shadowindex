@@ -506,9 +506,11 @@ const Downloads = () => {
             <Card 
               key={status}
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md border-2 border-l-4",
+                "cursor-pointer transition-all hover:shadow-md border-l-4",
                 config.borderColor,
-                isActive ? "ring-2 ring-primary border-primary border-l-4 " + config.borderColor : "border-transparent hover:border-muted-foreground/30"
+                isActive 
+                  ? `ring-2 ${config.ringColor} border ${config.borderColor}` 
+                  : "border border-transparent hover:border-muted-foreground/30"
               )}
               onClick={() => handleFilterClick(status)}
               data-testid={`filter-${status}`}
@@ -538,8 +540,10 @@ const Downloads = () => {
         {/* Total card */}
         <Card 
           className={cn(
-            "cursor-pointer transition-all hover:shadow-md border-2 border-l-4 border-l-blue-500",
-            activeFilter === null ? "ring-2 ring-primary border-primary border-l-4 border-l-blue-500" : "border-transparent hover:border-muted-foreground/30"
+            "cursor-pointer transition-all hover:shadow-md border-l-4 border-l-blue-500",
+            activeFilter === null 
+              ? "ring-2 ring-blue-500 border border-l-blue-500" 
+              : "border border-transparent hover:border-muted-foreground/30"
           )}
           onClick={() => setActiveFilter(null)}
           data-testid="filter-all"
