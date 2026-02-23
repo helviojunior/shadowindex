@@ -4148,12 +4148,14 @@ const ServerBrowser = () => {
                                     className={`text-xs font-mono flex items-start gap-2 py-1 ${
                                       entry.status === 'success' ? 'text-green-500' :
                                       entry.status === 'error' ? 'text-red-400' :
+                                      entry.status === 'warning' ? 'text-yellow-500' :
                                       'text-muted-foreground'
                                     }`}
                                   >
                                     <span className="w-4 flex-shrink-0">
                                       {entry.status === 'success' ? '✓' :
-                                       entry.status === 'error' ? '✗' : '•'}
+                                       entry.status === 'error' ? '✗' :
+                                       entry.status === 'warning' ? '⚠' : '•'}
                                     </span>
                                     <span className="flex-1">
                                       {entry.step}
