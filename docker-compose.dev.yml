@@ -1,26 +1,19 @@
-version: '3.8'
+version: "3.8"
 
 # Docker-compose for development/testing
 # Includes SOAP mock server and Tika for OCR
-
-networks:
-  shadowindex-net:
-    driver: bridge
 
 services:
   tika:
     image: apache/tika:latest-full
     container_name: shadowindex-tika-dev
     restart: unless-stopped
-    environment:
-      - TIKA_TASK_TIMEOUT_MILLIS=900000
-      - TIKA_TASK_PULSE_MILLIS=1200000
-    command: >
-      java -jar /tika-server-standard.jar
-      --host 0.0.0.0
-      --port 9998
-      --taskTimeoutMillis 900000
-      --taskPulseMillis 1200000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9998/tika >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     networks:
       - shadowindex-net
 
@@ -29,9 +22,9 @@ services:
       context: ./backend/soap_mock
       dockerfile: Dockerfile
     container_name: shadowindex-soap-mock-dev
+    restart: unless-stopped
     ports:
       - "9999:9999"
-    restart: unless-stopped
     networks:
       - shadowindex-net
 
@@ -40,21 +33,21 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: shadowindex-backend-dev
+    restart: unless-stopped
     ports:
       - "9090:8001"
     volumes:
       - ./shadowindex_data:/app/data
     environment:
-      - CORS_ORIGINS=*
-      - TIKA_SERVER_URL=http://tika:9998
-      - SOAP_MOCK_URL=http://soap-mock:9999/Test.asmx
-    extra_hosts:
-      - "proxy.local:host-gateway"
-    command: uvicorn server:app --host 0.0.0.0 --port 8001 --reload
-    restart: unless-stopped
+      CORS_ORIGINS: "*"
+      TIKA_SERVER_URL: "http://tika:9998"
+      SOAP_MOCK_URL: "http://soap-mock:9999/Test.asmx"
+    command: ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
     depends_on:
-      - tika
-      - soap-mock
+      tika:
+        condition: service_healthy
+      soap-mock:
+        condition: service_started
     networks:
       - shadowindex-net
 
@@ -63,12 +56,19 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: shadowindex-frontend-dev
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_BACKEND_URL=http://localhost:9090
+      # Para comunicação interna entre containers:
+      REACT_APP_BACKEND_URL: "http://backend:8001"
+      # Se o frontend no browser precisa chamar pelo HOST:
+      # REACT_APP_BACKEND_URL: "http://localhost:9090"
     depends_on:
       - backend
-    restart: unless-stopped
     networks:
       - shadowindex-net
+
+networks:
+  shadowindex-net:
+    driver: bridge
