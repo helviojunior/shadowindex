@@ -346,8 +346,8 @@ const OCRJobs = () => {
         {/* Total card */}
         <Card 
           className={cn(
-            "cursor-pointer transition-all hover:shadow-md border-2",
-            activeFilter === null ? "ring-2 ring-primary border-primary" : "border-transparent hover:border-muted-foreground/30"
+            "cursor-pointer transition-all hover:shadow-md border-2 border-l-4 border-l-blue-500",
+            activeFilter === null ? "ring-2 ring-primary border-primary border-l-4 border-l-blue-500" : "border-transparent hover:border-muted-foreground/30"
           )}
           onClick={() => setActiveFilter(null)}
           data-testid="filter-all"
