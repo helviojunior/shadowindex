@@ -547,7 +547,8 @@ class SoapApiPlugin(BasePlugin):
         path: str, 
         offset: int = 0, 
         length: Optional[int] = None,
-        ignore_cache: bool = False
+        ignore_cache: bool = False,
+        expected_size: Optional[int] = None
     ) -> FileContent:
         """
         Download file content via SOAP.
@@ -557,6 +558,13 @@ class SoapApiPlugin(BasePlugin):
            1.1 Se falhar, considera que o conteúdo não é base64 e continua
            1.2 Se sucesso, continua com o texto decodificado
         2. Validar erros de acesso negado para exceptions específicas
+        
+        Args:
+            path: Full path to the file
+            offset: Starting offset for partial downloads
+            length: Number of bytes to download (None for full file)
+            ignore_cache: Skip cache lookup if True
+            expected_size: Expected file size in bytes (used to validate empty responses)
         """
         try:
             params = {"path": path}
@@ -571,8 +579,29 @@ class SoapApiPlugin(BasePlugin):
                 ignore_cache=True  # Don't cache file downloads
             )
             
+            # Handle empty result - <DownloadFileResult /> returns empty string
+            # This can be valid for zero-byte files
             if not result:
-                raise ItemNotFoundException(path)
+                # If we know the expected size is 0, this is a valid empty file
+                if expected_size is not None and expected_size == 0:
+                    logger.info(f"Valid zero-byte file: {path}")
+                    return FileContent(
+                        data=b'',
+                        size=0,
+                        is_complete=True,
+                        offset=offset,
+                        total_size=0
+                    )
+                # If expected_size is None or > 0, log warning but still return empty
+                # Let the caller decide based on their knowledge of expected_size
+                logger.warning(f"Empty result for file {path} (expected_size={expected_size})")
+                return FileContent(
+                    data=b'',
+                    size=0,
+                    is_complete=True,
+                    offset=offset,
+                    total_size=0
+                )
             
             # Step 1: Try base64 decode first
             import base64
