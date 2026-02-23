@@ -687,8 +687,20 @@ class OCRWorker:
                     certificate_extensions = ['.pfx', '.p12', '.cer', '.crt', '.pem']
                     
                     if file_ext in certificate_extensions:
+                        # Buscar server_guid para pesquisa de senhas
+                        server_guid = None
+                        if job.server_id:
+                            server_result = await db.execute(
+                                select(Server).where(Server.id == job.server_id)
+                            )
+                            server_obj = server_result.scalar_one_or_none()
+                            if server_obj:
+                                server_guid = server_obj.guid
+                        
                         # Extrair dados do certificado em formato texto
-                        ocr_text, ocr_metadata, error = await self._extract_certificate_text(job.local_path, file_ext, db)
+                        ocr_text, ocr_metadata, error = await self._extract_certificate_text(
+                            job.local_path, file_ext, db, server_guid=server_guid
+                        )
                     else:
                         # CONDIÇÃO 2: Executar OCR com retry em caso de erro de comunicação
                         max_retries = 5
