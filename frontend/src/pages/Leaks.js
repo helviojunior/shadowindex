@@ -311,9 +311,14 @@ const Leaks = () => {
     
     try {
       const newValue = !currentValue;
-      const url = `${API}/gitleaks/findings/${encodeURIComponent(fingerprint)}/false-positive?is_false_positive=${newValue}`;
+      const url = `${API}/gitleaks/findings/toggle-false-positive`;
       
-      const response = await axios.patch(url);
+      const response = await axios.post(url, null, {
+        params: {
+          fingerprint: fingerprint,
+          is_false_positive: newValue
+        }
+      });
       
       if (response.data.success) {
         // Atualizar localmente sem recarregar tudo
