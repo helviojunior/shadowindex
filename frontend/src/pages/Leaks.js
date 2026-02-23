@@ -503,7 +503,10 @@ const Leaks = () => {
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant={scanMode === 'all' ? 'default' : 'outline'}
-                  onClick={() => setScanMode('all')}
+                  onClick={() => {
+                    setScanMode('all');
+                    setSelectedServer(''); // Limpar servidor selecionado
+                  }}
                   size="sm"
                   className="gap-2"
                 >
@@ -521,7 +524,10 @@ const Leaks = () => {
                 </Button>
                 <Button
                   variant={scanMode === 'custom' ? 'default' : 'outline'}
-                  onClick={() => setScanMode('custom')}
+                  onClick={() => {
+                    setScanMode('custom');
+                    setSelectedServer(''); // Limpar servidor selecionado
+                  }}
                   size="sm"
                   className="gap-2"
                 >
