@@ -409,6 +409,23 @@ class OCRWorker:
         except ImportError:
             has_libmagic = False
         
+        # Verificar limite de jobs simultâneos
+        max_concurrent_result = await db.execute(
+            select(AppSettings).where(AppSettings.key == 'max_simultaneous_ocr_jobs')
+        )
+        max_concurrent_setting = max_concurrent_result.scalar_one_or_none()
+        max_concurrent = int(max_concurrent_setting.value) if max_concurrent_setting and max_concurrent_setting.value else 2
+        
+        # Contar jobs em execução
+        running_count_result = await db.execute(
+            select(func.count(OCRJob.id)).where(OCRJob.status == 'running')
+        )
+        running_count = running_count_result.scalar() or 0
+        
+        if running_count >= max_concurrent:
+            # Já atingiu o limite de jobs simultâneos
+            return
+        
         # Buscar próximo job pendente (ordenado por prioridade e data)
         result = await db.execute(
             select(OCRJob)
