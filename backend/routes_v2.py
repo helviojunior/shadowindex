@@ -4028,12 +4028,12 @@ async def scan_all_servers_storage(
     servers_skipped = []
     
     for server in servers:
-        # Tentar primeiro com server.id (nova estrutura)
-        storage_path = get_server_storage_path(server.id)
+        # Tentar primeiro com server.guid (nova estrutura)
+        storage_path = get_server_storage_path(server.guid)
         
-        # Se não existir, tentar com guid (estrutura legada)
+        # Se não existir, tentar com id (estrutura legada)
         if not os.path.exists(storage_path):
-            storage_path = get_server_storage_path(server.guid)
+            storage_path = get_server_storage_path(server.id)
         
         # Verificar se há arquivos baixados
         if not os.path.exists(storage_path):
