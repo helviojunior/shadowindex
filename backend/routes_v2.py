@@ -4187,16 +4187,16 @@ async def get_leaks_over_time(db: AsyncSession = Depends(get_db_readonly)):
             file_date = finding.created_at
         
         if file_date:
-            # Agrupar por mês/ano (formato: "MM/YYYY")
-            month_key = file_date.strftime("%m/%Y")
+            # Agrupar por mês/ano (formato: "YYYY/MM")
+            month_key = file_date.strftime("%Y/%m")
             monthly_counts[month_key] += 1
     
-    # Converter para lista ordenada por data
+    # Converter para lista ordenada por data (ordem cronológica)
     result_data = []
-    for month_key in sorted(monthly_counts.keys(), key=lambda x: (x.split('/')[1], x.split('/')[0])):
-        month, year = month_key.split('/')
+    for month_key in sorted(monthly_counts.keys()):
+        year, month = month_key.split('/')
         result_data.append({
-            "date": f"{month}/{year[-2:]}",  # Formato "MM/YY"
+            "date": month_key,  # Formato "YYYY/MM"
             "month": int(month),
             "year": int(year),
             "count": monthly_counts[month_key]
@@ -4207,7 +4207,7 @@ async def get_leaks_over_time(db: AsyncSession = Depends(get_db_readonly)):
         from datetime import datetime
         now = datetime.now()
         result_data = [{
-            "date": now.strftime("%m/%y"),
+            "date": now.strftime("%Y/%m"),
             "month": now.month,
             "year": now.year,
             "count": 0
