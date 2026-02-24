@@ -142,12 +142,18 @@ def check_file_matches_critical_rules(file_path: str, config: dict) -> tuple:
     file_name_lower = file_name.lower()
     _, file_ext = os.path.splitext(file_name_lower)
     
-    # Verificar extensões excluídas primeiro
+    # Verificar arquivos excluídos por nome exato primeiro
+    excluded_files = file_rules.get("excluded_files", [])
+    for excluded in excluded_files:
+        if file_name_lower == excluded.lower():
+            return False, None, None, None
+    
+    # Verificar extensões excluídas
     excluded_extensions = file_rules.get("excluded_extensions", [])
     if file_ext in excluded_extensions:
         return False, None, None, None
     
-    # 1. Verificar nomes exatos
+    # 1. Verificar nomes exatos (críticos)
     exact_names = file_rules.get("exact_names", [])
     for exact_name in exact_names:
         if file_name_lower == exact_name.lower() or file_name_lower.startswith(exact_name.lower() + '.'):
