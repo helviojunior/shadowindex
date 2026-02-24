@@ -32,27 +32,28 @@ DEFAULT_MAX_SIMULTANEOUS_SCANS = 3  # padrão de workers simultâneos
 _scanner_instance: Optional['DirectoryScanner'] = None
 
 # Cache da configuração de Critical Search
-_critical_search_config: Optional[Dict[str, Any]] = None
+# Cache removido - configuração sempre buscada do banco
+# _critical_search_config: Optional[Dict[str, Any]] = None
 
 
 async def get_critical_search_config() -> Dict[str, Any]:
-    """Obtém a configuração de Critical Search do banco de dados"""
-    global _critical_search_config
-    
+    """Obtém a configuração de Critical Search do banco de dados (sem cache)"""
     from database import AsyncSessionLocal, AppSettings
     
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(AppSettings).where(AppSettings.key == "critical_search_config")
-        )
-        setting = result.scalar_one_or_none()
-        
-        if setting and setting.value:
-            try:
-                _critical_search_config = json.loads(setting.value)
-                return _critical_search_config
-            except (json.JSONDecodeError, TypeError):
-                pass
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(AppSettings).where(AppSettings.key == "critical_search_config")
+            )
+            setting = result.scalar_one_or_none()
+            
+            if setting and setting.value:
+                try:
+                    return json.loads(setting.value)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+    except Exception as e:
+        logger.warning(f"Erro ao buscar critical_search_config: {e}")
     
     # Retornar config padrão se não encontrar
     from routes_v2 import DEFAULT_CRITICAL_SEARCH_CONFIG
