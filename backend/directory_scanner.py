@@ -666,16 +666,16 @@ class DirectoryScanner:
         except Exception as e:
             logger.error(f"Error updating job {db_id} status in DB: {e}")
     
-    async def _check_and_trigger_gitleaks(self, root_scan_job: ScanJob):
+    async def _check_and_trigger_gitleaks(self, root_scan_job: ScanJobMemory):
         """
         Verifica se todos os sub-scans de um scan crítico root foram completados.
         Se sim, inicia o GitLeaks automaticamente.
         """
-        # Verificar se há sub-scans pendentes
+        # Verificar se há sub-scans pendentes (usar db_id como parent_id)
         async with self._lock:
             pending_subscans = [
                 j for j in self.scan_queue 
-                if j.parent_id == root_scan_job.id
+                if j.parent_id == root_scan_job.db_id
             ]
             if pending_subscans:
                 # Ainda há sub-scans, será chamado novamente quando completarem
