@@ -2182,9 +2182,28 @@ const ServerBrowser = () => {
         shareName: shareName,
         childrenFetched: !!(item.childrenFetched || item.children_fetched)  // Flag do banco para diretórios visitados
       }));
-      
+
       setNodeChildren(prev => {
-        const newState = { ...prev, [nodeId]: items };
+        // Preservar childrenFetched dos itens anteriores pelo fullPath.
+        // Necessário quando o backend recria itens com novos IDs (ex: forceRefresh)
+        // e a lógica de prev_fetched_paths não consegue restaurar corretamente.
+        const oldItems = prev[nodeId] || [];
+        const oldByPath = {};
+        oldItems.forEach(old => {
+          const fp = old.fullPath || old.full_path;
+          if (fp) oldByPath[fp] = old;
+        });
+
+        const mergedItems = items.map(item => {
+          const fp = item.fullPath || item.full_path;
+          const old = fp ? oldByPath[fp] : null;
+          if (old && (old.childrenFetched || old.children_fetched) && !item.childrenFetched) {
+            return { ...item, childrenFetched: true, children_fetched: true };
+          }
+          return item;
+        });
+
+        const newState = { ...prev, [nodeId]: mergedItems };
         
         // Atualizar o próprio item no nodeChildren do pai para marcar como childrenFetched
         // Isso é necessário para que o ícone azul apareça
