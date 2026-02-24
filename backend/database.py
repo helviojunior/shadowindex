@@ -348,7 +348,7 @@ class ServerItem(Base):
     name = Column(String, nullable=False)
     full_path = Column(String, nullable=False, index=True)
     size = Column(String, nullable=True)
-    modified = Column(String, nullable=True)
+    modified = Column(DateTime(timezone=True), nullable=True)
     access_denied = Column(Boolean, default=False)
     error_message = Column(String, nullable=True)
     has_children = Column(Boolean, default=False)
