@@ -2679,6 +2679,7 @@ async def get_certificate_info(
                     "is_self_signed": is_self_signed,
                     "is_expired": is_expired,
                     "is_not_yet_valid": is_not_yet_valid,
+                    "days_until_expiry": (cert_obj.not_valid_after_utc - now).days if not is_expired else 0,
                     "source": cert_entry["source"]
                 }
                 
