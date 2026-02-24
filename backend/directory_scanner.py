@@ -581,73 +581,125 @@ class DirectoryScanner:
         while self.running:
             try:
                 await self._process_scan_queue()
+                await self._cleanup_completed_tasks()
             except Exception as e:
                 print(f"=== SCANNER ERROR in loop: {e} ===", flush=True)
                 logger.error(f"Error in directory scanner loop: {e}")
             
             await asyncio.sleep(SCANNER_POLL_INTERVAL)
     
+    async def _cleanup_completed_tasks(self):
+        """Limpa tasks completadas do dicionário de tasks ativas"""
+        async with self._lock:
+            completed_ids = [
+                db_id for db_id, task in self._active_tasks.items() 
+                if task.done()
+            ]
+            for db_id in completed_ids:
+                del self._active_tasks[db_id]
+    
     async def _process_scan_queue(self):
-        """Processa jobs de scan na fila"""
+        """Processa jobs de scan na fila usando múltiplos workers"""
         if not self.scan_queue:
             return
         
-        print(f"=== SCANNER: Processing queue with {len(self.scan_queue)} jobs ===", flush=True)
+        # Obter configuração de workers simultâneos
+        max_workers = await self._get_max_simultaneous_scans()
         
-        from database import Server, DownloadJob, AsyncSessionLocal
-        
-        # Pegar um lote de jobs para processar
+        # Contar quantos workers estão ativos
         async with self._lock:
-            jobs_to_process = self.scan_queue[:MAX_DIRS_PER_CYCLE]
-            self.scan_queue = self.scan_queue[MAX_DIRS_PER_CYCLE:]
+            active_count = len([t for t in self._active_tasks.values() if not t.done()])
         
-        async with AsyncSessionLocal() as db:
-            for scan_job in jobs_to_process:
-                # Verificar se foi cancelado (por db_id)
-                if scan_job.db_id in self.cancelled_ids or scan_job.parent_id in self.cancelled_ids:
-                    scan_job.status = 'cancelled'
-                    self.completed_scans.append(scan_job)
-                    print(f"=== SCANNER: Skipping cancelled job {scan_job.db_id} ===", flush=True)
+        available_slots = max_workers - active_count
+        
+        if available_slots <= 0:
+            return
+        
+        print(f"=== SCANNER: Queue={len(self.scan_queue)}, Active={active_count}, MaxWorkers={max_workers}, Available={available_slots} ===", flush=True)
+        
+        # Pegar jobs para processar (respeitando slots disponíveis)
+        async with self._lock:
+            jobs_to_start = []
+            remaining_queue = []
+            
+            for job in self.scan_queue:
+                # Verificar se foi cancelado
+                if job.db_id in self.cancelled_ids or job.parent_id in self.cancelled_ids:
+                    job.status = 'cancelled'
+                    self.completed_scans.append(job)
+                    print(f"=== SCANNER: Skipping cancelled job {job.db_id} ===", flush=True)
                     continue
                 
-                try:
-                    scan_job.status = 'scanning'
+                # Verificar se já está sendo processado
+                if job.db_id and job.db_id in self._active_tasks:
+                    remaining_queue.append(job)
+                    continue
+                
+                if len(jobs_to_start) < available_slots:
+                    jobs_to_start.append(job)
+                else:
+                    remaining_queue.append(job)
+            
+            self.scan_queue = remaining_queue
+        
+        # Iniciar tasks para os jobs selecionados
+        for scan_job in jobs_to_start:
+            scan_job.status = 'scanning'
+            
+            # Atualizar status no banco para 'running'
+            await self._update_job_status_in_db(scan_job.db_id, 'running', started=True)
+            
+            # Criar task assíncrona para processar o job
+            task = asyncio.create_task(self._process_single_scan(scan_job))
+            
+            # Armazenar task se tiver db_id (jobs root)
+            if scan_job.db_id:
+                async with self._lock:
+                    self._active_tasks[scan_job.db_id] = task
+            
+            print(f"=== SCANNER: Started worker for job {scan_job.db_id or scan_job.id}: {scan_job.path} ===", flush=True)
+    
+    async def _process_single_scan(self, scan_job: ScanJobMemory):
+        """Processa um único job de scan em sua própria task"""
+        from database import AsyncSessionLocal
+        
+        try:
+            async with AsyncSessionLocal() as db:
+                print(f"=== SCANNER: Scanning directory: {scan_job.path} ===", flush=True)
+                await self._scan_directory(db, scan_job)
+                scan_job.status = 'completed'
+                
+                # Atualizar status no banco para 'completed'
+                await self._update_job_status_in_db(
+                    scan_job.db_id, 
+                    'completed', 
+                    completed=True,
+                    total_files=scan_job.files_found,
+                    critical_files=scan_job.critical_files_found
+                )
+                
+                print(f"=== SCANNER: Completed job {scan_job.db_id or scan_job.id}: {scan_job.files_found} files, {scan_job.dirs_found} dirs ===", flush=True)
+                
+                # Verificar se é um scan crítico ROOT que completou
+                if scan_job.critical_only and scan_job.parent_id is None:
+                    await self._check_and_trigger_gitleaks(scan_job)
                     
-                    # Atualizar status no banco para 'running'
-                    await self._update_job_status_in_db(scan_job.db_id, 'running', started=True)
-                    
-                    print(f"=== SCANNER: Scanning directory: {scan_job.path} ===", flush=True)
-                    await self._scan_directory(db, scan_job)
-                    scan_job.status = 'completed'
-                    self.completed_scans.append(scan_job)
-                    
-                    # Atualizar status no banco para 'completed'
-                    await self._update_job_status_in_db(
-                        scan_job.db_id, 
-                        'completed', 
-                        completed=True,
-                        total_files=scan_job.files_found,
-                        critical_files=scan_job.critical_files_found
-                    )
-                    
-                    # Manter apenas últimos 50 completados
-                    if len(self.completed_scans) > 50:
-                        self.completed_scans = self.completed_scans[-50:]
-                    
-                    # Verificar se é um scan crítico ROOT que completou
-                    # e se não há mais sub-scans pendentes
-                    if scan_job.critical_only and scan_job.parent_id is None:
-                        await self._check_and_trigger_gitleaks(scan_job)
-                        
-                except Exception as e:
-                    scan_job.status = 'failed'
-                    self.completed_scans.append(scan_job)
-                    
-                    # Atualizar status no banco para 'failed'
-                    await self._update_job_status_in_db(scan_job.db_id, 'failed', completed=True, error=str(e))
-                    
-                    print(f"=== SCANNER ERROR scanning {scan_job.path}: {e} ===", flush=True)
-                    logger.error(f"Error scanning directory {scan_job.path}: {e}")
+        except Exception as e:
+            scan_job.status = 'failed'
+            
+            # Atualizar status no banco para 'failed'
+            await self._update_job_status_in_db(scan_job.db_id, 'failed', completed=True, error=str(e))
+            
+            print(f"=== SCANNER ERROR scanning {scan_job.path}: {e} ===", flush=True)
+            logger.error(f"Error scanning directory {scan_job.path}: {e}")
+        
+        finally:
+            # Adicionar aos completados
+            async with self._lock:
+                self.completed_scans.append(scan_job)
+                # Manter apenas últimos 50 completados
+                if len(self.completed_scans) > 50:
+                    self.completed_scans = self.completed_scans[-50:]
     
     async def _update_job_status_in_db(self, db_id: int, status: str, started: bool = False, completed: bool = False, 
                                         total_files: int = None, critical_files: int = None, error: str = None):
