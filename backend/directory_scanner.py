@@ -778,9 +778,14 @@ class DirectoryScanner:
         
         # Iniciar GitLeaks
         try:
+            import os
             from leaks_service import get_gitleaks_service
+            from storage_utils import get_server_storage_path
             service = get_gitleaks_service()
-            await service.start_scan(root_scan_job.path, root_scan_job.server_id)
+            storage_path = get_server_storage_path(root_scan_job.server_guid)
+            if not os.path.exists(storage_path):
+                storage_path = get_server_storage_path(root_scan_job.server_id)
+            await service.start_scan(str(storage_path), root_scan_job.server_id)
             print(f"=== SCANNER: GitLeaks scan started for server {root_scan_job.server_id} ===", flush=True)
         except Exception as e:
             print(f"=== SCANNER ERROR starting GitLeaks: {e} ===", flush=True)
