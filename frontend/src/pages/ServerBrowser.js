@@ -75,7 +75,65 @@ const API = `${BACKEND_URL}/api`;
 const API_V2 = `${BACKEND_URL}/api/v2`;  // API V2 com endpoints baseados em IDs
 
 // Extensões de arquivos de texto que podem ser visualizados
-const TEXT_EXTENSIONS = ['.txt', '.md', '.xml', '.json', '.config', '.cfg', '.ini', '.log', '.csv', '.yaml', '.yml', '.html', '.htm', '.css', '.js', '.ts', '.py', '.sh', '.bat', '.ps1', '.sql', '.env', '.reg', '.asp', '.aspx', '.asmx', '.conf', '.asa', '.asax', '.inc', '.cs', '.ascx', '.gitignore', '.gitattributes', '.gitmodules', '.dockerignore', '.editorconfig', '.eslintrc', '.prettierrc', '.babelrc', '.npmrc', '.nvmrc', '.htaccess'];
+const TEXT_EXTENSIONS = [
+  // Texto básico
+  '.txt', '.md', '.markdown', '.rst', '.text',
+  // Configuração
+  '.xml', '.json', '.config', '.cfg', '.ini', '.conf', '.yaml', '.yml', '.toml', '.properties',
+  '.env', '.env.local', '.env.development', '.env.production', '.env.example',
+  '.htaccess', '.htpasswd',
+  // Logs
+  '.log',
+  // Dados
+  '.csv', '.tsv',
+  // Web
+  '.html', '.htm', '.xhtml', '.css', '.scss', '.sass', '.less',
+  // JavaScript/TypeScript
+  '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.vue', '.svelte',
+  // Python
+  '.py', '.pyw', '.pyi', '.pyx',
+  // Shell/Scripts
+  '.sh', '.bash', '.zsh', '.fish', '.csh', '.ksh',
+  '.bat', '.cmd',
+  '.ps1', '.psm1', '.psd1',  // PowerShell
+  '.vbs', '.vbe', '.wsf', '.wsh',  // VBScript
+  '.ahk',  // AutoHotkey
+  '.awk',
+  // Perl
+  '.pl', '.pm', '.perl',
+  // Ruby
+  '.rb', '.rake', '.gemspec',
+  // PHP
+  '.php', '.php3', '.php4', '.php5', '.phtml',
+  // Java/Kotlin/Scala
+  '.java', '.kt', '.kts', '.scala', '.groovy', '.gradle',
+  // C/C++/C#
+  '.c', '.h', '.cpp', '.hpp', '.cc', '.hh', '.cxx', '.hxx',
+  '.cs', '.csx',
+  // Go
+  '.go',
+  // Rust
+  '.rs',
+  // SQL
+  '.sql', '.ddl', '.dml',
+  // ASP.NET
+  '.asp', '.aspx', '.asmx', '.asa', '.asax', '.ascx', '.master',
+  // Outros
+  '.reg',  // Windows Registry
+  '.inc',  // Include files
+  '.inf',  // Windows INF
+  '.gitignore', '.gitattributes', '.gitmodules',
+  '.dockerignore', '.editorconfig', '.eslintrc', '.prettierrc', '.babelrc',
+  '.npmrc', '.nvmrc', '.yarnrc',
+  // Terraform/Ansible
+  '.tf', '.tfvars', '.hcl',
+  // Kubernetes/Docker
+  '.dockerfile',
+  // Markup
+  '.tex', '.latex', '.bib',
+  // Data serialization
+  '.plist', '.strings'
+];
 
 // Arquivos especiais sem extensão que são texto (começam com .)
 const SPECIAL_TEXT_FILES = ['.gitignore', '.gitattributes', '.gitmodules', '.dockerignore', '.editorconfig', '.eslintrc', '.prettierrc', '.babelrc', '.npmrc', '.nvmrc', '.htaccess', 'Dockerfile', 'Makefile', 'README', 'LICENSE', 'CHANGELOG'];
