@@ -1520,73 +1520,20 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         
         mimetype = get_file_mimetype(local_path)
         
-        # Atualizar campos adicionais no registro
-        if existing:
-            # Atualizar existente
-            existing.sanitized_path = sanitized_path
-            existing.sha1_hash = sha1_hash
-            existing.file_size = file_size
-            existing.mimetype = mimetype
-            existing.downloaded_at = datetime.now(timezone.utc)
-            existing.local_path = local_path
-            existing.file_name = item.name
-            existing.server_id = server.id
-            downloaded_file = existing
-        else:
-            # Atualizar o registro criado
-            downloaded_file.sanitized_path = sanitized_path
-            downloaded_file.sha1_hash = sha1_hash
-            downloaded_file.file_size = file_size
-            downloaded_file.mimetype = mimetype
-            downloaded_file.local_path = local_path
-            downloaded_file.file_name = item.name
-            downloaded_file.server_id = server.id
+        # Atualizar campos do DownloadedFile
+        downloaded_file.sanitized_path = sanitized_path
+        downloaded_file.sha1_hash = sha1_hash
+        downloaded_file.file_size = file_size
+        downloaded_file.mimetype = mimetype
+        downloaded_file.downloaded_at = datetime.now(timezone.utc)
+        downloaded_file.local_path = local_path
+        downloaded_file.file_name = item.name
+        downloaded_file.server_id = server.id
         
-        # Criar/atualizar FileVersion
-        existing_version = await db.execute(
-            select(FileVersion).where(
-                FileVersion.server_guid == server.guid,
-                FileVersion.file_path == item.full_path,
-                FileVersion.sha1_hash == sha1_hash
-            )
-        )
-        file_version = existing_version.scalar_one_or_none()
-        
-        if not file_version:
-            # Marcar versões anteriores como não-atuais
-            prev_versions = await db.execute(
-                select(FileVersion).where(
-                    FileVersion.server_guid == server.guid,
-                    FileVersion.file_path == item.full_path,
-                    FileVersion.is_current == True
-                )
-            )
-            for v in prev_versions.scalars().all():
-                v.is_current = False
-            
-            # Contar versões existentes
-            version_count_result = await db.execute(
-                select(FileVersion).where(
-                    FileVersion.server_guid == server.guid,
-                    FileVersion.file_path == item.full_path
-                )
-            )
-            versions_list = version_count_result.scalars().all()
-            next_version_num = len(versions_list) + 1
-            
-            # Criar nova versão
-            file_version = FileVersion(
-                server_guid=server.guid,
-                share_name=item.share_name,
-                file_path=item.full_path,
-                version_number=next_version_num,
-                sha1_hash=sha1_hash,
-                file_size=file_size,
-                mimetype=mimetype,
-                local_path=local_path,
-                is_current=True
-            )
-            db.add(file_version)
+        # Atualizar FileVersion com os dados do arquivo salvo
+        file_version.local_path = sanitized_path
+        file_version.mimetype = mimetype
+        file_version.file_size = file_size
         
         await db.commit()
         await db.refresh(downloaded_file)
