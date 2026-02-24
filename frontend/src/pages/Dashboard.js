@@ -314,15 +314,10 @@ const Dashboard = () => {
     { name: 'Info', value: gitleaksStats.severity_counts.info, color: '#3B82F6' },
   ].filter(item => item.value > 0) : [];
 
-  // Dados para o gráfico de Risk vs Time
-  const riskOverTimeData = [
-    { date: '01/02', risk: 0 },
-    { date: '05/02', risk: gitleaksStats?.total_findings || 0 },
-    { date: '10/02', risk: gitleaksStats?.total_findings || 0 },
-    { date: '15/02', risk: gitleaksStats?.total_findings || 0 },
-    { date: '20/02', risk: gitleaksStats?.total_findings || 0 },
-    { date: 'Hoje', risk: gitleaksStats?.total_findings || 0 },
-  ];
+  // Dados para o gráfico de Risk vs Time (usando dados reais do backend)
+  const riskOverTimeData = leaksOverTime.length > 0 
+    ? leaksOverTime.map(item => ({ date: item.date, risk: item.count }))
+    : [{ date: 'Hoje', risk: gitleaksStats?.total_findings || 0 }];
 
   // Calcular Risk Score
   const calculateRiskScore = () => {
