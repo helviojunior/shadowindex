@@ -1,9 +1,29 @@
 version: "3.8"
 
 # Docker-compose for development/testing
-# Includes SOAP mock server and Tika for OCR
+# Includes SOAP mock server, Tika for OCR, and PostgreSQL
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: shadowindex-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shadowindex
+      POSTGRES_PASSWORD: shadowindex
+      POSTGRES_DB: shadowindex
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shadowindex -d shadowindex"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - shadowindex-net
+
   tika:
     image: apache/tika:latest-full
     container_name: shadowindex-tika-dev
@@ -42,8 +62,12 @@ services:
       CORS_ORIGINS: "*"
       TIKA_SERVER_URL: "http://tika:9998"
       SOAP_MOCK_URL: "http://soap-mock:9999/Test.asmx"
+      # PostgreSQL - Comentar para usar SQLite
+      POSTGRES_URL: "postgresql://shadowindex:shadowindex@postgres:5432/shadowindex"
     command: ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
     depends_on:
+      postgres:
+        condition: service_healthy
       tika:
         condition: service_healthy
       soap-mock:
@@ -68,6 +92,9 @@ services:
       - backend
     networks:
       - shadowindex-net
+
+volumes:
+  postgres_data_dev:
 
 networks:
   shadowindex-net:
