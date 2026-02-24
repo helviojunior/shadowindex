@@ -43,6 +43,8 @@ services:
     restart: unless-stopped
     ports:
       - "9090:8001"
+    extra_hosts:
+      - "proxy.local:host-gateway"
     volumes:
       - ./shadowindex_data:/app/data
     environment:
