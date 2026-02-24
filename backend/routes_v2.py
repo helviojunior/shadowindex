@@ -4146,6 +4146,79 @@ async def get_gitleaks_stats(db: AsyncSession = Depends(get_db_readonly)):
     }
 
 
+@router.get("/gitleaks/leaks-over-time")
+async def get_leaks_over_time(db: AsyncSession = Depends(get_db_readonly)):
+    """
+    Retorna dados para o gráfico de Leaks vs. Tempo, agrupados por mês/ano
+    usando a data de última modificação do arquivo (file_modified).
+    """
+    from sqlalchemy import func, extract, case
+    from collections import defaultdict
+    
+    # Buscar todos os findings com seus arquivos associados
+    # Fazemos join com DownloadedFile através do file_path ou extracted_file_version_id
+    findings_result = await db.execute(
+        select(GitleaksFinding, DownloadedFile)
+        .outerjoin(
+            DownloadedFile,
+            GitleaksFinding.extracted_file_version_id == DownloadedFile.id
+        )
+        .where(GitleaksFinding.is_false_positive == False)
+    )
+    
+    rows = findings_result.all()
+    
+    # Se não conseguiu fazer join pelo file_version_id, tentar pelo file_path
+    # Agrupar por mês/ano da data de modificação do arquivo
+    monthly_counts = defaultdict(int)
+    
+    for finding, downloaded_file in rows:
+        file_date = None
+        
+        # Tentar obter a data de modificação do arquivo
+        if downloaded_file and downloaded_file.downloaded_at:
+            # Usar a data de download como proxy para data de modificação
+            file_date = downloaded_file.downloaded_at
+        elif finding.scanned_at:
+            # Fallback: usar data do scan
+            file_date = finding.scanned_at
+        elif finding.created_at:
+            # Último fallback: usar data de criação do finding
+            file_date = finding.created_at
+        
+        if file_date:
+            # Agrupar por mês/ano (formato: "MM/YYYY")
+            month_key = file_date.strftime("%m/%Y")
+            monthly_counts[month_key] += 1
+    
+    # Converter para lista ordenada por data
+    result_data = []
+    for month_key in sorted(monthly_counts.keys(), key=lambda x: (x.split('/')[1], x.split('/')[0])):
+        month, year = month_key.split('/')
+        result_data.append({
+            "date": f"{month}/{year[-2:]}",  # Formato "MM/YY"
+            "month": int(month),
+            "year": int(year),
+            "count": monthly_counts[month_key]
+        })
+    
+    # Se não houver dados, retornar pelo menos o mês atual com 0
+    if not result_data:
+        from datetime import datetime
+        now = datetime.now()
+        result_data = [{
+            "date": now.strftime("%m/%y"),
+            "month": now.month,
+            "year": now.year,
+            "count": 0
+        }]
+    
+    return {
+        "data": result_data,
+        "total": sum(item["count"] for item in result_data)
+    }
+
+
 # ==========================================
 # Manual Leak Registration
 # ==========================================
