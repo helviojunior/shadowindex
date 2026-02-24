@@ -41,8 +41,6 @@ services:
       dockerfile: Dockerfile
     container_name: shadowindex-backend
     restart: unless-stopped
-    ports:
-      - "9090:8001"
     extra_hosts:
       - "proxy.local:host-gateway"
     volumes:
@@ -62,20 +60,18 @@ services:
     networks:
       - shadowindex-net
 
-  frontend:
+  nginx:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: nginx/Dockerfile
       args:
-        REACT_APP_BACKEND_URL: "${REACT_APP_BACKEND_URL:-http://localhost:9090}"
-    container_name: shadowindex-frontend
+        REACT_APP_BACKEND_URL: ""
+    container_name: shadowindex-nginx
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
       TZ: "America/Sao_Paulo"
-      # Variável também em runtime (para yarn start)
-      REACT_APP_BACKEND_URL: "${REACT_APP_BACKEND_URL:-http://localhost:9090}"
     depends_on:
       - backend
     networks:
