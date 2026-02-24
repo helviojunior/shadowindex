@@ -27,6 +27,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -3202,121 +3208,179 @@ const ServerBrowser = () => {
     
     return (
       <div key={`${nodeId}-${isAccessDenied ? 'denied' : 'ok'}`}>
-        <div
-          className={`group flex items-center cursor-pointer hover:bg-muted/50 rounded transition-colors ${
-            isSelected ? 'bg-primary/10 text-primary' : ''
-          } ${isAccessDenied ? 'opacity-75' : ''}`}
-          style={{ paddingLeft: '8px', paddingRight: '8px', minHeight: '32px' }}
-          onClick={handleNodeClick}
-          data-testid={`tree-node-${safeTestId}`}
-          data-item-path={path}
-          data-node-id={nodeId}
-        >
-          {/* Tree Lines - Renderiza linhas verticais para cada nível de profundidade */}
-          {depth > 0 && (
-            <div className="flex items-stretch" style={{ height: '32px' }}>
-              {/* Linhas verticais dos pais */}
-              {parentLines.map((showLine, idx) => (
-                <div 
-                  key={idx} 
-                  className="w-4 flex justify-center"
-                >
-                  {showLine && (
-                    <div className="w-px bg-border/60" style={{ height: '100%' }} />
-                  )}
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              className={`group flex items-center cursor-pointer hover:bg-muted/50 rounded transition-colors ${
+                isSelected ? 'bg-primary/10 text-primary' : ''
+              } ${isAccessDenied ? 'opacity-75' : ''}`}
+              style={{ paddingLeft: '8px', paddingRight: '8px', minHeight: '32px' }}
+              onClick={handleNodeClick}
+              data-testid={`tree-node-${safeTestId}`}
+              data-item-path={path}
+              data-node-id={nodeId}
+            >
+              {/* Tree Lines - Renderiza linhas verticais para cada nível de profundidade */}
+              {depth > 0 && (
+                <div className="flex items-stretch" style={{ height: '32px' }}>
+                  {/* Linhas verticais dos pais */}
+                  {parentLines.map((showLine, idx) => (
+                    <div
+                      key={idx}
+                      className="w-4 flex justify-center"
+                    >
+                      {showLine && (
+                        <div className="w-px bg-border/60" style={{ height: '100%' }} />
+                      )}
+                    </div>
+                  ))}
+                  {/* Linha conectora do item atual */}
+                  <div className="w-4 flex items-center relative">
+                    {/* Linha vertical (metade superior ou completa dependendo se é último) */}
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 w-px bg-border/60"
+                      style={{
+                        top: 0,
+                        height: isLastChild ? '50%' : '100%'
+                      }}
+                    />
+                    {/* Linha horizontal */}
+                    <div
+                      className="absolute bg-border/60"
+                      style={{
+                        left: '50%',
+                        width: isDirectory ? '50%' : 'calc(50% + 20px)', // Estende para arquivos para compensar espaço do botão
+                        height: '1px',
+                        top: '50%'
+                      }}
+                    />
+                  </div>
                 </div>
-              ))}
-              {/* Linha conectora do item atual */}
-              <div className="w-4 flex items-center relative">
-                {/* Linha vertical (metade superior ou completa dependendo se é último) */}
-                <div 
-                  className="absolute left-1/2 -translate-x-1/2 w-px bg-border/60" 
-                  style={{ 
-                    top: 0, 
-                    height: isLastChild ? '50%' : '100%'
-                  }} 
-                />
-                {/* Linha horizontal */}
-                <div 
-                  className="absolute bg-border/60" 
-                  style={{ 
-                    left: '50%', 
-                    width: isDirectory ? '50%' : 'calc(50% + 20px)', // Estende para arquivos para compensar espaço do botão
-                    height: '1px',
-                    top: '50%'
-                  }} 
-                />
-              </div>
-            </div>
-          )}
-          
-          {/* Expand/Collapse Arrow */}
-          {isDirectory ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleNode(nodeId, isShare ? 'share' : item.type, path, currentShareName);
-              }}
-              className="p-0.5 hover:bg-muted rounded flex-shrink-0"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              ) : isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               )}
-            </button>
-          ) : (
-            <span className="w-5 flex-shrink-0" />
-          )}
-          
-          {/* Icon */}
-          <div className="mx-1 flex-shrink-0">
-            {isShare ? (
-              <HardDrive className={`w-4 h-4 ${iconColor}`} />
-            ) : isDirectory ? (
-              isExpanded ? (
-                <FolderOpen className={`w-4 h-4 ${iconColor}`} />
+
+              {/* Expand/Collapse Arrow */}
+              {isDirectory ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleNode(nodeId, isShare ? 'share' : item.type, path, currentShareName);
+                  }}
+                  className="p-0.5 hover:bg-muted rounded flex-shrink-0"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  ) : isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </button>
               ) : (
-                <Folder className={`w-4 h-4 ${iconColor}`} />
-              )
-            ) : isDownloaded ? (
-              <FileCheck className={`w-4 h-4 ${fileIconColor}`} />
-            ) : (
-              <File className={`w-4 h-4 ${fileIconColor}`} />
-            )}
-          </div>
-          
-          {/* Name */}
-          <span 
-            className={`text-sm truncate flex-1 ${textColor}`} 
-            title={isShare ? item.share_name : (item.errorMessage || item.name)}
-          >
-            {isShare ? String(item.share_name) : String(item.name)}
-            {isAccessDenied && (
-              <span className="ml-2 text-xs text-red-400">(Acesso Negado)</span>
-            )}
-          </span>
-          
-          {/* Force Refresh Button - for directories and shares (only when previously fetched, only on hover) */}
-          {isDirectory && childrenFetched && (
-            <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                // Forçar refresh ignorando cache
+                <span className="w-5 flex-shrink-0" />
+              )}
+
+              {/* Icon */}
+              <div className="mx-1 flex-shrink-0">
+                {isShare ? (
+                  <HardDrive className={`w-4 h-4 ${iconColor}`} />
+                ) : isDirectory ? (
+                  isExpanded ? (
+                    <FolderOpen className={`w-4 h-4 ${iconColor}`} />
+                  ) : (
+                    <Folder className={`w-4 h-4 ${iconColor}`} />
+                  )
+                ) : isDownloaded ? (
+                  <FileCheck className={`w-4 h-4 ${fileIconColor}`} />
+                ) : (
+                  <File className={`w-4 h-4 ${fileIconColor}`} />
+                )}
+              </div>
+
+              {/* Name */}
+              <span
+                className={`text-sm truncate flex-1 ${textColor}`}
+                title={isShare ? item.share_name : (item.errorMessage || item.name)}
+              >
+                {isShare ? String(item.share_name) : String(item.name)}
+                {isAccessDenied && (
+                  <span className="ml-2 text-xs text-red-400">(Acesso Negado)</span>
+                )}
+              </span>
+
+              {/* Force Refresh Button - for directories and shares (only when previously fetched, only on hover) */}
+              {isDirectory && childrenFetched && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    // Forçar refresh ignorando cache
+                    setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
+                    await loadDirectory(nodeId, path, currentShareName, true); // true = forceRefresh
+                    toast.success(`Diretório atualizado: ${isShare ? item.share_name : item.name}`);
+                  }}
+                  className="p-1 hover:bg-muted rounded flex-shrink-0 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Forçar atualização (ignorar cache)"
+                  data-testid={`force-refresh-${safeTestId}`}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            {/* Abrir em nova aba */}
+            <ContextMenuItem onClick={() => {
+              window.open(`${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(path)}&from=${encodeURIComponent(window.location.pathname)}`, '_blank');
+            }}>
+              Abrir em nova aba
+            </ContextMenuItem>
+            {/* Recarregar - para diretórios/shares */}
+            {isDirectory && (
+              <ContextMenuItem onClick={async () => {
                 setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
-                await loadDirectory(nodeId, path, currentShareName, true); // true = forceRefresh
-                toast.success(`Diretório atualizado: ${isShare ? item.share_name : item.name}`);
-              }}
-              className="p-1 hover:bg-muted rounded flex-shrink-0 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Forçar atualização (ignorar cache)"
-              data-testid={`force-refresh-${safeTestId}`}
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+                await loadDirectory(nodeId, path, currentShareName, true);
+                toast.success(`Recarregado: ${isShare ? item.share_name : item.name}`);
+              }}>
+                Recarregar
+              </ContextMenuItem>
+            )}
+            {/* Sync - apenas arquivos */}
+            {isFile && (
+              <ContextMenuItem onClick={async () => {
+                // Selecionar o item primeiro para que handleDownload funcione
+                handleSelectItem(item, item.type, path, currentShareName);
+                // Chamar download diretamente com os dados do nó
+                const fileSize = parseInt(item.size) || 0;
+                const filePath = item.fullPath || item.full_path || path;
+                const ONE_MB = 1024 * 1024;
+                if (fileSize > ONE_MB) {
+                  try {
+                    const response = await axios.post(`${API_V2}/downloads`, {
+                      server_id: parseInt(serverId),
+                      share_name: currentShareName,
+                      file_path: filePath,
+                      file_name: item.name,
+                      file_size: fileSize,
+                      max_file_size_bytes: null,
+                      max_depth: null
+                    });
+                    if (response.data.success) {
+                      toast.success(`Sync adicionado à fila (${(fileSize / ONE_MB).toFixed(2)} MB)`);
+                    }
+                  } catch (error) {
+                    const errorMsg = error.response?.data?.detail || 'Erro ao adicionar sync à fila';
+                    toast.error(errorMsg);
+                  }
+                } else {
+                  // Para arquivos pequenos, selecionar e chamar handleDownload
+                  // handleDownload usa selectedItem, que acabou de ser setado
+                  setTimeout(() => handleDownload(), 100);
+                }
+              }}>
+                Sync
+              </ContextMenuItem>
+            )}
+          </ContextMenuContent>
+        </ContextMenu>
         
         {/* Children */}
         {isExpanded && children.length > 0 && (
