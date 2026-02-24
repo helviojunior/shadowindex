@@ -2654,6 +2654,7 @@ async def get_certificate_info(
                     issuer_parts[attr.oid._name] = attr.value
                 
                 thumbprint = cert_obj.fingerprint(hashes.SHA1()).hex().upper()
+                thumbprint_sha256 = cert_obj.fingerprint(hashes.SHA256()).hex().upper()
                 
                 # Guardar thumbprint do primeiro (para leak)
                 if main_thumbprint is None:
