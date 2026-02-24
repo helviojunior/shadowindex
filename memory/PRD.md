@@ -30,7 +30,7 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
-### 2025-12-XX (Session 44 - SYNC Download Path Bug Fix)
+### 2025-12-XX (Session 44 - SYNC Download Path Bug Fix & Certificate Display Fix)
 - [x] **Correção crítica: Bug no caminho de download via SYNC**
   - Problema: Arquivos baixados via SYNC estavam sendo salvos em `/app/data/storage/3` (ID numérico) em vez de `/app/data/storage/{server_guid}/...`
   - Causa raiz: Endpoints `download_item` e `download_file_by_path` em `routes_v2.py` usavam `save_file_by_id(server.id, ...)` em vez de `save_file_with_standard_path(server.guid, ...)`
@@ -38,6 +38,18 @@ Portuguese (pt-BR)
   - Arquivos modificados: `backend/routes_v2.py` (linhas 1360-1540 e 1785-2010)
   - Funções corrigidas: `download_item()`, `download_file_by_path()`
   - Adicionada importação de `update` do SQLAlchemy para marcar versões antigas como não-atuais
+- [x] **Correção: Datas do certificado mostrando "Invalid Date"**
+  - Problema: As datas "Válido de" e "Válido até" na visualização de certificados estavam mostrando "Invalid Date"
+  - Causa raiz: Frontend usava `cert.not_valid_before` mas backend retornava `cert.not_before`
+  - Correção no frontend: Alterado para usar `cert.not_before` e `cert.not_after`
+  - Correção no backend: Adicionados campos faltantes na resposta do endpoint `/certificate-info`:
+    - `index`: Número do certificado na lista
+    - `days_until_expiry`: Dias até a expiração
+    - `fingerprint_sha1` e `fingerprint_sha256`: Impressões digitais
+    - `signature_algorithm`: Algoritmo de assinatura
+    - `public_key`: Informações da chave pública (algorithm, key_size)
+    - `extensions`: Lista de extensões do certificado
+  - Arquivos modificados: `frontend/src/pages/ServerBrowser.js`, `backend/routes_v2.py`
 
 ### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
 - [x] **Correção crítica de concorrência no OCR Worker:**
