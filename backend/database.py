@@ -491,7 +491,7 @@ DEFAULT_SETTINGS = {
     'auto_ocr_enabled': ('true', 'Habilita OCR automático após download'),
     'auto_ocr_extensions': ('.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.pfx,.p12,.cer,.crt,.pem', 'Extensões de arquivo para OCR automático'),
     'auto_ocr_mimetypes': ('application/pdf,image/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument,application/x-pkcs12,application/x-x509-ca-cert', 'MIME types para OCR automático (parcial match)'),
-    'auto_ocr_excluded_extensions': ('.svg,.jpeg,.jpg,.png,.gif,.ico,.css,.html,.htm,.ttf,.woff,.woff2,.pyc,.exe,.dll,.msi,.emf,.bdb,.vox,.bin,.dat,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc,.ascx,.config,.aspx,.asp,.asmx,.json', 'Extensões excluídas do OCR automático (precedência sobre inclusão)'),
+    'auto_ocr_excluded_extensions': ('.svg,.jpeg,.jpg,.png,.gif,.ico,.webp,.tiff,.tif,.psd,.raw,.heic,.heif,.css,.html,.htm,.ttf,.otf,.woff,.woff2,.eot,.pyc,.pyo,.class,.jar,.exe,.dll,.msi,.sys,.drv,.ocx,.cpl,.scr,.so,.dylib,.a,.bin,.dat,.pdb,.obj,.o,.mp4,.avi,.mkv,.mov,.wmv,.flv,.webm,.m4v,.mpeg,.mpg,.mp3,.wav,.wma,.aac,.flac,.ogg,.m4a,.zip,.rar,.7z,.tar,.gz,.tgz,.bz2,.xz,.lzma,.iso,.img,.vhd,.vhdx,.vmdk,.qcow2,.cab,.msp,.msm,.msu,.mdb,.accdb,.ldb,.etl,.evtx,.dmp,.emf,.bdb,.vox,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc,.ascx,.config,.aspx,.asp,.asmx,.json', 'Extensões excluídas do OCR automático (precedência sobre inclusão)'),
 }
 
 
