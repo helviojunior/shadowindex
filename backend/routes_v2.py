@@ -478,6 +478,156 @@ async def quick_search(
     }
 
 
+@router.get("/search/global")
+async def global_search(
+    q: str,
+    limit: int = 30,
+    db: AsyncSession = Depends(get_db_readonly)
+):
+    """
+    Busca global em todos os objetos do sistema:
+    servidores, arquivos/diretórios descobertos, arquivos baixados,
+    conteúdo OCR e findings do GitLeaks.
+    Requer ao menos 3 caracteres.
+    """
+    from sqlalchemy import or_
+
+    if len(q) < 3:
+        return {"query": q, "results": [], "total": 0}
+
+    per_type = max(5, limit // 5)
+    results = []
+
+    # 1. Servidores (nome, IP)
+    srv_q = await db.execute(
+        select(Server).where(
+            or_(Server.name.ilike(f"%{q}%"), Server.ip.ilike(f"%{q}%"))
+        ).limit(per_type)
+    )
+    for s in srv_q.scalars().all():
+        results.append({
+            "type": "server",
+            "id": s.id,
+            "title": s.name,
+            "subtitle": s.ip,
+            "server_id": s.id,
+            "server_name": s.name,
+            "server_ip": s.ip,
+            "navigate_to": f"/servers/{s.id}",
+        })
+
+    # 2. Itens descobertos (arquivos e diretórios)
+    items_q = await db.execute(
+        select(ServerItem, Server)
+        .join(Server, Server.guid == ServerItem.server_guid)
+        .where(ServerItem.name.ilike(f"%{q}%"))
+        .limit(per_type)
+    )
+    for item, srv in items_q.all():
+        results.append({
+            "type": "directory" if item.item_type == "Directory" else "item",
+            "id": item.id,
+            "title": item.name,
+            "subtitle": item.full_path,
+            "path": item.full_path,
+            "share_name": item.share_name,
+            "server_id": srv.id,
+            "server_name": srv.name,
+            "server_ip": srv.ip,
+            "navigate_to": f"/servers/{srv.id}",
+        })
+
+    # 3. Arquivos baixados (nome, path, mimetype, sha1)
+    seen_paths = {r.get("path") for r in results if r.get("path")}
+    files_q = await db.execute(
+        select(DownloadedFile, Server)
+        .join(Server, Server.guid == DownloadedFile.server_guid)
+        .where(
+            or_(
+                DownloadedFile.file_name.ilike(f"%{q}%"),
+                DownloadedFile.file_path.ilike(f"%{q}%"),
+                DownloadedFile.mimetype.ilike(f"%{q}%"),
+                DownloadedFile.sha1_hash.ilike(f"%{q}%"),
+            )
+        ).limit(per_type)
+    )
+    for df, srv in files_q.all():
+        if df.file_path in seen_paths:
+            continue
+        name = df.file_name or (df.file_path.split("\\")[-1] if "\\" in df.file_path else df.file_path.split("/")[-1])
+        results.append({
+            "type": "file",
+            "id": df.id,
+            "title": name,
+            "subtitle": df.file_path,
+            "path": df.file_path,
+            "share_name": df.share_name,
+            "mimetype": df.mimetype,
+            "server_id": srv.id,
+            "server_name": srv.name,
+            "server_ip": srv.ip,
+            "navigate_to": f"/servers/{srv.id}",
+        })
+        seen_paths.add(df.file_path)
+
+    # 4. Conteúdo OCR
+    ocr_q = await db.execute(
+        select(FileVersion, Server)
+        .join(Server, Server.guid == FileVersion.server_guid)
+        .where(
+            FileVersion.ocr_processed == True,
+            FileVersion.ocr_content.ilike(f"%{q}%"),
+        ).limit(per_type)
+    )
+    for fv, srv in ocr_q.all():
+        if fv.file_path in seen_paths:
+            continue
+        name = fv.file_path.split("\\")[-1] if "\\" in fv.file_path else fv.file_path.split("/")[-1]
+        results.append({
+            "type": "ocr",
+            "id": fv.id,
+            "title": name,
+            "subtitle": f"OCR: {fv.file_path}",
+            "path": fv.file_path,
+            "share_name": fv.share_name,
+            "mimetype": fv.mimetype,
+            "server_id": srv.id,
+            "server_name": srv.name,
+            "server_ip": srv.ip,
+            "navigate_to": f"/servers/{srv.id}",
+        })
+        seen_paths.add(fv.file_path)
+
+    # 5. GitLeaks Findings
+    leaks_q = await db.execute(
+        select(GitleaksFinding).where(
+            or_(
+                GitleaksFinding.file_name.ilike(f"%{q}%"),
+                GitleaksFinding.rule_id.ilike(f"%{q}%"),
+                GitleaksFinding.description.ilike(f"%{q}%"),
+                GitleaksFinding.server_path.ilike(f"%{q}%"),
+                GitleaksFinding.server_name.ilike(f"%{q}%"),
+                GitleaksFinding.server_ip.ilike(f"%{q}%"),
+            )
+        ).limit(per_type)
+    )
+    for finding in leaks_q.scalars().all():
+        results.append({
+            "type": "leak",
+            "id": finding.id,
+            "title": finding.file_name or finding.rule_id,
+            "subtitle": f"{finding.rule_id} — {(finding.server_name or '')} {(finding.server_ip or '')}".strip(" —").strip(),
+            "path": finding.server_path,
+            "rule_id": finding.rule_id,
+            "server_id": finding.server_id,
+            "server_name": finding.server_name,
+            "server_ip": finding.server_ip,
+            "navigate_to": "/leaks",
+        })
+
+    return {"query": q, "results": results[:limit], "total": len(results)}
+
+
 # ==========================================
 # Share Endpoints
 # ==========================================

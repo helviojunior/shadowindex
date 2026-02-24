@@ -50,6 +50,7 @@ import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { useConnectionStatus } from '@/contexts/ConnectionStatusContext';
 import { useJobCompletionSFX } from '@/hooks/useJobCompletionSFX';
+import GlobalSearch from '@/components/GlobalSearch';
 
 // Menu structure with multi-level support
 const menuStructure = [
@@ -156,6 +157,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   const [flyoutPosition, setFlyoutPosition] = useState({ top: 0 });
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const hoverTimeoutRef = useRef(null);
   const menuRefs = useRef({});
   const location = useLocation();
@@ -164,6 +166,18 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   
   // Ativar notificações sonoras globais para conclusão de jobs
   useJobCompletionSFX(true);
+
+  // Atalho Ctrl+F para busca global
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Handler para tentar reconectar
   const handleRetryConnection = useCallback(async () => {
@@ -658,6 +672,8 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           </main>
         </div>
       </div>
+
+      <GlobalSearch open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
     </TooltipProvider>
   );
 };
