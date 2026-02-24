@@ -579,7 +579,9 @@ const ServerBrowser = () => {
       });
       
       const isDownloaded = downloadedFiles.includes(filePath);
-      const canView = canPreviewFile(selectedItem.name);
+      const fileInfo = downloadedFilesInfo[filePath];
+      const fileMimeType = fileInfo?.mimetype || fileInfo?.mime_type || null;
+      const canView = canPreviewFile(selectedItem.name, fileMimeType);
       
       // Se arquivo já baixado e pode ser visualizado, abrir na aba View
       if (isDownloaded && canView) {
