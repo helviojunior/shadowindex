@@ -2,6 +2,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Build arguments (para variáveis React)
+ARG REACT_APP_BACKEND_URL=http://localhost:9090
+
+# Definir como variável de ambiente para o build e runtime
+ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+
 # Copiar package.json
 COPY package.json ./
 
