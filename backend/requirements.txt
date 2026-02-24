@@ -150,3 +150,4 @@ Werkzeug==3.1.6
 yarl==1.22.0
 zeep==4.3.2
 zipp==3.23.0
+asyncpg==0.31.0
