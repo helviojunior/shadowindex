@@ -2743,10 +2743,7 @@ async def get_certificate_info(
         
         if has_private_key and file_ext in ['.pfx', '.p12'] and main_thumbprint:
             try:
-                from leaks_service import get_gitleaks_service
                 import hashlib
-                
-                service = get_gitleaks_service()
                 
                 # Usar subject do primeiro cert com chave privada
                 main_subject = certificates_info[0].get("subject", {}) if certificates_info else {}
