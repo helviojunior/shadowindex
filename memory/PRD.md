@@ -55,6 +55,15 @@ Portuguese (pt-BR)
   - Causa raiz: Verificação `if not content_bytes` avalia `b''` como falsy
   - Correção: Alterado para `if content_bytes is None` para aceitar bytes vazios
   - Arquivo modificado: `backend/routes_v2.py` (linha 1862)
+- [x] **Gráfico "Leaks vs. Tempo" com dados reais**
+  - Problema: Gráfico usava dados mockados/estáticos
+  - Solução: Criado novo endpoint `GET /api/v2/gitleaks/leaks-over-time` que:
+    - Busca todos os findings do banco de dados
+    - Agrupa por mês/ano usando a data de download do arquivo (proxy para data de modificação)
+    - Fallback para data do scan ou data de criação do finding
+    - Retorna formato: `{ data: [{ date: "MM/YY", month, year, count }], total }`
+  - Frontend atualizado para consumir dados reais do novo endpoint
+  - Arquivos modificados: `backend/routes_v2.py`, `frontend/src/pages/Dashboard.js`
 
 ### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
 - [x] **Correção crítica de concorrência no OCR Worker:**
