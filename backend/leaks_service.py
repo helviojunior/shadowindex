@@ -1157,23 +1157,69 @@ class GitleaksService:
         job.completed_at = datetime.now(timezone.utc)
         return True
     
-    def get_all_findings(self) -> List[Dict[str, Any]]:
-        """Retorna todos os findings de todos os scans"""
-        return self._findings
+    async def get_all_findings(self) -> List[Dict[str, Any]]:
+        """Retorna todos os findings do banco de dados"""
+        return await load_findings_from_db()
     
-    def get_findings_by_server(self, server_id: int) -> List[Dict[str, Any]]:
-        """Retorna findings de um servidor específico"""
-        return [f for f in self._findings if f.get('server_id') == server_id]
+    async def get_findings_by_server(self, server_id: int) -> List[Dict[str, Any]]:
+        """Retorna findings de um servidor específico do banco"""
+        from database import async_session_maker, GitleaksFinding
+        from sqlalchemy import select
+        
+        try:
+            async with async_session_maker() as db:
+                result = await db.execute(
+                    select(GitleaksFinding).where(GitleaksFinding.server_id == server_id)
+                )
+                findings = result.scalars().all()
+                return [self._finding_to_dict(f) for f in findings]
+        except Exception as e:
+            logger.error(f"Erro ao buscar findings do servidor {server_id}: {e}")
+            return []
     
-    def get_findings_by_job(self, job_id: str) -> List[Dict[str, Any]]:
-        """Retorna findings de um job específico"""
-        return [f for f in self._findings if f.get('job_id') == job_id]
+    async def get_findings_by_job(self, job_id: str) -> List[Dict[str, Any]]:
+        """Retorna findings de um job específico do banco"""
+        from database import async_session_maker, GitleaksFinding
+        from sqlalchemy import select
+        
+        try:
+            async with async_session_maker() as db:
+                result = await db.execute(
+                    select(GitleaksFinding).where(GitleaksFinding.job_id == job_id)
+                )
+                findings = result.scalars().all()
+                return [self._finding_to_dict(f) for f in findings]
+        except Exception as e:
+            logger.error(f"Erro ao buscar findings do job {job_id}: {e}")
+            return []
+    
+    def _finding_to_dict(self, finding) -> Dict[str, Any]:
+        """Converte um objeto GitleaksFinding para dicionário"""
+        return {
+            'id': finding.id,
+            'Description': finding.description,
+            'File': finding.file_path,
+            'RuleID': finding.rule_id,
+            'Secret': finding.secret,
+            'StartLine': finding.start_line,
+            'EndLine': finding.end_line,
+            'Entropy': finding.entropy,
+            'Match': finding.match,
+            'Fingerprint': finding.fingerprint,
+            'severity': finding.severity,
+            'server_id': finding.server_id,
+            'job_id': finding.job_id,
+            'scanned_at': finding.scanned_at.isoformat() if finding.scanned_at else None,
+            'is_false_positive': finding.is_false_positive,
+            'extracted_server_guid': finding.extracted_server_guid,
+            'extracted_share_id': finding.extracted_share_id,
+            'extracted_file_version_id': finding.extracted_file_version_id
+        }
     
     def clear_findings(self) -> int:
-        """Limpa todos os findings do cache (não remove do banco)"""
-        count = len(self._findings)
-        self._findings = []
-        return count
+        """Método depreciado - use clear_findings_from_db()"""
+        logger.warning("clear_findings() está depreciado. Findings são gerenciados no banco.")
+        return 0
     
     async def clear_findings_from_db(self) -> int:
         """Remove todos os findings do banco de dados"""
