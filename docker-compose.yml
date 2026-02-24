@@ -1,6 +1,24 @@
 version: "3.8"
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: shadowindex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shadowindex
+      POSTGRES_PASSWORD: shadowindex
+      POSTGRES_DB: shadowindex
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shadowindex -d shadowindex"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - shadowindex-net
+
   tika:
     image: apache/tika:latest-full
     container_name: shadowindex-tika
@@ -29,8 +47,12 @@ services:
     environment:
       CORS_ORIGINS: "*"
       TIKA_SERVER_URL: "http://tika:9998"
+      # PostgreSQL - Comentar para usar SQLite
+      POSTGRES_URL: "postgresql://shadowindex:shadowindex@postgres:5432/shadowindex"
     command: ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]
     depends_on:
+      postgres:
+        condition: service_healthy
       tika:
         condition: service_healthy
     networks:
@@ -53,6 +75,9 @@ services:
       - backend
     networks:
       - shadowindex-net
+
+volumes:
+  postgres_data:
 
 networks:
   shadowindex-net:
