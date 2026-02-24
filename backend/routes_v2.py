@@ -2668,6 +2668,46 @@ async def get_certificate_info(
                 is_expired = cert_obj.not_valid_after_utc < now
                 is_not_yet_valid = cert_obj.not_valid_before_utc > now
                 
+                # Extrair informações da chave pública
+                public_key_info = {}
+                try:
+                    pub_key = cert_obj.public_key()
+                    if hasattr(pub_key, 'key_size'):
+                        public_key_info['key_size'] = pub_key.key_size
+                    # Determinar algoritmo da chave
+                    from cryptography.hazmat.primitives.asymmetric import rsa, ec, dsa, ed25519, ed448
+                    if isinstance(pub_key, rsa.RSAPublicKey):
+                        public_key_info['algorithm'] = 'RSA'
+                    elif isinstance(pub_key, ec.EllipticCurvePublicKey):
+                        public_key_info['algorithm'] = f'EC ({pub_key.curve.name})'
+                    elif isinstance(pub_key, dsa.DSAPublicKey):
+                        public_key_info['algorithm'] = 'DSA'
+                    elif isinstance(pub_key, (ed25519.Ed25519PublicKey, ed448.Ed448PublicKey)):
+                        public_key_info['algorithm'] = 'EdDSA'
+                    else:
+                        public_key_info['algorithm'] = type(pub_key).__name__
+                except Exception:
+                    public_key_info = {'algorithm': 'Unknown', 'key_size': None}
+                
+                # Extrair extensões
+                extensions_info = []
+                try:
+                    for ext in cert_obj.extensions:
+                        ext_info = {
+                            'name': ext.oid._name if hasattr(ext.oid, '_name') else str(ext.oid),
+                            'critical': ext.critical,
+                            'oid': ext.oid.dotted_string if hasattr(ext.oid, 'dotted_string') else str(ext.oid)
+                        }
+                        # Tentar extrair valores das extensões mais comuns
+                        try:
+                            if hasattr(ext.value, '__str__'):
+                                ext_info['values'] = [str(ext.value)]
+                        except Exception:
+                            pass
+                        extensions_info.append(ext_info)
+                except Exception:
+                    pass
+                
                 cert_info = {
                     "subject": subject_parts,
                     "issuer": issuer_parts,
@@ -2679,6 +2719,9 @@ async def get_certificate_info(
                     "fingerprint_sha256": thumbprint_sha256,
                     "has_private_key": has_key,
                     "version": cert_obj.version.value,
+                    "signature_algorithm": cert_obj.signature_algorithm_oid._name if hasattr(cert_obj.signature_algorithm_oid, '_name') else str(cert_obj.signature_algorithm_oid),
+                    "public_key": public_key_info,
+                    "extensions": extensions_info,
                     "is_self_signed": is_self_signed,
                     "is_expired": is_expired,
                     "is_not_yet_valid": is_not_yet_valid,
