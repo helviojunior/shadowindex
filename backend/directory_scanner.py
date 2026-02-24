@@ -585,19 +585,33 @@ class DirectoryScanner:
         
         async with AsyncSessionLocal() as db:
             for scan_job in jobs_to_process:
-                # Verificar se foi cancelado
-                if scan_job.id in self.cancelled_ids or scan_job.parent_id in self.cancelled_ids:
+                # Verificar se foi cancelado (por db_id)
+                if scan_job.db_id in self.cancelled_ids or scan_job.parent_id in self.cancelled_ids:
                     scan_job.status = 'cancelled'
                     self.completed_scans.append(scan_job)
-                    print(f"=== SCANNER: Skipping cancelled job {scan_job.id} ===", flush=True)
+                    print(f"=== SCANNER: Skipping cancelled job {scan_job.db_id} ===", flush=True)
                     continue
                 
                 try:
                     scan_job.status = 'scanning'
+                    
+                    # Atualizar status no banco para 'running'
+                    await self._update_job_status_in_db(scan_job.db_id, 'running', started=True)
+                    
                     print(f"=== SCANNER: Scanning directory: {scan_job.path} ===", flush=True)
                     await self._scan_directory(db, scan_job)
                     scan_job.status = 'completed'
                     self.completed_scans.append(scan_job)
+                    
+                    # Atualizar status no banco para 'completed'
+                    await self._update_job_status_in_db(
+                        scan_job.db_id, 
+                        'completed', 
+                        completed=True,
+                        total_files=scan_job.files_found,
+                        critical_files=scan_job.critical_files_found
+                    )
+                    
                     # Manter apenas últimos 50 completados
                     if len(self.completed_scans) > 50:
                         self.completed_scans = self.completed_scans[-50:]
@@ -610,8 +624,47 @@ class DirectoryScanner:
                 except Exception as e:
                     scan_job.status = 'failed'
                     self.completed_scans.append(scan_job)
+                    
+                    # Atualizar status no banco para 'failed'
+                    await self._update_job_status_in_db(scan_job.db_id, 'failed', completed=True, error=str(e))
+                    
                     print(f"=== SCANNER ERROR scanning {scan_job.path}: {e} ===", flush=True)
                     logger.error(f"Error scanning directory {scan_job.path}: {e}")
+    
+    async def _update_job_status_in_db(self, db_id: int, status: str, started: bool = False, completed: bool = False, 
+                                        total_files: int = None, critical_files: int = None, error: str = None):
+        """Atualiza o status de um job no banco de dados"""
+        from database import AsyncSessionLocal, ScanJob as ScanJobDB
+        
+        if not db_id:
+            return
+        
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(ScanJobDB).where(ScanJobDB.id == db_id))
+                db_job = result.scalar_one_or_none()
+                
+                if db_job:
+                    db_job.status = status
+                    
+                    if started:
+                        db_job.started_at = datetime.now(timezone.utc)
+                    
+                    if completed:
+                        db_job.completed_at = datetime.now(timezone.utc)
+                    
+                    if total_files is not None:
+                        db_job.total_files = total_files
+                    
+                    if critical_files is not None:
+                        db_job.critical_files_found = critical_files
+                    
+                    if error:
+                        db_job.error_message = error
+                    
+                    await db.commit()
+        except Exception as e:
+            logger.error(f"Error updating job {db_id} status in DB: {e}")
     
     async def _check_and_trigger_gitleaks(self, root_scan_job: ScanJob):
         """
