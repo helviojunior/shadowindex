@@ -4682,9 +4682,13 @@ def vacuum_database():
     """
     import sqlite3
     from database import DATABASE_PATH
-    
+
     print("=== VACUUM: Verificando fragmentação do banco de dados... ===", flush=True)
-    
+
+    if not DATABASE_PATH:
+        print("=== VACUUM: PostgreSQL in use, skipping SQLite vacuum ===", flush=True)
+        return True
+
     try:
         if not os.path.exists(DATABASE_PATH):
             print("=== VACUUM: Database file not found, skipping ===", flush=True)
@@ -4743,14 +4747,18 @@ def backup_database():
     import gzip
     import shutil
     from database import DATABASE_PATH, DATA_DIR
-    
+
     print("=== BACKUP: Iniciando backup do banco de dados... ===", flush=True)
-    
+
+    if not DATABASE_PATH:
+        print("=== BACKUP: PostgreSQL in use, skipping SQLite backup ===", flush=True)
+        return None
+
     try:
         # Criar diretório de backups se não existir
         backup_dir = os.path.join(DATA_DIR, "backups")
         os.makedirs(backup_dir, exist_ok=True)
-        
+
         # Verificar se o banco existe
         if not os.path.exists(DATABASE_PATH):
             print("=== BACKUP: Database file not found, skipping backup ===", flush=True)
