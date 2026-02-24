@@ -484,6 +484,7 @@ class AppSettings(Base):
 DEFAULT_SETTINGS = {
     'max_simultaneous_downloads': ('3', 'Número máximo de downloads simultâneos'),
     'max_simultaneous_ocr_jobs': ('2', 'Número máximo de jobs OCR simultâneos'),
+    'max_simultaneous_scans': ('3', 'Número máximo de scans de diretório simultâneos'),
     'ocr_auto_cleanup_minutes': ('15', 'Minutos para limpeza automática de jobs OCR finalizados com sucesso'),
     'default_depth_levels': ('5', 'Quantidade padrão de níveis de profundidade'),
     'default_max_file_size_mb': ('100', 'Tamanho máximo padrão de arquivo (MB)'),
