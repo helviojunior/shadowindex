@@ -4082,7 +4082,7 @@ async def get_gitleaks_stats(db: AsyncSession = Depends(get_db_readonly)):
     from leaks_service import get_gitleaks_service
     
     service = get_gitleaks_service()
-    all_findings = service.get_all_findings()
+    all_findings = await service.get_all_findings()
     jobs = service.get_all_jobs()
     
     # Filtrar falsos positivos para as estatísticas
