@@ -442,15 +442,7 @@ async def scan_directory_for_critical_files(
                     
                     if result and not result.get("already_exists"):
                         found_count += 1
-                        
-                        # Adicionar ao cache do service se fornecido
-                        if service and result.get("finding"):
-                            already_in_cache = any(
-                                f.get('Fingerprint') == result["finding"].get('Fingerprint') 
-                                for f in service._findings
-                            )
-                            if not already_in_cache:
-                                service._findings.append(result["finding"])
+                        # Findings são salvos diretamente no banco pela função register_leak
                                 
     except Exception as e:
         logger.error(f"Erro ao escanear diretório para arquivos críticos: {e}")
