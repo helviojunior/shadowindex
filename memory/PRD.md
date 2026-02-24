@@ -72,6 +72,24 @@ Portuguese (pt-BR)
     - OCR Geral: `auto_ocr_excluded_extensions` em `database.py`
   - Extensões de SO adicionadas: `.sys`, `.drv`, `.ocx`, `.cpl`, `.scr`, `.etl`, `.evtx`, `.dmp`, `.vhd`, `.vmdk`, etc.
   - Arquivos de sistema adicionados: `ntuser.dat.LOG*`, `$MFT`, `$LogFile`, `bootmgr`, `.Spotlight-V100`, etc.
+- [x] **Visualização de arquivos expandida**
+  - Suporte a mime type `text/*` para visualização de arquivos
+  - Extensões de scripts adicionadas: `.ps1`, `.psm1`, `.psd1`, `.vbs`, `.vbe`, `.wsf`, `.wsh`, `.sh`, `.bash`, `.zsh`, etc.
+  - Muitas outras extensões de linguagens e configuração adicionadas
+  - Arquivos especiais expandidos: `.bashrc`, `.zshrc`, `Vagrantfile`, `hosts`, `passwd`, `sudoers`, etc.
+  - Arquivo modificado: `frontend/src/pages/ServerBrowser.js`
+- [x] **Persistência de Scans de Diretórios**
+  - Problema: Scans de diretórios eram perdidos ao reiniciar o serviço
+  - Solução: Implementada persistência no banco de dados usando a tabela `scan_jobs` existente
+  - Funcionalidades:
+    - Jobs são salvos no banco ao serem criados
+    - Status é atualizado durante a execução (pending → running → completed/failed)
+    - Jobs pendentes/running são restaurados automaticamente na inicialização do backend
+    - Cancelamento atualiza o banco de dados
+    - Limpeza de jobs finalizados remove do banco
+  - Arquivos modificados: `backend/directory_scanner.py`, `backend/server.py`
+  - Nova classe `ScanJobMemory` para processamento em memória
+  - Métodos atualizados: `_restore_pending_jobs()`, `_update_job_status_in_db()`, `add_scan_job()`, `cancel_scan()`, etc.
 
 ### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
 - [x] **Correção crítica de concorrência no OCR Worker:**
