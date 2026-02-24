@@ -2675,6 +2675,8 @@ async def get_certificate_info(
                     "not_before": cert_obj.not_valid_before_utc.isoformat(),
                     "not_after": cert_obj.not_valid_after_utc.isoformat(),
                     "thumbprint": thumbprint,
+                    "fingerprint_sha1": thumbprint,
+                    "fingerprint_sha256": thumbprint_sha256,
                     "has_private_key": has_key,
                     "version": cert_obj.version.value,
                     "is_self_signed": is_self_signed,
