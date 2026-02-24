@@ -1419,14 +1419,35 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
         sha1_hash = hashlib.sha1(content_bytes).hexdigest()
         file_size = len(content_bytes)
         
-        # Salvar usando estrutura baseada em IDs
-        from storage_utils import save_file_by_id
+        # Obter ou criar share para ter o share_id
+        share_result = await db.execute(
+            select(ServerShare).where(
+                ServerShare.server_guid == server.guid,
+                ServerShare.share_name == item.share_name
+            )
+        )
+        share = share_result.scalar_one_or_none()
         
+        if not share:
+            # Criar share se não existir
+            share = ServerShare(
+                server_id=server.id,
+                server_guid=server.guid,
+                share_name=item.share_name,
+                access_denied=False,
+                has_children=True,
+                children_fetched=False
+            )
+            db.add(share)
+            await db.flush()
+        
+        share_id = share.id
+        
+        # Verificar se já existe registro ou criar novo
         if existing:
-            file_id = existing.id
-            version = 1
+            downloaded_file = existing
         else:
-            # Criar novo registro primeiro para obter o ID
+            # Criar novo registro primeiro para ter o downloaded_file
             downloaded_file = DownloadedFile(
                 server_guid=server.guid,
                 share_name=item.share_name,
@@ -1438,18 +1459,66 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
             )
             db.add(downloaded_file)
             await db.flush()
-            file_id = downloaded_file.id
-            version = 1
         
-        local_path, sha1_hash, file_size = save_file_by_id(
-            server.id,
-            file_id,
-            content_bytes,
-            version
+        # Criar/atualizar FileVersion para obter o version_id
+        existing_version_result = await db.execute(
+            select(FileVersion).where(
+                FileVersion.server_guid == server.guid,
+                FileVersion.file_path == item.full_path,
+                FileVersion.sha1_hash == sha1_hash
+            )
         )
+        file_version = existing_version_result.scalar_one_or_none()
+        
+        if not file_version:
+            # Marcar versões anteriores como não-atuais
+            prev_versions_result = await db.execute(
+                select(FileVersion).where(
+                    FileVersion.server_guid == server.guid,
+                    FileVersion.file_path == item.full_path,
+                    FileVersion.is_current == True
+                )
+            )
+            for v in prev_versions_result.scalars().all():
+                v.is_current = False
+            
+            # Contar versões existentes
+            version_count_result = await db.execute(
+                select(FileVersion).where(
+                    FileVersion.server_guid == server.guid,
+                    FileVersion.file_path == item.full_path
+                )
+            )
+            versions_list = version_count_result.scalars().all()
+            next_version_num = len(versions_list) + 1
+            
+            # Criar nova versão primeiro para obter o ID
+            file_version = FileVersion(
+                server_guid=server.guid,
+                share_name=item.share_name,
+                file_path=item.full_path,
+                version_number=next_version_num,
+                sha1_hash=sha1_hash,
+                file_size=file_size,
+                mimetype=None,
+                local_path="",  # Será atualizado após salvar
+                is_current=True
+            )
+            db.add(file_version)
+            await db.flush()
+        
+        # Salvar arquivo usando estrutura PADRÃO: server_guid/share_id/file_version_id
+        from storage_utils import save_file_with_standard_path
+        
+        full_path, sanitized_path, _, _ = save_file_with_standard_path(
+            server.guid,
+            share_id,
+            file_version.id,
+            content_bytes
+        )
+        local_path = str(full_path)
         
         mimetype = get_file_mimetype(local_path)
-        sanitized_path = f"{server.id}/{file_id}/{version}"
         
         # Atualizar campos adicionais no registro
         if existing:
