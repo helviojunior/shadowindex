@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { 
-  Download, 
-  Loader2, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  Download,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Clock,
   AlertTriangle,
   Trash2,
   RefreshCw,
@@ -18,11 +18,13 @@ import {
   Pause,
   RotateCcw,
   FolderSearch,
-  Folder
+  Folder,
+  Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -56,6 +58,7 @@ const Downloads = () => {
   const [activeFilter, setActiveFilter] = useState(null);
   const [expandedServers, setExpandedServers] = useState({});
   const [activeTab, setActiveTab] = useState('downloads'); // 'downloads' or 'scans'
+  const [scanSearchQuery, setScanSearchQuery] = useState('');
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -855,6 +858,23 @@ const Downloads = () => {
                 Cancelar Todos
               </Button>
             )}
+            <div className="relative flex-1 min-w-[200px] max-w-sm ml-auto">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Buscar por servidor ou caminho..."
+                value={scanSearchQuery}
+                onChange={e => setScanSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+              {scanSearchQuery && (
+                <button
+                  onClick={() => setScanSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Scan Jobs List */}
@@ -873,12 +893,23 @@ const Downloads = () => {
           ) : (
             <Card>
               <CardContent className="p-4">
+                {(() => {
+                  const sorted = [...scanJobs].sort((a, b) => {
+                    const statusOrder = { scanning: 0, pending: 1, completed: 2, cancelled: 3, failed: 4 };
+                    return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
+                  });
+                  const query = scanSearchQuery.trim().toLowerCase();
+                  const filtered = query
+                    ? sorted.filter(s =>
+                        s.server_name?.toLowerCase().includes(query) ||
+                        s.path?.toLowerCase().includes(query)
+                      )
+                    : sorted.slice(0, 50);
+                  const hiddenCount = query ? 0 : Math.max(0, sorted.length - 50);
+                  return (
+                <>
                 <div className="space-y-2">
-                  {[...scanJobs]
-                    .sort((a, b) => {
-                      const statusOrder = { scanning: 0, pending: 1, completed: 2, cancelled: 3, failed: 4 };
-                      return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
-                    })
+                  {filtered
                     .map((scan) => {
                       const StatusIcon = scanStatusConfig[scan.status]?.icon || Clock;
                       const isActive = scan.status === 'pending' || scan.status === 'scanning';
@@ -953,6 +984,19 @@ const Downloads = () => {
                       );
                     })}
                 </div>
+                {hiddenCount > 0 && (
+                  <p className="text-xs text-muted-foreground text-center mt-3">
+                    +{hiddenCount} itens ocultos — use a busca para filtrar
+                  </p>
+                )}
+                {query && filtered.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Nenhum resultado para "{scanSearchQuery}"
+                  </p>
+                )}
+                </>
+                  );
+                })()}
               </CardContent>
             </Card>
           )}
