@@ -319,29 +319,77 @@ class DirectoryScanner:
                 pass
         logger.info("Directory scanner stopped")
     
-    def get_scan_jobs(self) -> List[dict]:
-        """Retorna lista de scan jobs (pendentes + últimos completados)"""
+    async def get_scan_jobs(self) -> List[dict]:
+        """Retorna lista de scan jobs do banco de dados"""
+        from database import AsyncSessionLocal, ScanJob as ScanJobDB
+        
         jobs = []
-        # Jobs pendentes e em scanning
+        
+        # Jobs em memória (pendentes e em scanning)
         for job in self.scan_queue:
             jobs.append(job.to_dict())
-        # Últimos completados (máximo 20)
-        for job in self.completed_scans[-20:]:
-            jobs.append(job.to_dict())
+        
+        # Jobs do banco (completed, cancelled, failed) - últimos 50
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(ScanJobDB).where(
+                        ScanJobDB.status.in_(['completed', 'cancelled', 'failed'])
+                    ).order_by(ScanJobDB.created_at.desc()).limit(50)
+                )
+                db_jobs = result.scalars().all()
+                
+                for db_job in db_jobs:
+                    jobs.append({
+                        'id': db_job.id,
+                        'server_guid': db_job.server_guid,
+                        'share_name': db_job.share_name,
+                        'path': db_job.path,
+                        'max_depth': db_job.max_depth,
+                        'status': db_job.status,
+                        'total_files': db_job.total_files or 0,
+                        'processed_files': db_job.processed_files or 0,
+                        'queued_files': db_job.queued_files or 0,
+                        'critical_only': db_job.critical_only,
+                        'critical_files_found': db_job.critical_files_found or 0,
+                        'error_message': db_job.error_message,
+                        'created_at': db_job.created_at.isoformat() if db_job.created_at else None,
+                        'started_at': db_job.started_at.isoformat() if db_job.started_at else None,
+                        'completed_at': db_job.completed_at.isoformat() if db_job.completed_at else None
+                    })
+        except Exception as e:
+            logger.error(f"Error fetching scan jobs from DB: {e}")
+        
         return jobs
     
-    async def cancel_scan(self, scan_id: str) -> bool:
-        """Cancela um scan job pelo ID"""
+    async def cancel_scan(self, scan_id: int) -> bool:
+        """Cancela um scan job pelo ID do banco"""
+        from database import AsyncSessionLocal, ScanJob as ScanJobDB
+        
         async with self._lock:
             # Marcar como cancelado
             self.cancelled_ids.add(scan_id)
             
-            # Remover da fila se pendente
+            # Remover da fila em memória se pendente
             for job in self.scan_queue:
-                if job.id == scan_id:
+                if job.db_id == scan_id:
                     job.status = 'cancelled'
                     self.scan_queue.remove(job)
-                    self.completed_scans.append(job)
+                    
+                    # Atualizar no banco
+                    try:
+                        async with AsyncSessionLocal() as db:
+                            result = await db.execute(
+                                select(ScanJobDB).where(ScanJobDB.id == scan_id)
+                            )
+                            db_job = result.scalar_one_or_none()
+                            if db_job:
+                                db_job.status = 'cancelled'
+                                db_job.completed_at = datetime.now(timezone.utc)
+                                await db.commit()
+                    except Exception as e:
+                        logger.error(f"Error updating cancelled scan in DB: {e}")
+                    
                     print(f"=== SCANNER: Cancelled scan job {scan_id} ===", flush=True)
                     return True
             
@@ -355,31 +403,102 @@ class DirectoryScanner:
                 print(f"=== SCANNER: Cancelled {len(to_remove)} sub-scans of {scan_id} ===", flush=True)
                 return True
             
+            # Tentar cancelar direto no banco se não estava em memória
+            try:
+                async with AsyncSessionLocal() as db:
+                    result = await db.execute(
+                        select(ScanJobDB).where(ScanJobDB.id == scan_id)
+                    )
+                    db_job = result.scalar_one_or_none()
+                    if db_job and db_job.status in ['pending', 'running']:
+                        db_job.status = 'cancelled'
+                        db_job.completed_at = datetime.now(timezone.utc)
+                        await db.commit()
+                        print(f"=== SCANNER: Cancelled scan job {scan_id} in DB ===", flush=True)
+                        return True
+            except Exception as e:
+                logger.error(f"Error cancelling scan in DB: {e}")
+            
             return False
     
     async def clear_finished_scans(self) -> int:
-        """Limpa scans finalizados (completed, cancelled, failed)"""
+        """Limpa scans finalizados (completed, cancelled, failed) do banco"""
+        from database import AsyncSessionLocal, ScanJob as ScanJobDB
+        from sqlalchemy import delete
+        
         async with self._lock:
             count = len(self.completed_scans)
             self.completed_scans.clear()
             self.cancelled_ids.clear()
-            print(f"=== SCANNER: Cleared {count} finished scans ===", flush=True)
+            
+            # Limpar do banco também
+            try:
+                async with AsyncSessionLocal() as db:
+                    result = await db.execute(
+                        delete(ScanJobDB).where(
+                            ScanJobDB.status.in_(['completed', 'cancelled', 'failed'])
+                        )
+                    )
+                    db_count = result.rowcount
+                    await db.commit()
+                    count += db_count
+                    print(f"=== SCANNER: Cleared {db_count} finished scans from DB ===", flush=True)
+            except Exception as e:
+                logger.error(f"Error clearing finished scans from DB: {e}")
+            
+            print(f"=== SCANNER: Cleared {count} total finished scans ===", flush=True)
             return count
     
     async def cancel_all_scans(self) -> int:
         """Cancela todos os scan jobs pendentes"""
+        from database import AsyncSessionLocal, ScanJob as ScanJobDB
+        
         async with self._lock:
             count = len(self.scan_queue)
+            
+            # Cancelar jobs em memória
+            db_ids_to_cancel = []
             for job in self.scan_queue:
                 job.status = 'cancelled'
-                self.cancelled_ids.add(job.id)
-                self.completed_scans.append(job)
+                self.cancelled_ids.add(job.db_id)
+                db_ids_to_cancel.append(job.db_id)
             self.scan_queue.clear()
+            
+            # Atualizar no banco
+            try:
+                async with AsyncSessionLocal() as db:
+                    # Cancelar os que estavam em memória
+                    for db_id in db_ids_to_cancel:
+                        result = await db.execute(
+                            select(ScanJobDB).where(ScanJobDB.id == db_id)
+                        )
+                        db_job = result.scalar_one_or_none()
+                        if db_job:
+                            db_job.status = 'cancelled'
+                            db_job.completed_at = datetime.now(timezone.utc)
+                    
+                    # Cancelar quaisquer outros pendentes no banco
+                    result = await db.execute(
+                        select(ScanJobDB).where(
+                            ScanJobDB.status.in_(['pending', 'running'])
+                        )
+                    )
+                    other_jobs = result.scalars().all()
+                    for db_job in other_jobs:
+                        db_job.status = 'cancelled'
+                        db_job.completed_at = datetime.now(timezone.utc)
+                        count += 1
+                    
+                    await db.commit()
+            except Exception as e:
+                logger.error(f"Error cancelling all scans in DB: {e}")
+            
             print(f"=== SCANNER: Cancelled all {count} scan jobs ===", flush=True)
             return count
     
-    async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True, critical_only: bool = False) -> str:
-        """Adiciona um diretório para ser escaneado. Retorna o ID do job."""
+    async def add_scan_job(self, server_id: int, share_name: str, path: str, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True, critical_only: bool = False) -> int:
+        """Adiciona um diretório para ser escaneado. Retorna o ID do job do banco."""
+        from database import AsyncSessionLocal, ScanJob as ScanJobDB, Server
         
         # Se for critical_only, carregar configurações
         if critical_only:
@@ -390,9 +509,40 @@ class DirectoryScanner:
             except Exception as e:
                 print(f"=== SCANNER: Error loading critical search config: {e} ===", flush=True)
         
+        # Buscar server_guid
+        server_guid = None
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(Server).where(Server.id == server_id))
+            server = result.scalar_one_or_none()
+            if server:
+                server_guid = server.guid
+        
+        if not server_guid:
+            raise ValueError(f"Server {server_id} not found")
+        
+        # Criar job no banco de dados
+        db_job_id = None
+        async with AsyncSessionLocal() as db:
+            db_job = ScanJobDB(
+                server_guid=server_guid,
+                share_name=share_name,
+                path=path,
+                max_depth=max_depth,
+                critical_only=critical_only,
+                status='pending',
+                created_at=datetime.now(timezone.utc)
+            )
+            db.add(db_job)
+            await db.commit()
+            await db.refresh(db_job)
+            db_job_id = db_job.id
+        
+        # Criar job em memória
         async with self._lock:
-            job = ScanJob(
+            job = ScanJobMemory(
+                db_id=db_job_id,
                 server_id=server_id,
+                server_guid=server_guid,
                 share_name=share_name,
                 path=path,
                 depth=1,
@@ -403,9 +553,9 @@ class DirectoryScanner:
             )
             self.scan_queue.append(job)
             scan_type = "CRITICAL" if critical_only else ""
-            print(f"=== SCANNER: Added {scan_type} scan job {job.id}: server={server_id}, share={share_name}, path={path} ===", flush=True)
-            logger.info(f"Added scan job: {path} (critical_only={critical_only})")
-            return job.id
+            print(f"=== SCANNER: Added {scan_type} scan job {db_job_id}: server={server_id}, share={share_name}, path={path} ===", flush=True)
+            logger.info(f"Added scan job {db_job_id}: {path} (critical_only={critical_only})")
+            return db_job_id
     
     async def _run_loop(self):
         """Loop principal do scanner"""
