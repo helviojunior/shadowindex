@@ -5067,8 +5067,6 @@ async def auto_register_private_key_leak(
     from datetime import datetime, timezone
     import hashlib
     
-    service = get_gitleaks_service()
-    
     # Gerar fingerprint único baseado no arquivo e tipo
     fingerprint_source = f"{file_path}:auto_private_key:{key_type}"
     fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
