@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: shadowindex
       POSTGRES_DB: shadowindex
     volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
+      - ./shadowindex_data/postgres_db:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -92,9 +92,6 @@ services:
       - backend
     networks:
       - shadowindex-net
-
-volumes:
-  postgres_data_dev:
 
 networks:
   shadowindex-net:

@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: shadowindex
       POSTGRES_DB: shadowindex
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./shadowindex_data/postgres_db:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U shadowindex -d shadowindex"]
       interval: 5s
@@ -75,9 +75,6 @@ services:
       - backend
     networks:
       - shadowindex-net
-
-volumes:
-  postgres_data:
 
 networks:
   shadowindex-net:
