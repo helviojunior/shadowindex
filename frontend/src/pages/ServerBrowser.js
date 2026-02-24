@@ -4550,9 +4550,12 @@ const ServerBrowser = () => {
           {activeTab === 'objetos' && (isShare || isDirectory) && !isAccessDenied && (
             <div className="flex-1 overflow-hidden flex flex-col">
               {(() => {
-                // Para shares, usar share_name ou shareName
+                // Para shares, usar share-{nome} (consistente com renderTreeNode e loadShares)
+                // Para diretórios, usar o id do banco
                 const shareNameForId = selectedItem.share_name || selectedItem.shareName || selectedItem.name;
-                const nodeId = String(selectedItem.id || `share-${shareNameForId}`);
+                const nodeId = isShare
+                  ? `share-${shareNameForId}`
+                  : String(selectedItem.id || `share-${shareNameForId}`);
                 const children = nodeChildren[nodeId] || [];
                 const isLoading = loadingNodes[nodeId];
                 
@@ -5322,7 +5325,10 @@ const ServerBrowser = () => {
                         // Scroll para o objeto selecionado após sair do modo foco
                         setTimeout(() => {
                           const shareNameForId = selectedItem.share_name || selectedItem.shareName || selectedItem.name;
-                          const nodeId = String(selectedItem.id || `share-${shareNameForId}`);
+                          const isShareItem = selectedItem.itemType === 'share';
+                          const nodeId = isShareItem
+                            ? `share-${shareNameForId}`
+                            : String(selectedItem.id || `share-${shareNameForId}`);
                           const safeId = nodeId.replace(/\$/g, '_dollar_');
                           const element = document.querySelector(`[data-testid="tree-node-${safeId}"]`);
                           if (element) {
@@ -5331,8 +5337,11 @@ const ServerBrowser = () => {
                         }, 100);
                       } else {
                         const shareNameForId = selectedItem.share_name || selectedItem.shareName || selectedItem.name;
-                        const nodeId = String(selectedItem.id || `share-${shareNameForId}`);
-                        const shareName = selectedItem.itemType === 'share' 
+                        const isShareItem = selectedItem.itemType === 'share';
+                        const nodeId = isShareItem
+                          ? `share-${shareNameForId}`
+                          : String(selectedItem.id || `share-${shareNameForId}`);
+                        const shareName = isShareItem 
                           ? (selectedItem.share_name || selectedItem.shareName || selectedItem.name)
                           : selectedItem.shareName;
                         setFocusedItem({
