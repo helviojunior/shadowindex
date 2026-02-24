@@ -102,6 +102,16 @@ async def get_critical_search_config() -> dict:
                 ".iso", ".img",
                 ".cab", ".msp", ".msm",
                 ".css"
+            ],
+            "excluded_files": [
+                "Thumbs.db",
+                "desktop.ini",
+                ".DS_Store",
+                "ntuser.dat",
+                "ntuser.ini",
+                "pagefile.sys",
+                "hiberfil.sys",
+                "swapfile.sys"
             ]
         }
     }
