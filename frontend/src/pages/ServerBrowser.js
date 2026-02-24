@@ -3459,8 +3459,11 @@ const ServerBrowser = () => {
     const isFile = selectedItem.itemType === 'File';
     const isAccessDenied = selectedItem.access_denied || selectedItem.accessDenied;
     const itemName = isShare ? selectedItem.share_name : selectedItem.name;
-    const downloaded = isFile && isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath);
-    const canViewContent = isFile && downloaded && canPreviewFile(selectedItem.name);
+    const filePath = selectedItem.fullPath || selectedItem.serverPath;
+    const downloaded = isFile && isFileDownloaded(filePath);
+    const fileInfo = downloadedFilesInfo[filePath];
+    const fileMimeType = fileInfo?.mimetype || fileInfo?.mime_type || null;
+    const canViewContent = isFile && downloaded && canPreviewFile(selectedItem.name, fileMimeType);
     
     // Determinar status de acesso
     // - Para shares: children_fetched indica que foi verificado
