@@ -30,6 +30,7 @@ const GeneralSettings = () => {
   const [settings, setSettings] = useState({
     max_simultaneous_downloads: '3',
     max_simultaneous_ocr_jobs: '2',
+    max_simultaneous_scans: '3',
     ocr_auto_cleanup_minutes: '15',
     default_depth_levels: '5',
     default_max_file_size_mb: '100',
