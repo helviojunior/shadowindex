@@ -606,7 +606,9 @@ const ServerBrowser = () => {
     
     const filePath = selectedItem.fullPath || selectedItem.serverPath;
     const isDownloaded = downloadedFiles.includes(filePath);
-    const canView = canPreviewFile(selectedItem.name);
+    const fileInfo = downloadedFilesInfo[filePath];
+    const fileMimeType = fileInfo?.mimetype || fileInfo?.mime_type || null;
+    const canView = canPreviewFile(selectedItem.name, fileMimeType);
     
     // Se arquivo foi sincronizado e pode ser visualizado, atualizar aba
     if (isDownloaded && canView && activeTab === 'info') {
