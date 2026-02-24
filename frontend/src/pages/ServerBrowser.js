@@ -3311,8 +3311,8 @@ const ServerBrowser = () => {
             )}
           </span>
           
-          {/* Force Refresh Button - for directories and shares */}
-          {isDirectory && (
+          {/* Force Refresh Button - for directories and shares (only when previously fetched, only on hover) */}
+          {isDirectory && childrenFetched && (
             <button
               onClick={async (e) => {
                 e.stopPropagation();
@@ -3321,7 +3321,7 @@ const ServerBrowser = () => {
                 await loadDirectory(nodeId, path, currentShareName, true); // true = forceRefresh
                 toast.success(`Diretório atualizado: ${isShare ? item.share_name : item.name}`);
               }}
-              className="p-1 hover:bg-muted rounded flex-shrink-0 text-muted-foreground hover:text-primary"
+              className="p-1 hover:bg-muted rounded flex-shrink-0 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
               title="Forçar atualização (ignorar cache)"
               data-testid={`force-refresh-${safeTestId}`}
             >
@@ -3959,10 +3959,10 @@ const ServerBrowser = () => {
                   )}
                   
                   {/* MIME Type - apenas para arquivos sincronizados */}
-                  {isFile && downloaded && downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath]?.mimetype && (
-                    <InfoRow 
-                      label="MIME Type" 
-                      value={downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath].mimetype}
+                  {isFile && downloaded && (fileInfo?.mimetype || fileInfo?.mime_type) && (
+                    <InfoRow
+                      label="MIME Type"
+                      value={fileInfo.mimetype || fileInfo.mime_type}
                       valueClassName="font-mono text-xs"
                     />
                   )}
