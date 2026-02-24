@@ -30,6 +30,15 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2025-12-XX (Session 44 - SYNC Download Path Bug Fix)
+- [x] **Correção crítica: Bug no caminho de download via SYNC**
+  - Problema: Arquivos baixados via SYNC estavam sendo salvos em `/app/data/storage/3` (ID numérico) em vez de `/app/data/storage/{server_guid}/...`
+  - Causa raiz: Endpoints `download_item` e `download_file_by_path` em `routes_v2.py` usavam `save_file_by_id(server.id, ...)` em vez de `save_file_with_standard_path(server.guid, ...)`
+  - Correção: Refatorados ambos os endpoints para usar a estrutura de caminho padrão: `{server_guid}/{share_id}/{file_version_id}`
+  - Arquivos modificados: `backend/routes_v2.py` (linhas 1360-1540 e 1785-2010)
+  - Funções corrigidas: `download_item()`, `download_file_by_path()`
+  - Adicionada importação de `update` do SQLAlchemy para marcar versões antigas como não-atuais
+
 ### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
 - [x] **Correção crítica de concorrência no OCR Worker:**
   - Bug de indentação corrigido: código de processamento estava fora do loop `for`
