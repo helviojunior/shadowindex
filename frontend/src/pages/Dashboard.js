@@ -375,7 +375,7 @@ const Dashboard = () => {
       </div>
 
       {/* Linha 1: Top Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="border-l-4 border-l-cyan-500">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -408,6 +408,18 @@ const Dashboard = () => {
                 <p className="text-sm text-muted-foreground uppercase tracking-wider">Leaks Detectados</p>
               </div>
               <AlertTriangle className="w-8 h-8 text-orange-500 opacity-60" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">{stats.downloadedFiles}</p>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">Arquivos Tratados</p>
+              </div>
+              <FileText className="w-8 h-8 text-blue-500 opacity-60" />
             </div>
           </CardContent>
         </Card>
