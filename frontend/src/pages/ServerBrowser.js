@@ -3362,7 +3362,7 @@ const ServerBrowser = () => {
             )}
           </span>
           
-          {/* Force Refresh Button - only for directories/shares */}
+          {/* Force Refresh Button - for directories and shares */}
           {isDirectory && (
             <button
               onClick={async (e) => {
@@ -3372,11 +3372,11 @@ const ServerBrowser = () => {
                 await loadDirectory(nodeId, path, currentShareName, true); // true = forceRefresh
                 toast.success(`Diretório atualizado: ${isShare ? item.share_name : item.name}`);
               }}
-              className="p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              className="p-1 hover:bg-muted rounded flex-shrink-0 text-muted-foreground hover:text-primary"
               title="Forçar atualização (ignorar cache)"
               data-testid={`force-refresh-${safeTestId}`}
             >
-              <RefreshCw className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
