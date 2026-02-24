@@ -4366,7 +4366,7 @@ async def get_scan_jobs(limit: Optional[int] = None):
     """
     from directory_scanner import get_scanner
     scanner = get_scanner()
-    jobs = scanner.get_scan_jobs()
+    jobs = await scanner.get_scan_jobs()
     
     if limit:
         # Ordenar: ativos primeiro, depois limitar
