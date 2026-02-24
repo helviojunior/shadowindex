@@ -380,6 +380,12 @@ const Downloads = () => {
   const retryDownload = async (jobId) => {
     try {
       await axios.post(`${API}/downloads/${jobId}/retry`);
+      // Resetar imediatamente o erro e status no estado local (update otimista)
+      setDownloadJobs(prev =>
+        prev.map(j =>
+          j.id === jobId ? { ...j, status: 'pending', error_message: null, progress: 0 } : j
+        )
+      );
       loadStats();
       loadActiveJobs();
     } catch (error) {
