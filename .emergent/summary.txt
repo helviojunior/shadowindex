@@ -4,7 +4,7 @@ O usuário solicitou inicialmente um painel web (ShadowIndex) para gerenciar cre
 - Gerenciamento de múltiplos tipos de credenciais.
 - Arquitetura de plugins para comunicação (SOAP, SMB).
 - Importação de servidores a partir de XML do Nmap.
-- Integração com GitLeaks para varredura e visualização de segredos, agora expandido para incluir regras de Busca Crítica.
+- Integração com GitLeaks para varredura de segredos, agora expandido para incluir regras de Busca Crítica.
 - Jobs em background para OCR, scan de diretórios e downloads, com suporte a processamento concorrente e watchdogs para estabilidade.
 - Configurações globais para OCR e busca de arquivos críticos.
 - Identificação manual e automática de leaks (chaves privadas em PFX, PEM, SSH, etc.).
@@ -18,69 +18,59 @@ O usuário solicitou inicialmente um painel web (ShadowIndex) para gerenciar cre
 - Visualização de certificados PFX com desbloqueio por senha e log de depuração.
 - Validação de IP duplicado ao cadastrar novos servidores.
 - Refatoração da estrutura de armazenamento de arquivos para um padrão unificado ().
+- Migração do banco de dados de SQLite para PostgreSQL.
+- Remoção de caches em memória para garantir a persistência dos dados e configurações.
 
 **PRODUCT REQUIREMENTS:**
 - Um painel web chamado ShadowIndex com um layout moderno em modo escuro.
 - Múltiplos tipos de credenciais (Usuário/Senha/NTLM, Token, Chave SSH).
 - Uma arquitetura de plugins instanciáveis.
 - Uma página para importar servidores a partir de um XML do Nmap.
-- Integração com um serviço de Leaks (anteriormente GitLeaks) que também executa regras de Busca Crítica para encontrar arquivos sensíveis (configurações, chaves, backups).
-- Um sistema de jobs em background para tarefas demoradas como OCR e escaneamento de diretórios, com suporte a processamento paralelo e mecanismos de watchdog para resetar jobs travados.
-- Funcionalidade para identificar leaks manualmente e detectar automaticamente chaves privadas em diversos formatos (PFX, PEM, DER, chaves SSH).
-- Um dashboard principal com widgets e um painel de monitoramento de jobs em tempo real.
+- Integração com um serviço de Leaks que também executa regras de Busca Crítica.
+- Um sistema de jobs em background para tarefas demoradas como OCR e escaneamento de diretórios, com suporte a processamento paralelo e persistência no banco de dados para evitar perda de jobs.
+- Funcionalidade para identificar leaks manualmente e detectar automaticamente chaves privadas.
+- Um dashboard principal com widgets e um painel de monitoramento de jobs em tempo real, incluindo um gráfico de Leaks vs. Tempo baseado na data de modificação dos arquivos.
 - Na exclusão do servidor, mover seu diretório para , exportar seus dados para JSON e remover os leaks do DB.
-- Rotina de backup automático do banco de dados na inicialização do backend.
+- Backend deve operar sobre PostgreSQL para melhor performance e escalabilidade.
 - A UI não deve travar durante o carregamento de dados, utilizando atualizações em background.
 - Página de gerenciamento de jobs de OCR com ordenação, filtros, e ações como priorizar, reexecutar e deletar.
-- O plugin de Ação Direta deve suportar execução de SQL.
-- Funcionalidade para marcar findings como Falso Positivo.
-- Visualizador de certificados PFX robusto que lida com senhas e exibe logs detalhados.
-- Ambiente de desenvolvimento e produção totalmente conteinerizado com Docker Compose, com configuração flexível do URL do backend.
+- Visualizador de arquivos de texto robusto, suportando diversos tipos de script e scroll para arquivos grandes.
+- Ambiente de desenvolvimento e produção totalmente conteinerizado com Docker Compose.
 
 **User's preferred language**: Portuguese. O próximo agente DEVE responder em português.
 
 **what currently exists?**
-Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex. A sessão atual implementou uma vasta quantidade de funcionalidades e correções. Foram corrigidos bugs de filtragem na UI, implementada validação de IP duplicado, e refatorada a página de Leaks para carregamento de dados sem refresh. Adicionou-se um combobox com busca, e a página de OCR Jobs foi aprimorada com ações de reexecução e exclusão para jobs cancelados/falhos. A mudança mais significativa foi a refatoração completa da estrutura de armazenamento de arquivos para um padrão unificado () e a atualização de todos os serviços (download, sync, gitleaks) para usar essa nova estrutura. A detecção de leaks foi expandida para incluir mais tipos de chaves privadas (SSH, PEM, DER) e o scan de leaks agora integra as regras da Busca Crítica. A configuração do Docker foi melhorada para permitir a passagem de variáveis de ambiente no build, e a documentação () foi atualizada. Finalmente, foram corrigidos bugs relacionados ao caminho de scan de leaks, contadores da UI e o botão de copiar texto em ambientes não-HTTPS.
+Uma aplicação full-stack (FastAPI + React) chamada ShadowIndex, que agora utiliza PostgreSQL como banco de dados principal. A sessão atual foi extremamente produtiva, implementando a migração completa do SQLite para o PostgreSQL, incluindo um script de migração de dados. Foram corrigidos múltiplos bugs, como o caminho de download incorreto de arquivos (SYNC), a visualização de datas de certificados e o download de arquivos de tamanho zero. Foram adicionadas novas funcionalidades, como um gráfico de Leaks vs. Tempo no dashboard, persistência de jobs de scan de diretório no banco de dados e processamento paralelo (multi-worker) para esses scans. Em resposta ao pedido do usuário para tornar o sistema mais robusto após a migração para o Postgres, o agente removeu o cache de  do  e iniciou o processo de remoção dos caches de configuração dos serviços de scan.
 
 **Last working item**:
--   **Last item agent was working:** O agente estava investigando um bug reportado pelo usuário onde o download via SYNC salva o arquivo em um caminho incorreto, usando um ID numérico em vez do GUID do servidor (ex: ).
+-   **Last item agent was working:** O agente estava finalizando a solicitação do usuário para remover todos os caches em memória, garantindo que os dados e configurações sejam sempre buscados do banco de dados. O foco era remover os caches de configuração do  e .
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** Backend testing. O agente precisa primeiro localizar o trecho de código que ainda usa a estrutura de caminho legada para a função SYNC, corrigi-lo e depois testar o fluxo de download. O teste pode ser feito acionando o SYNC pela UI e verificando os logs do backend e o local onde o arquivo foi salvo no sistema de arquivos do container.
+-   **Which testing method agent to use?** backend testing agent. O agente precisa verificar se os caches ( e ) foram completamente removidos dos serviços e se a configuração agora é carregada do banco de dados a cada uso. Após a correção, é necessário reiniciar o backend e testar se a funcionalidade de Busca Crítica continua funcionando e se as alterações de configuração feitas na UI são refletidas sem a necessidade de um reinício do serviço.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Bug no caminho do download via SYNC (P0)**
--   **Issue 2: Erro de migração do banco de dados no ambiente Docker (P1)**
+-   **Issue 1: Concluir a remoção dos caches de configuração dos serviços de scan (P0)**
 
 **Issues Detail:**
--   **Issue 1: Bug no caminho do download via SYNC**
-    -   **Attempted fixes:** O agente investigou  (função ), , e . A lógica nesses arquivos parece ter sido refatorada corretamente para usar a nova estrutura de caminhos. A investigação parou enquanto o agente procurava por outros locais no código que pudessem estar chamando  com um ID numérico.
+-   **Issue 1: Concluir a remoção dos caches de configuração dos serviços de scan**
+    -   **Attempted fixes:** O agente identificou que  e  ainda usavam caches em memória para suas configurações. O código foi modificado em ambos os arquivos para remover as variáveis de cache (, ) e a inicialização que as carregava. As funções foram alteradas para buscar a configuração diretamente do banco de dados quando necessário.
     -   **Next debug checklist:**
-        1.  Fazer uma busca global () por  para identificar todas as suas chamadas e verificar os parâmetros passados.
-        2.  Revisar a função  em  com atenção, pois é a responsável pelo SYNC. Verificar a origem do objeto  e se ele sempre possui o atributo .
-        3.  Verificar se algum servidor no banco de dados do usuário pode não ter um  populado, forçando o código a usar um fallback para o uid=0(root) gid=0(root) groups=0(root) numérico.
-        4.  Adicionar logs temporários no início da função  para imprimir o  e  e confirmar qual valor está sendo usado.
-    -   **Why fix this issue and what will be achieved with the fix?** A correção é crítica para garantir a consistência da nova estrutura de armazenamento de arquivos. Sem ela, os arquivos baixados via SYNC ficam em locais incorretos, quebrando a lógica de enriquecimento de leaks e a visualização de arquivos.
+        1.  Revisar as alterações nos arquivos  e  para confirmar que não há mais referências a variáveis de cache em memória para configurações.
+        2.  Garantir que as funções  agora buscam os dados do banco de dados de forma síncrona ou assíncrona, conforme o contexto da chamada.
+        3.  Reiniciar o serviço de backend usando backend: stopped
+backend: started.
+        4.  Verificar os logs do backend para garantir que não há erros na inicialização.
+        5.  Testar a funcionalidade de Busca Crítica para confirmar que ela opera corretamente com a configuração vinda do banco.
+        6.  Alterar uma configuração da Busca Crítica na UI (ex: uma extensão a ser excluída) e iniciar um novo scan para verificar se a nova configuração é aplicada imediatamente.
+    -   **Why fix this issue and what will be achieved with the fix?** Para garantir que a aplicação seja robusta e sem estado (stateless), evitando a perda de configurações quando o serviço reinicia. Isso completa a tarefa solicitada pelo usuário após a migração para o PostgreSQL.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Backend
     -   **Blocked on other issue:** None
 
--   **Issue 2: Erro de migração do banco de dados no ambiente Docker**
-    -   **Attempted fixes:** O agente identificou que o erro  significa que a migração que adiciona as novas colunas não foi executada no ambiente do usuário. O agente sugeriu comandos para o usuário executar ( ou recriar os containers). A resolução ficou pendente do lado do usuário.
-    -   **Next debug checklist:**
-        1.  Confirmar com o usuário se ele executou os comandos sugeridos e se o erro foi resolvido.
-        2.  Se o problema persistir, verificar o log de inicialização do container  para ver se a tentativa de migração automática está falhando por algum motivo (ex: permissões, arquivo de lock do alembic).
-        3.  Considerar como último recurso instruir o usuário a remover o volume do banco de dados (), o que forçaria uma recriação limpa, mas apagaria todos os dados existentes.
-    -   **Why fix this issue and what will be achieved with the fix?** É um bloqueador que impede o backend de iniciar corretamente, pois as consultas à tabela  falham. Sem a correção, a funcionalidade de leaks fica completamente inoperante.
-    -   **Status:** USER VERIFICATION PENDING
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Backend
-    -   **Blocked on other issue:** None
-
 **In progress Task List**:
-Nenhum.
+Nenhum além da issue pendente.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
@@ -91,102 +81,103 @@ Nenhum.
     -   (P3) Melhorar o servidor mock SOAP para cobrir mais casos de uso.
 
 **Completed work in this session**
--   **UI & UX:**
-    -   **Bug de Filtragem:** Corrigido bug na aba Não Acessados que exibia servidores com Acesso Negado ().
-    -   **Validação de IP:** Implementado um dialog de confirmação ao tentar cadastrar um servidor com IP duplicado ().
-    -   **Reload Otimizado:** Refatorada a página de Leaks para recarregar dados sem refresh de página, usando indicadores de loading sutis ().
-    -   **Combobox com Busca:** Substituído o dropdown de servidores na página de Leaks por um combobox com busca por nome e IP ().
-    -   **Bugs de Layout e Contadores:** Corrigido layout quebrado dos cards na página de OCR Jobs e contador Total que não atualizava na página de Downloads (, ).
-    -   **Botão de Copiar:** Corrigido botão Copiar Texto em várias páginas para funcionar em ambientes HTTP (não-seguros) (, , etc.).
--   **Funcionalidades de Backend:**
-    -   **Gerenciamento de Jobs OCR:** Adicionados endpoints e botões na UI para reexecutar e deletar jobs com status cancelled ou failed (, ).
-    -   **Detecção de Leaks Expandida:** A detecção de chaves privadas agora inclui chaves SSH (id_rsa, etc.), PEM, e DER, além de PFX (, ).
-    -   **Integração de Scans:** O worker de leaks agora executa as regras da Busca Crítica automaticamente após o scan do GitLeaks ().
--   **Refatoração e Arquitetura:**
-    -   **Estrutura de Arquivos Unificada:** Refatorado todo o sistema de download para salvar arquivos na estrutura . Arquivos modificados: , , .
-    -   **Parsing de Leaks:** Atualizado o serviço de leaks para parsear e enriquecer findings da nova estrutura de caminhos (, ).
-    -   **Correção de Leaks PFX:** Corrigida a lógica que criava leaks duplicados e não enriquecidos para chaves em arquivos PFX.
-    -   **Renomeação de Serviço:** Arquivo  renomeado para  para refletir seu escopo mais amplo.
--   **Configuração e Ambiente:**
-    -   **Configuração Docker:** Melhorada a configuração do Docker para permitir a passagem da variável  no build, tornando o deploy mais flexível (, , ).
-    -   **Config de Busca Crítica:** Adicionado  e outros arquivos de sistema à lista de exclusão e corrigida a lógica de verificação de tamanho dos arquivos (, ).
-    -   **Documentação:** Atualizado o  com instruções de setup e funcionalidades.
+-   **Migração de Banco de Dados: SQLite → PostgreSQL**
+    -   Adaptado o  para suportar ambos os dialetos (SQLite e PostgreSQL).
+    -   Criado o script  para migração de dados.
+    -   Adicionado  ao .
+    -   Atualizados  e  com um serviço PostgreSQL e volume de dados persistente em .
+    -   Atualizado  com instruções sobre a nova configuração e migração.
+-   **Refatoração de Cache:**
+    -   Jobs de scan de diretório agora são persistidos na tabela  para sobreviver a reinicializações ().
+    -   Removido o cache de  em memória do , que agora busca os dados diretamente do PostgreSQL.
+-   **Melhorias no Scan de Diretório:**
+    -   Implementado processamento paralelo (multi-worker) para scans de diretório, com número de workers configurável na UI (, ).
+-   **Funcionalidades e Melhorias de UI:**
+    -   **Dashboard:** Adicionado gráfico Leaks vs. Tempo que busca dados do novo endpoint , agrupando leaks pela data de modificação do arquivo com formato YYYY/MM (, ).
+    -   **Visualizador de Arquivos:** Expandido para permitir visualização de todos os mime types  e mais extensões de script (, , etc.). Corrigido bug de scroll duplo e adicionado scroll horizontal para linhas longas ().
+    -   **Visualizador de Certificados:** Corrigido bug de Invalid Date e adicionados campos que faltavam (, fingerprints) para exibição completa dos dados do certificado (, ).
+-   **Correções de Bugs (Backend):**
+    -   Corrigido o caminho de download da função SYNC para usar  em vez de  ().
+    -   Corrigida a lógica de download para permitir arquivos com tamanho zero ().
+-   **Configuração:**
+    -   Ajustadas e unificadas as listas de exclusão de arquivos para o scan geral e a Busca Crítica (, ).
 
 **Earlier issues found/mentioned but not fixed**
--   Nenhum. A questão da migração do banco de dados foi identificada nesta sessão e está listada como um problema pendente.
+-   Nenhum.
 
 **Known issue recurrence from previous fork**
--   Nenhuma recorrência de issues conhecidas da fork anterior foi observada.
+-   Nenhuma.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Refatoração de Arquitetura de Dados:** Migração da estrutura de armazenamento baseada em caminhos relativos para uma estrutura padronizada e baseada em IDs (), exigindo alterações em múltiplos serviços.
--   **Migrações de Banco de Dados (Alembic):** Criação e aplicação de scripts de migração para evoluir o esquema do banco de dados sem perda de dados.
--   **Injeção de Variáveis de Build (Docker):** Utilização de  e  no Dockerfile e  no  para injetar variáveis de ambiente no build do React, permitindo configurações de deploy flexíveis.
--   **Padrões de UI Assíncronos:** Refatoração da UI para usar atualizações em background (fetching de dados) sem bloquear a interface ou forçar recarregamentos de página, melhorando a experiência do usuário.
--   **Detecção de Padrões (Regex e Binário):** Expansão da lógica de detecção de segredos para analisar o conteúdo de arquivos em busca de padrões de texto (chaves PEM/SSH) e assinaturas binárias (chaves DER).
+-   **Migração de Banco de Dados:** Processo completo de migração de um sistema de SQLite para PostgreSQL, incluindo adaptação de código, criação de script de migração de dados e configuração de ambiente com Docker.
+-   **Processamento Concorrente:** Uso de  para paralelizar tarefas de I/O-bound (scans de rede), melhorando significativamente a performance do scanner de diretórios.
+-   **Persistência de Estado:** Refatoração de componentes para mover o estado de caches em memória para o banco de dados (scan jobs, findings), tornando a aplicação mais robusta e stateless.
+-   **Configuração Dinâmica:** Remoção de caches de configuração para garantir que as alterações feitas na UI sejam aplicadas dinamicamente sem a necessidade de reiniciar os serviços.
 
 **key DB schema**
--   **gitleaks_findings**:
-    -    (String, indexado) - **NEW**
-    -    (Integer) - **NEW**
-    -    (Integer) - **NEW**
+-   **Dialeto:** PostgreSQL
+-   **scan_jobs**: Tabela agora é crucial para a persistência de jobs de scan de diretório entre reinicializações do serviço.
+-   **gitleaks_findings**: Tabela é consultada diretamente para obter os leaks, não havendo mais cache em memória.
 
 **changes in tech stack**
-Nenhuma.
+-   **Banco de Dados:** Migrado de **SQLite** para **PostgreSQL**.
+-   **Driver Python:** Adicionado  para comunicação assíncrona com PostgreSQL.
 
 **All files of reference**
--   : Lógica centralizada de scan de leaks, agora incluindo Critical Search.
--   : Novas funções centralizadas para gerar e resolver caminhos de arquivo.
--   : Contém a lógica de SYNC () que precisa ser depurada.
--   : Contém muitos endpoints modificados para suportar as novas funcionalidades e a refatoração.
--   : Definição do modelo  com as novas colunas.
--   : O novo script de migração do banco de dados.
--   : Contém as correções de bugs de scan e as melhorias de UI (combobox, no-refresh).
--   : Contém as novas ações de reexecução/deleção de jobs.
--   : Contém a nova configuração de build para o frontend.
--   : Documentação atualizada para o usuário.
+-   : Contém a lógica atualizada de conexão com o banco de dados.
+-   : Script para migrar dados do SQLite para o Postgres.
+-   : Onde a lógica de múltiplos workers e persistência de jobs foi implementada, e onde o cache de config está sendo removido.
+-   : Onde o cache de configuração está sendo removido.
+-   : Onde o cache de findings foi removido.
+-   : Contém múltiplos endpoints corrigidos e o novo endpoint do gráfico.
+-   : Define o novo serviço do PostgreSQL.
+-   : Contém as correções do visualizador de arquivos e certificados.
+-   : Contém o novo gráfico.
+-   : Contém a nova opção de configuração para workers de scan.
 
 **Areas that need refactoring**:
-Nenhum.
+-   Com a migração para PostgreSQL, uma revisão futura das queries mais complexas pode ser benéfica para otimizar a performance, aproveitando os recursos específicos do Postgres.
 
 **key api endpoints**
--   : Reexecuta um job de OCR específico (novo).
--   : Remove um job de OCR específico (novo).
--   : Reexecuta todos os jobs de OCR cancelados (novo).
--   : Endpoint de scan de servidor, modificado para usar GUID.
--   : Endpoint de scan de todos os servidores, modificado para usar GUID.
+-   : **NOVO** - Retorna dados agregados para o gráfico de Leaks vs. Tempo.
+-   : **MODIFICADO** - Corrigido para usar  e estrutura de armazenamento correta.
+-   : **MODIFICADO** - Corrigido para usar .
+-   : **MODIFICADO** - Retorna mais campos para uma visualização completa do certificado.
+-   : **MODIFICADO** - Agora busca os dados diretamente do banco de dados (PostgreSQL) sem usar cache.
 
 **Critical Info for New Agent**
--   Sua primeira tarefa é depurar o bug no caminho de download da função SYNC. Comece procurando por chamadas a  em  e verifique por que um ID numérico está sendo usado em vez de um GUID.
--   Esteja ciente do problema de migração do banco de dados. O usuário pode precisar de ajuda para executar o comando FAILED: No 'script_location' key found in configuration. em seu ambiente Docker, ou você pode precisar investigar por que a migração automática na inicialização do backend não funcionou.
--   Uma grande refatoração na estrutura de armazenamento de arquivos foi concluída. O novo padrão é . Qualquer nova funcionalidade que manipule arquivos deve aderir a este padrão usando as funções centralizadas em .
--   As alterações no  e no  do frontend foram feitas para resolver um problema específico do usuário ao definir o . A nova abordagem usa argumentos de build.
+-   Sua primeira tarefa é concluir a remoção dos caches de configuração em  e . Verifique o código, reinicie o backend e teste para garantir que as configurações são lidas do banco e que as alterações na UI são aplicadas dinamicamente.
+-   O projeto agora opera com PostgreSQL. A string de conexão é gerenciada pela variável de ambiente  no .
+-   Scans de diretório são persistentes e executados por múltiplos workers. A quantidade de workers é configurável na UI.
+-   Quase todos os caches em memória foram eliminados. A aplicação deve buscar dados frescos (findings, configurações) diretamente do banco de dados.
 
 **documents and test reports created in this job**
--    (atualizado)
--    (novo arquivo de migração - nome exato pode variar)
+-   
+-    (atualizado com instruções do PostgreSQL)
+-    (atualizado continuamente)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **DONE**: Reportou bug no botão Copiar Texto em ambiente HTTP; agente corrigiu adicionando um fallback.
-2.  **IN PROGRESS**: Reportou bug no caminho de download da função SYNC (); agente iniciou a investigação.
-3.  **DONE**: Reportou bug na quebra de linha dos cards na tela de Jobs; agente corrigiu o layout do grid.
-4.  **DONE**: Reportou que a variável de ambiente  não estava funcionando no Docker; agente corrigiu o  e  para usar argumentos de build.
-5.  **DONE**: Solicitou adicionar as instruções de configuração do  ao ; agente atualizou o arquivo.
-6.  **DONE**: Solicitou adicionar  às extensões ignoradas na configuração geral; agente adicionou e expandiu a lista de arquivos de sistema ignorados.
-7.  **ADDRESSED**: Perguntou se a regra de tamanho influencia a decisão de download; agente confirmou que sim e explicou a lógica.
-8.  **ADDRESSED**: Compartilhou um erro de  no backend; agente identificou como um problema de migração não aplicada no ambiente do usuário e forneceu soluções.
-9.  **REVERTED**: Solicitou alterar o endereço do backend para ser detectado dinamicamente no frontend; agente implementou, mas o usuário pediu para cancelar a alteração.
-10. **DONE**: Reportou dois bugs no scan de leaks (caminho errado usando ID e não limpar a seleção de servidor); agente corrigiu ambos.
+1.  **DONE**: Solicitou a criação de um comando SQL para reinserir jobs de critical scan com até 3 níveis de profundidade de diretório.
+2.  **IN PROGRESS**: Perguntou se o scan de diretório usava cache, levando à tarefa atual de remoção de caches.
+3.  **DONE**: Solicitou um comando SQL para reinserir todos os jobs de critical scan cujo path tenha até 3 níveis.
+4.  **IN PROGRESS**: Solicitou a remoção de caches em memória para que os objetos sejam buscados diretamente do banco de dados.
+5.  **DONE**: Solicitou que o volume de dados do PostgreSQL no docker-compose fosse mapeado para .
+6.  **DONE**: Solicitou a migração do projeto de SQLite para PostgreSQL, incluindo um script de migração de dados.
+7.  **DONE**: Solicitou a adição de  no container interno do visualizador de arquivos.
+8.  **DONE**: Reportou a existência de dois scrolls no visualizador de arquivos; agente corrigiu.
+9.  **DONE**: Perguntou se o visualizador de arquivos teria scroll para ver todo o conteúdo; agente investigou.
+10. **DONE**: Reportou que o visualizador de arquivos não mostrava todo o conteúdo (linhas cortadas); agente corrigiu.
 
 **Project Health Check:**
--   **Broken:** A funcionalidade de download via SYNC está quebrada, salvando arquivos no lugar errado. O backend pode não iniciar para o usuário devido a um erro de migração de banco de dados não aplicada.
--   **Mocked:** O serviço  continua disponível para desenvolvimento no arquivo .
--   **Needs Verification:** A correção para o erro de migração (FAILED: No 'script_location' key found in configuration.) aguarda que o usuário a execute em seu ambiente.
+-   **Broken:** A funcionalidade de Busca Crítica pode não funcionar corretamente até que a remoção do cache de configuração seja concluída e testada.
+-   **Mocked:** O serviço  continua disponível para desenvolvimento.
 
 **3rd Party Integrations**
+-   **PostgreSQL:** Banco de dados principal.
+-   **asyncpg:** Driver Python para PostgreSQL.
 -   **Apache Tika:** Para OCR.
 -   **Impacket:** Para interação SMB.
 -   **GitLeaks:** Binário para varredura de segredos.
@@ -198,11 +189,12 @@ Nenhum.
 **Testing status**
 -   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** Um novo arquivo de migração do Alembic foi criado.
--   **Known regressions:** Nenhuma conhecida, mas a refatoração do caminho de armazenamento é extensa e pode ter efeitos colaterais não descobertos.
+-   **Test files created:**
+    -   
+-   **Known regressions:** Nenhuma conhecida.
 
 **Credentials to test flow:**
 Não há credenciais estáticas. A aplicação permite criar servidores, credenciais e instâncias de plugin através da UI.
 
 **What agent forgot to execute**
-O agente estava no meio da depuração do último bug relatado pelo usuário e não concluiu a investigação. Todas as outras solicitações do usuário na sessão foram tratadas.</analysis>
+O agente estava no meio da tarefa de remoção de cache. Ele modificou os arquivos  e , mas não concluiu o ciclo de verificação, reinicialização e teste para validar completamente a correção.</analysis>
