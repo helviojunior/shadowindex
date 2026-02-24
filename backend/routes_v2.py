@@ -5210,6 +5210,16 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             ".iso", ".img",  # Imagens de disco
             ".cab", ".msp", ".msm",  # Pacotes Windows
             ".css"  # Estilos
+        ],
+        "excluded_files": [
+            "Thumbs.db",  # Cache de miniaturas Windows
+            "desktop.ini",  # Configuração de pasta Windows
+            ".DS_Store",  # Metadados Mac
+            "ntuser.dat",  # Registro do usuário Windows
+            "ntuser.ini",  # Configuração do registro
+            "pagefile.sys",  # Arquivo de paginação
+            "hiberfil.sys",  # Arquivo de hibernação
+            "swapfile.sys"  # Arquivo de swap
         ]
     },
     
