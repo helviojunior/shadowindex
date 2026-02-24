@@ -809,20 +809,24 @@ class DirectoryScanner:
                     
                     # Adicionar subdiretório à fila de scan
                     if scan_job.depth < scan_job.max_depth:
-                        # Verificar se scan foi cancelado
-                        if scan_job.id in self.cancelled_ids:
+                        # Verificar se scan foi cancelado (por db_id)
+                        if scan_job.db_id in self.cancelled_ids:
                             break
                         
                         async with self._lock:
-                            sub_job = ScanJob(
+                            # Sub-jobs não são persistidos no banco (somente o job root é)
+                            # Eles usam parent_id apontando para o db_id do root
+                            sub_job = ScanJobMemory(
+                                db_id=None,  # Sub-jobs não têm entrada no banco
                                 server_id=scan_job.server_id,
+                                server_guid=scan_job.server_guid,
                                 share_name=scan_job.share_name,
                                 path=item_full_path,  # Usar path completo
                                 depth=scan_job.depth + 1,
                                 max_depth=scan_job.max_depth,
                                 max_file_size_bytes=scan_job.max_file_size_bytes,
                                 apply_filters=scan_job.apply_filters,
-                                parent_id=scan_job.parent_id or scan_job.id,
+                                parent_id=scan_job.parent_id or scan_job.db_id,  # Apontar para o root
                                 critical_only=scan_job.critical_only  # Propagar flag
                             )
                             self.scan_queue.append(sub_job)
