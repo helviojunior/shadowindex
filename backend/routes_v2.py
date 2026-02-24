@@ -1904,7 +1904,7 @@ async def download_file_by_path(
         if last_version:
             version = last_version.version_number + 1
         
-        file_id = existing.id
+        downloaded_file = existing
     else:
         # Criar novo registro primeiro para obter o ID
         downloaded_file = DownloadedFile(
@@ -1918,86 +1918,96 @@ async def download_file_by_path(
         )
         db.add(downloaded_file)
         await db.flush()  # Obtém o ID sem commitar
-        file_id = downloaded_file.id
     
-    # Salvar arquivo usando estrutura baseada em IDs
-    from storage_utils import save_file_by_id, get_file_path_by_id
-    local_path, sha1_hash, file_size = save_file_by_id(
-        server.id,
-        file_id,
-        content_bytes,
-        version
+    # Obter ou criar share para ter o share_id
+    share_result = await db.execute(
+        select(ServerShare).where(
+            ServerShare.server_guid == server.guid,
+            ServerShare.share_name == share_name
+        )
     )
+    share = share_result.scalar_one_or_none()
     
-    mimetype = get_file_mimetype(local_path)
-    
-    # Caminho relativo usando IDs
-    sanitized_path = f"{server.id}/{file_id}/{version}"
-    
-    if existing:
-        # Criar nova versão
-        new_version = FileVersion(
+    if not share:
+        # Criar share se não existir
+        share = ServerShare(
+            server_id=server.id,
             server_guid=server.guid,
             share_name=share_name,
-            file_path=file_path,
-            version_number=version,
-            sha1_hash=sha1_hash,
-            file_size=file_size,
-            mimetype=mimetype,
-            local_path=local_path,
-            is_current=True
+            access_denied=False,
+            has_children=True,
+            children_fetched=False
         )
-        db.add(new_version)
-        
-        # Marcar versões anteriores como não-current
+        db.add(share)
+        await db.flush()
+    
+    share_id = share.id
+    
+    # Criar FileVersion primeiro para obter o ID
+    new_version = FileVersion(
+        server_guid=server.guid,
+        share_name=share_name,
+        file_path=file_path,
+        version_number=version,
+        sha1_hash=new_hash,
+        file_size=file_size,
+        mimetype=None,
+        local_path="",  # Será atualizado após salvar
+        is_current=True
+    )
+    db.add(new_version)
+    await db.flush()  # Obter o ID da versão
+    
+    # Marcar versões anteriores como não-current
+    if version > 1:
         await db.execute(
-            select(FileVersion).where(
+            update(FileVersion).where(
                 FileVersion.server_guid == server.guid,
                 FileVersion.file_path == file_path,
                 FileVersion.version_number != version
-            )
+            ).values(is_current=False)
         )
-        
-        # Atualizar arquivo existente
-        existing.sanitized_path = sanitized_path
-        existing.sha1_hash = sha1_hash
-        existing.file_size = file_size
-        existing.mimetype = mimetype
-        existing.downloaded_at = datetime.now(timezone.utc)
-        await db.commit()
-        
-        return {
-            "success": True,
-            "file_id": existing.id,
-            "status": "updated",
-            "message": "Arquivo atualizado",
-            "sha1_hash": sha1_hash,
-            "size": file_size,
-            "size_formatted": format_size(file_size),
-            "version": version
-        }
-    else:
-        # Atualizar registro já criado com caminho sanitizado
-        downloaded_file.sanitized_path = sanitized_path
-        downloaded_file.mimetype = mimetype
-        
-        # Criar primeira versão
-        first_version = FileVersion(
-            server_guid=server.guid,
-            share_name=share_name,
-            file_path=file_path,
-            version_number=1,
-            sha1_hash=sha1_hash,
-            file_size=file_size,
-            mimetype=mimetype,
-            local_path=local_path,
-            is_current=True
-        )
-        db.add(first_version)
-        
+    
+    # Salvar arquivo usando estrutura PADRÃO: server_guid/share_id/file_version_id
+    from storage_utils import save_file_with_standard_path
+    
+    full_path, sanitized_path, _, _ = save_file_with_standard_path(
+        server.guid,
+        share_id,
+        new_version.id,
+        content_bytes
+    )
+    local_path = str(full_path)
+    
+    mimetype = get_file_mimetype(local_path)
+    
+    # Atualizar FileVersion com os dados do arquivo salvo
+    new_version.local_path = sanitized_path
+    new_version.mimetype = mimetype
+    
+    # Atualizar DownloadedFile
+    downloaded_file.sanitized_path = sanitized_path
+    downloaded_file.sha1_hash = new_hash
+    downloaded_file.file_size = file_size
+    downloaded_file.mimetype = mimetype
+    downloaded_file.downloaded_at = datetime.now(timezone.utc)
+    
+    if not existing:
         server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
-        await db.commit()
-        await db.refresh(downloaded_file)
+    
+    await db.commit()
+    await db.refresh(downloaded_file)
+    
+    return {
+        "success": True,
+        "file_id": downloaded_file.id,
+        "status": "updated" if existing else "created",
+        "message": "Arquivo atualizado" if existing else "Arquivo baixado",
+        "sha1_hash": new_hash,
+        "size": file_size,
+        "size_formatted": format_size(file_size),
+        "version": version
+    }
         await db.refresh(first_version)
         
         # === Auto OCR para novo arquivo ===
