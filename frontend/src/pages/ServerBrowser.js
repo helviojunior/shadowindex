@@ -3451,6 +3451,16 @@ const ServerBrowser = () => {
                   }
                   return true;
                 })
+                .sort((a, b) => {
+                  // Diretórios primeiro, depois ordem alfabética (estilo Windows Explorer)
+                  const aType = (a.type || a.itemType || '').toLowerCase();
+                  const bType = (b.type || b.itemType || '').toLowerCase();
+                  const aIsDir = aType === 'directory' || aType === 'dir' || aType === 'folder';
+                  const bIsDir = bType === 'directory' || bType === 'dir' || bType === 'folder';
+                  if (aIsDir && !bIsDir) return -1;
+                  if (!aIsDir && bIsDir) return 1;
+                  return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+                })
                 .map((child, index, arr) => {
                   const isLast = index === arr.length - 1;
                   const newParentLines = [...parentLines, !isLastChild];
