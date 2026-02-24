@@ -1146,6 +1146,16 @@ async def browse_path(
                         "modified_at": item.get("modified_at")
                     })
         
+        # Preservar quais paths já tinham children_fetched=True antes de deletar
+        prev_fetched_result = await db.execute(
+            select(ServerItem.full_path).where(
+                ServerItem.server_guid == server.guid,
+                ServerItem.parent_path == path,
+                ServerItem.children_fetched == True
+            )
+        )
+        prev_fetched_paths = {row[0] for row in prev_fetched_result.fetchall()}
+
         # Remover itens antigos deste path
         await db.execute(
             delete(ServerItem).where(
@@ -1153,7 +1163,7 @@ async def browse_path(
                 ServerItem.parent_path == path
             )
         )
-        
+
         # Adicionar novos itens
         items = []
         for item_data in parsed_items:
@@ -1165,7 +1175,8 @@ async def browse_path(
                 name=item_data["name"],
                 full_path=item_data["fullPath"],
                 size=str(item_data["size"]) if item_data["size"] else None,
-                modified_at=datetime.fromisoformat(item_data["modified_at"]) if isinstance(item_data["modified_at"], str) else item_data["modified_at"]
+                modified_at=datetime.fromisoformat(item_data["modified_at"]) if isinstance(item_data["modified_at"], str) else item_data["modified_at"],
+                children_fetched=item_data["fullPath"] in prev_fetched_paths
             )
             db.add(db_item)
             items.append(db_item)
@@ -1224,7 +1235,7 @@ async def browse_path(
                     "size": item.size,
                     "modified_at": item.modified_at,
                     "hasChildren": item.item_type == "Directory",
-                    "childrenFetched": False
+                    "childrenFetched": item.children_fetched
                 }
                 for item in items
             ],
@@ -1778,6 +1789,7 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
             "sha1_hash": sha1_hash,
             "size": file_size,
             "size_formatted": format_size(file_size),
+            "mimetype": mimetype,
             "ocr_job_id": ocr_job_id,
             "ocr_status": "queued" if ocr_job_id else "not_applicable"
         }
@@ -2349,6 +2361,7 @@ async def list_server_downloads(server_id: int, db: AsyncSession = Depends(get_d
             "sanitized_path": f.sanitized_path,
             "sha1_hash": f.sha1_hash,
             "file_size": f.file_size,
+            "mimetype": f.mimetype,
             "downloaded_at": f.downloaded_at.isoformat() if f.downloaded_at else None
         }
         for f in files

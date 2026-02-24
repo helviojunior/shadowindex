@@ -2180,7 +2180,7 @@ const ServerBrowser = () => {
         fullPath: item.fullPath || item.full_path || `${path}\\${item.name}`,  // Normalizar fullPath
         parentPath: path,
         shareName: shareName,
-        childrenFetched: item.children_fetched || false  // Flag do banco para diretórios visitados
+        childrenFetched: !!(item.childrenFetched || item.children_fetched)  // Flag do banco para diretórios visitados
       }));
       
       setNodeChildren(prev => {
@@ -2480,6 +2480,7 @@ const ServerBrowser = () => {
           id: response.data.file_id,
           sha1_hash: sha1_hash,
           file_size: response.data.size,
+          mimetype: response.data.mimetype,
           downloaded_at: new Date().toISOString()
         }
       }));
@@ -3959,10 +3960,10 @@ const ServerBrowser = () => {
                   )}
                   
                   {/* MIME Type - apenas para arquivos sincronizados */}
-                  {isFile && downloaded && (fileInfo?.mimetype || fileInfo?.mime_type) && (
+                  {isFile && downloaded && downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath]?.mimetype && (
                     <InfoRow
                       label="MIME Type"
-                      value={fileInfo.mimetype || fileInfo.mime_type}
+                      value={downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath].mimetype}
                       valueClassName="font-mono text-xs"
                     />
                   )}
