@@ -2709,6 +2709,7 @@ async def get_certificate_info(
                     pass
                 
                 cert_info = {
+                    "index": cert_idx,
                     "subject": subject_parts,
                     "issuer": issuer_parts,
                     "serial_number": str(cert_obj.serial_number),
