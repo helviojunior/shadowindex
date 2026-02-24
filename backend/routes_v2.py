@@ -4838,19 +4838,20 @@ async def register_manual_leak(leak: ManualLeakCreate, db: AsyncSession = Depend
         "extracted_version": extracted_version
     }
     
-    # Verificar se já existe
-    existing = [f for f in service._findings if f.get('Fingerprint') == finding['Fingerprint']]
+    # Verificar se já existe no banco
+    existing_result = await db.execute(
+        select(GitleaksFinding).where(GitleaksFinding.fingerprint == finding['Fingerprint'])
+    )
+    existing = existing_result.scalar_one_or_none()
+    
     if existing:
         return {
             "success": False,
             "message": "Leak já registrado para este arquivo e localização",
-            "finding": existing[0]
+            "finding": service._finding_to_dict(existing)
         }
     
-    # Adicionar ao cache
-    service._findings.append(finding)
-    
-    # Salvar no banco de dados para persistência
+    # Salvar diretamente no banco de dados
     await save_finding_to_db(finding)
     
     return {
