@@ -258,9 +258,6 @@ const ServerBrowser = () => {
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const searchTimeoutRef = useRef(null);
   
-  // Estados para polling de downloads em background
-  const [activeDownloads, setActiveDownloads] = useState(0);
-  const downloadPollingRef = useRef(null);
 
   // WebSocket para atualizações em tempo real do status dos arquivos
   useFileStatusEvents((data) => {
@@ -396,49 +393,6 @@ const ServerBrowser = () => {
     loadDownloadedFiles();
   }, [serverId]);
 
-  // Polling para verificar downloads em background e atualizar a árvore
-  useEffect(() => {
-    const checkActiveDownloads = async () => {
-      try {
-        const response = await axios.get(`${API}/downloads`, {
-          params: { server_id: serverId }
-        });
-        
-        const downloads = response.data || [];
-        const active = downloads.filter(d => 
-          d.status === 'pending' || d.status === 'downloading'
-        ).length;
-        
-        // Se havia downloads ativos e agora não há, atualizar listas
-        if (activeDownloads > 0 && active === 0) {
-          console.log('[Polling] Downloads completed, refreshing file list...');
-          await loadDownloadedFiles();
-          // Atualizar ícones verdes sem perder os filhos expandidos
-          // Usamos shares-tree que já vem com os filhos do banco
-          // Em vez de recarregar toda a árvore, apenas recarregamos os arquivos baixados
-        }
-        
-        setActiveDownloads(active);
-        
-        // Se ainda há downloads ativos, continuar polling
-        if (active > 0) {
-          downloadPollingRef.current = setTimeout(checkActiveDownloads, 3000);
-        }
-      } catch (error) {
-        console.error('Error checking downloads:', error);
-      }
-    };
-
-    // Iniciar polling
-    checkActiveDownloads();
-
-    // Cleanup
-    return () => {
-      if (downloadPollingRef.current) {
-        clearTimeout(downloadPollingRef.current);
-      }
-    };
-  }, [serverId, activeDownloads, server]);
 
   // Atalho de teclado Ctrl+F (Windows) ou Cmd+F (Mac) para focar na busca
   useEffect(() => {
@@ -580,7 +534,9 @@ const ServerBrowser = () => {
       
       const isDownloaded = downloadedFiles.includes(filePath);
       const fileInfo = downloadedFilesInfo[filePath];
+      console.log(fileInfo);
       const fileMimeType = fileInfo?.mimetype || fileInfo?.mime_type || null;
+      console.log(fileMimeType);
       const canView = canPreviewFile(selectedItem.name, fileMimeType);
       
       // Se arquivo já baixado e pode ser visualizado, abrir na aba View
@@ -2860,11 +2816,7 @@ const ServerBrowser = () => {
       });
       
       toast.success(`${response.data.message}. Acompanhe em Arquivos > Downloads`);
-      
-      // Forçar atualização do estado de downloads ativos para iniciar polling
-      // Isso garante que o frontend comece a verificar os jobs criados no backend
-      setActiveDownloads(prev => prev + 1);
-      
+
     } catch (error) {
       console.error('Error starting bulk download:', error);
       const errorMsg = error.response?.data?.detail || 'Erro ao iniciar download em massa';
@@ -2900,10 +2852,7 @@ const ServerBrowser = () => {
       });
       
       toast.success(`${response.data.message}. Busca crítica iniciada - GitLeaks será executado automaticamente ao final.`);
-      
-      // Forçar atualização do estado de downloads ativos para iniciar polling
-      setActiveDownloads(prev => prev + 1);
-      
+
     } catch (error) {
       console.error('Error starting critical search:', error);
       const errorMsg = error.response?.data?.detail || 'Erro ao iniciar busca crítica';
