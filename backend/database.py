@@ -24,7 +24,7 @@ if POSTGRES_URL:
         DATABASE_URL = POSTGRES_URL
     DATABASE_URL_READONLY = DATABASE_URL
     
-    logger.info(f"Using PostgreSQL database")
+    logger.info("Using PostgreSQL database")
     
     # Engine principal para escrita
     engine = create_async_engine(

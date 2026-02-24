@@ -236,7 +236,7 @@ def reset_sequences(pg_conn, table_name):
             
         cursor.close()
         pg_conn.commit()
-    except Exception as e:
+    except Exception:
         # Sequence pode não existir para algumas tabelas
         pass
 
