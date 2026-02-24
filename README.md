@@ -17,7 +17,7 @@ Plataforma de análise de segurança de arquivos com varredura de leaks, OCR e g
 
 ### Backend
 - FastAPI
-- SQLite3 (via SQLAlchemy + aiosqlite)
+- PostgreSQL ou SQLite (via SQLAlchemy + asyncpg/aiosqlite)
 - Apache Tika (OCR)
 - GitLeaks (varredura de segredos)
 - Python 3.11
