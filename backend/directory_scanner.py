@@ -179,12 +179,14 @@ MAX_DIRS_PER_CYCLE = 50  # máximo de diretórios a processar por ciclo
 _scanner_instance: Optional['DirectoryScanner'] = None
 
 
-class ScanJob:
-    """Representa um job de scan de diretório"""
-    def __init__(self, server_id: int, share_name: str, path: str, depth: int, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True, parent_id: str = None, critical_only: bool = False):
-        self.id = str(uuid.uuid4())[:8]  # ID curto único
-        self.parent_id = parent_id  # ID do scan pai (para subdiretórios)
+class ScanJobMemory:
+    """Representa um job de scan de diretório em memória (para processamento)"""
+    def __init__(self, db_id: int, server_id: int, server_guid: str, share_name: str, path: str, depth: int, max_depth: int, max_file_size_bytes: Optional[int], apply_filters: bool = True, parent_id: int = None, critical_only: bool = False):
+        self.db_id = db_id  # ID do banco de dados
+        self.id = str(uuid.uuid4())[:8]  # ID curto único para uso interno
+        self.parent_id = parent_id  # ID do scan pai (para subdiretórios) - agora é db_id
         self.server_id = server_id
+        self.server_guid = server_guid
         self.share_name = share_name
         self.path = path
         self.depth = depth
@@ -200,9 +202,11 @@ class ScanJob:
     
     def to_dict(self):
         return {
-            'id': self.id,
+            'id': self.db_id,  # Usar ID do banco
+            'internal_id': self.id,
             'parent_id': self.parent_id,
             'server_id': self.server_id,
+            'server_guid': self.server_guid,
             'share_name': self.share_name,
             'path': self.path,
             'depth': self.depth,
@@ -214,6 +218,10 @@ class ScanJob:
             'critical_files_found': self.critical_files_found,
             'created_at': self.created_at.isoformat()
         }
+
+
+# Alias para compatibilidade - DEPRECATED, usar ScanJobMemory
+ScanJob = ScanJobMemory
 
 
 class DirectoryScanner:
