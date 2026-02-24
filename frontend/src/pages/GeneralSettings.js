@@ -232,6 +232,26 @@ const GeneralSettings = () => {
               </p>
             </div>
 
+            {/* Max Simultaneous Scans */}
+            <div className="space-y-2">
+              <Label htmlFor="max_simultaneous_scans" className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-muted-foreground" />
+                Scans Simultâneos
+              </Label>
+              <Input
+                id="max_simultaneous_scans"
+                type="number"
+                min="1"
+                max="10"
+                value={settings.max_simultaneous_scans}
+                onChange={(e) => handleChange('max_simultaneous_scans', e.target.value)}
+                data-testid="max-scans-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                Número máximo de scans de diretório em paralelo (1-10).
+              </p>
+            </div>
+
             {/* OCR Auto Cleanup Minutes */}
             <div className="space-y-2">
               <Label htmlFor="ocr_auto_cleanup_minutes" className="flex items-center gap-2">
