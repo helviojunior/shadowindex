@@ -117,7 +117,7 @@ def is_critical_file(file_name: str, file_size: int, config: Dict[str, Any]) -> 
             logger.debug(f"Critical match (extension '{ext}'): {file_name}")
             return True
     
-    # 4. Verificar nomes de arquivos exatos
+    # 5. Verificar nomes de arquivos exatos (críticos)
     exact_names = file_rules.get('exact_names', [])
     for exact in exact_names:
         if file_lower == exact.lower():
