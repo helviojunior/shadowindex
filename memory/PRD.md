@@ -30,6 +30,21 @@ Portuguese (pt-BR)
 
 ## Completed Features
 
+### 2025-12-XX (Session 45 - Cache Removal Completion)
+- [x] **Remoção completa de caches de configuração:**
+  - Removido cache `_critical_search_config` do `directory_scanner.py`
+  - Refatorado `critical_search_service.py`:
+    - Adicionado import `fnmatch` que estava faltando
+    - Removidos métodos síncronos quebrados (`is_critical_file`, `is_log_directory`, `should_auto_start_gitleaks`, `get_gitleaks_delay`)
+    - Métodos agora são todos assíncronos: `is_critical_file_async()`, `is_log_directory_async()`, `should_auto_start_gitleaks_async()`, `get_gitleaks_delay_async()`
+    - Todos os métodos buscam a configuração diretamente do banco de dados (sem cache)
+    - Método `_check_critical()` agora retorna `Tuple[bool, str]` com razão da detecção
+  - Removido método legado `load_findings_from_disk()` do `leaks_service.py`
+- [x] **Testes de configuração dinâmica:**
+  - Verificado que alterações de configuração feitas na UI são aplicadas imediatamente
+  - Não é necessário reiniciar o backend para aplicar novas configurações
+  - Configuração é buscada do PostgreSQL a cada uso
+
 ### 2025-12-XX (Session 44 - SYNC Download Path Bug Fix & Certificate Display Fix)
 - [x] **Correção crítica: Bug no caminho de download via SYNC**
   - Problema: Arquivos baixados via SYNC estavam sendo salvos em `/app/data/storage/3` (ID numérico) em vez de `/app/data/storage/{server_guid}/...`
