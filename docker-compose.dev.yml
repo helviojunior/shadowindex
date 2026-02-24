@@ -9,6 +9,7 @@ services:
     container_name: shadowindex-postgres-dev
     restart: unless-stopped
     environment:
+      TZ: "America/Sao_Paulo"
       POSTGRES_USER: shadowindex
       POSTGRES_PASSWORD: shadowindex
       POSTGRES_DB: shadowindex
@@ -28,6 +29,8 @@ services:
     image: apache/tika:latest-full
     container_name: shadowindex-tika-dev
     restart: unless-stopped
+    environment:
+      TZ: "America/Sao_Paulo"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9998/tika >/dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -43,6 +46,8 @@ services:
       dockerfile: Dockerfile
     container_name: shadowindex-soap-mock-dev
     restart: unless-stopped
+    environment:
+      TZ: "America/Sao_Paulo"
     ports:
       - "9999:9999"
     networks:
@@ -59,6 +64,7 @@ services:
     volumes:
       - ./shadowindex_data:/app/data
     environment:
+      TZ: "America/Sao_Paulo"
       CORS_ORIGINS: "*"
       TIKA_SERVER_URL: "http://tika:9998"
       SOAP_MOCK_URL: "http://soap-mock:9999/Test.asmx"
@@ -86,6 +92,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      TZ: "America/Sao_Paulo"
       # Variável também em runtime (para yarn start)
       REACT_APP_BACKEND_URL: "${REACT_APP_BACKEND_URL:-http://localhost:9090}"
     depends_on:

@@ -6,6 +6,7 @@ services:
     container_name: shadowindex-postgres
     restart: unless-stopped
     environment:
+      TZ: "America/Sao_Paulo"
       POSTGRES_USER: shadowindex
       POSTGRES_PASSWORD: shadowindex
       POSTGRES_DB: shadowindex
@@ -23,6 +24,8 @@ services:
     image: apache/tika:latest-full
     container_name: shadowindex-tika
     restart: unless-stopped
+    environment:
+      TZ: "America/Sao_Paulo"
     volumes:
       - ./tika-config.xml:/tika-config.xml:ro
     healthcheck:
@@ -45,6 +48,7 @@ services:
     volumes:
       - ./shadowindex_data:/app/data
     environment:
+      TZ: "America/Sao_Paulo"
       CORS_ORIGINS: "*"
       TIKA_SERVER_URL: "http://tika:9998"
       # PostgreSQL - Comentar para usar SQLite
@@ -69,6 +73,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      TZ: "America/Sao_Paulo"
       # Variável também em runtime (para yarn start)
       REACT_APP_BACKEND_URL: "${REACT_APP_BACKEND_URL:-http://localhost:9090}"
     depends_on:

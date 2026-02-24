@@ -23,7 +23,9 @@ if POSTGRES_URL:
     else:
         DATABASE_URL = POSTGRES_URL
     DATABASE_URL_READONLY = DATABASE_URL
-    
+    DATABASE_PATH = None
+    DATA_DIR = None
+
     logger.info("Using PostgreSQL database")
     
     # Engine principal para escrita
@@ -141,11 +143,11 @@ class Credential(Base):
     ssh_public_key = Column(Text, nullable=True)
     # Verification
     verified = Column(Boolean, default=False)
-    last_verified_at = Column(DateTime, nullable=True)
+    last_verified_at = Column(DateTime(timezone=True), nullable=True)
     verification_error = Column(String, nullable=True)
     # Timestamps
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class DatabaseType(Base):
     """Tipos de banco de dados suportados"""
@@ -156,7 +158,7 @@ class DatabaseType(Base):
     code = Column(String, nullable=False, unique=True)  # mssql, mysql, postgres, etc.
     icon = Column(String, nullable=True)  # Nome do ícone
     color = Column(String, nullable=True)  # Cor para UI
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class DatabaseConnection(Base):
@@ -167,8 +169,8 @@ class DatabaseConnection(Base):
     db_type_id = Column(Integer, nullable=True)  # FK para DatabaseType
     connection_string = Column(Text, nullable=False)
     verified = Column(Boolean, default=False)
-    last_verified_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_verified_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     # Plugin configuration
     plugin_instance_id = Column(Integer, ForeignKey("plugin_instances.id"), nullable=True)
     plugin_type = Column(String, default="soap_api")  # Deprecated - use plugin_instance_id
@@ -184,8 +186,8 @@ class SqlPreset(Base):
     name = Column(String, nullable=False)
     query = Column(Text, nullable=False)
     description = Column(String, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class SqlQueryHistory(Base):
@@ -200,7 +202,7 @@ class SqlQueryHistory(Base):
     success = Column(Boolean, default=True)
     error_message = Column(Text, nullable=True)
     execution_time_ms = Column(Integer, nullable=True)
-    executed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    executed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class ProxyServer(Base):
     __tablename__ = "proxy_servers"
@@ -213,7 +215,7 @@ class ProxyServer(Base):
     credential_id = Column(Integer, nullable=True)  # FK para Credential (user_password type)
     username = Column(String, nullable=True)  # Deprecated - use credential_id
     password = Column(String, nullable=True)  # Deprecated - use credential_id
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class SoapApiUrl(Base):
     __tablename__ = "soap_api_urls"
@@ -221,7 +223,7 @@ class SoapApiUrl(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, unique=True)
     uri = Column(String, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class SoapCache(Base):
     __tablename__ = "soap_cache"
@@ -231,7 +233,7 @@ class SoapCache(Base):
     operation = Column(String, nullable=False)
     request_data = Column(Text, nullable=False)
     response_data = Column(Text, nullable=False)
-    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class AppConfig(Base):
     __tablename__ = "app_config"
@@ -239,7 +241,7 @@ class AppConfig(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, nullable=False, unique=True)
     value = Column(String, nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class PluginInstance(Base):
@@ -257,8 +259,8 @@ class PluginInstance(Base):
     config = Column(JSON, nullable=True)  # Configurações específicas do plugin (JSON)
     is_default = Column(Boolean, default=False)  # Se é a instância padrão para o tipo
     is_active = Column(Boolean, default=True)  # Se está ativa
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class Server(Base):
@@ -271,8 +273,8 @@ class Server(Base):
     verified = Column(Boolean, default=False)
     shares_count = Column(Integer, default=0)
     downloaded_files_count = Column(Integer, default=0)
-    last_verified_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_verified_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     # Plugin configuration - referência para instância de plugin
     plugin_instance_id = Column(Integer, ForeignKey("plugin_instances.id"), nullable=True)
     # Legacy fields (mantidos para compatibilidade)
@@ -292,7 +294,7 @@ class ServerShare(Base):
     error_message = Column(String, nullable=True)
     has_children = Column(Boolean, default=False)  # True se já fez fetch dos filhos e tem conteúdo
     children_fetched = Column(Boolean, default=False)  # True se já tentou buscar os filhos
-    discovered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    discovered_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class DownloadedFile(Base):
     __tablename__ = "downloaded_files"
@@ -308,7 +310,7 @@ class DownloadedFile(Base):
     file_size = Column(Integer, nullable=True)
     sha1_hash = Column(String(40), nullable=True)  # SHA1 hash do arquivo
     mimetype = Column(String, nullable=True)  # MIME type do arquivo (calculado via libmagic)
-    downloaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    downloaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class FileVersion(Base):
@@ -325,12 +327,12 @@ class FileVersion(Base):
     mimetype = Column(String, nullable=True)  # MIME type do arquivo (calculado via libmagic)
     local_path = Column(String, nullable=False)  # Caminho local onde está armazenado
     is_current = Column(Boolean, default=True)  # Se é a versão atual
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     # OCR fields
     ocr_content = Column(Text, nullable=True)  # Texto extraído via OCR/Tika
     ocr_metadata = Column(JSON, nullable=True)  # Metadados do arquivo (autor, título, etc)
     ocr_processed = Column(Boolean, default=False)  # Se OCR foi processado
-    ocr_processed_at = Column(DateTime, nullable=True)  # Quando OCR foi processado
+    ocr_processed_at = Column(DateTime(timezone=True), nullable=True)  # Quando OCR foi processado
     ocr_error = Column(String, nullable=True)  # Erro de OCR se houver
 
 
@@ -351,7 +353,7 @@ class ServerItem(Base):
     error_message = Column(String, nullable=True)
     has_children = Column(Boolean, default=False)
     children_fetched = Column(Boolean, default=False)
-    discovered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    discovered_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class PfxPassword(Base):
@@ -363,7 +365,7 @@ class PfxPassword(Base):
     file_path = Column(String, nullable=False, index=True)
     password = Column(String, nullable=False)  # Senha em texto (ambiente interno)
     subject_cn = Column(String, nullable=True)  # CN do certificado para identificação
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class DownloadJob(Base):
@@ -390,9 +392,9 @@ class DownloadJob(Base):
     max_depth = Column(Integer, nullable=True)  # Limite de profundidade para diretórios
     is_directory = Column(Boolean, default=False)  # Se é um diretório (download recursivo)
     parent_job_id = Column(Integer, nullable=True)  # Job pai (para downloads recursivos)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class ScanJob(Base):
@@ -411,9 +413,9 @@ class ScanJob(Base):
     queued_files = Column(Integer, default=0)
     critical_files_found = Column(Integer, default=0)  # Contador de arquivos críticos
     error_message = Column(String, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class GitleaksFinding(Base):
@@ -460,14 +462,14 @@ class GitleaksFinding(Base):
     # Metadados do scan
     job_id = Column(String, nullable=True, index=True)
     server_id = Column(Integer, nullable=True, index=True)  # Server ID do job
-    scanned_at = Column(DateTime, nullable=True)
+    scanned_at = Column(DateTime(timezone=True), nullable=True)
     
     # Dados adicionais
     raw_data = Column(JSON, nullable=True)  # JSON completo do finding original
     is_false_positive = Column(Boolean, default=False, nullable=False)  # Marcado como falso positivo
     
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class OCRJob(Base):
@@ -492,10 +494,10 @@ class OCRJob(Base):
     ocr_metadata = Column(JSON, nullable=True)
     error_message = Column(String, nullable=True)
     priority = Column(Integer, default=0)  # Higher = more priority
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class AppSettings(Base):
@@ -506,7 +508,7 @@ class AppSettings(Base):
     key = Column(String, unique=True, nullable=False, index=True)
     value = Column(String, nullable=True)
     description = Column(String, nullable=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 # Configurações padrão
