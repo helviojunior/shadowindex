@@ -4299,13 +4299,13 @@ const ServerBrowser = () => {
                                 <div>
                                   <h4 className="font-medium text-muted-foreground mb-2">Válido de</h4>
                                   <div className="bg-muted/30 p-3 rounded font-mono text-xs">
-                                    {new Date(cert.not_valid_before).toLocaleString('pt-BR')}
+                                    {cert.not_before ? new Date(cert.not_before).toLocaleString('pt-BR') : 'N/A'}
                                   </div>
                                 </div>
                                 <div>
                                   <h4 className="font-medium text-muted-foreground mb-2">Válido até</h4>
                                   <div className={`p-3 rounded font-mono text-xs ${cert.is_expired ? 'bg-red-500/10 text-red-400' : 'bg-muted/30'}`}>
-                                    {new Date(cert.not_valid_after).toLocaleString('pt-BR')}
+                                    {cert.not_after ? new Date(cert.not_after).toLocaleString('pt-BR') : 'N/A'}
                                   </div>
                                 </div>
                               </div>
