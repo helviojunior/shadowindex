@@ -5264,25 +5264,71 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             "application/x-pem-file"
         ],
         "excluded_extensions": [
-            ".exe", ".msi", ".dll", ".sys", ".drv",  # Executáveis Windows
-            ".so", ".dylib",  # Bibliotecas Linux/Mac
-            ".bin", ".dat", ".pdb",  # Binários genéricos
-            ".mp3", ".mp4", ".avi", ".mkv", ".mov", ".wmv",  # Mídia
-            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".webp",  # Imagens
-            ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz",  # Arquivos compactados
-            ".iso", ".img",  # Imagens de disco
-            ".cab", ".msp", ".msm",  # Pacotes Windows
-            ".css"  # Estilos
+            # Executáveis Windows
+            ".exe", ".msi", ".dll", ".sys", ".drv", ".ocx", ".cpl", ".scr",
+            # Bibliotecas Linux/Mac
+            ".so", ".dylib", ".a",
+            # Binários genéricos
+            ".bin", ".dat", ".pdb", ".obj", ".o",
+            # Mídia - Vídeo
+            ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpeg", ".mpg",
+            # Mídia - Áudio
+            ".mp3", ".wav", ".wma", ".aac", ".flac", ".ogg", ".m4a",
+            # Imagens
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".webp", ".tiff", ".tif", ".svg", ".psd", ".raw", ".heic", ".heif",
+            # Arquivos compactados
+            ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".xz", ".lzma",
+            # Imagens de disco
+            ".iso", ".img", ".vhd", ".vhdx", ".vmdk", ".qcow2",
+            # Pacotes Windows
+            ".cab", ".msp", ".msm", ".msu",
+            # Fontes
+            ".ttf", ".otf", ".woff", ".woff2", ".eot",
+            # Web (estáticos)
+            ".css", ".html", ".htm",
+            # Dados compilados/cache
+            ".pyc", ".pyo", ".class", ".jar",
+            # Databases binários
+            ".mdb", ".accdb", ".ldb",
+            # Arquivos de sistema Windows
+            ".etl", ".evtx", ".dmp"
         ],
         "excluded_files": [
-            "Thumbs.db",  # Cache de miniaturas Windows
-            "desktop.ini",  # Configuração de pasta Windows
-            ".DS_Store",  # Metadados Mac
-            "ntuser.dat",  # Registro do usuário Windows
-            "ntuser.ini",  # Configuração do registro
-            "pagefile.sys",  # Arquivo de paginação
-            "hiberfil.sys",  # Arquivo de hibernação
-            "swapfile.sys"  # Arquivo de swap
+            # Windows
+            "Thumbs.db",
+            "desktop.ini",
+            "ntuser.dat",
+            "ntuser.dat.LOG1",
+            "ntuser.dat.LOG2",
+            "NTUSER.DAT",
+            "ntuser.ini",
+            "pagefile.sys",
+            "hiberfil.sys",
+            "swapfile.sys",
+            "$MFT",
+            "$MFTMirr",
+            "$LogFile",
+            "$Volume",
+            "$AttrDef",
+            "$Bitmap",
+            "$Boot",
+            "$BadClus",
+            "$Secure",
+            "$UpCase",
+            "$Extend",
+            "bootmgr",
+            "BOOTNXT",
+            # Mac
+            ".DS_Store",
+            ".Spotlight-V100",
+            ".Trashes",
+            ".fseventsd",
+            # Linux
+            ".bash_history",
+            ".zsh_history",
+            # Controle de versão
+            ".gitignore",
+            ".gitattributes"
         ]
     },
     
