@@ -71,10 +71,26 @@ const Gitleaks = () => {
   };
 
   // Copiar JSON para clipboard
-  const copyJsonToClipboard = () => {
+  const copyJsonToClipboard = async () => {
     if (reportModal.data?.report) {
-      navigator.clipboard.writeText(JSON.stringify(reportModal.data.report, null, 2));
-      toast.success('JSON copiado para a área de transferência');
+      const text = JSON.stringify(reportModal.data.report, null, 2);
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
+        toast.success('JSON copiado para a área de transferência');
+      } catch (error) {
+        toast.error('Erro ao copiar');
+      }
     }
   };
 
