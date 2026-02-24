@@ -4661,7 +4661,7 @@ const ServerBrowser = () => {
                   const shareName = selectedItem.share_name || selectedItem.shareName;
                   handleSelectItem(item, item.type, path, shareName);
                 };
-                
+
                 if (isLoading) {
                   return (
                     <div className="flex items-center justify-center py-8">
@@ -4669,7 +4669,7 @@ const ServerBrowser = () => {
                     </div>
                   );
                 }
-                
+
                 if (children.length === 0) {
                   return (
                     <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
@@ -4679,13 +4679,50 @@ const ServerBrowser = () => {
                     </div>
                   );
                 }
-                
+
+                // Pre-compute rows to avoid visual editor injecting <span> inside <tbody>
+                const tableRows = sortedChildren.map((item, idx) => {
+                  const isDir = item.type === 'Directory';
+                  const isItemDownloaded = !isDir && isFileDownloaded(item.fullPath);
+                  return (
+                    <tr
+                      key={item.id || idx}
+                      className="hover:bg-muted/50 cursor-pointer"
+                      onClick={() => handleItemClick(item)}
+                    >
+                      <td className="px-4 py-2 border-b border-border">
+                        <div className="flex items-center gap-2">
+                          {isDir ? (
+                            <Folder className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          ) : isItemDownloaded ? (
+                            <FileCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          ) : (
+                            <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          )}
+                          <span className="truncate text-blue-400 hover:underline">
+                            {item.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 border-b border-border text-muted-foreground">
+                        {item.type === 'Directory' ? 'Pasta' : 'Arquivo'}
+                      </td>
+                      <td className="px-4 py-2 border-b border-border text-right text-muted-foreground font-mono text-xs">
+                        {item.type === 'Directory' ? '—' : formatSize(item.size)}
+                      </td>
+                      <td className="px-4 py-2 border-b border-border text-muted-foreground text-xs">
+                        {item.modified_at ? formatDate(item.modified_at) : '—'}
+                      </td>
+                    </tr>
+                  );
+                });
+
                 return (
                   <div className="flex-1 overflow-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted sticky top-0">
                         <tr>
-                          <th 
+                          <th
                             className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80"
                             onClick={() => handleSort('name')}
                           >
@@ -4694,7 +4731,7 @@ const ServerBrowser = () => {
                               <SortIcon columnKey="name" />
                             </div>
                           </th>
-                          <th 
+                          <th
                             className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-24"
                             onClick={() => handleSort('type')}
                           >
@@ -4703,7 +4740,7 @@ const ServerBrowser = () => {
                               <SortIcon columnKey="type" />
                             </div>
                           </th>
-                          <th 
+                          <th
                             className="px-4 py-2 text-right font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-28"
                             onClick={() => handleSort('size')}
                           >
@@ -4712,7 +4749,7 @@ const ServerBrowser = () => {
                               <SortIcon columnKey="size" />
                             </div>
                           </th>
-                          <th 
+                          <th
                             className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-44"
                             onClick={() => handleSort('modified_at')}
                           >
@@ -4723,44 +4760,7 @@ const ServerBrowser = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {sortedChildren.map((item, idx) => {
-                          const isDir = item.type === 'Directory';
-                          const isItemDownloaded = !isDir && isFileDownloaded(item.fullPath);
-                          
-                          return (
-                            <tr 
-                              key={item.id || idx} 
-                              className="hover:bg-muted/50 cursor-pointer"
-                              onClick={() => handleItemClick(item)}
-                            >
-                              <td className="px-4 py-2 border-b border-border">
-                                <div className="flex items-center gap-2">
-                                  {isDir ? (
-                                    <Folder className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                                  ) : isItemDownloaded ? (
-                                    <FileCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
-                                  ) : (
-                                    <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                  )}
-                                  <span className="truncate text-blue-400 hover:underline">
-                                    {item.name}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2 border-b border-border text-muted-foreground">
-                                {item.type === 'Directory' ? 'Pasta' : 'Arquivo'}
-                              </td>
-                              <td className="px-4 py-2 border-b border-border text-right text-muted-foreground font-mono text-xs">
-                                {item.type === 'Directory' ? '—' : formatSize(item.size)}
-                              </td>
-                              <td className="px-4 py-2 border-b border-border text-muted-foreground text-xs">
-                                {item.modified_at ? formatDate(item.modified_at) : '—'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
+                      <tbody>{tableRows}</tbody>
                     </table>
                   </div>
                 );
