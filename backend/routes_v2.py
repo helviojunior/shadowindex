@@ -1859,8 +1859,10 @@ async def download_file_by_path(
             logger.error(f"Error downloading file {file_path}: {e}\n{error_traceback}")
             raise HTTPException(status_code=500, detail=str(e))
     
-    if not content_bytes:
-        raise HTTPException(status_code=500, detail="Resposta vazia do servidor")
+    # Verificar se content_bytes é None (não obtido do servidor)
+    # Nota: content_bytes = b'' (bytes vazios) é válido para arquivos de tamanho 0
+    if content_bytes is None:
+        raise HTTPException(status_code=500, detail="Resposta nula do servidor")
     
     # Verificar se já existe no banco
     existing_result = await db.execute(
