@@ -900,7 +900,7 @@ class GitleaksService:
     
     _instance = None
     _jobs: Dict[str, GitleaksJob] = {}
-    _findings: List[Dict[str, Any]] = []  # Cache de todos os findings
+    # Removido _findings cache - agora busca direto do banco
     
     def __new__(cls):
         if cls._instance is None:
