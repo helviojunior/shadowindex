@@ -97,7 +97,60 @@ frontend:
 
 ### Volumes
 
-- `./shadowindex_data:/app/data` - Dados persistentes (banco de dados e arquivos baixados)
+- `./shadowindex_data:/app/data` - Dados persistentes (arquivos baixados)
+- `postgres_data:/var/lib/postgresql/data` - Dados do PostgreSQL
+
+## 🐘 Banco de Dados
+
+O ShadowIndex suporta dois bancos de dados:
+
+### PostgreSQL (Recomendado para produção)
+
+Por padrão, o docker-compose.yml está configurado para usar PostgreSQL. Credenciais padrão:
+- **Host**: postgres
+- **Porta**: 5432
+- **Usuário**: shadowindex
+- **Senha**: shadowindex
+- **Database**: shadowindex
+
+### SQLite (Desenvolvimento/Testes)
+
+Para usar SQLite, comente ou remova a variável `POSTGRES_URL` no docker-compose.yml:
+
+```yaml
+backend:
+  environment:
+    # POSTGRES_URL: "postgresql://..."  # Comentar esta linha
+```
+
+### Migração SQLite → PostgreSQL
+
+Se você já tem dados no SQLite e quer migrar para PostgreSQL:
+
+```bash
+# 1. Pare os containers
+docker compose down
+
+# 2. Inicie apenas o PostgreSQL
+docker compose up -d postgres
+
+# 3. Execute o script de migração
+cd backend
+python migrate_sqlite_to_postgres.py \
+  --sqlite-path ./data/shadowindex.db \
+  --postgres-url postgresql://shadowindex:shadowindex@localhost:5432/shadowindex
+
+# 4. Inicie todos os serviços
+docker compose up -d
+```
+
+Ou usando variáveis de ambiente:
+
+```bash
+export SQLITE_PATH=./data/shadowindex.db
+export POSTGRES_URL=postgresql://shadowindex:shadowindex@localhost:5432/shadowindex
+python backend/migrate_sqlite_to_postgres.py
+```
 
 ## 🗂️ Estrutura do Projeto
 
