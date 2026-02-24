@@ -17,6 +17,12 @@ code {
         source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
+/* Fix: Radix ScrollArea wrapper interno usa display:table que causa clipping do botão de refresh */
+.tree-scroll-area [data-radix-scroll-area-viewport] > div {
+    display: block !important;
+    overflow: visible !important;
+}
+
 @layer base {
     :root {
         --background: 0 0% 100%;

@@ -3157,12 +3157,10 @@ const ServerBrowser = () => {
     
     const currentShareName = isShare ? item.share_name : shareName;
     
-    // Para shares: usar flag do banco (children_fetched ou childrenFetched)
-    // Para diretórios: usar flag do item que vem do banco (item.childrenFetched ou item.children_fetched)
-    // Fallback para hasLoadedChildren se não houver flag do banco
-    const childrenFetched = isShare 
-      ? (item.children_fetched === true || item.childrenFetched === true)
-      : (item.childrenFetched === true || item.children_fetched === true || hasLoadedChildren);
+    // Para shares e diretórios: usar flag do banco (children_fetched ou childrenFetched)
+    // Fallback para hasLoadedChildren em ambos os casos - necessário quando loadShares
+    // pré-popula nodeChildren a partir do items_by_path mas o flag do banco ainda é false
+    const childrenFetched = item.children_fetched === true || item.childrenFetched === true || hasLoadedChildren;
     
     // Determina se o item ainda não teve seus filhos carregados
     // Um diretório é considerado "não carregado" se nunca fizemos fetch dos filhos
@@ -5431,8 +5429,8 @@ const ServerBrowser = () => {
               </div>
             )}
             
-            <ScrollArea className="flex-1">
-              <div className="py-2">
+            <ScrollArea className="flex-1 tree-scroll-area">
+              <div className="py-2 pr-3">
                 {loadingShares && shares.length === 0 ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin" />
