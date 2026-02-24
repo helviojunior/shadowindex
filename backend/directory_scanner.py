@@ -76,14 +76,21 @@ def is_critical_file(file_name: str, file_size: int, config: Dict[str, Any]) -> 
     file_rules = config.get('file_rules', {})
     size_rules = config.get('size_rules', {})
     
-    # 0. Verificar extensões excluídas (ignorar estes arquivos)
+    # 0. Verificar arquivos excluídos por nome exato (ignorar estes arquivos)
+    excluded_files = file_rules.get('excluded_files', [])
+    for excluded in excluded_files:
+        if file_lower == excluded.lower():
+            logger.debug(f"Excluded (file '{excluded}'): {file_name}")
+            return False
+    
+    # 1. Verificar extensões excluídas (ignorar estes arquivos)
     excluded_extensions = file_rules.get('excluded_extensions', [])
     for ext in excluded_extensions:
         if file_lower.endswith(ext.lower()):
             logger.debug(f"Excluded (extension '{ext}'): {file_name}")
             return False
     
-    # 1. Verificar regras de tamanho primeiro (aplicável a todos os arquivos)
+    # 2. Verificar regras de tamanho (aplicável a todos os arquivos)
     if size_rules.get('enabled', True):
         min_size = size_rules.get('min_bytes', 0)
         max_size = size_rules.get('max_bytes', 50 * 1024 * 1024)  # 50MB default
@@ -96,14 +103,14 @@ def is_critical_file(file_name: str, file_size: int, config: Dict[str, Any]) -> 
             logger.debug(f"Excluded (size {file_size} > max {max_size}): {file_name}")
             return False
     
-    # 2. Verificar palavras-chave no nome do arquivo
+    # 3. Verificar palavras-chave no nome do arquivo
     keywords = file_rules.get('keywords', [])
     for keyword in keywords:
         if keyword.lower() in file_lower:
             logger.debug(f"Critical match (keyword '{keyword}'): {file_name}")
             return True
     
-    # 3. Verificar extensões críticas
+    # 4. Verificar extensões críticas
     extensions = file_rules.get('extensions', [])
     for ext in extensions:
         if file_lower.endswith(ext.lower()):
