@@ -160,11 +160,26 @@ const BeautifyTest = () => {
     }
   };
 
-  const copyRaw = () => {
-    navigator.clipboard.writeText(rawContent);
-    setCopied(true);
-    toast.success('Conteúdo RAW copiado');
-    setTimeout(() => setCopied(false), 2000);
+  const copyRaw = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(rawContent);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = rawContent;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      toast.success('Conteúdo RAW copiado');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error('Erro ao copiar');
+    }
   };
 
   return (
