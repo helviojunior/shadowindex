@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from './ui/context-menu';
+import {
   Search,
   ArrowUp,
   ArrowDown,
@@ -84,6 +90,10 @@ export default function GlobalSearch({ open, onClose }) {
     navigate(result.navigate_to);
     onClose();
   }, [navigate, onClose]);
+
+  const handleOpenInNewTab = useCallback((result) => {
+    window.open(window.location.origin + result.navigate_to, '_blank');
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -169,33 +179,44 @@ export default function GlobalSearch({ open, onClose }) {
                 const cfg = TYPE_CONFIG[result.type] || TYPE_CONFIG.item;
                 const Icon = cfg.icon;
                 return (
-                  <button
-                    key={`${result.type}-${result.id}`}
-                    data-idx={idx}
-                    className={`w-full flex items-start gap-3 px-3 py-2.5 text-left transition-colors ${
-                      idx === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
-                    }`}
-                    onClick={() => handleSelect(result)}
-                    onMouseEnter={() => setSelectedIndex(idx)}
-                  >
-                    <Icon size={16} className={`mt-0.5 flex-shrink-0 ${cfg.color}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-white truncate">{result.title}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded bg-white/10 ${cfg.color} flex-shrink-0`}>
-                          {cfg.label}
-                        </span>
-                      </div>
-                      {result.subtitle && (
-                        <div className="text-xs text-white/40 truncate">{result.subtitle}</div>
-                      )}
-                      {result.server_name && result.type !== 'server' && (
-                        <div className="text-xs text-white/25 truncate">
-                          {result.server_name} · {result.server_ip}
+                  <ContextMenu key={`${result.type}-${result.id}`}>
+                    <ContextMenuTrigger asChild>
+                      <button
+                        data-idx={idx}
+                        className={`w-full flex items-start gap-3 px-3 py-2.5 text-left transition-colors ${
+                          idx === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
+                        }`}
+                        onClick={() => handleSelect(result)}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                      >
+                        <Icon size={16} className={`mt-0.5 flex-shrink-0 ${cfg.color}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-white truncate">{result.title}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded bg-white/10 ${cfg.color} flex-shrink-0`}>
+                              {cfg.label}
+                            </span>
+                          </div>
+                          {result.subtitle && (
+                            <div className="text-xs text-white/40 truncate">{result.subtitle}</div>
+                          )}
+                          {result.server_name && result.type !== 'server' && (
+                            <div className="text-xs text-white/25 truncate">
+                              {result.server_name} · {result.server_ip}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </button>
+                      </button>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem onClick={() => handleSelect(result)}>
+                        Abrir
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => handleOpenInNewTab(result)}>
+                        Abrir em nova aba
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 );
               })}
             </div>

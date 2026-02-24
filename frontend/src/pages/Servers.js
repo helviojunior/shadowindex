@@ -18,6 +18,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
 
@@ -729,12 +735,24 @@ const Servers = () => {
                         ) : (
                           <div className="flex items-center gap-2">
                             <div>
-                              <div 
-                                className="font-medium cursor-pointer hover:text-primary transition-colors"
-                                onClick={() => navigate(`/servers/${server.id}/browse?from=/servers`)}
-                              >
-                                {server.name}
-                              </div>
+                              <ContextMenu>
+                                <ContextMenuTrigger asChild>
+                                  <div
+                                    className="font-medium cursor-pointer hover:text-primary transition-colors"
+                                    onClick={() => navigate(`/servers/${server.id}/browse?from=/servers`)}
+                                  >
+                                    {server.name}
+                                  </div>
+                                </ContextMenuTrigger>
+                                <ContextMenuContent>
+                                  <ContextMenuItem onClick={() => navigate(`/servers/${server.id}/browse?from=/servers`)}>
+                                    Abrir
+                                  </ContextMenuItem>
+                                  <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/servers`, '_blank')}>
+                                    Abrir em nova aba
+                                  </ContextMenuItem>
+                                </ContextMenuContent>
+                              </ContextMenu>
                               <div className="text-xs text-muted-foreground">{server.guid.substring(0, 8)}...</div>
                             </div>
                             <Button
