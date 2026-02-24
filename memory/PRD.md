@@ -102,6 +102,13 @@ Portuguese (pt-BR)
   - docker-compose.yml atualizado com serviço PostgreSQL
   - Usa asyncpg para conexões assíncronas
   - Pool de conexões configurado para melhor performance
+- [x] **Remoção de caches em memória**
+  - Findings do GitLeaks agora são buscados diretamente do banco de dados
+  - Removido `_findings` cache da classe `GitleaksService`
+  - Métodos `get_all_findings()`, `get_findings_by_server()`, `get_findings_by_job()` agora são async e buscam do banco
+  - Novo método `_finding_to_dict()` para converter objetos do banco
+  - Endpoints atualizados para usar async/await
+  - Evita perda de dados quando o serviço reinicia
 
 ### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
 - [x] **Correção crítica de concorrência no OCR Worker:**
