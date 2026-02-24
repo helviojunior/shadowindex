@@ -281,29 +281,38 @@ const ServerBrowser = () => {
   });
 
   // WebSocket para eventos de download (progresso e conclusão)
+  // Filtra eventos para só atualizar progresso do arquivo selecionado
   useDownloadEvents(
     // onProgress
     (data) => {
-      if (data.file_name) {
+      const selectedPath = selectedItem?.fullPath || selectedItem?.serverPath;
+      if (data.file_path && selectedPath && data.file_path === selectedPath) {
         setSingleDownloadProgress(Math.round(data.progress));
       }
     },
     // onComplete
     (data) => {
-      setSingleDownloadProgress(null);
-      // Recarregar arquivos baixados quando download completar
+      const selectedPath = selectedItem?.fullPath || selectedItem?.serverPath;
+      if (data.file_path && selectedPath && data.file_path === selectedPath) {
+        setSingleDownloadProgress(null);
+      }
+      // Recarregar arquivos baixados quando qualquer download completar
       loadDownloadedFiles();
     },
     // onFailed
     (data) => {
-      setSingleDownloadProgress(null);
+      const selectedPath = selectedItem?.fullPath || selectedItem?.serverPath;
+      if (data.file_path && selectedPath && data.file_path === selectedPath) {
+        setSingleDownloadProgress(null);
+      }
       if (data.error) {
         toast.error(`Download falhou: ${data.error}`);
       }
     },
     // onStarted
     (data) => {
-      if (data.file_name) {
+      const selectedPath = selectedItem?.fullPath || selectedItem?.serverPath;
+      if (data.file_path && selectedPath && data.file_path === selectedPath) {
         setSingleDownloadProgress(0);
       }
     }
@@ -580,6 +589,7 @@ const ServerBrowser = () => {
     setBeautified(false);
     setBase64Decoded(false);
     setContentLoadError(false); // Reset erro ao mudar de arquivo
+    setSingleDownloadProgress(null); // Reset progresso de download ao mudar de arquivo
   }, [selectedItem?.id, selectedItem?.fullPath]);
 
   // Carregar conteúdo automaticamente quando aba View for selecionada

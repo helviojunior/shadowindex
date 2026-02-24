@@ -531,7 +531,8 @@ class DownloadWorker:
                 progress=job.progress,
                 downloaded_bytes=downloaded,
                 total_bytes=total_size,
-                file_name=job.file_name
+                file_name=job.file_name,
+                file_path=job.file_path
             )
             
             # Se o plugin indicou que é o último chunk, parar

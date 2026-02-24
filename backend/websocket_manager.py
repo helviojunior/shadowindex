@@ -68,9 +68,9 @@ class WebSocketManager:
     
     # === Métodos de eventos específicos ===
     
-    async def emit_download_progress(self, job_id: int, progress: float, 
+    async def emit_download_progress(self, job_id: int, progress: float,
                                       downloaded_bytes: int, total_bytes: int,
-                                      file_name: str = None):
+                                      file_name: str = None, file_path: str = None):
         """Emite evento de progresso de download"""
         await self.broadcast({
             "type": "download_progress",
@@ -79,6 +79,7 @@ class WebSocketManager:
             "downloaded_bytes": downloaded_bytes,
             "total_bytes": total_bytes,
             "file_name": file_name,
+            "file_path": file_path,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
