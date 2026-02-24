@@ -5185,10 +5185,7 @@ async def auto_register_private_key_leak(
         "extracted_file_version_id": file_version_id
     }
     
-    # Adicionar ao cache em memória
-    service._findings.append(finding)
-    
-    # Salvar no banco de dados
+    # Salvar diretamente no banco de dados
     try:
         saved = await save_finding_to_db(finding)
         if saved:
