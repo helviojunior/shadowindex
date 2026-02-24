@@ -30,7 +30,7 @@ import os
 
 from database import (
     get_db, get_db_readonly, Server, ServerShare, ServerItem, DownloadedFile, FileVersion, 
-    DownloadJob, PfxPassword, PluginInstance
+    DownloadJob, PfxPassword, PluginInstance, GitleaksFinding
 )
 
 logger = logging.getLogger(__name__)
