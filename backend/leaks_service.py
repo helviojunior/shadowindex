@@ -93,25 +93,71 @@ async def get_critical_search_config() -> dict:
                 "credentials", "shadow", "passwd", "htpasswd"
             ],
             "excluded_extensions": [
-                ".exe", ".msi", ".dll", ".sys", ".drv",
-                ".so", ".dylib",
-                ".bin", ".dat", ".pdb",
-                ".mp3", ".mp4", ".avi", ".mkv", ".mov", ".wmv",
-                ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".webp",
-                ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz",
-                ".iso", ".img",
-                ".cab", ".msp", ".msm",
-                ".css"
+                # Executáveis Windows
+                ".exe", ".msi", ".dll", ".sys", ".drv", ".ocx", ".cpl", ".scr",
+                # Bibliotecas Linux/Mac
+                ".so", ".dylib", ".a",
+                # Binários genéricos
+                ".bin", ".dat", ".pdb", ".obj", ".o",
+                # Mídia - Vídeo
+                ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpeg", ".mpg",
+                # Mídia - Áudio
+                ".mp3", ".wav", ".wma", ".aac", ".flac", ".ogg", ".m4a",
+                # Imagens
+                ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".webp", ".tiff", ".tif", ".svg", ".psd", ".raw", ".heic", ".heif",
+                # Arquivos compactados
+                ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".xz", ".lzma",
+                # Imagens de disco
+                ".iso", ".img", ".vhd", ".vhdx", ".vmdk", ".qcow2",
+                # Pacotes Windows
+                ".cab", ".msp", ".msm", ".msu",
+                # Fontes
+                ".ttf", ".otf", ".woff", ".woff2", ".eot",
+                # Web (estáticos)
+                ".css", ".html", ".htm",
+                # Dados compilados/cache
+                ".pyc", ".pyo", ".class", ".jar",
+                # Databases binários
+                ".mdb", ".accdb", ".ldb",
+                # Arquivos de sistema Windows
+                ".etl", ".evtx", ".dmp"
             ],
             "excluded_files": [
+                # Windows
                 "Thumbs.db",
                 "desktop.ini",
-                ".DS_Store",
                 "ntuser.dat",
+                "ntuser.dat.LOG1",
+                "ntuser.dat.LOG2",
+                "NTUSER.DAT",
                 "ntuser.ini",
                 "pagefile.sys",
                 "hiberfil.sys",
-                "swapfile.sys"
+                "swapfile.sys",
+                "$MFT",
+                "$MFTMirr",
+                "$LogFile",
+                "$Volume",
+                "$AttrDef",
+                "$Bitmap",
+                "$Boot",
+                "$BadClus",
+                "$Secure",
+                "$UpCase",
+                "$Extend",
+                "bootmgr",
+                "BOOTNXT",
+                # Mac
+                ".DS_Store",
+                ".Spotlight-V100",
+                ".Trashes",
+                ".fseventsd",
+                # Linux
+                ".bash_history",
+                ".zsh_history",
+                # Controle de versão
+                ".gitignore",
+                ".gitattributes"
             ]
         }
     }
