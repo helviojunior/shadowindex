@@ -491,6 +491,7 @@ async def global_search(
     Requer ao menos 3 caracteres.
     """
     from sqlalchemy import or_
+    from urllib.parse import quote
 
     if len(q) < 3:
         return {"query": q, "results": [], "total": 0}
@@ -534,7 +535,7 @@ async def global_search(
             "server_id": srv.id,
             "server_name": srv.name,
             "server_ip": srv.ip,
-            "navigate_to": f"/servers/{srv.id}",
+            "navigate_to": f"/servers/{srv.id}/browse?path={quote(item.full_path, safe='')}",
         })
 
     # 3. Arquivos baixados (nome, path, mimetype, sha1)
@@ -566,7 +567,7 @@ async def global_search(
             "server_id": srv.id,
             "server_name": srv.name,
             "server_ip": srv.ip,
-            "navigate_to": f"/servers/{srv.id}",
+            "navigate_to": f"/servers/{srv.id}/browse?file_id={df.id}",
         })
         seen_paths.add(df.file_path)
 
@@ -594,7 +595,7 @@ async def global_search(
             "server_id": srv.id,
             "server_name": srv.name,
             "server_ip": srv.ip,
-            "navigate_to": f"/servers/{srv.id}",
+            "navigate_to": f"/servers/{srv.id}/browse?path={quote(fv.file_path, safe='')}",
         })
         seen_paths.add(fv.file_path)
 
