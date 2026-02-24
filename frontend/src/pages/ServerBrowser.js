@@ -4554,7 +4554,7 @@ const ServerBrowser = () => {
                 
                     {/* Content with line numbers */}
                     {beautified ? (
-                      <div className="bg-zinc-900 rounded-lg overflow-hidden max-h-[400px] overflow-auto">
+                      <div className="bg-zinc-900 rounded-lg overflow-hidden max-h-[70vh] overflow-auto">
                         <div className="flex min-w-max">
                           {/* Line numbers */}
                           <div className="flex-shrink-0 bg-zinc-800 text-zinc-500 text-xs font-mono py-4 px-2 select-none border-r border-zinc-700 text-right sticky left-0">
@@ -4581,7 +4581,7 @@ const ServerBrowser = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-muted/50 rounded-lg overflow-hidden max-h-[400px] overflow-auto">
+                      <div className="bg-muted/50 rounded-lg overflow-hidden max-h-[70vh] overflow-auto">
                         <div className="flex min-w-max">
                           {/* Line numbers */}
                           <div className="flex-shrink-0 bg-muted text-muted-foreground/50 text-xs font-mono py-4 px-2 select-none border-r border-border text-right sticky left-0">
