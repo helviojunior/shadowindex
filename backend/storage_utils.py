@@ -2,8 +2,27 @@ import os
 import re
 import base64
 import hashlib
+import datetime
+import uuid
 from pathlib import Path
 from typing import Optional, Tuple
+
+
+def json_serial(obj):
+    """JSON serializer para objetos não serializáveis pelo json padrão."""
+    if isinstance(obj, (datetime.datetime, datetime.date)):
+        try:
+            return obj.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            return obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+    if isinstance(obj, bytes):
+        return base64.b64encode(obj).decode("UTF-8")
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    try:
+        return str(obj)
+    except Exception:
+        raise TypeError("Type %s not serializable" % type(obj))
 
 # Usar diretório local (pwd) para armazenamento
 # O caminho base será ./data (relativo ao diretório do backend)

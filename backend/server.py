@@ -32,11 +32,12 @@ from database import (
 from soap_service import SoapService, get_default_soap_service
 import uuid
 from storage_utils import (
-    save_downloaded_file, 
-    get_server_storage_stats, 
+    save_downloaded_file,
+    get_server_storage_stats,
     format_size,
     sanitize_path_component,
-    calculate_sha1_from_base64
+    calculate_sha1_from_base64,
+    json_serial
 )
 
 ROOT_DIR = Path(__file__).parent
@@ -2011,7 +2012,7 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
             "name": item.name,
             "full_path": item.full_path,
             "size": item.size,
-            "modified_at": item.modified_at,
+            "modified_at": item.modified_at.isoformat() if item.modified_at else None,
             "access_denied": item.access_denied,
             "has_children": item.has_children,
             "discovered_at": item.discovered_at.isoformat() if item.discovered_at else None
@@ -2109,7 +2110,7 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
     # Salvar JSON com dados do servidor
     json_path = os.path.join(dest_path, "server_export.json")
     with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump(export_data, f, ensure_ascii=False, indent=2)
+        json.dump(export_data, f, ensure_ascii=False, indent=2, default=json_serial)
     
     # Excluir dados relacionados do banco
     await db.execute(delete(ServerShare).where(ServerShare.server_guid == server.guid))
