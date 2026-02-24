@@ -1238,26 +1238,20 @@ class GitleaksService:
             return 0
     
     async def delete_finding_from_db(self, fingerprint: str) -> bool:
-        """Remove um finding do banco de dados e do cache"""
+        """Remove um finding do banco de dados"""
         from database import async_session_maker, GitleaksFinding
         from sqlalchemy import delete
         
         try:
-            # Primeiro remover do cache em memória
-            original_count = len(self._findings)
-            self._findings = [f for f in self._findings if f.get('Fingerprint') != fingerprint]
-            removed_from_cache = len(self._findings) < original_count
-            
-            # Depois remover do banco de dados
             async with async_session_maker() as db:
                 result = await db.execute(
                     delete(GitleaksFinding).where(GitleaksFinding.fingerprint == fingerprint)
                 )
                 await db.commit()
-                removed_from_db = result.rowcount > 0
+                removed = result.rowcount > 0
                 
-            if removed_from_cache or removed_from_db:
-                logger.info(f"Finding {fingerprint} removido (cache: {removed_from_cache}, db: {removed_from_db})")
+            if removed:
+                logger.info(f"Finding {fingerprint} removido do banco")
                 return True
             else:
                 logger.warning(f"Finding {fingerprint} não encontrado")
@@ -1285,12 +1279,6 @@ class GitleaksService:
                 finding.is_false_positive = is_false_positive
                 await db.commit()
                 
-                # Atualizar também no cache em memória
-                for f in self._findings:
-                    if f.get('Fingerprint') == fingerprint:
-                        f['is_false_positive'] = is_false_positive
-                        break
-                
                 logger.info(f"Finding {fingerprint} marcado como falso_positivo={is_false_positive}")
                 return True
                 
@@ -1299,22 +1287,9 @@ class GitleaksService:
             return False
     
     async def load_findings_from_db(self) -> int:
-        """Carrega findings do banco de dados para o cache em memória"""
-        findings = await load_findings_from_db()
-        
-        # Adicionar ao cache evitando duplicatas
-        existing_fingerprints = {f.get('Fingerprint') for f in self._findings}
-        added_count = 0
-        
-        for finding in findings:
-            fingerprint = finding.get('Fingerprint')
-            if fingerprint and fingerprint not in existing_fingerprints:
-                self._findings.append(finding)
-                existing_fingerprints.add(fingerprint)
-                added_count += 1
-        
-        logger.info(f"Carregados {added_count} findings do banco para o cache")
-        return added_count
+        """Método depreciado - findings são carregados sob demanda do banco"""
+        logger.info("load_findings_from_db() não é mais necessário - dados são buscados do banco sob demanda")
+        return 0
     
     def clear_old_jobs(self) -> int:
         """Remove jobs antigos (completed, failed, cancelled)"""
