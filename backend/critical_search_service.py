@@ -3,17 +3,21 @@ Critical Search Service - Verifica se arquivos correspondem aos critérios de bu
 
 Este serviço é usado pelo scan job quando critical_only=true para filtrar
 apenas arquivos que são potencialmente sensíveis.
+
+NOTA: Todos os métodos síncronos foram removidos. Use apenas métodos async 
+que buscam a configuração diretamente do banco de dados.
 """
 
+import fnmatch
 import re
 import os
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-# Configuração padrão (será sobrescrita pela configuração do banco)
+# Configuração padrão (usada quando não há configuração no banco)
 DEFAULT_CONFIG = {
     "enabled": True,
     "text_files": {
@@ -94,19 +98,18 @@ class CriticalSearchService:
         """Obtém configuração atual (sempre do banco)"""
         return await self.load_config()
     
-    @property
-    def config(self) -> Dict[str, Any]:
-        """DEPRECATED: Use get_config() async method"""
-        logger.warning("CriticalSearchService.config é síncrono e retorna config padrão. Use get_config().")
-        return DEFAULT_CONFIG
-    
     async def is_critical_file_async(
         self,
         file_name: str,
         file_size: int = 0,
         mime_type: str = None
-    ) -> bool:
-        """Verifica se arquivo é crítico (versão async que busca config do banco)"""
+    ) -> Tuple[bool, str]:
+        """
+        Verifica se arquivo é crítico (versão async que busca config do banco).
+        
+        Returns:
+            Tuple[bool, str]: (é crítico, razão)
+        """
         config = await self.get_config()
         return self._check_critical(file_name, file_size, mime_type, config)
     
@@ -114,97 +117,39 @@ class CriticalSearchService:
         self,
         file_name: str,
         file_size: int,
-        mime_type: str,
+        mime_type: Optional[str],
         config: Dict[str, Any]
-    ) -> bool:
+    ) -> Tuple[bool, str]:
         """Lógica interna de verificação de arquivo crítico"""
         if not config.get("enabled", True):
-            return False
+            return False, "Critical search disabled"
         
         file_lower = file_name.lower()
         ext = os.path.splitext(file_lower)[1] if '.' in file_lower else ''
         
-        # KeePass files
-        keepass_config = config.get("keepass_files", {})
-        if keepass_config.get("enabled", True):
-            if ext in keepass_config.get("extensions", []):
-                return True
-        
-        # Critical extensions
-        critical_ext_config = config.get("critical_extensions", {})
-        if critical_ext_config.get("enabled", True):
-            if ext in critical_ext_config.get("extensions", []):
-                return True
-            # Check mime types
-            if mime_type:
-                for mt in critical_ext_config.get("mime_types", []):
-                    if mt in mime_type.lower():
-                        return True
-        
-        # Config files by pattern
-        config_files = config.get("config_files", {})
-        if config_files.get("enabled", True):
-            patterns = config_files.get("patterns", [])
-            for pattern in patterns:
-                if fnmatch.fnmatch(file_lower, pattern.lower()):
-                    return True
-        
-        # Backup files
-        backup_config = config.get("backup_files", {})
-        if backup_config.get("enabled", True):
-            backup_exts = backup_config.get("extensions", [])
-            if ext in backup_exts:
-                return True
-            # Check patterns
-            for pattern in backup_config.get("patterns", []):
-                if fnmatch.fnmatch(file_lower, pattern.lower()):
-                    return True
-        
-        return False
-    
-    def is_critical_file(
-        self,
-        file_name: str,
-        file_size: Optional[int] = None,
-        mime_type: Optional[str] = None
-    ) -> tuple[bool, str]:
-        """
-        Verifica se um arquivo é crítico com base na configuração.
-        
-        Returns:
-            tuple[bool, str]: (é crítico, razão)
-        """
-        if not self._config.get("enabled", True):
-            return False, "Critical search disabled"
-        
-        file_name_lower = file_name.lower()
-        _, ext = os.path.splitext(file_name_lower)
-        
         # 1. Verificar arquivos KeePass
-        keepass_config = self._config.get("keepass_files", {})
+        keepass_config = config.get("keepass_files", {})
         if keepass_config.get("enabled", True):
             if ext in keepass_config.get("extensions", []):
                 return True, "KeePass file"
         
         # 2. Verificar extensões críticas (certificados, scripts, configs)
-        critical_ext_config = self._config.get("critical_extensions", {})
+        critical_ext_config = config.get("critical_extensions", {})
         if critical_ext_config.get("enabled", True):
             if ext in critical_ext_config.get("extensions", []):
                 return True, f"Critical extension: {ext}"
-            
-            # Verificar mime types
+            # Check mime types
             if mime_type:
                 for mt in critical_ext_config.get("mime_types", []):
-                    if mime_type.startswith(mt):
+                    if mt in mime_type.lower():
                         return True, f"Critical mime type: {mime_type}"
         
         # 3. Verificar palavras-chave no nome
-        keyword_config = self._config.get("keyword_files", {})
+        keyword_config = config.get("keyword_files", {})
         if keyword_config.get("enabled", True):
             keywords = keyword_config.get("keywords", [])
             case_sensitive = keyword_config.get("case_sensitive", False)
-            
-            check_name = file_name if case_sensitive else file_name_lower
+            check_name = file_name if case_sensitive else file_lower
             
             for keyword in keywords:
                 check_keyword = keyword if case_sensitive else keyword.lower()
@@ -212,7 +157,7 @@ class CriticalSearchService:
                     return True, f"Keyword match: {keyword}"
         
         # 4. Verificar arquivos texto pequenos
-        text_config = self._config.get("text_files", {})
+        text_config = config.get("text_files", {})
         if text_config.get("enabled", True):
             max_size = text_config.get("max_size_bytes", 1024)
             
@@ -228,7 +173,7 @@ class CriticalSearchService:
                             return True, f"Small text file by mime ({file_size} bytes)"
         
         # 5. Verificar arquivos office
-        office_config = self._config.get("office_files", {})
+        office_config = config.get("office_files", {})
         if office_config.get("enabled", True):
             max_size = office_config.get("max_size_bytes", 1048576)
             
@@ -243,9 +188,28 @@ class CriticalSearchService:
                         if file_size is None or file_size <= max_size:
                             return True, f"Office file by mime"
         
+        # 6. Config files by pattern
+        config_files = config.get("config_files", {})
+        if config_files.get("enabled", True):
+            patterns = config_files.get("patterns", [])
+            for pattern in patterns:
+                if fnmatch.fnmatch(file_lower, pattern.lower()):
+                    return True, f"Config file pattern: {pattern}"
+        
+        # 7. Backup files
+        backup_config = config.get("backup_files", {})
+        if backup_config.get("enabled", True):
+            backup_exts = backup_config.get("extensions", [])
+            if ext in backup_exts:
+                return True, f"Backup extension: {ext}"
+            # Check patterns
+            for pattern in backup_config.get("patterns", []):
+                if fnmatch.fnmatch(file_lower, pattern.lower()):
+                    return True, f"Backup pattern: {pattern}"
+        
         return False, "Not critical"
     
-    def is_log_directory(self, file_names: List[str]) -> bool:
+    async def is_log_directory_async(self, file_names: List[str]) -> bool:
         """
         Verifica se uma lista de arquivos indica um diretório de logs.
         
@@ -255,7 +219,9 @@ class CriticalSearchService:
         Returns:
             True se parecer ser um diretório de logs
         """
-        log_config = self._config.get("log_detection", {})
+        config = await self.get_config()
+        log_config = config.get("log_detection", {})
+        
         if not log_config.get("enabled", True):
             return False
         
@@ -303,14 +269,16 @@ class CriticalSearchService:
         
         return False
     
-    def should_auto_start_gitleaks(self) -> bool:
+    async def should_auto_start_gitleaks_async(self) -> bool:
         """Verifica se GitLeaks deve ser iniciado automaticamente"""
-        auto_config = self._config.get("auto_gitleaks", {})
+        config = await self.get_config()
+        auto_config = config.get("auto_gitleaks", {})
         return auto_config.get("enabled", True)
     
-    def get_gitleaks_delay(self) -> int:
+    async def get_gitleaks_delay_async(self) -> int:
         """Retorna o delay em segundos antes de iniciar GitLeaks"""
-        auto_config = self._config.get("auto_gitleaks", {})
+        config = await self.get_config()
+        auto_config = config.get("auto_gitleaks", {})
         return auto_config.get("delay_seconds", 5)
 
 
