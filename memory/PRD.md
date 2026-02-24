@@ -50,6 +50,11 @@ Portuguese (pt-BR)
     - `public_key`: Informações da chave pública (algorithm, key_size)
     - `extensions`: Lista de extensões do certificado
   - Arquivos modificados: `frontend/src/pages/ServerBrowser.js`, `backend/routes_v2.py`
+- [x] **Correção: Download de arquivos de tamanho zero**
+  - Problema: Ao baixar arquivo com tamanho 0, sistema retornava "Resposta vazia do servidor"
+  - Causa raiz: Verificação `if not content_bytes` avalia `b''` como falsy
+  - Correção: Alterado para `if content_bytes is None` para aceitar bytes vazios
+  - Arquivo modificado: `backend/routes_v2.py` (linha 1862)
 
 ### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
 - [x] **Correção crítica de concorrência no OCR Worker:**
