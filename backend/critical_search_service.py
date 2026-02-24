@@ -57,19 +57,17 @@ DEFAULT_CONFIG = {
 
 
 class CriticalSearchService:
-    """Serviço para verificação de arquivos críticos"""
+    """Serviço para verificação de arquivos críticos (sem cache - busca sempre do banco)"""
     
     _instance = None
-    _config: Dict[str, Any] = None
     
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._config = DEFAULT_CONFIG.copy()
         return cls._instance
     
-    async def load_config(self):
-        """Carrega configuração do banco de dados"""
+    async def load_config(self) -> Dict[str, Any]:
+        """Carrega configuração do banco de dados (sem cache)"""
         try:
             from database import async_session_maker, AppSettings
             from sqlalchemy import select
@@ -82,18 +80,87 @@ class CriticalSearchService:
                 setting = result.scalar_one_or_none()
                 
                 if setting and setting.value:
-                    self._config = json.loads(setting.value)
-                    logger.info("Critical Search config loaded from database")
+                    config = json.loads(setting.value)
+                    logger.debug("Critical Search config loaded from database")
+                    return config
                 else:
-                    self._config = DEFAULT_CONFIG.copy()
-                    logger.info("Using default Critical Search config")
+                    logger.debug("Using default Critical Search config")
+                    return DEFAULT_CONFIG.copy()
         except Exception as e:
             logger.error(f"Error loading Critical Search config: {e}")
-            self._config = DEFAULT_CONFIG.copy()
+            return DEFAULT_CONFIG.copy()
+    
+    async def get_config(self) -> Dict[str, Any]:
+        """Obtém configuração atual (sempre do banco)"""
+        return await self.load_config()
     
     @property
     def config(self) -> Dict[str, Any]:
-        return self._config or DEFAULT_CONFIG
+        """DEPRECATED: Use get_config() async method"""
+        logger.warning("CriticalSearchService.config é síncrono e retorna config padrão. Use get_config().")
+        return DEFAULT_CONFIG
+    
+    async def is_critical_file_async(
+        self,
+        file_name: str,
+        file_size: int = 0,
+        mime_type: str = None
+    ) -> bool:
+        """Verifica se arquivo é crítico (versão async que busca config do banco)"""
+        config = await self.get_config()
+        return self._check_critical(file_name, file_size, mime_type, config)
+    
+    def _check_critical(
+        self,
+        file_name: str,
+        file_size: int,
+        mime_type: str,
+        config: Dict[str, Any]
+    ) -> bool:
+        """Lógica interna de verificação de arquivo crítico"""
+        if not config.get("enabled", True):
+            return False
+        
+        file_lower = file_name.lower()
+        ext = os.path.splitext(file_lower)[1] if '.' in file_lower else ''
+        
+        # KeePass files
+        keepass_config = config.get("keepass_files", {})
+        if keepass_config.get("enabled", True):
+            if ext in keepass_config.get("extensions", []):
+                return True
+        
+        # Critical extensions
+        critical_ext_config = config.get("critical_extensions", {})
+        if critical_ext_config.get("enabled", True):
+            if ext in critical_ext_config.get("extensions", []):
+                return True
+            # Check mime types
+            if mime_type:
+                for mt in critical_ext_config.get("mime_types", []):
+                    if mt in mime_type.lower():
+                        return True
+        
+        # Config files by pattern
+        config_files = config.get("config_files", {})
+        if config_files.get("enabled", True):
+            patterns = config_files.get("patterns", [])
+            for pattern in patterns:
+                if fnmatch.fnmatch(file_lower, pattern.lower()):
+                    return True
+        
+        # Backup files
+        backup_config = config.get("backup_files", {})
+        if backup_config.get("enabled", True):
+            backup_exts = backup_config.get("extensions", [])
+            if ext in backup_exts:
+                return True
+            # Check patterns
+            for pattern in backup_config.get("patterns", []):
+                if fnmatch.fnmatch(file_lower, pattern.lower()):
+                    return True
+        
+        return False
     
     def is_critical_file(
         self,
