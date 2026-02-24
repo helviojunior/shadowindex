@@ -62,6 +62,7 @@ const Dashboard = () => {
   const [ocrJobs, setOcrJobs] = useState([]);
   const [gitleaksJobs, setGitleaksJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
+  const [leaksOverTime, setLeaksOverTime] = useState([]);
 
   // WebSocket para atualizações em tempo real
   useStatsEvents((data) => {
