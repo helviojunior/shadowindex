@@ -234,6 +234,24 @@ class DirectoryScanner:
         self.completed_scans: List[ScanJobMemory] = []  # Últimos scans completados
         self.cancelled_ids: set = set()  # IDs de scans cancelados (db_ids)
         self._lock = asyncio.Lock()
+        self._active_tasks: Dict[int, asyncio.Task] = {}  # db_id -> task
+    
+    async def _get_max_simultaneous_scans(self) -> int:
+        """Obtém o número máximo de scans simultâneos da configuração"""
+        from database import AsyncSessionLocal, AppSettings
+        
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'max_simultaneous_scans')
+                )
+                setting = result.scalar_one_or_none()
+                if setting and setting.value:
+                    return int(setting.value)
+        except Exception as e:
+            logger.error(f"Error getting max_simultaneous_scans: {e}")
+        
+        return DEFAULT_MAX_SIMULTANEOUS_SCANS
     
     async def start(self):
         """Inicia o scanner em background"""
