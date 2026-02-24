@@ -186,7 +186,7 @@ const Dashboard = () => {
     
     try {
       const config = { signal: controller.signal };
-      const [creds, dbs, proxies, soaps, cache, servers, gitleaks, findings] = await Promise.all([
+      const [creds, dbs, proxies, soaps, cache, servers, gitleaks, findings, leaksTime] = await Promise.all([
         axios.get(`${API}/credentials`, config).catch(() => ({ data: [] })),
         axios.get(`${API}/db-connections`, config).catch(() => ({ data: [] })),
         axios.get(`${API}/proxy-servers`, config).catch(() => ({ data: [] })),
@@ -194,7 +194,8 @@ const Dashboard = () => {
         axios.get(`${API}/cache/stats`, config).catch(() => ({ data: { entries: 0 } })),
         axios.get(`${API}/servers`, config).catch(() => ({ data: [] })),
         axios.get(`${API_V2}/gitleaks/stats`, config).catch(() => ({ data: null })),
-        axios.get(`${API_V2}/gitleaks/findings`, config).catch(() => ({ data: { files: [] } }))
+        axios.get(`${API_V2}/gitleaks/findings`, config).catch(() => ({ data: { files: [] } })),
+        axios.get(`${API_V2}/gitleaks/leaks-over-time`, config).catch(() => ({ data: { data: [] } }))
       ]);
       
       clearTimeout(timeoutId);
@@ -213,6 +214,11 @@ const Dashboard = () => {
 
       if (gitleaks.data) {
         setGitleaksStats(gitleaks.data);
+      }
+      
+      // Dados do gráfico de Leaks vs. Tempo
+      if (leaksTime.data && leaksTime.data.data) {
+        setLeaksOverTime(leaksTime.data.data);
       }
 
       // Processar extensões de arquivos com vulnerabilidades
