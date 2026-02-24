@@ -135,8 +135,18 @@ const TEXT_EXTENSIONS = [
   '.plist', '.strings'
 ];
 
-// Arquivos especiais sem extensão que são texto (começam com .)
-const SPECIAL_TEXT_FILES = ['.gitignore', '.gitattributes', '.gitmodules', '.dockerignore', '.editorconfig', '.eslintrc', '.prettierrc', '.babelrc', '.npmrc', '.nvmrc', '.htaccess', 'Dockerfile', 'Makefile', 'README', 'LICENSE', 'CHANGELOG'];
+// Arquivos especiais sem extensão que são texto
+const SPECIAL_TEXT_FILES = [
+  '.gitignore', '.gitattributes', '.gitmodules', '.dockerignore', '.editorconfig',
+  '.eslintrc', '.prettierrc', '.babelrc', '.npmrc', '.nvmrc', '.yarnrc',
+  '.htaccess', '.htpasswd', '.bashrc', '.bash_profile', '.bash_history',
+  '.zshrc', '.zsh_history', '.profile', '.bash_aliases',
+  'Dockerfile', 'Makefile', 'Vagrantfile', 'Gemfile', 'Rakefile', 'Procfile',
+  'README', 'LICENSE', 'CHANGELOG', 'CONTRIBUTING', 'AUTHORS', 'INSTALL',
+  'COPYING', 'NOTICE', 'TODO', 'CREDITS',
+  'requirements.txt', 'package.json', 'composer.json', 'Cargo.toml',
+  'hosts', 'passwd', 'shadow', 'group', 'fstab', 'crontab', 'sudoers'
+];
 
 // Extensões de arquivos de imagem que podem ser visualizados
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.svg'];
