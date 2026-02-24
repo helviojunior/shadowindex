@@ -170,7 +170,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   // Atalho Ctrl+F para busca global
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.ctrlKey && e.key === 'f') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         setGlobalSearchOpen(true);
       }
