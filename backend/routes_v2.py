@@ -2754,9 +2754,14 @@ async def get_certificate_info(
                 # Criar fingerprint único
                 fingerprint_source = f"{file.file_path}:pfx_private_key:{main_thumbprint}"
                 fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()[:32]
+                full_fingerprint = f"auto_pfx_{fingerprint}"
                 
-                # Verificar se já existe
-                existing = [f for f in service._findings if f.get('Fingerprint') == f"auto_pfx_{fingerprint}"]
+                # Verificar se já existe no banco
+                from database import GitleaksFinding
+                existing_result = await db.execute(
+                    select(GitleaksFinding).where(GitleaksFinding.fingerprint == full_fingerprint)
+                )
+                existing = existing_result.scalar_one_or_none()
                 
                 if not existing:
                     # Criar finding
@@ -2768,7 +2773,7 @@ async def get_certificate_info(
                         "EndLine": 1,
                         "Match": f"[PFX com chave privada - Thumbprint: {main_thumbprint}]",
                         "Secret": f"Certificado: {main_subject.get('commonName', 'Unknown')}",
-                        "Fingerprint": f"auto_pfx_{fingerprint}",
+                        "Fingerprint": full_fingerprint,
                         "Tags": ["certificate", "private-key", "pfx", "auto-detected"],
                         "Severity": "critical",
                         
@@ -2781,7 +2786,9 @@ async def get_certificate_info(
                         "detection_source": "auto-pfx"
                     }
                     
-                    service._findings.append(finding)
+                    # Salvar diretamente no banco
+                    from leaks_service import save_finding_to_db
+                    await save_finding_to_db(finding)
                     leak_registered = True
                     logger.info(f"Leak auto-registrado para PFX com chave privada: {file.file_path}")
                     
