@@ -977,11 +977,11 @@ async def browse_share(
                 name=item_data["name"],
                 full_path=item_data["fullPath"],
                 size=str(item_data["size"]) if item_data["size"] else None,
-                modified_at=item_data["modified_at"]
+                modified_at=datetime.fromisoformat(item_data["modified_at"]) if isinstance(item_data["modified_at"], str) else item_data["modified_at"]
             )
             db.add(db_item)
             items.append(db_item)
-        
+
         # Atualizar share
         share.children_fetched = True
         share.has_children = len(items) > 0
@@ -1165,11 +1165,11 @@ async def browse_path(
                 name=item_data["name"],
                 full_path=item_data["fullPath"],
                 size=str(item_data["size"]) if item_data["size"] else None,
-                modified_at=item_data["modified_at"]
+                modified_at=datetime.fromisoformat(item_data["modified_at"]) if isinstance(item_data["modified_at"], str) else item_data["modified_at"]
             )
             db.add(db_item)
             items.append(db_item)
-        
+
         # Atualizar o share ou diretório pai para marcar como children_fetched=True
         path_parts = path.replace('/', '\\').split('\\')
         path_parts = [p for p in path_parts if p]  # Remove vazios
@@ -1420,11 +1420,11 @@ async def browse_item(
                 name=item_data["name"],
                 full_path=item_data["fullPath"],
                 size=str(item_data["size"]) if item_data["size"] else None,
-                modified_at=item_data["modified_at"]
+                modified_at=datetime.fromisoformat(item_data["modified_at"]) if isinstance(item_data["modified_at"], str) else item_data["modified_at"]
             )
             db.add(db_item)
             items.append(db_item)
-        
+
         # Atualizar item pai
         item.children_fetched = True
         item.has_children = len(items) > 0
