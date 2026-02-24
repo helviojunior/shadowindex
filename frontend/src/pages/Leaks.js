@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,6 +87,8 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api/v2`;
 
 const Leaks = () => {
+  const location = useLocation();
+
   // State para findings
   const [findings, setFindings] = useState([]);
   const [files, setFiles] = useState([]);
@@ -432,13 +435,28 @@ const Leaks = () => {
     const term = searchTerm.toLowerCase();
     return (
       file.file.toLowerCase().includes(term) ||
-      file.findings.some(f => 
+      file.findings.some(f =>
         f.RuleID?.toLowerCase().includes(term) ||
         f.Description?.toLowerCase().includes(term) ||
-        f.Secret?.toLowerCase().includes(term)
+        f.Secret?.toLowerCase().includes(term) ||
+        f.Fingerprint?.toLowerCase().includes(term)
       )
     );
   });
+
+  // Ler hash #leak_{id} e preencher o campo de busca automaticamente
+  useEffect(() => {
+    const match = location.hash.match(/^#leak_(\d+)$/);
+    if (!match || findings.length === 0) return;
+    const targetId = parseInt(match[1], 10);
+    for (const file of files) {
+      const found = file.findings.find(f => f.id === targetId);
+      if (found?.Fingerprint) {
+        setSearchTerm(found.Fingerprint);
+        return;
+      }
+    }
+  }, [location.hash, findings, files]);
 
   // Risk indicators coloridos (como na imagem do Sn1per)
   const getRiskIndicators = (ruleId) => {

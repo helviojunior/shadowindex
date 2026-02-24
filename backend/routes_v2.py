@@ -623,7 +623,7 @@ async def global_search(
             "server_id": finding.server_id,
             "server_name": finding.server_name,
             "server_ip": finding.server_ip,
-            "navigate_to": "/leaks",
+            "navigate_to": f"/leaks#leak_{finding.id}",
         })
 
     return {"query": q, "results": results[:limit], "total": len(results)}
