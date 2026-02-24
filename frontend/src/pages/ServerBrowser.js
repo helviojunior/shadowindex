@@ -262,6 +262,7 @@ const ServerBrowser = () => {
   });
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const searchTimeoutRef = useRef(null);
+  const urlParamsConsumedRef = useRef(false); // Flag para garantir que parâmetros da URL sejam processados apenas uma vez
   
 
   // WebSocket para atualizações em tempo real do status dos arquivos
@@ -433,15 +434,24 @@ const ServerBrowser = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchResults]);
 
-  // Verificar parâmetro file_id ou path na URL para navegação automática
+  // Verificar parâmetro file_id ou path na URL para navegação automática (apenas uma vez)
   useEffect(() => {
+    // Se já consumimos os parâmetros, não processar novamente
+    if (urlParamsConsumedRef.current) return;
+
     const searchParams = new URLSearchParams(location.search);
     const fileId = searchParams.get('file_id');
     const filePath = searchParams.get('path');
-    
+
     if (fileId && server && !pendingFileNavigation) {
+      urlParamsConsumedRef.current = true;
       setPendingFileNavigation(parseInt(fileId));
+      // Limpar parâmetros da URL imediatamente via React Router
+      navigate(location.pathname, { replace: true });
     } else if (filePath && server && shares.length > 0 && !pendingFileNavigation) {
+      urlParamsConsumedRef.current = true;
+      // Limpar parâmetros da URL imediatamente via React Router
+      navigate(location.pathname, { replace: true });
       // Navegar pelo caminho do arquivo (para leaks manuais)
       const decodedPath = decodeURIComponent(filePath);
       navigateToFilePath(decodedPath);
@@ -483,13 +493,9 @@ const ServerBrowser = () => {
       } finally {
         setNavigatingToResult(false);
         setPendingFileNavigation(null);
-        
-        // Limpar o parâmetro da URL
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
       }
     };
-    
+
     navigateToFile();
   }, [pendingFileNavigation, server, shares]);
 
@@ -1675,10 +1681,6 @@ const ServerBrowser = () => {
       toast.error('Erro ao navegar até o arquivo');
     } finally {
       setNavigatingToResult(false);
-      
-      // Limpar o parâmetro da URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
     }
   };
 
