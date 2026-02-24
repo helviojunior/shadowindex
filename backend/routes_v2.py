@@ -3797,12 +3797,13 @@ async def get_gitleaks_findings(
     
     service = get_gitleaks_service()
     
+    # Buscar findings diretamente do banco
     if job_id:
-        findings = service.get_findings_by_job(job_id)
+        findings = await service.get_findings_by_job(job_id)
     elif server_id:
-        findings = service.get_findings_by_server(server_id)
+        findings = await service.get_findings_by_server(server_id)
     else:
-        findings = service.get_all_findings()
+        findings = await service.get_all_findings()
     
     # Deduplicar por Fingerprint
     seen_fingerprints = set()
