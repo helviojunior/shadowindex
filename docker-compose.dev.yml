@@ -55,13 +55,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        REACT_APP_BACKEND_URL: "${REACT_APP_BACKEND_URL:-http://localhost:9090}"
     container_name: shadowindex-frontend-dev
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      # Frontend roda no browser, precisa chamar pela porta exposta do host
-      REACT_APP_BACKEND_URL: "http://localhost:9090"
+      # Variável também em runtime (para yarn start)
+      REACT_APP_BACKEND_URL: "${REACT_APP_BACKEND_URL:-http://localhost:9090}"
     depends_on:
       - backend
     networks:
