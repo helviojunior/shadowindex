@@ -692,7 +692,7 @@ class DirectoryScanner:
         # Calcular total de arquivos críticos encontrados
         total_critical = root_scan_job.critical_files_found
         for completed in self.completed_scans:
-            if completed.parent_id == root_scan_job.id:
+            if completed.parent_id == root_scan_job.db_id:
                 total_critical += completed.critical_files_found
         
         if total_critical == 0:
