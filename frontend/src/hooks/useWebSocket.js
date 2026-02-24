@@ -152,8 +152,23 @@ export const WebSocketProvider = ({ children }) => {
   // Conectar automaticamente ao montar
   useEffect(() => {
     connect();
-    
+
+    // Ao primeiro sinal de rede online, reconectar imediatamente (sem aguardar o timer de 3s)
+    const handleOnline = () => {
+      console.log('Network online, reconnecting WebSocket immediately...');
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (wsRef.current?.readyState !== WebSocket.OPEN) {
+        connect();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+
     return () => {
+      window.removeEventListener('online', handleOnline);
       disconnect();
     };
   }, [connect, disconnect]);
