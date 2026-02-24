@@ -208,7 +208,7 @@ export default function GlobalSearch({ open, onClose }) {
                         </div>
                       </button>
                     </ContextMenuTrigger>
-                    <ContextMenuContent>
+                    <ContextMenuContent className="z-[1000]">
                       <ContextMenuItem onClick={() => handleSelect(result)}>
                         Abrir
                       </ContextMenuItem>
