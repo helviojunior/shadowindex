@@ -211,7 +211,6 @@ const ServerBrowser = () => {
   const [pfxPassword, setPfxPassword] = useState(''); // Senha para arquivos PFX
   const [singleDownloadProgress, setSingleDownloadProgress] = useState(null); // Progresso do download individual (0-100)
   const singleDownloadCancelledRef = useRef(false); // Ref para cancelamento do sync individual
-  const [fileInQueue, setFileInQueue] = useState(null); // {inQueue: bool, status: 'pending'|'downloading'}
   const processingClickRef = useRef(false); // Ref para evitar cliques duplos na tree
   
   // Estados para visualização de PDF
@@ -502,7 +501,6 @@ const ServerBrowser = () => {
     if (isShare || isDirectory) {
       setBulkDownloadItems([]);
       setBulkDownloadStats({ total: 0, completed: 0, failed: 0, skipped: 0 });
-      setFileInQueue(null);
     }
     
     setFileContent(null);
@@ -519,40 +517,34 @@ const ServerBrowser = () => {
     // Se acesso negado, mostrar apenas Info
     if (isAccessDenied) {
       setActiveTab('info');
-      setFileInQueue(null);
     } else if (isShare || isDirectory) {
       setActiveTab('objetos');
     } else if (isFile) {
       const filePath = selectedItem.fullPath || selectedItem.serverPath;
-      const shareName = selectedItem.shareName;
-      
+
       // Recarregar lista de arquivos baixados para ter dados atualizados
-      loadDownloadedFiles().then(() => {
-        // Verificar se arquivo está na fila de downloads
-        checkFileInQueue(filePath, shareName);
-      });
-      
+      loadDownloadedFiles();
+
       const isDownloaded = downloadedFiles.includes(filePath);
       const fileInfo = downloadedFilesInfo[filePath];
       console.log(fileInfo);
       const fileMimeType = fileInfo?.mimetype || fileInfo?.mime_type || null;
       console.log(fileMimeType);
       const canView = canPreviewFile(selectedItem.name, fileMimeType);
-      
+
       // Se arquivo já baixado e pode ser visualizado, abrir na aba View
       if (isDownloaded && canView) {
         setActiveTab('view');
       } else {
         setActiveTab('info');
       }
-      
+
       // Carregar versões se estiver sincronizado
       if (isDownloaded) {
         loadFileVersions(filePath);
       }
     } else {
       setActiveTab('info');
-      setFileInQueue(null);
     }
   }, [selectedItem?.id, bulkDownloadActive]);
 
@@ -1208,25 +1200,6 @@ const ServerBrowser = () => {
     }
   };
 
-  // Verificar se arquivo está na fila de downloads
-  const checkFileInQueue = async (filePath, shareName) => {
-    try {
-      // Usar API V2 com query params
-      const response = await axios.post(`${API_V2}/downloads/check-queue`, null, {
-        params: {
-          server_id: parseInt(serverId),
-          share_name: shareName,
-          file_path: filePath
-        }
-      });
-      setFileInQueue(response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Error checking queue:', error);
-      setFileInQueue({ in_queue: false });
-      return { in_queue: false };
-    }
-  };
 
   // Carregar versões do arquivo selecionado
   const loadFileVersions = async (filePath) => {
@@ -1612,9 +1585,6 @@ const ServerBrowser = () => {
     
     // Carregar informações adicionais se for arquivo
     if (result.item_type === 'File') {
-      // Verificar se está na fila
-      checkFileInQueue(result.full_path, shareName);
-      
       // Carregar versões se já foi baixado
       if (result.is_downloaded) {
         loadFileVersions(result.full_path);
@@ -3554,29 +3524,21 @@ const ServerBrowser = () => {
                 </div>
               )}
               
-              {/* Mostrar "Em fila" se arquivo está na fila, senão mostrar botão Sync */}
-              {fileInQueue?.in_queue ? (
-                <Badge variant="secondary" className="h-7 px-3 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  {fileInQueue.status === 'downloading' ? 'Baixando...' : 'Em fila de download'}
-                </Badge>
-              ) : (
-                <Button 
-                  size="sm" 
-                  className="h-7"
-                  onClick={handleDownload}
-                  disabled={loading}
-                  variant={downloaded ? "outline" : "default"}
-                  data-testid="sync-button"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                  )}
-                  Sync
-                </Button>
-              )}
+              <Button
+                size="sm"
+                className="h-7"
+                onClick={handleDownload}
+                disabled={loading}
+                variant={downloaded ? "outline" : "default"}
+                data-testid="sync-button"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Sync
+              </Button>
               
               {/* Botão Cancelar Sync */}
               {loading && singleDownloadProgress !== null && (

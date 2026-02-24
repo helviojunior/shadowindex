@@ -2284,35 +2284,6 @@ async def create_download_job(request: QueueRequest, db: AsyncSession = Depends(
     }
 
 
-@router.post("/downloads/check-queue")
-async def check_queue(
-    server_id: int,
-    file_path: str,
-    share_name: str,
-    db: AsyncSession = Depends(get_db)
-):
-    """Verifica se arquivo está na fila de downloads"""
-    # Validar servidor existe
-    await get_server_or_404(db, server_id)
-    
-    result = await db.execute(
-        select(DownloadJob).where(
-            DownloadJob.server_id == server_id,
-            DownloadJob.file_path == file_path,
-            DownloadJob.status.in_(['pending', 'downloading'])
-        )
-    )
-    job = result.scalar_one_or_none()
-    
-    if job:
-        return {
-            "in_queue": True,
-            "job_id": job.id,
-            "status": job.status
-        }
-    
-    return {"in_queue": False, "job_id": None, "status": None}
-
 
 # ==========================================
 # Downloaded File Endpoints
