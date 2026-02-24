@@ -5323,9 +5323,6 @@ DEFAULT_CRITICAL_SEARCH_CONFIG = {
             ".Spotlight-V100",
             ".Trashes",
             ".fseventsd",
-            # Linux
-            ".bash_history",
-            ".zsh_history",
             # Controle de versão
             ".gitignore",
             ".gitattributes"
