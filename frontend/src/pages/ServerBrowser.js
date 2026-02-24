@@ -671,14 +671,20 @@ const ServerBrowser = () => {
     }
   };
 
-  // Verifica se é um arquivo de texto
-  const isTextFile = (filename) => {
+  // Verifica se é um arquivo de texto (por extensão ou mime type)
+  const isTextFile = (filename, mimeType = null) => {
     if (!filename) return false;
     const lowerName = filename.toLowerCase();
+    
+    // Verificar por mime type text/*
+    if (mimeType && mimeType.startsWith('text/')) return true;
+    
     // Verificar extensões de texto
     if (TEXT_EXTENSIONS.some(ext => lowerName.endsWith(ext))) return true;
+    
     // Verificar arquivos especiais (sem extensão ou começando com .)
     if (SPECIAL_TEXT_FILES.some(name => lowerName === name.toLowerCase() || lowerName.endsWith('/' + name.toLowerCase()))) return true;
+    
     return false;
   };
 
