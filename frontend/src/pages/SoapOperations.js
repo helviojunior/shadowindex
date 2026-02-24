@@ -108,7 +108,19 @@ const SoapOperations = () => {
   const copyResult = async () => {
     if (result?.data) {
       try {
-        await navigator.clipboard.writeText(result.data);
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(result.data);
+        } else {
+          // Fallback para HTTP
+          const textArea = document.createElement('textarea');
+          textArea.value = result.data;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         toast.success('Resultado copiado');
