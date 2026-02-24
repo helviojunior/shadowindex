@@ -118,7 +118,7 @@ export default function GlobalSearch({ open, onClose }) {
 
       {/* Panel */}
       <div
-        className="relative z-[999] w-[520px] flex flex-col rounded-lg border border-white/15 shadow-2xl bg-white/5 bg-clip-padding backdrop-filter backdrop-blur-xl max-h-[70vh]"
+        className="relative z-[999] w-[520px] flex flex-col rounded-lg border border-white/15 shadow-2xl bg-zinc-900/95 backdrop-blur-sm max-h-[70vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input row */}
