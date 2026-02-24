@@ -14,7 +14,6 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
 import { useStatsEvents, useWebSocket, useDownloadEvents, useScanEvents } from '@/hooks/useWebSocket';
-import { ShieldKeyIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import {
   AreaChart,
@@ -39,17 +38,25 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 const API_V2 = `${BACKEND_URL}/api/v2`;
 
+const formatBytes = (bytes) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 const Dashboard = () => {
   const { offlineMode, setOfflineMode } = useApp();
   const { isConnected: wsConnected } = useWebSocket();
   const [stats, setStats] = useState({
-    credentials: 0,
     dbConnections: 0,
     proxyServers: 0,
     soapApis: 0,
     cacheEntries: 0,
     servers: 0,
-    downloadedFiles: 0
+    downloadedFiles: 0,
+    totalDownloadSize: 0
   });
   const [gitleaksStats, setGitleaksStats] = useState(null);
   const [extensionStats, setExtensionStats] = useState([]);
@@ -73,8 +80,8 @@ const Dashboard = () => {
     if (data.downloadedFiles !== undefined) {
       setStats(prev => ({ ...prev, downloadedFiles: data.downloadedFiles }));
     }
-    if (data.credentials !== undefined) {
-      setStats(prev => ({ ...prev, credentials: data.credentials }));
+    if (data.totalDownloadSize !== undefined) {
+      setStats(prev => ({ ...prev, totalDownloadSize: data.totalDownloadSize }));
     }
     if (data.gitleaks) {
       setGitleaksStats(data.gitleaks);
@@ -186,8 +193,8 @@ const Dashboard = () => {
     
     try {
       const config = { signal: controller.signal };
-      const [creds, dbs, proxies, soaps, cache, servers, gitleaks, findings, leaksTime] = await Promise.all([
-        axios.get(`${API}/credentials`, config).catch(() => ({ data: [] })),
+      const [downloadStats, dbs, proxies, soaps, cache, servers, gitleaks, findings, leaksTime] = await Promise.all([
+        axios.get(`${API}/downloads/stats`, config).catch(() => ({ data: { total_size_bytes: 0 } })),
         axios.get(`${API}/db-connections`, config).catch(() => ({ data: [] })),
         axios.get(`${API}/proxy-servers`, config).catch(() => ({ data: [] })),
         axios.get(`${API}/soap-apis`, config).catch(() => ({ data: [] })),
@@ -203,13 +210,13 @@ const Dashboard = () => {
       const totalDownloads = (servers.data || []).reduce((acc, server) => acc + (server.downloaded_files_count || 0), 0);
 
       setStats({
-        credentials: (creds.data || []).length,
         dbConnections: (dbs.data || []).length,
         proxyServers: (proxies.data || []).length,
         soapApis: (soaps.data || []).length,
         cacheEntries: cache.data?.total_entries || 0,
         servers: (servers.data || []).length,
-        downloadedFiles: totalDownloads
+        downloadedFiles: totalDownloads,
+        totalDownloadSize: downloadStats.data?.total_size_bytes || 0
       });
 
       if (gitleaks.data) {
@@ -409,10 +416,10 @@ const Dashboard = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">{stats.credentials}</p>
-                <p className="text-sm text-muted-foreground uppercase tracking-wider">Credenciais</p>
+                <p className="text-2xl font-bold">{formatBytes(stats.totalDownloadSize)}</p>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">Downloads</p>
               </div>
-              <ShieldKeyIcon className="w-8 h-8 text-purple-500 opacity-60" />
+              <Download className="w-8 h-8 text-purple-500 opacity-60" />
             </div>
           </CardContent>
         </Card>

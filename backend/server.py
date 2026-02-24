@@ -3994,15 +3994,21 @@ async def download_file_to_client(
 
 @api_router.get("/downloads/stats")
 async def get_download_stats(db: AsyncSession = Depends(get_db_readonly)):
-    """Retorna estatísticas dos jobs de download (contagens por status)"""
+    """Retorna estatísticas dos jobs de download (contagens por status e tamanho total)"""
     from sqlalchemy import func
-    
+
     result = await db.execute(
         select(DownloadJob.status, func.count(DownloadJob.id))
         .group_by(DownloadJob.status)
     )
     status_counts = dict(result.all())
-    
+
+    # Calcular tamanho total dos arquivos baixados
+    size_result = await db.execute(
+        select(func.coalesce(func.sum(DownloadedFile.file_size), 0))
+    )
+    total_size_bytes = size_result.scalar() or 0
+
     return {
         "total": sum(status_counts.values()),
         "pending": status_counts.get('pending', 0),
@@ -4010,7 +4016,8 @@ async def get_download_stats(db: AsyncSession = Depends(get_db_readonly)):
         "completed": status_counts.get('completed', 0),
         "failed": status_counts.get('failed', 0),
         "cancelled": status_counts.get('cancelled', 0),
-        "skipped": status_counts.get('skipped', 0)
+        "skipped": status_counts.get('skipped', 0),
+        "total_size_bytes": total_size_bytes
     }
 
 
