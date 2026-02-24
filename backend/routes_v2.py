@@ -2638,7 +2638,7 @@ async def get_certificate_info(
         certificates_info = []
         main_thumbprint = None
         
-        for cert_entry in all_certs:
+        for cert_idx, cert_entry in enumerate(all_certs, start=1):
             cert_obj = cert_entry["cert"]
             has_key = cert_entry["has_private_key"]
             
