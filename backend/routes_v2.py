@@ -5089,11 +5089,6 @@ async def auto_register_private_key_leak(
     except Exception as e:
         logger.warning(f"Erro ao verificar duplicata no banco: {e}")
     
-    # Verificar se já existe no cache
-    existing_cache = [f for f in service._findings if f.get('Fingerprint') == full_fingerprint]
-    if existing_cache:
-        return {"already_exists": True, "finding": existing_cache[0]}
-    
     # Extrair um preview do início da chave
     preview_lines = content.split('\n')[:3]
     preview = '\n'.join(preview_lines)
