@@ -5217,7 +5217,7 @@ const ServerBrowser = () => {
                   ) : (
                     <div className="divide-y divide-border">
                       {/* Header com total e botão de exportar */}
-                      <div className="px-3 py-2 bg-muted/30 flex items-center justify-between sticky top-0 z-10">
+                      <div className="px-3 py-2 bg-muted flex items-center justify-between sticky top-0 z-10">
                         <span className="text-xs font-medium text-muted-foreground">
                           {searchResults.total} resultado(s) encontrado(s)
                         </span>
