@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Configurações do scanner
 SCANNER_POLL_INTERVAL = 3  # segundos entre verificações
-MAX_DIRS_PER_CYCLE = 50  # máximo de diretórios a processar por ciclo
+DEFAULT_MAX_SIMULTANEOUS_SCANS = 3  # padrão de workers simultâneos
 
 # Instância global do scanner
 _scanner_instance: Optional['DirectoryScanner'] = None
