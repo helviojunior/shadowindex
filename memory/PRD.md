@@ -90,6 +90,18 @@ Portuguese (pt-BR)
   - Arquivos modificados: `backend/directory_scanner.py`, `backend/server.py`
   - Nova classe `ScanJobMemory` para processamento em memória
   - Métodos atualizados: `_restore_pending_jobs()`, `_update_job_status_in_db()`, `add_scan_job()`, `cancel_scan()`, etc.
+- [x] **Múltiplos workers para scan de diretórios**
+  - Nova configuração `max_simultaneous_scans` (padrão: 3)
+  - Processamento paralelo usando tasks assíncronas
+  - UI para configurar número de workers em Configurações Gerais
+- [x] **Suporte a PostgreSQL**
+  - Backend agora suporta PostgreSQL como banco principal (recomendado para produção)
+  - SQLite mantido como fallback para desenvolvimento
+  - Configuração via variável de ambiente `POSTGRES_URL`
+  - Script de migração `migrate_sqlite_to_postgres.py` para migrar dados existentes
+  - docker-compose.yml atualizado com serviço PostgreSQL
+  - Usa asyncpg para conexões assíncronas
+  - Pool de conexões configurado para melhor performance
 
 ### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
 - [x] **Correção crítica de concorrência no OCR Worker:**
