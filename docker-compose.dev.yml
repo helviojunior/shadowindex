@@ -1,5 +1,3 @@
-version: "3.8"
-
 # Docker-compose for development/testing
 # Includes SOAP mock server, Tika for OCR, and PostgreSQL
 
