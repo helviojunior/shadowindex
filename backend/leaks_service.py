@@ -1056,12 +1056,6 @@ class GitleaksService:
                                     # Enriquecer com informações do banco de dados
                                     finding = await enrich_finding_with_db_info(finding)
                                     
-                                    fingerprint = finding.get('Fingerprint')
-                                    already_in_cache = any(f.get('Fingerprint') == fingerprint for f in self._findings)
-                                    
-                                    if not already_in_cache:
-                                        self._findings.append(finding)
-                                    
                                     # Registrar chave para evitar duplicata do OCR
                                     key = (finding.get('original_file', ''), finding.get('Secret', ''))
                                     processed_keys.add(key)
@@ -1082,12 +1076,6 @@ class GitleaksService:
                                     
                                     # Enriquecer com informações do banco de dados
                                     finding = await enrich_finding_with_db_info(finding)
-                                    
-                                    fingerprint = finding.get('Fingerprint')
-                                    already_in_cache = any(f.get('Fingerprint') == fingerprint for f in self._findings)
-                                    
-                                    if not already_in_cache:
-                                        self._findings.append(finding)
                                     
                                     processed_keys.add(key)
                                     
