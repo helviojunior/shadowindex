@@ -230,9 +230,9 @@ class DirectoryScanner:
     def __init__(self):
         self.running = False
         self._task: Optional[asyncio.Task] = None
-        self.scan_queue: List[ScanJob] = []
-        self.completed_scans: List[ScanJob] = []  # Últimos scans completados
-        self.cancelled_ids: set = set()  # IDs de scans cancelados
+        self.scan_queue: List[ScanJobMemory] = []
+        self.completed_scans: List[ScanJobMemory] = []  # Últimos scans completados
+        self.cancelled_ids: set = set()  # IDs de scans cancelados (db_ids)
         self._lock = asyncio.Lock()
     
     async def start(self):
@@ -242,8 +242,71 @@ class DirectoryScanner:
             return
         
         self.running = True
+        
+        # Restaurar jobs pendentes do banco de dados
+        await self._restore_pending_jobs()
+        
         self._task = asyncio.create_task(self._run_loop())
         logger.info("Directory scanner started")
+    
+    async def _restore_pending_jobs(self):
+        """Restaura jobs pendentes/running do banco de dados após reinício"""
+        from database import AsyncSessionLocal, ScanJob as ScanJobDB, Server
+        
+        try:
+            async with AsyncSessionLocal() as db:
+                # Buscar jobs pendentes ou running
+                result = await db.execute(
+                    select(ScanJobDB).where(
+                        ScanJobDB.status.in_(['pending', 'running'])
+                    ).order_by(ScanJobDB.created_at)
+                )
+                pending_jobs = result.scalars().all()
+                
+                if pending_jobs:
+                    print(f"=== SCANNER: Restoring {len(pending_jobs)} pending scan jobs from database ===", flush=True)
+                    
+                    for db_job in pending_jobs:
+                        # Buscar server_id pelo guid
+                        server_result = await db.execute(
+                            select(Server).where(Server.guid == db_job.server_guid)
+                        )
+                        server = server_result.scalar_one_or_none()
+                        
+                        if not server:
+                            print(f"=== SCANNER: Server not found for job {db_job.id}, marking as failed ===", flush=True)
+                            db_job.status = 'failed'
+                            db_job.error_message = 'Server not found'
+                            continue
+                        
+                        # Criar job em memória
+                        mem_job = ScanJobMemory(
+                            db_id=db_job.id,
+                            server_id=server.id,
+                            server_guid=db_job.server_guid,
+                            share_name=db_job.share_name,
+                            path=db_job.path,
+                            depth=1,  # Reiniciar do começo do path
+                            max_depth=db_job.max_depth,
+                            max_file_size_bytes=None,  # Usar configuração geral
+                            apply_filters=True,
+                            parent_id=None,
+                            critical_only=db_job.critical_only
+                        )
+                        mem_job.status = 'pending'  # Reset para pending
+                        mem_job.files_found = db_job.total_files or 0
+                        mem_job.critical_files_found = db_job.critical_files_found or 0
+                        
+                        self.scan_queue.append(mem_job)
+                        print(f"=== SCANNER: Restored job {db_job.id}: {db_job.path} ===", flush=True)
+                    
+                    await db.commit()
+                else:
+                    print("=== SCANNER: No pending jobs to restore ===", flush=True)
+                    
+        except Exception as e:
+            print(f"=== SCANNER ERROR restoring jobs: {e} ===", flush=True)
+            logger.error(f"Error restoring scan jobs: {e}")
     
     async def stop(self):
         """Para o scanner"""
