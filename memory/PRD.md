@@ -64,6 +64,14 @@ Portuguese (pt-BR)
     - Retorna formato: `{ data: [{ date: "MM/YY", month, year, count }], total }`
   - Frontend atualizado para consumir dados reais do novo endpoint
   - Arquivos modificados: `backend/routes_v2.py`, `frontend/src/pages/Dashboard.js`
+- [x] **Extensões de exclusão expandidas e consistentes**
+  - Verificado: Busca Crítica usa **apenas** suas próprias configs (não herda da config geral)
+  - A lógica em `directory_scanner.py` linha 566 confirma: `not scan_job.critical_only`
+  - Expandidas listas de extensões excluídas em ambas as configurações:
+    - Critical Search: `excluded_extensions` + `excluded_files` em `routes_v2.py` e `leaks_service.py`
+    - OCR Geral: `auto_ocr_excluded_extensions` em `database.py`
+  - Extensões de SO adicionadas: `.sys`, `.drv`, `.ocx`, `.cpl`, `.scr`, `.etl`, `.evtx`, `.dmp`, `.vhd`, `.vmdk`, etc.
+  - Arquivos de sistema adicionados: `ntuser.dat.LOG*`, `$MFT`, `$LogFile`, `bootmgr`, `.Spotlight-V100`, etc.
 
 ### 2026-02-23 (Session 43 - OCR Worker Concurrency Fix)
 - [x] **Correção crítica de concorrência no OCR Worker:**
