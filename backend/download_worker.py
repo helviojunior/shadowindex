@@ -90,7 +90,7 @@ async def ensure_parent_directories(db: AsyncSession, server, share_name: str, f
                         name=dir_name,
                         full_path=current_full_path,
                         size='---',
-                        modified=None,
+                        modified_at=None,
                         access_denied=False,
                         has_children=True,  # Pelo menos tem o arquivo sendo baixado
                         children_fetched=False,  # Não foi expandido manualmente
@@ -128,7 +128,7 @@ async def ensure_parent_directories(db: AsyncSession, server, share_name: str, f
                 name=file_name,
                 full_path=file_full_path,
                 size=size_str,
-                modified=None,
+                modified_at=None,
                 access_denied=False,
                 has_children=False,
                 children_fetched=False,

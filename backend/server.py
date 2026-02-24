@@ -109,7 +109,7 @@ def get_file_mimetype(file_path: str) -> Optional[str]:
 def parse_exec4_directory_listing(xml_result: str) -> List[dict]:
     """
     Parseia o resultado XML do Exec4 (listagem de diretório).
-    Retorna lista de dicts com: type, name, size, modified, fullPath
+    Retorna lista de dicts com: type, name, size, modified_at, fullPath
     """
     import xml.etree.ElementTree as ET
     
@@ -147,7 +147,7 @@ def parse_exec4_directory_listing(xml_result: str) -> List[dict]:
                     "type": item_type.text if item_type is not None and item_type.text else "Unknown",
                     "name": name.text,
                     "size": size_value,
-                    "modified": lastwritetime.text if lastwritetime is not None and lastwritetime.text else "",
+                    "modified_at": lastwritetime.text if lastwritetime is not None and lastwritetime.text else "",
                     "fullPath": fullname.text if fullname is not None and fullname.text else ""
                 }
                 items.append(item)
@@ -2011,7 +2011,7 @@ async def delete_server(server_id: int, db: AsyncSession = Depends(get_db)):
             "name": item.name,
             "full_path": item.full_path,
             "size": item.size,
-            "modified": item.modified,
+            "modified_at": item.modified_at,
             "access_denied": item.access_denied,
             "has_children": item.has_children,
             "discovered_at": item.discovered_at.isoformat() if item.discovered_at else None
@@ -2461,7 +2461,7 @@ async def get_server_shares_with_children(server_id: int, db: AsyncSession = Dep
             "name": item.name,
             "fullPath": item.full_path,
             "size": item.size or "---",
-            "modified": item.modified or "",
+            "modified_at": item.modified_at or "",
             "accessDenied": item.access_denied,
             "errorMessage": item.error_message,
             "hasChildren": item.has_children,
@@ -2531,7 +2531,7 @@ async def get_server_items_by_path(
                 "name": item.name,
                 "fullPath": item.full_path,
                 "size": item.size or "---",
-                "modified": item.modified or "",
+                "modified_at": item.modified_at or "",
                 "accessDenied": item.access_denied,
                 "errorMessage": item.error_message,
                 "hasChildren": item.has_children,
@@ -2612,7 +2612,7 @@ async def browse_server_directory(
                     "type": item_type.text if item_type is not None and item_type.text else "Unknown",
                     "name": name.text if name.text else "",
                     "size": size_value,
-                    "modified": lastwritetime.text if lastwritetime is not None and lastwritetime.text else "",
+                    "modified_at": lastwritetime.text if lastwritetime is not None and lastwritetime.text else "",
                     "fullPath": fullname.text if fullname is not None and fullname.text else "",
                     "accessDenied": False
                 }
@@ -2638,7 +2638,7 @@ async def browse_server_directory(
                     name=item["name"],
                     full_path=item["fullPath"],
                     size=item["size"],
-                    modified=item["modified"],
+                    modified_at=item["modified_at"],
                     access_denied=item.get("accessDenied", False)
                 )
                 db.add(db_item)

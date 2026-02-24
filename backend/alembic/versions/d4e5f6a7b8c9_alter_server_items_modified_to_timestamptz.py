@@ -26,19 +26,19 @@ def upgrade() -> None:
     op.execute(
         """
         UPDATE server_items
-        SET modified = LEFT(modified, 19)
-        WHERE modified IS NOT NULL
-          AND trim(modified) <> '';
+        SET modified_at = LEFT(modified_at, 19)
+        WHERE modified_at IS NOT NULL
+          AND trim(modified_at) <> '';
         """
     )
 
     op.execute(
         """
         ALTER TABLE server_items
-        ALTER COLUMN modified TYPE TIMESTAMP WITH TIME ZONE
+        ALTER COLUMN modified_at TYPE TIMESTAMP WITH TIME ZONE
         USING CASE
-            WHEN modified IS NULL OR trim(modified) = '' THEN NULL
-            ELSE modified::TIMESTAMP WITH TIME ZONE
+            WHEN modified_at IS NULL OR trim(modified_at) = '' THEN NULL
+            ELSE modified_at::TIMESTAMP WITH TIME ZONE
         END;
         """
     )
@@ -51,10 +51,10 @@ def downgrade() -> None:
     op.execute(
         """
         ALTER TABLE server_items
-        ALTER COLUMN modified TYPE VARCHAR
+        ALTER COLUMN modified_at TYPE VARCHAR
         USING CASE
-            WHEN modified IS NULL THEN NULL
-            ELSE to_char(modified AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS')
+            WHEN modified_at IS NULL THEN NULL
+            ELSE to_char(modified_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS')
         END;
         """
     )

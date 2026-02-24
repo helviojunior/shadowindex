@@ -74,7 +74,7 @@ class DirectoryItem:
     full_path: str
     size: int = 0
     created: Optional[datetime] = None
-    modified: Optional[datetime] = None
+    modified_at: Optional[datetime] = None
     is_hidden: bool = False
     extension: str = ""
     

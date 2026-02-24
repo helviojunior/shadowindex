@@ -661,12 +661,12 @@ class DirectInteractionPlugin(BasePlugin):
                     
                     # Format timestamps
                     created = None
-                    modified = None
+                    modified_at = None
                     try:
                         if item.get_ctime_epoch():
                             created = datetime.fromtimestamp(item.get_ctime_epoch())
                         if item.get_mtime_epoch():
-                            modified = datetime.fromtimestamp(item.get_mtime_epoch())
+                            modified_at = datetime.fromtimestamp(item.get_mtime_epoch())
                     except Exception:
                         pass
                     
@@ -680,7 +680,7 @@ class DirectInteractionPlugin(BasePlugin):
                         item_type="Directory" if is_dir else "File",
                         full_path=item_full_path,
                         size=size,
-                        modified=modified,
+                        modified_at=modified_at,
                         created=created,
                         extension=extension
                     ))

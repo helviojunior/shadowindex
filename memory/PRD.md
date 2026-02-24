@@ -361,7 +361,7 @@ Portuguese (pt-BR)
 ### 2026-02-22 (Session 32 - GitLeaks Enhancement & UI Improvements)
 - [x] **Bug Fix: Erro `'str' object has no attribute 'isoformat'` ao navegar diretórios:**
   - O cache de plugins serializa `datetime` como string via JSON
-  - Adicionado tratamento defensivo em `routes_v2.py` para verificar se `modified` já é string antes de chamar `.isoformat()`
+  - Adicionado tratamento defensivo em `routes_v2.py` para verificar se `modified_at` já é string antes de chamar `.isoformat()`
   - Afeta linhas 719-733, 900-914, 1150-1164
 - [x] **Botão "Forçar Fetch" na árvore de diretórios:**
   - Botão com ícone `RefreshCw` adicionado em cada nó de diretório/share
@@ -1237,7 +1237,7 @@ Portuguese (pt-BR)
 
 ## Key DB Schema
 - **ServerShare:** `{id, server_guid, share_name, ..., access_denied, error_message, has_children, children_fetched}`
-- **ServerItem:** `{id, server_guid, share_name, parent_path, item_type, name, full_path, size, modified, access_denied, error_message, has_children, children_fetched}`
+- **ServerItem:** `{id, server_guid, share_name, parent_path, item_type, name, full_path, size, modified_at, access_denied, error_message, has_children, children_fetched}`
 - **SoapCache:** `{id, query_hash, operation, request_data, response_data, timestamp}`
 - **AppConfig:** `{id, key, value, updated_at}` - Global state like `offline_mode`, `active_proxy_id`
 - **DatabaseType:** `{id, name, code, icon, color}` - Supported database types

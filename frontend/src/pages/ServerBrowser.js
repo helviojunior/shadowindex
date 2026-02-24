@@ -1412,7 +1412,7 @@ const ServerBrowser = () => {
           fullPath: item.full_path,
           shareName: item.share_name,
           size: item.size,
-          modified: item.modified,
+          modified_at: item.modified_at,
           type: 'Directory'
         })) || [],
         files: searchResults.files?.map(item => ({
@@ -1421,7 +1421,7 @@ const ServerBrowser = () => {
           fullPath: item.full_path,
           shareName: item.share_name,
           size: item.size,
-          modified: item.modified,
+          modified_at: item.modified_at,
           type: 'File',
           isDownloaded: false
         })) || [],
@@ -1648,7 +1648,7 @@ const ServerBrowser = () => {
       itemType: result.item_type,
       type: result.item_type,
       size: realItem?.size || result.size,
-      modified: realItem?.modified || result.modified,
+      modified_at: realItem?.modified_at || result.modified_at,
       sha1_hash: realItem?.sha1_hash || result.sha1_hash,
       is_downloaded: realItem?.is_downloaded || result.is_downloaded
     };
@@ -3985,10 +3985,10 @@ const ServerBrowser = () => {
                   />
                   
                   {/* Last Write Time - para diretórios e arquivos */}
-                  {(isDirectory || isFile) && selectedItem.modified && (
+                  {(isDirectory || isFile) && selectedItem.modified_at && (
                     <InfoRow 
                       label="Última Modificação" 
-                      value={formatDate(selectedItem.modified)}
+                      value={formatDate(selectedItem.modified_at)}
                     />
                   )}
                   
@@ -4655,9 +4655,9 @@ const ServerBrowser = () => {
                         aVal = parseInt(a.size) || 0;
                         bVal = parseInt(b.size) || 0;
                         break;
-                      case 'modified':
-                        aVal = a.modified || '';
-                        bVal = b.modified || '';
+                      case 'modified_at':
+                        aVal = a.modified_at || '';
+                        bVal = b.modified_at || '';
                         break;
                       default:
                         return 0;
@@ -4745,11 +4745,11 @@ const ServerBrowser = () => {
                           </th>
                           <th 
                             className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-44"
-                            onClick={() => handleSort('modified')}
+                            onClick={() => handleSort('modified_at')}
                           >
                             <div className="flex items-center gap-1">
                               Modificado
-                              <SortIcon columnKey="modified" />
+                              <SortIcon columnKey="modified_at" />
                             </div>
                           </th>
                         </tr>
@@ -4786,7 +4786,7 @@ const ServerBrowser = () => {
                                 {item.type === 'Directory' ? '—' : formatSize(item.size)}
                               </td>
                               <td className="px-4 py-2 border-b border-border text-muted-foreground text-xs">
-                                {item.modified ? formatDate(item.modified) : '—'}
+                                {item.modified_at ? formatDate(item.modified_at) : '—'}
                               </td>
                             </tr>
                           );

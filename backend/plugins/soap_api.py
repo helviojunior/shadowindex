@@ -424,6 +424,8 @@ class SoapApiPlugin(BasePlugin):
                         
                         if error_message:
                             error_lower = error_message.lower()
+                            if "code: 53" in error_lower or "code:53" in error_lower:
+                                raise ConnectionException(f"Servidor inacessível (erro de rede 53): {error_message}")
                             if "access" in error_lower and "denied" in error_lower:
                                 logger.warning(f"Access denied to path: {path}")
                                 raise AccessDeniedException(path)
@@ -449,16 +451,16 @@ class SoapApiPlugin(BasePlugin):
                                     pass
                                 
                                 # Parse dates - format: "2025-06-27 10:26:30Z"
-                                modified = None
+                                modified_at = None
                                 lastwritetime = item_elem.findtext('lastwritetime', '')
                                 if lastwritetime:
                                     try:
                                         # Handle format "2025-06-27 10:26:30Z"
                                         lastwritetime = lastwritetime.replace('Z', '').strip()
-                                        modified = datetime.strptime(lastwritetime, '%Y-%m-%d %H:%M:%S')
+                                        modified_at = datetime.strptime(lastwritetime, '%Y-%m-%d %H:%M:%S')
                                     except ValueError:
                                         try:
-                                            modified = datetime.fromisoformat(lastwritetime)
+                                            modified_at = datetime.fromisoformat(lastwritetime)
                                         except ValueError:
                                             pass
                                 
@@ -478,42 +480,10 @@ class SoapApiPlugin(BasePlugin):
                                     full_path=full_path,
                                     size=size,
                                     created=None,
-                                    modified=modified,
+                                    modified_at=modified_at,
                                     extension=extension
                                 ))
-                    else:
-                        # Fallback: Try legacy Table format
-                        for item_elem in root.findall('.//Table'):
-                            name = item_elem.findtext('cFileName', '')
-                            item_type = item_elem.findtext('type', 'File')
-                            
-                            if name and name not in ('.', '..'):
-                                # Parse size
-                                size = 0
-                                size_str = item_elem.findtext('nFileSizeLow', '0')
-                                try:
-                                    size = int(size_str)
-                                except ValueError:
-                                    pass
-                                
-                                # Determine full path
-                                full_path = f"{path}\\{name}" if not path.endswith('\\') else f"{path}{name}"
-                                
-                                # Get extension for files
-                                extension = ""
-                                if item_type == "File" and '.' in name:
-                                    extension = name.rsplit('.', 1)[-1].lower()
-                                
-                                items.append(DirectoryItem(
-                                    name=name,
-                                    item_type=item_type,
-                                    full_path=full_path,
-                                    size=size,
-                                    created=None,
-                                    modified=None,
-                                    extension=extension
-                                ))
-                            
+
                 except ET.ParseError as e:
                     import traceback
                     error_traceback = traceback.format_exc()
@@ -618,7 +588,7 @@ class SoapApiPlugin(BasePlugin):
             # Check the result string for error patterns
             content_to_check = result if isinstance(result, str) else data.decode('utf-8', errors='ignore')
             content_lower = content_to_check.lower()
-            
+
             # Check for "not found" errors
             if "not found!" in content_lower or "cannot find" in content_lower:
                 logger.warning(f"File not found: {path}")
@@ -637,6 +607,9 @@ class SoapApiPlugin(BasePlugin):
                 
                 # Re-check specific errors from the error message
                 error_lower = error_msg.lower()
+
+                if "code: 53" in error_lower or "code:53" in error_lower:
+                    raise ConnectionException(f"Servidor inacessível (erro de rede 53): {error_msg}")
                 if "not found" in error_lower:
                     raise ItemNotFoundException(path)
                 if "access" in error_lower and "denied" in error_lower:

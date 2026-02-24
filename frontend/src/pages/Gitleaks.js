@@ -186,8 +186,7 @@ const Gitleaks = () => {
           target_path: customPath
         });
       }
-      
-      toast.success(`Scan iniciado! Job ID: ${response.data.job_id}`);
+
       setPolling(true);
       loadJobs();
       

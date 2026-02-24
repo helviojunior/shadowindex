@@ -64,7 +64,7 @@ class ItemResponse(BaseModel):
     name: str
     full_path: str
     size: Optional[str]
-    modified: Optional[str]
+    modified_at: Optional[str]
     access_denied: bool
     error_message: Optional[str]
     has_children: bool
@@ -120,7 +120,7 @@ class SearchResultItem(BaseModel):
     share_name: str
     size: Optional[str]
     sha1_hash: Optional[str]
-    modified: Optional[str]
+    modified_at: Optional[str]
     downloaded_at: Optional[datetime]
     is_downloaded: bool
 
@@ -241,7 +241,7 @@ async def search_items(
             share_name=item.share_name,
             size=item.size,
             sha1_hash=df.sha1_hash if df else None,
-            modified=item.modified,
+            modified_at=item.modified_at,
             downloaded_at=df.downloaded_at if df else None,
             is_downloaded=item.full_path in downloaded_paths
         ))
@@ -287,7 +287,7 @@ async def search_items(
                     share_name=df.share_name,
                     size=str(df.file_size) if df.file_size else None,
                     sha1_hash=df.sha1_hash,
-                    modified=None,
+                    modified_at=None,
                     downloaded_at=df.downloaded_at,
                     is_downloaded=True
                 ))
@@ -318,7 +318,7 @@ async def search_items(
                     share_name=version.share_name,
                     size=str(version.file_size) if version.file_size else None,
                     sha1_hash=version.sha1_hash,
-                    modified=None,
+                    modified_at=None,
                     downloaded_at=version.created_at,
                     is_downloaded=True
                 ))
@@ -443,7 +443,7 @@ async def quick_search(
             "full_path": item.full_path,
             "share_name": item.share_name,
             "size": item.size,
-            "modified": item.modified,
+            "modified_at": item.modified_at,
             "type": "item"
         }
         if item.item_type == 'Directory':
@@ -814,7 +814,7 @@ async def get_shares_tree(server_id: int, db: AsyncSession = Depends(get_db_read
             "name": item.name,
             "full_path": item.full_path,
             "size": item.size,
-            "modified": item.modified,
+            "modified_at": item.modified_at,
             "has_children": item.has_children,
             "children_fetched": item.children_fetched,
             "access_denied": item.access_denied
@@ -865,7 +865,7 @@ async def list_items(
                 "fullPath": item.full_path,
                 "full_path": item.full_path,
                 "size": item.size,
-                "modified": item.modified,
+                "modified_at": item.modified_at,
                 "hasChildren": item.has_children,
                 "childrenFetched": item.children_fetched,
                 "access_denied": item.access_denied
@@ -937,8 +937,8 @@ async def browse_share(
         if directory_items:
             for item in directory_items:
                 if isinstance(item, DirectoryItem):
-                    # Handle modified - can be datetime, string, or None
-                    modified_val = item.modified
+                    # Handle modified_at - can be datetime, string, or None
+                    modified_val = item.modified_at
                     if modified_val is not None:
                         if hasattr(modified_val, 'isoformat'):
                             modified_val = modified_val.isoformat()
@@ -948,7 +948,7 @@ async def browse_share(
                         "name": item.name,
                         "fullPath": item.full_path,
                         "size": item.size,
-                        "modified": modified_val
+                        "modified_at": modified_val
                     })
                 elif isinstance(item, dict):
                     parsed_items.append({
@@ -956,7 +956,7 @@ async def browse_share(
                         "name": item.get("name", ""),
                         "fullPath": item.get("full_path", item.get("fullPath", "")),
                         "size": item.get("size", 0),
-                        "modified": item.get("modified")
+                        "modified_at": item.get("modified_at")
                     })
         
         # Remover itens antigos deste path
@@ -977,7 +977,7 @@ async def browse_share(
                 name=item_data["name"],
                 full_path=item_data["fullPath"],
                 size=str(item_data["size"]) if item_data["size"] else None,
-                modified=item_data["modified"]
+                modified_at=item_data["modified_at"]
             )
             db.add(db_item)
             items.append(db_item)
@@ -1004,7 +1004,7 @@ async def browse_share(
                     "name": item.name,
                     "full_path": item.full_path,
                     "size": item.size,
-                    "modified": item.modified
+                    "modified_at": item.modified_at
                 }
                 for item in items
             ],
@@ -1124,8 +1124,8 @@ async def browse_path(
         if directory_items:
             for item in directory_items:
                 if isinstance(item, DirectoryItem):
-                    # Handle modified - can be datetime, string, or None
-                    modified_val = item.modified
+                    # Handle modified_at - can be datetime, string, or None
+                    modified_val = item.modified_at
                     if modified_val is not None:
                         if hasattr(modified_val, 'isoformat'):
                             modified_val = modified_val.isoformat()
@@ -1135,7 +1135,7 @@ async def browse_path(
                         "name": item.name,
                         "fullPath": item.full_path,
                         "size": item.size,
-                        "modified": modified_val
+                        "modified_at": modified_val
                     })
                 elif isinstance(item, dict):
                     parsed_items.append({
@@ -1143,7 +1143,7 @@ async def browse_path(
                         "name": item.get("name", ""),
                         "fullPath": item.get("full_path", item.get("fullPath", "")),
                         "size": item.get("size", 0),
-                        "modified": item.get("modified")
+                        "modified_at": item.get("modified_at")
                     })
         
         # Remover itens antigos deste path
@@ -1165,7 +1165,7 @@ async def browse_path(
                 name=item_data["name"],
                 full_path=item_data["fullPath"],
                 size=str(item_data["size"]) if item_data["size"] else None,
-                modified=item_data["modified"]
+                modified_at=item_data["modified_at"]
             )
             db.add(db_item)
             items.append(db_item)
@@ -1222,7 +1222,7 @@ async def browse_path(
                     "fullPath": item.full_path,
                     "full_path": item.full_path,
                     "size": item.size,
-                    "modified": item.modified,
+                    "modified_at": item.modified_at,
                     "hasChildren": item.item_type == "Directory",
                     "childrenFetched": False
                 }
@@ -1380,8 +1380,8 @@ async def browse_item(
         if directory_items:
             for dir_item in directory_items:
                 if isinstance(dir_item, PluginDirectoryItem):
-                    # Handle modified - can be datetime, string, or None
-                    modified_val = dir_item.modified
+                    # Handle modified_at - can be datetime, string, or None
+                    modified_val = dir_item.modified_at
                     if modified_val is not None:
                         if hasattr(modified_val, 'isoformat'):
                             modified_val = modified_val.isoformat()
@@ -1391,7 +1391,7 @@ async def browse_item(
                         "name": dir_item.name,
                         "fullPath": dir_item.full_path,
                         "size": dir_item.size,
-                        "modified": modified_val
+                        "modified_at": modified_val
                     })
                 elif isinstance(dir_item, dict):
                     parsed_items.append({
@@ -1399,7 +1399,7 @@ async def browse_item(
                         "name": dir_item.get("name", ""),
                         "fullPath": dir_item.get("full_path", dir_item.get("fullPath", "")),
                         "size": dir_item.get("size", 0),
-                        "modified": dir_item.get("modified")
+                        "modified_at": dir_item.get("modified_at")
                     })
         
         # Remover itens antigos
@@ -1420,7 +1420,7 @@ async def browse_item(
                 name=item_data["name"],
                 full_path=item_data["fullPath"],
                 size=str(item_data["size"]) if item_data["size"] else None,
-                modified=item_data["modified"]
+                modified_at=item_data["modified_at"]
             )
             db.add(db_item)
             items.append(db_item)
@@ -1447,7 +1447,7 @@ async def browse_item(
                     "name": child.name,
                     "full_path": child.full_path,
                     "size": child.size,
-                    "modified": child.modified
+                    "modified_at": child.modified_at
                 }
                 for child in items
             ],
