@@ -31,6 +31,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Label } from '@/components/ui/label';
@@ -3344,6 +3345,11 @@ const ServerBrowser = () => {
               window.open(`${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(path)}&from=${encodeURIComponent(window.location.pathname)}`, '_blank');
             }}>
               Abrir em nova aba
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            {/* Busca crítica */}
+            <ContextMenuItem onClick={startCriticalSearch}>
+              Busca Crítica
             </ContextMenuItem>
             {/* Recarregar - para diretórios/shares */}
             {isDirectory && (
