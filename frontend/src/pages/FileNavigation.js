@@ -4,7 +4,9 @@ import axios from 'axios';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug, FolderOpen } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -19,6 +21,7 @@ const FileNavigation = () => {
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showOnlyNonAdminShares, setShowOnlyNonAdminShares] = useState(false);
   const [activeTab, setActiveTab] = useState('accessed');
   const navigate = useNavigate();
 
@@ -37,13 +40,13 @@ const FileNavigation = () => {
     }
   };
 
-  // Filtrar por busca
+  // Filtrar por busca e flags
   const filteredServers = servers.filter(server => {
     const search = searchTerm.toLowerCase();
-    return (
-      server.name.toLowerCase().includes(search) ||
-      server.ip.toLowerCase().includes(search)
-    );
+    const matchesSearch = server.name.toLowerCase().includes(search) ||
+      server.ip.toLowerCase().includes(search);
+    const matchesNonAdmin = !showOnlyNonAdminShares || server.has_no_admin_shares;
+    return matchesSearch && matchesNonAdmin;
   });
 
   // Separar por status de acesso
@@ -189,17 +192,40 @@ const FileNavigation = () => {
       {/* Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome ou IP..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 max-w-md"
-              data-testid="server-search-input"
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome ou IP..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+                data-testid="server-search-input"
+              />
+            </div>
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-muted-foreground" />
+              <Switch
+                id="filter-non-admin-shares"
+                checked={showOnlyNonAdminShares}
+                onCheckedChange={setShowOnlyNonAdminShares}
+                data-testid="filter-non-admin-shares-switch"
+              />
+              <Label
+                htmlFor="filter-non-admin-shares"
+                className="text-sm cursor-pointer"
+              >
+                Somente com Shares não administrativas
+              </Label>
+              {showOnlyNonAdminShares && (
+                <Badge className="bg-amber-600 text-xs">
+                  Ativo
+                </Badge>
+              )}
+            </div>
           </div>
-          {servers.length > 0 && searchTerm && (
+          {servers.length > 0 && (searchTerm || showOnlyNonAdminShares) && (
             <p className="text-sm text-muted-foreground mt-3">
               {filteredServers.length} encontrado{filteredServers.length !== 1 ? 's' : ''}
             </p>

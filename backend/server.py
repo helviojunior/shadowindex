@@ -497,6 +497,7 @@ class ServerResponse(BaseModel):
     last_verified_at: Optional[datetime]
     created_at: datetime
     is_unreachable: bool = False
+    has_no_admin_shares: bool = False  # True se o servidor tem shares que não terminam em $ (ex: "Documents", "Public")
     plugin_instance_id: Optional[int] = None
     plugin_instance_name: Optional[str] = None  # Nome da instância do plugin
     plugin_type: Optional[str] = "soap_api"
@@ -1788,9 +1789,10 @@ async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
             plugin_instance_id=server.plugin_instance_id,
             plugin_instance_name=plugin_names.get(server.plugin_instance_id) if server.plugin_instance_id else None,
             plugin_type=server.plugin_type,
-            plugin_config=server.plugin_config
+            plugin_config=server.plugin_config,
+            has_no_admin_shares=server.has_no_admin_shares
         ))
-    
+
     return response
 
 @api_router.get("/servers/{server_id}", response_model=ServerResponse)
@@ -1901,7 +1903,8 @@ async def get_server(
         plugin_instance_id=server.plugin_instance_id,
         plugin_instance_name=plugin_instance_name,
         plugin_type=server.plugin_type,
-        plugin_config=server.plugin_config
+        plugin_config=server.plugin_config,
+        has_no_admin_shares=server.has_no_admin_shares
     )
 
 @api_router.put("/servers/{server_id}", response_model=ServerResponse)
@@ -2239,6 +2242,10 @@ async def get_server_shares(
             server.shares_count = len(shares_found)
             server.verified = True
             server.last_verified_at = datetime.now(timezone.utc)
+            # Atualizar flag has_no_admin_shares
+            server.has_no_admin_shares = any(
+                not s["name"].endswith('$') for s in shares_found
+            )
             await db.commit()
         except Exception as e:
             # Log o erro mas continua retornando os dados do DB
@@ -2414,8 +2421,12 @@ async def get_server_shares_soap(server_id: int, db: AsyncSession = Depends(get_
         server.shares_count = len(shares)
         server.verified = True
         server.last_verified_at = datetime.now(timezone.utc)
+        # Atualizar flag has_no_admin_shares
+        server.has_no_admin_shares = any(
+            not s["name"].endswith('$') for s in shares
+        )
         await db.commit()
-        
+
         return {
             "success": True,
             "shares": shares,
@@ -3020,9 +3031,12 @@ async def download_server_file(
                     )
                     db.add(share)
                     await db.flush()
-                
+                    # Atualizar flag has_no_admin_shares se a nova share não termina em $
+                    if not share_name.endswith('$'):
+                        server.has_no_admin_shares = True
+
                 share_id = share.id
-                
+
                 # Criar nova versão no banco primeiro (para obter o ID)
                 new_file_version = FileVersion(
                     server_guid=server.guid,
@@ -3116,6 +3130,9 @@ async def download_server_file(
                 )
                 db.add(share)
                 await db.flush()  # Obter o ID do share
+                # Atualizar flag has_no_admin_shares se a nova share não termina em $
+                if not share_name.endswith('$'):
+                    server.has_no_admin_shares = True
             
             share_id = share.id
             

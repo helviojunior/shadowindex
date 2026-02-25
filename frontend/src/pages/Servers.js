@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Search, Plug, ShieldAlert, AlertTriangle, Loader2, AlertCircle, Unplug } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Search, Plug, ShieldAlert, AlertTriangle, Loader2, AlertCircle, Unplug, FolderOpen } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -637,8 +637,7 @@ const Servers = () => {
                         {getSortIcon('ip')}
                       </div>
                     </th>
-                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">Verificado</th>
-                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">Acesso</th>
+                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">Flags</th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">
                       <Plug className="w-4 h-4 inline mr-1" />
                       Plugin
@@ -813,31 +812,24 @@ const Servers = () => {
                           </div>
                         )}
                       </td>
-                      <td className="p-3 text-center">
-                        {server.verified ? (
-                          <Badge variant="default" className="bg-green-600">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Sim
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <XCircle className="w-3 h-3 mr-1" />
-                            Não
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        {server.is_unreachable ? (
-                          <Badge variant="destructive" className="bg-red-600">
-                            <Unplug className="w-3 h-3 mr-1" />
-                            No Access
-                          </Badge>
-                        ) : (
-                          <Badge variant="default" className="bg-green-600">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            OK
-                          </Badge>
-                        )}
+                      <td className="p-3">
+                        <div className="flex flex-wrap items-center justify-center gap-1">
+                          {server.is_unreachable && (
+                            <Badge variant="destructive" className="bg-red-600 text-xs">
+                              <Unplug className="w-3 h-3 mr-1" />
+                              No Access
+                            </Badge>
+                          )}
+                          {server.has_no_admin_shares && (
+                            <Badge className="bg-amber-600 hover:bg-amber-700 text-xs">
+                              <FolderOpen className="w-3 h-3 mr-1" />
+                              Shares Abertas
+                            </Badge>
+                          )}
+                          {!server.is_unreachable && !server.has_no_admin_shares && (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3 text-center">
                         {editingPluginServer === server.id ? (

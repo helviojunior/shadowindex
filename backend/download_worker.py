@@ -593,6 +593,9 @@ class DownloadWorker:
                 db.add(share)
                 await db.flush()  # Obter o ID do share
                 logger.info(f"Created new ServerShare id={share.id} for {job.share_name}")
+                # Atualizar flag has_no_admin_shares se a nova share não termina em $
+                if not job.share_name.endswith('$'):
+                    server.has_no_admin_shares = True
             
             share_id = share.id
             

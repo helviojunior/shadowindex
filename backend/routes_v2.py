@@ -39,6 +39,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2")
 
 
+async def update_has_no_admin_shares(db: AsyncSession, server: Server):
+    """Atualiza a flag has_no_admin_shares baseado nas shares do servidor.
+    True se tem alguma share que não termina em $ (ex: Documents, Public)."""
+    from sqlalchemy import func
+    result = await db.execute(
+        select(func.count(ServerShare.id)).where(
+            ServerShare.server_guid == server.guid,
+            ~ServerShare.share_name.endswith('$')
+        )
+    )
+    count = result.scalar() or 0
+    server.has_no_admin_shares = count > 0
+
+
 # ==========================================
 # Pydantic Models
 # ==========================================
@@ -702,6 +716,9 @@ async def list_shares(
             # Listing succeeded — clear unreachable flag if it was set
             if server.is_unreachable:
                 server.is_unreachable = False
+
+            # Atualizar flag has_no_admin_shares baseado em todas as shares do banco
+            await update_has_no_admin_shares(db, server)
 
             await db.commit()
             logger.info(f"Updated {len(shares_data)} shares in database for server {server.ip} using plugin {server.plugin_type}")
@@ -1619,9 +1636,12 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
             )
             db.add(share)
             await db.flush()
-        
+            # Atualizar flag has_no_admin_shares se a nova share não termina em $
+            if not item.share_name.endswith('$'):
+                server.has_no_admin_shares = True
+
         share_id = share.id
-        
+
         # Verificar se já existe registro ou criar novo
         if existing:
             downloaded_file = existing
@@ -2122,9 +2142,12 @@ async def download_file_by_path(
         )
         db.add(share)
         await db.flush()
-    
+        # Atualizar flag has_no_admin_shares se a nova share não termina em $
+        if not share_name.endswith('$'):
+            server.has_no_admin_shares = True
+
     share_id = share.id
-    
+
     # Criar FileVersion primeiro para obter o ID
     new_version = FileVersion(
         server_guid=server.guid,
