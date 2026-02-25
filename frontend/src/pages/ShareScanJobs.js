@@ -65,6 +65,18 @@ const ScanStatusBadge = ({ status }) => {
   );
 };
 
+const getErrorLabel = (errorMessage) => {
+  if (!errorMessage) return 'Erro';
+  const msg = errorMessage.toLowerCase();
+  if (msg.startsWith('server unreachable') || msg.includes('erro de rede')) return 'Inacessível';
+  if (msg.startsWith('access denied') || msg.includes('access denied') || msg.includes('acesso negado')) return 'Acesso Negado';
+  if (msg.startsWith('credential not set') || msg.includes('credential')) return 'Sem Credencial';
+  if (msg.startsWith('connection error') || msg.includes('connection')) return 'Erro de Conexão';
+  if (msg.startsWith('plugin not configured')) return 'Plugin não configurado';
+  if (msg.includes('timeout') || msg.includes('timed out')) return 'Timeout';
+  return 'Erro';
+};
+
 const ShareScanJobs = () => {
   const { isConnected } = useWebSocket();
   const [jobs, setJobs] = useState([]);
@@ -482,7 +494,9 @@ const ShareScanJobs = () => {
                         {job.status === 'completed' ? (
                           <span className="text-green-500 font-medium">{job.shares_found}</span>
                         ) : job.status === 'failed' && job.error_message ? (
-                          <span className="text-red-500 truncate max-w-[80px]" title={job.error_message}>Erro</span>
+                          <span className="text-red-500 truncate max-w-[150px] cursor-help" title={job.error_message}>
+                            {getErrorLabel(job.error_message)}
+                          </span>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
