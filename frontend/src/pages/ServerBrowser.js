@@ -5521,8 +5521,11 @@ const ServerBrowser = () => {
                       );
                     }
                     
-                    // Sem foco, mostrar tudo
-                    return shares.map((share, index, arr) => 
+                    // Sem foco, mostrar tudo (ordenado alfabeticamente, case insensitive)
+                    const sortedShares = [...shares].sort((a, b) =>
+                      (a.share_name || '').localeCompare(b.share_name || '', undefined, { sensitivity: 'base' })
+                    );
+                    return sortedShares.map((share, index, arr) =>
                       renderTreeNode(share, 0, '', index === arr.length - 1, [])
                     );
                   })()
