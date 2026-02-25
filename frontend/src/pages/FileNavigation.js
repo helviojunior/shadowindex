@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug, FolderOpen } from 'lucide-react';
+import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug, FolderOpen, FileX } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -114,6 +114,7 @@ const FileNavigation = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlyNonAdminShares, setShowOnlyNonAdminShares] = useState(false);
+  const [showOnlyNoFiles, setShowOnlyNoFiles] = useState(false);
   const [activeTab, setActiveTab] = useState('accessed');
   const navigate = useNavigate();
 
@@ -138,7 +139,8 @@ const FileNavigation = () => {
     const matchesSearch = server.name.toLowerCase().includes(search) ||
       server.ip.toLowerCase().includes(search);
     const matchesNonAdmin = !showOnlyNonAdminShares || server.has_no_admin_shares;
-    return matchesSearch && matchesNonAdmin;
+    const matchesNoFiles = !showOnlyNoFiles || server.discovered_items_count === 0;
+    return matchesSearch && matchesNonAdmin && matchesNoFiles;
   });
 
   // Separar por status de acesso
@@ -222,8 +224,29 @@ const FileNavigation = () => {
                 </Badge>
               )}
             </div>
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <FileX className="w-4 h-4 text-muted-foreground" />
+              <Switch
+                id="filter-no-files"
+                checked={showOnlyNoFiles}
+                onCheckedChange={setShowOnlyNoFiles}
+                data-testid="filter-no-files-switch"
+              />
+              <Label
+                htmlFor="filter-no-files"
+                className="text-sm cursor-pointer"
+              >
+                Somente sem arquivos listados
+              </Label>
+              {showOnlyNoFiles && (
+                <Badge className="bg-amber-600 text-xs">
+                  Ativo
+                </Badge>
+              )}
+            </div>
           </div>
-          {servers.length > 0 && (searchTerm || showOnlyNonAdminShares) && (
+          {servers.length > 0 && (searchTerm || showOnlyNonAdminShares || showOnlyNoFiles) && (
             <p className="text-sm text-muted-foreground mt-3">
               {filteredServers.length} encontrado{filteredServers.length !== 1 ? 's' : ''}
             </p>
