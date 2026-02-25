@@ -622,6 +622,18 @@ async def init_db():
                 setting = AppSettings(key=key, value=default_value, description=description)
                 session.add(setting)
         
+        # Create default scan pool if none exist
+        result = await session.execute(select(ScanPool))
+        if not result.scalars().first():
+            default_pool = ScanPool(
+                name="Default Scan Pool",
+                simultaneous_scanners=1,
+                request_delay_min=1000,
+                request_delay_max=15000,
+            )
+            session.add(default_pool)
+            logger.info("Created default scan pool")
+
         # Check if default SOAP API exists
         result = await session.execute(select(SoapApiUrl).where(SoapApiUrl.name == "Default SOAP API"))
         if not result.scalar_one_or_none():
