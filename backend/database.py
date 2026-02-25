@@ -569,23 +569,73 @@ DEFAULT_SETTINGS = {
 }
 
 
+async def apply_pending_migrations():
+    """
+    Aplica migrações pendentes verificando colunas faltantes em tabelas existentes.
+    create_all() do SQLAlchemy NÃO adiciona colunas novas a tabelas já existentes,
+    então precisamos fazer isso manualmente.
+    """
+    from sqlalchemy import text
+
+    async with engine.begin() as conn:
+        if DATABASE_TYPE == 'postgresql':
+            # Verificar se proxy_id existe em plugin_instances
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'plugin_instances' AND column_name = 'proxy_id'"
+            ))
+            if not result.fetchone():
+                logger.info("Applying migration: adding proxy_id to plugin_instances")
+                await conn.execute(text(
+                    "ALTER TABLE plugin_instances ADD COLUMN proxy_id INTEGER"
+                ))
+                await conn.execute(text(
+                    "ALTER TABLE plugin_instances ADD CONSTRAINT fk_plugin_instances_proxy_id "
+                    "FOREIGN KEY (proxy_id) REFERENCES proxy_servers(id) ON DELETE SET NULL"
+                ))
+                logger.info("Migration applied: proxy_id added to plugin_instances")
+        else:
+            # SQLite: verificar via pragma
+            result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))
+            columns = [row[1] for row in result.fetchall()]
+            if 'proxy_id' not in columns:
+                logger.info("Applying migration: adding proxy_id to plugin_instances")
+                await conn.execute(text(
+                    "ALTER TABLE plugin_instances ADD COLUMN proxy_id INTEGER REFERENCES proxy_servers(id)"
+                ))
+                logger.info("Migration applied: proxy_id added to plugin_instances")
+
+
 async def init_db():
     """Initialize database using Alembic migrations and create default records"""
     from alembic.config import Config
     from alembic import command
     import os
     
-    # Executar migrações Alembic
+    # Criar tabelas que não existem
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Aplicar migrações pendentes (adicionar colunas faltantes em tabelas existentes)
+    await apply_pending_migrations()
+
+    # Tentar manter Alembic version tracking atualizado
     try:
         alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
         alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "alembic"))
+
+        if POSTGRES_URL:
+            sync_url = POSTGRES_URL
+            if sync_url.startswith('postgres://'):
+                sync_url = sync_url.replace('postgres://', 'postgresql://', 1)
+            alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
+        elif DATABASE_PATH:
+            alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{DATABASE_PATH}")
+
         command.upgrade(alembic_cfg, "head")
         logger.info("Alembic migrations applied successfully")
     except Exception as e:
-        logger.warning(f"Alembic migration failed, falling back to create_all: {e}")
-        # Fallback: criar tabelas se Alembic falhar
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        logger.warning(f"Alembic version tracking failed (migrations applied manually): {e}")
     
     # Create default records
     async with AsyncSessionLocal() as session:
