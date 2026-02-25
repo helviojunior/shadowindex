@@ -131,7 +131,7 @@ const ShareScan = () => {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Share Scan</h1>
         <p className="text-muted-foreground mt-1">
-          Iniciar scan de shares nos servidores cadastrados
+          Localiza compartilhamentos disponíveis nos servidores
         </p>
       </div>
 
@@ -163,64 +163,140 @@ const ShareScan = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Select
-                value={selectedPoolId ? String(selectedPoolId) : undefined}
-                onValueChange={(val) => setSelectedPoolId(val)}
-              >
-                <SelectTrigger className="w-full max-w-md">
-                  <SelectValue placeholder="Selecione um Scan Pool..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {pools.map((pool) => (
-                    <SelectItem key={pool.id} value={String(pool.id)}>
-                      {pool.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-3">
+                <Select
+                  value={selectedPoolId ? String(selectedPoolId) : undefined}
+                  onValueChange={(val) => setSelectedPoolId(val)}
+                >
+                  <SelectTrigger className="w-full max-w-md">
+                    <SelectValue placeholder="Selecione um Scan Pool..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pools.map((pool) => (
+                      <SelectItem key={pool.id} value={String(pool.id)}>
+                        {pool.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="lg"
+                  onClick={handleStartScan}
+                  disabled={starting || !selectedPoolId || !preview?.servers?.length}
+                >
+                  {starting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-2" />
+                  )}
+                  Iniciar Scan{preview ? ` (${preview.filtered_count})` : ''}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
           {/* Pool details + preview */}
           {selectedPoolId && preview && (
             <>
-              {/* Pool parameters */}
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card className="border-l-4 border-l-blue-500">
-                  <CardContent className="pt-4 pb-3">
-                    <p className="text-2xl font-bold">{preview.pool.simultaneous_scanners}</p>
-                    <p className="text-xs text-muted-foreground uppercase">Scanners Simultâneos</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-l-4 border-l-cyan-500">
-                  <CardContent className="pt-4 pb-3">
-                    <p className="text-2xl font-bold">{preview.pool.request_delay_min}ms</p>
-                    <p className="text-xs text-muted-foreground uppercase">Delay Mínimo</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-l-4 border-l-cyan-500">
-                  <CardContent className="pt-4 pb-3">
-                    <p className="text-2xl font-bold">{preview.pool.request_delay_max}ms</p>
-                    <p className="text-xs text-muted-foreground uppercase">Delay Máximo</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Warning for multiple scanners */}
-              {preview.pool.simultaneous_scanners > 1 && (
-                <Card className="border-yellow-500/50 bg-yellow-500/5">
-                  <CardContent className="pt-4 pb-3 flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-yellow-500">Atenção: Múltiplos Scanners</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Com {preview.pool.simultaneous_scanners} scanners simultâneos, as requisições podem disparar alertas
-                        em sistemas de defesa (IDS/IPS, EDR, etc).
-                      </p>
+              {/* Pool parameters - single card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Parâmetros do Pool: {preview.pool.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Numeric params */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="rounded-lg border p-3">
+                      <p className="text-2xl font-bold">{preview.pool.simultaneous_scanners}</p>
+                      <p className="text-xs text-muted-foreground uppercase">Scanners Simultâneos</p>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <div className="rounded-lg border p-3">
+                      <p className="text-2xl font-bold">{preview.pool.request_delay_min}<span className="text-sm font-normal text-muted-foreground">ms</span></p>
+                      <p className="text-xs text-muted-foreground uppercase">Delay Mínimo</p>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <p className="text-2xl font-bold">{preview.pool.request_delay_max}<span className="text-sm font-normal text-muted-foreground">ms</span></p>
+                      <p className="text-xs text-muted-foreground uppercase">Delay Máximo</p>
+                    </div>
+                  </div>
+
+                  {/* Include/Exclude rules */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-muted-foreground uppercase mb-1.5">Incluir Servidores</p>
+                      {preview.pool.include_servers ? (
+                        <div className="flex flex-wrap gap-1">
+                          {preview.pool.include_servers.split(',').map((s, i) => s.trim() && (
+                            <Badge key={i} variant="secondary" className="text-xs bg-green-500/10 text-green-500 border-green-500/30">
+                              {s.trim()}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">Lista vazia, todos os servidores serão considerados</p>
+                      )}
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-muted-foreground uppercase mb-1.5">Excluir Servidores</p>
+                      {preview.pool.exclude_servers ? (
+                        <div className="flex flex-wrap gap-1">
+                          {preview.pool.exclude_servers.split(',').map((s, i) => s.trim() && (
+                            <Badge key={i} variant="secondary" className="text-xs bg-red-500/10 text-red-500 border-red-500/30">
+                              {s.trim()}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">Lista vazia, nenhum servidor será excluído</p>
+                      )}
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-muted-foreground uppercase mb-1.5">Incluir IPs</p>
+                      {preview.pool.include_ips ? (
+                        <div className="flex flex-wrap gap-1">
+                          {preview.pool.include_ips.split(',').map((s, i) => s.trim() && (
+                            <Badge key={i} variant="secondary" className="text-xs bg-green-500/10 text-green-500 border-green-500/30 font-mono">
+                              {s.trim()}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">Lista vazia, todos os IPs serão considerados</p>
+                      )}
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs text-muted-foreground uppercase mb-1.5">Excluir IPs</p>
+                      {preview.pool.exclude_ips ? (
+                        <div className="flex flex-wrap gap-1">
+                          {preview.pool.exclude_ips.split(',').map((s, i) => s.trim() && (
+                            <Badge key={i} variant="secondary" className="text-xs bg-red-500/10 text-red-500 border-red-500/30 font-mono">
+                              {s.trim()}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">Lista vazia, nenhum IP será excluído</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Warning for multiple scanners */}
+                  {preview.pool.simultaneous_scanners > 1 && (
+                    <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/5 p-3 flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-yellow-500 text-sm">Atenção: Múltiplos Scanners</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Com {preview.pool.simultaneous_scanners} scanners simultâneos, o volume e o padrão das requisições podem gerar alertas em mecanismos de detecção e resposta, incluindo IDS/IPS, EDR e soluções de Network Detection and Response (NDR), como o Darktrace, que realizam análise comportamental do tráfego de rede.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Server list */}
               <Card>
@@ -253,22 +329,6 @@ const ShareScan = () => {
                 </CardContent>
               </Card>
 
-              {/* Start button */}
-              <div className="flex justify-end">
-                <Button
-                  size="lg"
-                  onClick={handleStartScan}
-                  disabled={starting || !preview.servers.length}
-                >
-                  {starting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Play className="w-4 h-4 mr-2" />
-                  )}
-                  Iniciar Scan ({preview.filtered_count} servidores)
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
             </>
           )}
 

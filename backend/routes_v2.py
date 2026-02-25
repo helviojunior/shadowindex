@@ -5651,9 +5651,55 @@ def _filter_servers_by_pool(servers, pool):
     return filtered
 
 
+async def _get_not_accessed_servers(db):
+    """Retorna servidores 'não acessados': sem shares, sem downloads, sem itens descobertos,
+    sem shares com acesso negado, e que não estejam marcados como inacessíveis."""
+    from sqlalchemy import func
+
+    servers_result = await db.execute(
+        select(Server).where(Server.is_unreachable == False).order_by(Server.name)
+    )
+    all_servers = servers_result.scalars().all()
+
+    if not all_servers:
+        return [], all_servers
+
+    server_guids = [s.guid for s in all_servers]
+
+    # Shares com acesso negado por servidor
+    access_denied_result = await db.execute(
+        select(ServerShare.server_guid, func.count(ServerShare.id).label('cnt'))
+        .where(ServerShare.server_guid.in_(server_guids), ServerShare.access_denied == True)
+        .group_by(ServerShare.server_guid)
+    )
+    access_denied_by_guid = {row.server_guid: row.cnt for row in access_denied_result}
+
+    # Itens descobertos por servidor
+    discovered_result = await db.execute(
+        select(ServerItem.server_guid, func.count(ServerItem.id).label('cnt'))
+        .where(ServerItem.server_guid.in_(server_guids))
+        .group_by(ServerItem.server_guid)
+    )
+    discovered_by_guid = {row.server_guid: row.cnt for row in discovered_result}
+
+    not_accessed = []
+    for srv in all_servers:
+        if srv.shares_count != 0:
+            continue
+        if srv.downloaded_files_count != 0:
+            continue
+        if discovered_by_guid.get(srv.guid, 0) != 0:
+            continue
+        if access_denied_by_guid.get(srv.guid, 0) != 0:
+            continue
+        not_accessed.append(srv)
+
+    return not_accessed, all_servers
+
+
 @router.get("/share-scan/preview/{pool_id}")
 async def preview_share_scan(pool_id: int, db: AsyncSession = Depends(get_db_readonly)):
-    """Preview: retorna servidores que seriam scaneados sem criar jobs"""
+    """Preview: retorna servidores não acessados que seriam scaneados"""
     from database import ScanPool
 
     result = await db.execute(select(ScanPool).where(ScanPool.id == pool_id))
@@ -5661,10 +5707,9 @@ async def preview_share_scan(pool_id: int, db: AsyncSession = Depends(get_db_rea
     if not pool:
         raise HTTPException(status_code=404, detail="Scan Pool não encontrado")
 
-    servers_result = await db.execute(select(Server).order_by(Server.name))
-    all_servers = servers_result.scalars().all()
+    not_accessed, all_servers = await _get_not_accessed_servers(db)
 
-    filtered = _filter_servers_by_pool(all_servers, pool)
+    filtered = _filter_servers_by_pool(not_accessed, pool)
 
     return {
         "pool": {
@@ -5673,8 +5718,12 @@ async def preview_share_scan(pool_id: int, db: AsyncSession = Depends(get_db_rea
             "simultaneous_scanners": pool.simultaneous_scanners,
             "request_delay_min": pool.request_delay_min,
             "request_delay_max": pool.request_delay_max,
+            "include_servers": pool.include_servers or "",
+            "exclude_servers": pool.exclude_servers or "",
+            "include_ips": pool.include_ips or "",
+            "exclude_ips": pool.exclude_ips or "",
         },
-        "total_servers": len(all_servers),
+        "total_servers": len(not_accessed),
         "filtered_count": len(filtered),
         "servers": [
             {
@@ -5707,12 +5756,11 @@ async def start_share_scan(
     if not pool:
         raise HTTPException(status_code=404, detail="Scan Pool não encontrado")
 
-    servers_result = await db.execute(select(Server).order_by(Server.name))
-    all_servers = servers_result.scalars().all()
+    not_accessed, _ = await _get_not_accessed_servers(db)
 
-    filtered = _filter_servers_by_pool(all_servers, pool)
+    filtered = _filter_servers_by_pool(not_accessed, pool)
     if not filtered:
-        raise HTTPException(status_code=400, detail="Nenhum servidor encontrado com os filtros do pool")
+        raise HTTPException(status_code=400, detail="Nenhum servidor não acessado encontrado com os filtros do pool")
 
     jobs_created = 0
     for srv in filtered:
