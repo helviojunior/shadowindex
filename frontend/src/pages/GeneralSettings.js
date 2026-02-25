@@ -855,9 +855,9 @@ const GeneralSettings = () => {
             <ul className="text-xs text-cyan-300/80 space-y-1">
               <li>• Quando o OCR é skipado ou falha, o Auto-Index tenta ler o conteúdo bruto do arquivo</li>
               <li>• O conteúdo indexado fica disponível para busca, assim como o texto extraído pelo OCR</li>
-              <li>• <strong className="text-cyan-300">Todos os arquivos que tiverem o OCR executado com sucesso terão o conteúdo do OCR automaticamente indexado, independente desta configuração</strong></li>
               <li>• Extensões suportam wildcards (ex: ".env*" captura ".env", ".env.local", ".env.production")</li>
               <li>• MIME types são verificados com match parcial (ex: "text/" captura "text/plain", "text/csv", etc.)</li>
+              <li>• <strong className="text-cyan-300">Todos os arquivos que tiverem o OCR executado com sucesso terão o conteúdo do OCR automaticamente indexado, independente desta configuração</strong></li>
             </ul>
           </div>
         </CardContent>
