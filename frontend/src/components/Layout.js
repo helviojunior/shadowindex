@@ -572,7 +572,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 {/* Version info - only when expanded */}
                 {!effectiveCollapsed && (
                   <div className="text-xs text-muted-foreground">
-                    <div className="text-[11px] font-medium">ShadowIndex v1.0.15</div>
+                    <div className="text-[11px] font-medium">ShadowIndex v1.0.16</div>
                     <div className="text-[10px] text-muted-foreground/60">© StrataSec 2026</div>
                   </div>
                 )}

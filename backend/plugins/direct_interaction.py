@@ -766,7 +766,8 @@ class DirectInteractionPlugin(BasePlugin):
         path: str, 
         offset: int = 0, 
         length: Optional[int] = None,
-        ignore_cache: bool = False
+        ignore_cache: bool = False,
+        expected_size: Optional[int] = None
     ) -> FileContent:
         """
         Download file content using SMB.
@@ -776,6 +777,7 @@ class DirectInteractionPlugin(BasePlugin):
             offset: Starting byte position (default: 0)
             length: Number of bytes to read (default: entire file)
             ignore_cache: Skip cache lookup if True
+            expected_size: Expected file size in bytes (used to validate empty responses)
             
         Returns:
             FileContent with the file data
