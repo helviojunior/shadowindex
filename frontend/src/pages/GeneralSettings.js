@@ -717,7 +717,7 @@ const GeneralSettings = () => {
                 )}
                 Auto-Index habilitado
               </Label>
-              <p className="text-xs text-muted-foreground mt-1">Indexar automaticamente conteúdo de arquivos de texto skipados pelo OCR</p>
+              <p className="text-xs text-muted-foreground mt-1">Indexar automaticamente conteúdo de arquivos não tratados pelo OCR</p>
             </div>
             <Switch
               id="auto_index_enabled"
