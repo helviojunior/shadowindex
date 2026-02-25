@@ -999,17 +999,12 @@ class OCRWorker:
             if not ext_match and not mime_match:
                 return
 
-            # 5. Ler conteúdo do arquivo (UTF-8 com fallback latin-1)
+            # 5. Ler conteúdo do arquivo (bytes -> decode UTF-8 ignorando erros)
             content = None
             try:
-                with open(job.local_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-            except UnicodeDecodeError:
-                try:
-                    with open(job.local_path, 'r', encoding='latin-1') as f:
-                        content = f.read()
-                except Exception:
-                    return
+                with open(job.local_path, 'rb') as f:
+                    bData = f.read()
+                content = bData.decode('utf-8', 'ignore')
             except Exception:
                 return
 

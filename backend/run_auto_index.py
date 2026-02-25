@@ -79,16 +79,11 @@ def matches_mimetype(file_path, file_name, allowed_mimetypes):
 
 
 def read_file_content(file_path):
-    """Lê o conteúdo do arquivo com fallback de encoding."""
+    """Lê o conteúdo do arquivo (bytes -> decode UTF-8 ignorando erros)."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    except UnicodeDecodeError:
-        try:
-            with open(file_path, 'r', encoding='latin-1') as f:
-                return f.read()
-        except Exception:
-            return None
+        with open(file_path, 'rb') as f:
+            bData = f.read()
+        return bData.decode('utf-8', 'ignore')
     except Exception:
         return None
 
