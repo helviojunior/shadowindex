@@ -83,7 +83,7 @@ const ListSection = ({ icon: Icon, iconColor, title, description, items, onAdd, 
             className="max-w-xs"
             data-testid={`${testIdPrefix}-input`}
           />
-          <Button variant="outline" onClick={handleAdd} data-testid={`${testIdPrefix}-add-btn`}>
+          <Button type="button" variant="outline" onClick={handleAdd} data-testid={`${testIdPrefix}-add-btn`}>
             <Plus className="w-4 h-4 mr-2" />
             Adicionar
           </Button>

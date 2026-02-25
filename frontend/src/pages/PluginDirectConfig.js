@@ -491,10 +491,10 @@ const PluginDirectConfig = () => {
                               />
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" onClick={() => saveEdit(instance.id)}>
+                              <Button type="button" size="sm" onClick={() => saveEdit(instance.id)}>
                                 <Check className="w-4 h-4 mr-1" /> Salvar
                               </Button>
-                              <Button size="sm" variant="outline" onClick={cancelEdit}>
+                              <Button type="button" size="sm" variant="outline" onClick={cancelEdit}>
                                 <X className="w-4 h-4 mr-1" /> Cancelar
                               </Button>
                             </div>

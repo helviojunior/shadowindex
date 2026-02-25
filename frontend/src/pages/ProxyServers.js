@@ -345,10 +345,10 @@ const ProxyServers = () => {
                         </Select>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => saveEdit(proxy.id)} data-testid={`save-edit-${proxy.id}`}>
+                        <Button type="button" size="sm" onClick={() => saveEdit(proxy.id)} data-testid={`save-edit-${proxy.id}`}>
                           <Check className="w-4 h-4 mr-1" /> Salvar
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={cancelEdit} data-testid={`cancel-edit-${proxy.id}`}>
+                        <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} data-testid={`cancel-edit-${proxy.id}`}>
                           <X className="w-4 h-4 mr-1" /> Cancelar
                         </Button>
                       </div>
