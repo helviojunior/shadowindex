@@ -453,6 +453,7 @@ const ShareScanJobs = () => {
                     <TableHead>Servidor</TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
                     <TableHead className="w-[100px]">Shares</TableHead>
+                    <TableHead className="w-[120px]">Não-Admin</TableHead>
                     <TableHead className="w-[140px]">Criado</TableHead>
                     <TableHead className="w-[80px]">Ações</TableHead>
                   </TableRow>
@@ -482,6 +483,21 @@ const ShareScanJobs = () => {
                           <span className="text-green-500 font-medium">{job.shares_found}</span>
                         ) : job.status === 'failed' && job.error_message ? (
                           <span className="text-red-500 truncate max-w-[80px]" title={job.error_message}>Erro</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {job.status === 'completed' ? (
+                          job.has_non_admin_shares ? (
+                            <Badge variant="outline" className="bg-emerald-500/20 text-emerald-500 border-emerald-500/50 text-[10px]">
+                              Sim
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-zinc-500/20 text-zinc-400 border-zinc-500/50 text-[10px]">
+                              Apenas admin
+                            </Badge>
+                          )
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}

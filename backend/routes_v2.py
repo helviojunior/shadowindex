@@ -5798,7 +5798,7 @@ async def list_share_scan_jobs(
     )
 
     query = (
-        select(ShareScanJob, Server.name.label('server_name'), Server.ip.label('server_ip'))
+        select(ShareScanJob, Server.name.label('server_name'), Server.ip.label('server_ip'), Server.has_no_admin_shares.label('has_non_admin_shares'))
         .outerjoin(Server, ShareScanJob.server_id == Server.id)
         .order_by(status_order, ShareScanJob.priority.desc(), ShareScanJob.created_at.asc())
     )
@@ -5820,13 +5820,14 @@ async def list_share_scan_jobs(
             "scan_pool_id": job.scan_pool_id,
             "status": job.status,
             "shares_found": job.shares_found,
+            "has_non_admin_shares": bool(has_non_admin_shares),
             "error_message": job.error_message,
             "priority": job.priority,
             "created_at": job.created_at.isoformat() if job.created_at else None,
             "started_at": job.started_at.isoformat() if job.started_at else None,
             "completed_at": job.completed_at.isoformat() if job.completed_at else None,
         }
-        for job, server_name, server_ip in rows
+        for job, server_name, server_ip, has_non_admin_shares in rows
     ]
 
 
