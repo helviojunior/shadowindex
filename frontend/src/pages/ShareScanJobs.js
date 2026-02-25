@@ -453,7 +453,7 @@ const ShareScanJobs = () => {
                     <TableHead>Servidor</TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
                     <TableHead className="w-[100px]">Shares</TableHead>
-                    <TableHead className="w-[120px]">Não-Admin</TableHead>
+                    <TableHead className="w-[120px]">Não $ shares</TableHead>
                     <TableHead className="w-[140px]">Criado</TableHead>
                     <TableHead className="w-[80px]">Ações</TableHead>
                   </TableRow>
