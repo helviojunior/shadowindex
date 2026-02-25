@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug, FolderOpen, FileX, Star, CheckCheck } from 'lucide-react';
+import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug, FolderOpen, FileX, Star, CheckCheck, RefreshCw } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -123,6 +124,7 @@ const FileNavigation = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlyNonAdminShares, setShowOnlyNonAdminShares] = useState(false);
   const [showOnlyNoFiles, setShowOnlyNoFiles] = useState(false);
+  const [showOnlyUnchecked, setShowOnlyUnchecked] = useState(false);
   const [activeTab, setActiveTab] = useState('accessed');
   const navigate = useNavigate();
 
@@ -148,7 +150,8 @@ const FileNavigation = () => {
       server.ip.toLowerCase().includes(search);
     const matchesNonAdmin = !showOnlyNonAdminShares || server.has_no_admin_shares;
     const matchesNoFiles = !showOnlyNoFiles || server.discovered_items_count === 0;
-    return matchesSearch && matchesNonAdmin && matchesNoFiles;
+    const matchesUnchecked = !showOnlyUnchecked || !server.is_checked;
+    return matchesSearch && matchesNonAdmin && matchesNoFiles && matchesUnchecked;
   });
 
   // Separar por status de acesso
@@ -194,7 +197,13 @@ const FileNavigation = () => {
     <div className="space-y-4" data-testid="file-navigation-page">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Navegação de Arquivos</h1>
-        <p className="text-muted-foreground mt-2">Selecione um servidor para navegar em seus arquivos</p>
+        <div className="flex items-center gap-3 mt-2">
+          <p className="text-muted-foreground">Selecione um servidor para navegar em seus arquivos</p>
+          <Button variant="outline" size="sm" onClick={() => { setLoading(true); loadServers(); }} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -253,8 +262,29 @@ const FileNavigation = () => {
                 </Badge>
               )}
             </div>
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <CheckCheck className="w-4 h-4 text-muted-foreground" />
+              <Switch
+                id="filter-unchecked"
+                checked={showOnlyUnchecked}
+                onCheckedChange={setShowOnlyUnchecked}
+                data-testid="filter-unchecked-switch"
+              />
+              <Label
+                htmlFor="filter-unchecked"
+                className="text-sm cursor-pointer"
+              >
+                Somente os não analisados
+              </Label>
+              {showOnlyUnchecked && (
+                <Badge className="bg-amber-600 text-xs">
+                  Ativo
+                </Badge>
+              )}
+            </div>
           </div>
-          {servers.length > 0 && (searchTerm || showOnlyNonAdminShares || showOnlyNoFiles) && (
+          {servers.length > 0 && (searchTerm || showOnlyNonAdminShares || showOnlyNoFiles || showOnlyUnchecked) && (
             <p className="text-sm text-muted-foreground mt-3">
               {filteredServers.length} encontrado{filteredServers.length !== 1 ? 's' : ''}
             </p>
