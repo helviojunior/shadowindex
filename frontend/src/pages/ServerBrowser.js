@@ -307,9 +307,8 @@ const ServerBrowser = () => {
       if (data.file_path && selectedPath && data.file_path === selectedPath) {
         setSingleDownloadProgress(null);
       }
-      if (data.error) {
-        toast.error(`Download falhou: ${data.error}`);
-      }
+      // Não exibir toast de erro aqui - erros em batch geram muitos toasts.
+      // O status de cada download pode ser acompanhado em Arquivos > Downloads.
     },
     // onStarted
     (data) => {
