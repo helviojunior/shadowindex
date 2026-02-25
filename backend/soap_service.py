@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from database import SoapCache, AppConfig, SoapApiUrl, ProxyServer
+from database import SoapCache, AppConfig, SoapApiUrl
 import logging
 import asyncio
 import urllib3
@@ -30,15 +30,16 @@ logger = logging.getLogger(__name__)
 CACHE_DIR = Path(__file__).parent / "storage" / ".cache"
 
 class SoapService:
-    def __init__(self, soap_url: str, proxy_url: str = None):
+    def __init__(self, soap_url: str, proxy_url: str = None, proxy_credential_id: int = None):
         # Remover ?WSDL se houver
         self.soap_url = soap_url.replace('?WSDL', '').replace('?wsdl', '')
         self.base_url = self.soap_url.split('/dna')[0] if '/dna' in self.soap_url else self.soap_url.rsplit('/', 1)[0]
         self.proxy_url = proxy_url  # Ex: "http://192.168.1.1:8080"
-        
+        self._proxy_credential_id = proxy_credential_id
+
         # Criar diretório de cache se não existir
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        
+
         # Log SSL info
         if proxy_url:
             logger.info(f"SoapService initialized with proxy: {proxy_url}")
@@ -264,76 +265,54 @@ class SoapService:
     
     async def _verify_proxy_credential(self, db: AsyncSession):
         """Verify the proxy credential after successful communication"""
+        if not self._proxy_credential_id:
+            return
         try:
             from credential_verification import mark_credential_verified
-            
-            # Get the active proxy to find its credential_id
-            result = await db.execute(
-                select(AppConfig).where(AppConfig.key == "active_proxy_id")
-            )
-            proxy_config = result.scalar_one_or_none()
-            
-            if proxy_config and proxy_config.value and proxy_config.value != "null":
-                proxy_id = int(proxy_config.value)
-                result = await db.execute(
-                    select(ProxyServer).where(ProxyServer.id == proxy_id)
-                )
-                proxy = result.scalar_one_or_none()
-                
-                if proxy and proxy.credential_id:
-                    await mark_credential_verified(db, proxy.credential_id, context="Proxy/SOAP Communication")
-                    logger.info(f"Proxy credential {proxy.credential_id} verified after successful SOAP call")
+            await mark_credential_verified(db, self._proxy_credential_id, context="Proxy/SOAP Communication")
+            logger.info(f"Proxy credential {self._proxy_credential_id} verified after successful SOAP call")
         except Exception as e:
             logger.warning(f"Error verifying proxy credential: {e}")
 
 
 async def get_default_soap_service(db: AsyncSession) -> SoapService:
-    """Get the default SOAP service with active proxy if configured"""
-    # Buscar SOAP API URL - primeira disponível
-    result = await db.execute(select(SoapApiUrl).limit(1))
-    soap_api = result.scalar_one_or_none()
-    
-    if not soap_api:
-        raise Exception("Nenhuma API SOAP configurada. Configure uma URL em 'SOAP APIs'.")
-    
-    # Buscar proxy ativo
-    proxy_url = None
+    """Get the default SOAP service using the default SOAP plugin instance's proxy"""
+    from database import PluginInstance
+    from plugins.factory import get_proxy_config_for_instance
+
+    # Try to find default SOAP instance to get its proxy and soap_url
     result = await db.execute(
-        select(AppConfig).where(AppConfig.key == "active_proxy_id")
+        select(PluginInstance).where(
+            PluginInstance.plugin_type == "soap_api",
+            PluginInstance.is_default == True,
+            PluginInstance.is_active == True
+        ).limit(1)
     )
-    proxy_config = result.scalar_one_or_none()
-    
-    if proxy_config and proxy_config.value and proxy_config.value != "null":
-        try:
-            proxy_id = int(proxy_config.value)
-            result = await db.execute(
-                select(ProxyServer).where(ProxyServer.id == proxy_id)
-            )
-            proxy = result.scalar_one_or_none()
-            
-            if proxy:
-                # Obter tipo de proxy (padrão: http)
-                proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
-                username = getattr(proxy, 'username', None)
-                password = getattr(proxy, 'password', None)
-                
-                # Construir URL do proxy baseado no tipo
-                if proxy_type == 'socks5':
-                    if username and password:
-                        proxy_url = f"socks5://{username}:{password}@{proxy.ip}:{proxy.port}"
-                    else:
-                        proxy_url = f"socks5://{proxy.ip}:{proxy.port}"
-                elif proxy_type == 'socks4':
-                    proxy_url = f"socks4://{proxy.ip}:{proxy.port}"
-                else:
-                    # HTTP/HTTPS proxy
-                    if username and password:
-                        proxy_url = f"http://{username}:{password}@{proxy.ip}:{proxy.port}"
-                    else:
-                        proxy_url = f"http://{proxy.ip}:{proxy.port}"
-                
-                logger.info(f"Active proxy configured: {proxy.name} ({proxy_type}) -> {proxy.ip}:{proxy.port}")
-        except (ValueError, TypeError) as e:
-            logger.warning(f"Invalid proxy_id in config: {e}")
-    
-    return SoapService(soap_api.uri, proxy_url)
+    default_instance = result.scalar_one_or_none()
+
+    proxy_url = None
+    proxy_credential_id = None
+    soap_url = None
+
+    if default_instance:
+        proxy_config = await get_proxy_config_for_instance(db, default_instance)
+        if proxy_config:
+            proxy_url = proxy_config.get("proxy_url")
+            proxy_credential_id = proxy_config.get("credential_id")
+
+        instance_config = default_instance.config or {}
+        if "soap_url" in instance_config:
+            soap_url = instance_config["soap_url"]
+
+    # Fallback to legacy SoapApiUrl table if no soap_url from instance
+    if not soap_url:
+        result = await db.execute(select(SoapApiUrl).limit(1))
+        soap_api = result.scalar_one_or_none()
+        if not soap_api:
+            raise Exception("Nenhuma API SOAP configurada. Configure uma URL em 'SOAP APIs'.")
+        soap_url = soap_api.uri
+
+    if proxy_url:
+        logger.info(f"SOAP service using proxy: {proxy_url}")
+
+    return SoapService(soap_url, proxy_url, proxy_credential_id)

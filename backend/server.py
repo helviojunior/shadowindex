@@ -446,6 +446,7 @@ class PluginInstanceCreate(BaseModel):
     description: Optional[str] = None
     config: Optional[dict] = None
     is_default: Optional[bool] = False
+    proxy_id: Optional[int] = None
 
 class PluginInstanceUpdate(BaseModel):
     name: Optional[str] = None
@@ -453,6 +454,7 @@ class PluginInstanceUpdate(BaseModel):
     config: Optional[dict] = None
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
+    proxy_id: Optional[int] = None
 
 class PluginInstanceResponse(BaseModel):
     id: int
@@ -462,6 +464,7 @@ class PluginInstanceResponse(BaseModel):
     config: Optional[dict] = None
     is_default: bool
     is_active: bool
+    proxy_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -502,13 +505,6 @@ class AppConfigResponse(BaseModel):
     key: str
     value: str
     updated_at: datetime
-
-class ActiveProxyResponse(BaseModel):
-    active_proxy_id: Optional[int]
-    proxy: Optional[ProxyServerResponse]
-
-class SetActiveProxyRequest(BaseModel):
-    proxy_id: Optional[int] = None  # None = sem proxy
 
 class ServerCreate(BaseModel):
     name: str
@@ -1061,22 +1057,22 @@ async def get_plugin_info(plugin_type: str):
 async def check_plugin_health(
     plugin_type: str,
     config: dict,
+    proxy_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Check plugin health with provided configuration"""
-    from plugins.factory import PluginFactory, get_active_proxy_config
+    """Check plugin health with provided configuration and optional proxy_id"""
+    from plugins.factory import PluginFactory, get_proxy_config_by_id
     from credential_verification import mark_credential_verified
-    
+
     try:
-        proxy_config = await get_active_proxy_config(db)
+        proxy_config = await get_proxy_config_by_id(db, proxy_id) if proxy_id else None
         proxy_url = proxy_config.get("proxy_url") if proxy_config else None
-        
+
         # For direct_interaction, validate proxy type and add credentials
         if plugin_type == "direct_interaction" and proxy_config:
             proxy_type = proxy_config.get("proxy_type", "http")
             proxy_name = proxy_config.get("proxy_name", "Unknown")
-            
-            # Validate proxy type - direct_interaction only supports SOCKS proxies
+
             if proxy_type not in ("socks5", "socks4"):
                 return {
                     "healthy": False,
@@ -1085,28 +1081,20 @@ async def check_plugin_health(
                                f"Tipo atual: {proxy_type}",
                     "details": {"proxy_type": proxy_type, "required": ["socks4", "socks5"]}
                 }
-            
+
             config["proxy_user"] = proxy_config.get("proxy_user")
             config["proxy_pass"] = proxy_config.get("proxy_pass")
-        
+
         plugin = PluginFactory.create_plugin(plugin_type, config, proxy_url)
         health = await plugin.health_check()
-        
+
         # If health check passed and proxy was used, verify the proxy credential
-        if health.get("healthy") and proxy_url:
-            # Get the active proxy to find its credential_id
-            result = await db.execute(select(AppConfig).where(AppConfig.key == "active_proxy_id"))
-            config_entry = result.scalar_one_or_none()
-            if config_entry and config_entry.value:
-                try:
-                    proxy_id = int(config_entry.value)
-                    proxy_result = await db.execute(select(ProxyServer).where(ProxyServer.id == proxy_id))
-                    proxy = proxy_result.scalar_one_or_none()
-                    if proxy and proxy.credential_id:
-                        await mark_credential_verified(db, proxy.credential_id, context="Proxy/Health Check")
-                except Exception as e:
-                    logger.warning(f"Error verifying proxy credential: {e}")
-        
+        if health.get("healthy") and proxy_config and proxy_config.get("credential_id"):
+            try:
+                await mark_credential_verified(db, proxy_config["credential_id"], context="Proxy/Health Check")
+            except Exception as e:
+                logger.warning(f"Error verifying proxy credential: {e}")
+
         return health
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1243,24 +1231,24 @@ async def delete_plugin_instance(instance_id: int, db: AsyncSession = Depends(ge
 
 @api_router.post("/plugin-instances/{instance_id}/health")
 async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depends(get_db)):
-    """Check health of a plugin instance"""
-    from plugins.factory import PluginFactory, get_active_proxy_config
-    
+    """Check health of a plugin instance using its own proxy_id"""
+    from plugins.factory import PluginFactory, get_proxy_config_for_instance
+    from credential_verification import mark_credential_verified
+
     result = await db.execute(select(PluginInstance).where(PluginInstance.id == instance_id))
     instance = result.scalar_one_or_none()
-    
+
     if not instance:
         raise HTTPException(status_code=404, detail="Instância de plugin não encontrada")
-    
+
     try:
-        proxy_config = await get_active_proxy_config(db)
+        proxy_config = await get_proxy_config_for_instance(db, instance)
         proxy_url = proxy_config.get("proxy_url") if proxy_config else None
         config = instance.config or {}
-        
+
         # For SOAP API, validate URL is in config
         if instance.plugin_type == "soap_api":
             if "soap_url" not in config:
-                # Fallback to legacy table
                 soap_result = await db.execute(select(SoapApiUrl).limit(1))
                 soap_api = soap_result.scalar_one_or_none()
                 if soap_api:
@@ -1271,13 +1259,12 @@ async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depe
                         "message": "URL do SOAP não configurada na instância",
                         "details": {"missing": "soap_url"}
                     }
-        
+
         # For direct_interaction, validate proxy type and add credentials
         if instance.plugin_type == "direct_interaction" and proxy_config:
             proxy_type = proxy_config.get("proxy_type", "http")
             proxy_name = proxy_config.get("proxy_name", "Unknown")
-            
-            # Validate proxy type - direct_interaction only supports SOCKS proxies
+
             if proxy_type not in ("socks5", "socks4"):
                 return {
                     "healthy": False,
@@ -1286,12 +1273,20 @@ async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depe
                                f"Tipo atual: {proxy_type}",
                     "details": {"proxy_type": proxy_type, "required": ["socks4", "socks5"]}
                 }
-            
+
             config["proxy_user"] = proxy_config.get("proxy_user")
             config["proxy_pass"] = proxy_config.get("proxy_pass")
-        
+
         plugin = PluginFactory.create_plugin(instance.plugin_type, config, proxy_url)
         health = await plugin.health_check()
+
+        # If health check passed and proxy was used, verify the proxy credential
+        if health.get("healthy") and proxy_config and proxy_config.get("credential_id"):
+            try:
+                await mark_credential_verified(db, proxy_config["credential_id"], context="Proxy/Health Check")
+            except Exception as e:
+                logger.warning(f"Error verifying proxy credential: {e}")
+
         return health
     except Exception as e:
         return {
@@ -1461,60 +1456,6 @@ async def update_config(config: AppConfigUpdate, db: AsyncSession = Depends(get_
     return db_config
 
 # Active Proxy Management
-@api_router.get("/active-proxy", response_model=ActiveProxyResponse)
-async def get_active_proxy(db: AsyncSession = Depends(get_db)):
-    """Retorna o proxy ativo atual"""
-    result = await db.execute(select(AppConfig).where(AppConfig.key == "active_proxy_id"))
-    config = result.scalar_one_or_none()
-    
-    if not config or config.value == "" or config.value == "null":
-        return {"active_proxy_id": None, "proxy": None}
-    
-    try:
-        proxy_id = int(config.value)
-        result = await db.execute(select(ProxyServer).where(ProxyServer.id == proxy_id))
-        proxy = result.scalar_one_or_none()
-        
-        if proxy:
-            return {
-                "active_proxy_id": proxy_id,
-                "proxy": proxy
-            }
-        else:
-            return {"active_proxy_id": None, "proxy": None}
-    except (ValueError, TypeError):
-        return {"active_proxy_id": None, "proxy": None}
-
-@api_router.put("/active-proxy", response_model=ActiveProxyResponse)
-async def set_active_proxy(request: SetActiveProxyRequest, db: AsyncSession = Depends(get_db)):
-    """Define o proxy ativo para todas as requisições SOAP"""
-    # Validar se o proxy existe (se não for None)
-    proxy = None
-    if request.proxy_id is not None:
-        result = await db.execute(select(ProxyServer).where(ProxyServer.id == request.proxy_id))
-        proxy = result.scalar_one_or_none()
-        if not proxy:
-            raise HTTPException(status_code=404, detail="Proxy não encontrado")
-    
-    # Atualizar ou criar configuração
-    result = await db.execute(select(AppConfig).where(AppConfig.key == "active_proxy_id"))
-    config = result.scalar_one_or_none()
-    
-    value = str(request.proxy_id) if request.proxy_id is not None else ""
-    
-    if config:
-        config.value = value
-        config.updated_at = datetime.now(timezone.utc)
-    else:
-        config = AppConfig(key="active_proxy_id", value=value)
-        db.add(config)
-    
-    await db.commit()
-    
-    return {
-        "active_proxy_id": request.proxy_id,
-        "proxy": proxy
-    }
 
 # SOAP Operations
 @api_router.post("/soap/resolve", response_model=SoapOperationResponse)

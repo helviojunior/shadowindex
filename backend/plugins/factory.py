@@ -94,89 +94,111 @@ class PluginFactory:
         logger.info(f"Registered plugin: {plugin_type}")
 
 
-async def get_active_proxy_url(db: AsyncSession) -> Optional[str]:
-    """Get the currently active proxy URL from database"""
-    from database import AppConfig, ProxyServer, Credential
-    
-    result = await db.execute(
-        select(AppConfig).where(AppConfig.key == "active_proxy_id")
-    )
-    proxy_config = result.scalar_one_or_none()
-    
-    if proxy_config and proxy_config.value and proxy_config.value != "null":
-        try:
-            proxy_id = int(proxy_config.value)
-            result = await db.execute(
-                select(ProxyServer).where(ProxyServer.id == proxy_id)
+async def get_proxy_config_for_instance(db: AsyncSession, instance) -> Optional[Dict[str, Any]]:
+    """Get proxy configuration for a specific plugin instance based on its proxy_id"""
+    from database import ProxyServer, Credential
+
+    proxy_id = getattr(instance, 'proxy_id', None)
+    if not proxy_id:
+        return None
+
+    try:
+        result = await db.execute(
+            select(ProxyServer).where(ProxyServer.id == proxy_id)
+        )
+        proxy = result.scalar_one_or_none()
+
+        if not proxy:
+            logger.warning(f"Proxy ID {proxy_id} not found for instance '{instance.name}'")
+            return None
+
+        proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
+        proxy_name = getattr(proxy, 'name', f'{proxy.ip}:{proxy.port}')
+        username = None
+        password = None
+
+        credential_id = getattr(proxy, 'credential_id', None)
+        if credential_id:
+            cred_result = await db.execute(
+                select(Credential).where(Credential.id == credential_id)
             )
-            proxy = result.scalar_one_or_none()
-            
-            if proxy:
-                proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
-                
-                # Build proxy URL without credentials (credentials passed separately to plugin)
-                if proxy_type == 'socks5':
-                    return f"socks5://{proxy.ip}:{proxy.port}"
-                else:
-                    return f"http://{proxy.ip}:{proxy.port}"
-        except Exception as e:
-            logger.warning(f"Error loading proxy config: {e}")
-    
+            credential = cred_result.scalar_one_or_none()
+            if credential and credential.credential_type == "user_password":
+                username = credential.username
+                password = credential.password
+
+        if proxy_type == 'socks5':
+            proxy_url = f"socks5://{proxy.ip}:{proxy.port}"
+        else:
+            proxy_url = f"http://{proxy.ip}:{proxy.port}"
+
+        return {
+            "proxy_url": proxy_url,
+            "proxy_user": username,
+            "proxy_pass": password,
+            "proxy_type": proxy_type,
+            "proxy_host": proxy.ip,
+            "proxy_port": proxy.port,
+            "proxy_name": proxy_name,
+            "proxy_id": proxy.id,
+            "credential_id": credential_id
+        }
+    except Exception as e:
+        logger.warning(f"Error loading proxy config for instance '{instance.name}': {e}")
+
     return None
 
 
-async def get_active_proxy_config(db: AsyncSession) -> Optional[Dict[str, Any]]:
-    """Get the currently active proxy configuration with credentials separated"""
-    from database import AppConfig, ProxyServer, Credential
-    
-    result = await db.execute(
-        select(AppConfig).where(AppConfig.key == "active_proxy_id")
-    )
-    proxy_config = result.scalar_one_or_none()
-    
-    if proxy_config and proxy_config.value and proxy_config.value != "null":
-        try:
-            proxy_id = int(proxy_config.value)
-            result = await db.execute(
-                select(ProxyServer).where(ProxyServer.id == proxy_id)
+async def get_proxy_config_by_id(db: AsyncSession, proxy_id: int) -> Optional[Dict[str, Any]]:
+    """Get proxy configuration by proxy ID (for health checks without a saved instance)"""
+    from database import ProxyServer, Credential
+
+    if not proxy_id:
+        return None
+
+    try:
+        result = await db.execute(
+            select(ProxyServer).where(ProxyServer.id == proxy_id)
+        )
+        proxy = result.scalar_one_or_none()
+
+        if not proxy:
+            return None
+
+        proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
+        proxy_name = getattr(proxy, 'name', f'{proxy.ip}:{proxy.port}')
+        username = None
+        password = None
+
+        credential_id = getattr(proxy, 'credential_id', None)
+        if credential_id:
+            cred_result = await db.execute(
+                select(Credential).where(Credential.id == credential_id)
             )
-            proxy = result.scalar_one_or_none()
-            
-            if proxy:
-                proxy_type = getattr(proxy, 'proxy_type', 'http') or 'http'
-                proxy_name = getattr(proxy, 'name', f'{proxy.ip}:{proxy.port}')
-                username = None
-                password = None
-                
-                # Get credentials ONLY from credential_id (no fallback to deprecated fields)
-                credential_id = getattr(proxy, 'credential_id', None)
-                if credential_id:
-                    cred_result = await db.execute(
-                        select(Credential).where(Credential.id == credential_id)
-                    )
-                    credential = cred_result.scalar_one_or_none()
-                    if credential and credential.credential_type == "user_password":
-                        username = credential.username
-                        password = credential.password
-                
-                # Build proxy URL without auth
-                if proxy_type == 'socks5':
-                    proxy_url = f"socks5://{proxy.ip}:{proxy.port}"
-                else:
-                    proxy_url = f"http://{proxy.ip}:{proxy.port}"
-                
-                return {
-                    "proxy_url": proxy_url,
-                    "proxy_user": username,
-                    "proxy_pass": password,
-                    "proxy_type": proxy_type,
-                    "proxy_host": proxy.ip,
-                    "proxy_port": proxy.port,
-                    "proxy_name": proxy_name
-                }
-        except Exception as e:
-            logger.warning(f"Error loading proxy config: {e}")
-    
+            credential = cred_result.scalar_one_or_none()
+            if credential and credential.credential_type == "user_password":
+                username = credential.username
+                password = credential.password
+
+        if proxy_type == 'socks5':
+            proxy_url = f"socks5://{proxy.ip}:{proxy.port}"
+        else:
+            proxy_url = f"http://{proxy.ip}:{proxy.port}"
+
+        return {
+            "proxy_url": proxy_url,
+            "proxy_user": username,
+            "proxy_pass": password,
+            "proxy_type": proxy_type,
+            "proxy_host": proxy.ip,
+            "proxy_port": proxy.port,
+            "proxy_name": proxy_name,
+            "proxy_id": proxy.id,
+            "credential_id": credential_id
+        }
+    except Exception as e:
+        logger.warning(f"Error loading proxy config for proxy_id {proxy_id}: {e}")
+
     return None
 
 
@@ -223,42 +245,41 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
             f"Configure uma instância de plugin na página de Servidores."
         )
     
-    # Get proxy config with credentials
-    proxy_config = await get_active_proxy_config(db)
-    proxy_url = proxy_config.get("proxy_url") if proxy_config else None
-    
     plugin_type = None
     plugin_config = {}
-    
+
     # Load plugin instance from database
     result = await db.execute(
         select(PluginInstance).where(PluginInstance.id == plugin_instance_id)
     )
     instance = result.scalar_one_or_none()
-    
+
     if not instance:
         raise ValueError(f"Instância de plugin ID {plugin_instance_id} não encontrada")
-    
+
     if not instance.is_active:
         raise ValueError(f"Instância de plugin '{instance.name}' está desativada")
-    
+
     plugin_type = instance.plugin_type
     plugin_config = instance.config or {}
-    
+
+    # Get proxy config from instance's proxy_id
+    proxy_config = await get_proxy_config_for_instance(db, instance)
+    proxy_url = proxy_config.get("proxy_url") if proxy_config else None
+
     # For SOAP API plugin, validate URL is configured in instance
     if plugin_type == "soap_api" and "soap_url" not in plugin_config:
-        # Don't fallback to global SoapApiUrl - require URL in instance config
         raise ValueError(
             "URL do SOAP não configurada na instância do plugin. "
             "Acesse Plugins > SOAP API > Instâncias e configure a URL do WebService."
         )
-    
+
     # Add proxy credentials to plugin config for direct_interaction
     if plugin_type == "direct_interaction" and proxy_config:
         proxy_type = proxy_config.get("proxy_type", "http")
         proxy_name = proxy_config.get("proxy_name", "Unknown")
         instance_name = instance.name if instance else "Interação Direta"
-        
+
         # Validate proxy type - direct_interaction only supports SOCKS proxies
         if proxy_type not in ("socks5", "socks4"):
             raise ValueError(
@@ -266,10 +287,10 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
                 f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
                 f"Tipo atual: {proxy_type}"
             )
-        
+
         plugin_config["proxy_user"] = proxy_config.get("proxy_user")
         plugin_config["proxy_pass"] = proxy_config.get("proxy_pass")
-    
+
     # Create the plugin instance
     plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
     
@@ -345,62 +366,61 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
     """
     from database import PluginInstance, Credential
     from .exceptions import CredentialNotSetException
-    
+
     # Load plugin instance from database
     result = await db.execute(
         select(PluginInstance).where(PluginInstance.id == plugin_instance_id)
     )
     instance = result.scalar_one_or_none()
-    
+
     if not instance:
         raise ValueError(f"Instância de plugin {plugin_instance_id} não encontrada")
-    
+
     if not instance.is_active:
         raise ValueError(f"Instância de plugin '{instance.name}' está desativada")
-    
+
     plugin_type = instance.plugin_type
     plugin_config = instance.config or {}
-    
-    # Get proxy config with credentials
-    proxy_config = await get_active_proxy_config(db)
+
+    # Get proxy config from instance's proxy_id
+    proxy_config = await get_proxy_config_for_instance(db, instance)
     proxy_url = proxy_config.get("proxy_url") if proxy_config else None
-    
+
     # Validate SOAP URL for SOAP plugins
     if plugin_type == "soap_api" and "soap_url" not in plugin_config:
         raise ValueError(
             f"URL do SOAP não configurada na instância '{instance.name}'. "
             "Edite a instância e configure a URL do WebService."
         )
-    
+
     # Add proxy credentials and validate proxy type for direct_interaction
     if plugin_type == "direct_interaction" and proxy_config:
         proxy_type = proxy_config.get("proxy_type", "http")
         proxy_name = proxy_config.get("proxy_name", "Unknown")
-        
-        # Validate proxy type - direct_interaction only supports SOCKS proxies
+
         if proxy_type not in ("socks5", "socks4"):
             raise ValueError(
                 f"Proxy selecionado '{proxy_name}' não suportado para '{instance.name}'. "
                 f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
                 f"Tipo atual: {proxy_type}"
             )
-        
+
         plugin_config["proxy_user"] = proxy_config.get("proxy_user")
         plugin_config["proxy_pass"] = proxy_config.get("proxy_pass")
-    
+
     # Create the plugin instance
     plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
-    
+
     # For direct_interaction plugin, load and set the credential
     if plugin_type == "direct_interaction":
         credential_id = plugin_config.get("credential_id")
-        
+
         if credential_id:
             cred_result = await db.execute(
                 select(Credential).where(Credential.id == credential_id)
             )
             credential = cred_result.scalar_one_or_none()
-            
+
             if credential:
                 plugin.set_credential({
                     "id": credential.id,
@@ -409,32 +429,54 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
                     "domain": credential.domain,
                     "ntlm_hash": credential.ntlm_hash if hasattr(credential, 'ntlm_hash') else None
                 })
-    
+
     return plugin
 
 
 async def get_default_soap_plugin(db: AsyncSession) -> SoapApiPlugin:
     """
     Get the default SOAP plugin (for backwards compatibility).
-    
+    Uses the default SOAP plugin instance's proxy if available, otherwise no proxy.
+
     Args:
         db: Database session
-        
+
     Returns:
         SoapApiPlugin instance
     """
-    from database import SoapApiUrl
-    
-    # Get SOAP URL
+    from database import SoapApiUrl, PluginInstance
+
+    # Try to find default SOAP instance to get its proxy
+    result = await db.execute(
+        select(PluginInstance).where(
+            PluginInstance.plugin_type == "soap_api",
+            PluginInstance.is_default == True,
+            PluginInstance.is_active == True
+        ).limit(1)
+    )
+    default_instance = result.scalar_one_or_none()
+
+    proxy_url = None
+    if default_instance:
+        proxy_config = await get_proxy_config_for_instance(db, default_instance)
+        proxy_url = proxy_config.get("proxy_url") if proxy_config else None
+
+        # If instance has soap_url, use it
+        instance_config = default_instance.config or {}
+        if "soap_url" in instance_config:
+            return PluginFactory.create_plugin(
+                "soap_api",
+                instance_config,
+                proxy_url
+            )
+
+    # Fallback to legacy SoapApiUrl table
     result = await db.execute(select(SoapApiUrl).limit(1))
     soap_api = result.scalar_one_or_none()
-    
+
     if not soap_api:
         raise ValueError("No SOAP API URL configured")
-    
-    # Get proxy URL
-    proxy_url = await get_active_proxy_url(db)
-    
+
     return PluginFactory.create_plugin(
         "soap_api",
         {"soap_url": soap_api.uri},

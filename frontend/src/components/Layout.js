@@ -34,13 +34,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -164,7 +157,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   const hoverTimeoutRef = useRef(null);
   const menuRefs = useRef({});
   const location = useLocation();
-  const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode, activeProxy, proxies, loadingProxy, updateActiveProxy } = useApp();
+  const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode } = useApp();
   const { isConnected, errorMessage, resetConnection } = useConnectionStatus();
   
   // Ativar notificações sonoras globais para conclusão de jobs
@@ -231,11 +224,6 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   }, [sidebarCollapsed]);
 
   const effectiveCollapsed = isSmallScreen || sidebarCollapsed;
-
-  const handleProxyChange = async (value) => {
-    const proxyId = value === 'none' ? null : parseInt(value);
-    await updateActiveProxy(proxyId);
-  };
 
   const handleOfflineModeToggle = async () => {
     await setOfflineMode(!offlineMode);
@@ -487,55 +475,6 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           
           {/* Right side - Controls */}
           <div className="flex items-center gap-4 flex-1 justify-end px-6 py-3">
-            {/* Seletor de Proxy */}
-            <div className="flex items-center gap-2">
-              {activeProxy ? (
-                <Wifi className="w-4 h-4 text-green-500" />
-              ) : (
-                <WifiOff className="w-4 h-4 text-muted-foreground" />
-              )}
-              <Select
-                value={activeProxy?.id?.toString() || 'none'}
-                onValueChange={handleProxyChange}
-                disabled={loadingProxy}
-              >
-                <SelectTrigger 
-                  className="w-[180px] h-8 text-sm"
-                  data-testid="proxy-selector"
-                >
-                  <SelectValue placeholder="Selecionar Proxy" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" data-testid="proxy-option-none">
-                    <span className="flex items-center gap-2">
-                      <WifiOff className="w-3 h-3" />
-                      Sem Proxy
-                    </span>
-                  </SelectItem>
-                  {proxies.map((proxy) => (
-                    <SelectItem 
-                      key={proxy.id} 
-                      value={proxy.id.toString()}
-                      data-testid={`proxy-option-${proxy.id}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Wifi className="w-3 h-3" />
-                        {proxy.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {activeProxy && (
-                <Badge variant="outline" className="text-xs text-green-600 border-green-600">
-                  {activeProxy.ip}:{activeProxy.port}
-                </Badge>
-              )}
-            </div>
-
-            {/* Separador */}
-            <div className="h-6 w-px bg-border" />
-
             {/* Modo Offline Global */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -633,7 +572,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 {/* Version info - only when expanded */}
                 {!effectiveCollapsed && (
                   <div className="text-xs text-muted-foreground">
-                    <div className="text-[11px] font-medium">ShadowIndex v1.0.2</div>
+                    <div className="text-[11px] font-medium">ShadowIndex v1.0.3</div>
                     <div className="text-[10px] text-muted-foreground/60">© StrataSec 2026</div>
                   </div>
                 )}

@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Loader2, CheckCircle, XCircle, RefreshCw, Plus, Trash2, ChevronUp, 
-  Settings, Plug, Globe, Star, StarOff, Power, PowerOff, Pencil, X, Check
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Loader2, CheckCircle, XCircle, RefreshCw, Plus, Trash2, ChevronUp,
+  Settings, Plug, Globe, Star, StarOff, Power, PowerOff, Pencil, X, Check,
+  Wifi, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,17 +22,19 @@ const PluginSoapConfig = () => {
   const [pluginInfo, setPluginInfo] = useState(null);
   const [instances, setInstances] = useState([]);
   const [soapApis, setSoapApis] = useState([]);
+  const [proxies, setProxies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('instances');
   
   // Instance form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
-  const [formData, setFormData] = useState({ 
-    name: '', 
+  const [formData, setFormData] = useState({
+    name: '',
     description: '',
     config: { soap_url: '' },
-    is_default: false 
+    is_default: false,
+    proxy_id: null
   });
   
   // Edit states
@@ -48,20 +52,29 @@ const PluginSoapConfig = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [pluginRes, instancesRes, apisRes] = await Promise.all([
+      const [pluginRes, instancesRes, apisRes, proxiesRes] = await Promise.all([
         axios.get(`${API}/plugins/soap_api`),
         axios.get(`${API}/plugin-instances?plugin_type=soap_api`),
-        axios.get(`${API}/soap-apis`)
+        axios.get(`${API}/soap-apis`),
+        axios.get(`${API}/proxy-servers`)
       ]);
       setPluginInfo(pluginRes.data);
       setInstances(instancesRes.data);
       setSoapApis(apisRes.data);
+      setProxies(proxiesRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getProxyName = (proxyId) => {
+    if (!proxyId) return 'Sem proxy';
+    const proxy = proxies.find(p => p.id === proxyId);
+    if (!proxy) return `ID: ${proxyId}`;
+    return `${proxy.name} (${proxy.ip}:${proxy.port})`;
   };
 
   // Instance CRUD
@@ -73,12 +86,13 @@ const PluginSoapConfig = () => {
       const payload = {
         ...formData,
         plugin_type: 'soap_api',
-        config: formData.config || {}
+        config: formData.config || {},
+        proxy_id: formData.proxy_id || null
       };
-      
+
       await axios.post(`${API}/plugin-instances`, payload);
       toast.success('Instância criada com sucesso');
-      setFormData({ name: '', description: '', config: { soap_url: '' }, is_default: false });
+      setFormData({ name: '', description: '', config: { soap_url: '' }, is_default: false, proxy_id: null });
       setShowAddForm(false);
       loadData();
     } catch (error) {
@@ -109,7 +123,8 @@ const PluginSoapConfig = () => {
       description: instance.description || '',
       config: instance.config || { soap_url: '' },
       is_default: instance.is_default,
-      is_active: instance.is_active
+      is_active: instance.is_active,
+      proxy_id: instance.proxy_id
     });
   };
 
@@ -268,7 +283,7 @@ const PluginSoapConfig = () => {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 md:grid-cols-3">
                         <div className="space-y-2">
                           <Label htmlFor="name">Nome da Instância</Label>
                           <Input
@@ -288,11 +303,44 @@ const PluginSoapConfig = () => {
                             type="url"
                             placeholder="https://exemplo.com/api.asmx?WSDL"
                             value={formData.config?.soap_url || ''}
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
+                            onChange={(e) => setFormData({
+                              ...formData,
                               config: { ...formData.config, soap_url: e.target.value }
                             })}
                           />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <Wifi className="w-4 h-4" />
+                            Proxy
+                          </Label>
+                          <Select
+                            value={formData.proxy_id?.toString() || 'none'}
+                            onValueChange={(value) => setFormData({
+                              ...formData,
+                              proxy_id: value === 'none' ? null : parseInt(value)
+                            })}
+                          >
+                            <SelectTrigger data-testid="instance-proxy-select">
+                              <SelectValue placeholder="Selecione um proxy" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">
+                                <span className="flex items-center gap-2">
+                                  <WifiOff className="w-3 h-3" />
+                                  Sem proxy
+                                </span>
+                              </SelectItem>
+                              {proxies.map((proxy) => (
+                                <SelectItem key={proxy.id} value={proxy.id.toString()}>
+                                  <span className="flex items-center gap-2">
+                                    <Wifi className="w-3 h-3" />
+                                    {proxy.name} ({proxy.proxy_type?.toUpperCase()})
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -339,7 +387,7 @@ const PluginSoapConfig = () => {
                         {isEditing ? (
                           // Edit mode
                           <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-4 md:grid-cols-3">
                               <div className="space-y-2">
                                 <Label>Nome</Label>
                                 <Input
@@ -351,11 +399,33 @@ const PluginSoapConfig = () => {
                                 <Label>URL do WebService</Label>
                                 <Input
                                   value={editData.config?.soap_url || ''}
-                                  onChange={(e) => setEditData({ 
-                                    ...editData, 
+                                  onChange={(e) => setEditData({
+                                    ...editData,
                                     config: { ...editData.config, soap_url: e.target.value }
                                   })}
                                 />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Proxy</Label>
+                                <Select
+                                  value={editData.proxy_id?.toString() || 'none'}
+                                  onValueChange={(value) => setEditData({
+                                    ...editData,
+                                    proxy_id: value === 'none' ? null : parseInt(value)
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Sem proxy</SelectItem>
+                                    {proxies.map((proxy) => (
+                                      <SelectItem key={proxy.id} value={proxy.id.toString()}>
+                                        {proxy.name} ({proxy.proxy_type?.toUpperCase()})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
                             <div className="space-y-2">
@@ -399,9 +469,16 @@ const PluginSoapConfig = () => {
                                 </div>
                               ) : (
                                 <div className="text-xs text-amber-500">
-                                  ⚠ URL não configurada
+                                  URL não configurada
                                 </div>
                               )}
+                              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                {instance.proxy_id ? (
+                                  <><Wifi className="w-3 h-3" /> Proxy: {getProxyName(instance.proxy_id)}</>
+                                ) : (
+                                  <><WifiOff className="w-3 h-3" /> Sem proxy</>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-1">
                               {/* Health status */}

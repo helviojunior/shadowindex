@@ -259,6 +259,7 @@ class PluginInstance(Base):
     config = Column(JSON, nullable=True)  # Configurações específicas do plugin (JSON)
     is_default = Column(Boolean, default=False)  # Se é a instância padrão para o tipo
     is_active = Column(Boolean, default=True)  # Se está ativa
+    proxy_id = Column(Integer, ForeignKey("proxy_servers.id", ondelete="SET NULL"), nullable=True)  # Proxy por instância (NULL = sem proxy)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

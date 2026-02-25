@@ -8,10 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Loader2, CheckCircle, XCircle, RefreshCw, Plus, Trash2, ChevronUp, 
+import {
+  Loader2, CheckCircle, XCircle, RefreshCw, Plus, Trash2, ChevronUp,
   Settings, Plug, Server, Star, StarOff, Power, PowerOff, Pencil, X, Check,
-  Network, AlertCircle
+  Network, AlertCircle, Wifi, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShieldKeyIcon } from '@/components/icons';
@@ -23,17 +23,19 @@ const PluginDirectConfig = () => {
   const [pluginInfo, setPluginInfo] = useState(null);
   const [instances, setInstances] = useState([]);
   const [credentials, setCredentials] = useState([]);
+  const [proxies, setProxies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('instances');
   
   // Instance form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
-  const [formData, setFormData] = useState({ 
-    name: '', 
+  const [formData, setFormData] = useState({
+    name: '',
     description: '',
     config: { credential_id: null },
-    is_default: false 
+    is_default: false,
+    proxy_id: null
   });
   
   // Edit states
@@ -51,20 +53,29 @@ const PluginDirectConfig = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [pluginRes, instancesRes, credRes] = await Promise.all([
+      const [pluginRes, instancesRes, credRes, proxiesRes] = await Promise.all([
         axios.get(`${API}/plugins/direct_interaction`),
         axios.get(`${API}/plugin-instances?plugin_type=direct_interaction`),
-        axios.get(`${API}/credentials/by-type/user_password`)
+        axios.get(`${API}/credentials/by-type/user_password`),
+        axios.get(`${API}/proxy-servers`)
       ]);
       setPluginInfo(pluginRes.data);
       setInstances(instancesRes.data);
       setCredentials(credRes.data);
+      setProxies(proxiesRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getProxyName = (proxyId) => {
+    if (!proxyId) return 'Sem proxy';
+    const proxy = proxies.find(p => p.id === proxyId);
+    if (!proxy) return `ID: ${proxyId}`;
+    return `${proxy.name} (${proxy.ip}:${proxy.port})`;
   };
 
   const getCredentialName = (credId) => {
@@ -83,12 +94,13 @@ const PluginDirectConfig = () => {
       const payload = {
         ...formData,
         plugin_type: 'direct_interaction',
-        config: formData.config || {}
+        config: formData.config || {},
+        proxy_id: formData.proxy_id || null
       };
-      
+
       await axios.post(`${API}/plugin-instances`, payload);
       toast.success('Instância criada com sucesso');
-      setFormData({ name: '', description: '', config: { credential_id: null }, is_default: false });
+      setFormData({ name: '', description: '', config: { credential_id: null }, is_default: false, proxy_id: null });
       setShowAddForm(false);
       loadData();
     } catch (error) {
@@ -119,7 +131,8 @@ const PluginDirectConfig = () => {
       description: instance.description || '',
       config: instance.config || { credential_id: null },
       is_default: instance.is_default,
-      is_active: instance.is_active
+      is_active: instance.is_active,
+      proxy_id: instance.proxy_id
     });
   };
 
@@ -278,7 +291,7 @@ const PluginDirectConfig = () => {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 md:grid-cols-3">
                         <div className="space-y-2">
                           <Label htmlFor="name">Nome da Instância</Label>
                           <Input
@@ -295,13 +308,13 @@ const PluginDirectConfig = () => {
                             <ShieldKeyIcon className="w-4 h-4" />
                             Credencial
                           </Label>
-                          <Select 
-                            value={formData.config?.credential_id?.toString() || 'none'} 
-                            onValueChange={(value) => setFormData({ 
-                              ...formData, 
-                              config: { 
-                                ...formData.config, 
-                                credential_id: value === 'none' ? null : parseInt(value) 
+                          <Select
+                            value={formData.config?.credential_id?.toString() || 'none'}
+                            onValueChange={(value) => setFormData({
+                              ...formData,
+                              config: {
+                                ...formData.config,
+                                credential_id: value === 'none' ? null : parseInt(value)
                               }
                             })}
                           >
@@ -314,6 +327,49 @@ const PluginDirectConfig = () => {
                                 <SelectItem key={cred.id} value={cred.id.toString()}>
                                   {cred.name || `${cred.domain || ''}\\${cred.username}`}
                                   {cred.verified && ' ✓'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <Wifi className="w-4 h-4" />
+                            Proxy
+                          </Label>
+                          <Select
+                            value={formData.proxy_id?.toString() || 'none'}
+                            onValueChange={(value) => setFormData({
+                              ...formData,
+                              proxy_id: value === 'none' ? null : parseInt(value)
+                            })}
+                          >
+                            <SelectTrigger data-testid="instance-proxy-select">
+                              <SelectValue placeholder="Selecione um proxy" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">
+                                <span className="flex items-center gap-2">
+                                  <WifiOff className="w-3 h-3" />
+                                  Sem proxy
+                                </span>
+                              </SelectItem>
+                              {proxies.filter(p => p.proxy_type === 'socks5' || p.proxy_type === 'socks4').length > 0 && (
+                                proxies.filter(p => p.proxy_type === 'socks5' || p.proxy_type === 'socks4').map((proxy) => (
+                                  <SelectItem key={proxy.id} value={proxy.id.toString()}>
+                                    <span className="flex items-center gap-2">
+                                      <Wifi className="w-3 h-3" />
+                                      {proxy.name} ({proxy.proxy_type?.toUpperCase()})
+                                    </span>
+                                  </SelectItem>
+                                ))
+                              )}
+                              {proxies.filter(p => p.proxy_type !== 'socks5' && p.proxy_type !== 'socks4').map((proxy) => (
+                                <SelectItem key={proxy.id} value={proxy.id.toString()} disabled>
+                                  <span className="flex items-center gap-2 opacity-50">
+                                    <Wifi className="w-3 h-3" />
+                                    {proxy.name} ({proxy.proxy_type?.toUpperCase()}) - Requer SOCKS
+                                  </span>
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -364,7 +420,7 @@ const PluginDirectConfig = () => {
                         {isEditing ? (
                           // Edit mode
                           <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-4 md:grid-cols-3">
                               <div className="space-y-2">
                                 <Label>Nome</Label>
                                 <Input
@@ -374,13 +430,13 @@ const PluginDirectConfig = () => {
                               </div>
                               <div className="space-y-2">
                                 <Label>Credencial</Label>
-                                <Select 
-                                  value={editData.config?.credential_id?.toString() || 'none'} 
-                                  onValueChange={(value) => setEditData({ 
-                                    ...editData, 
-                                    config: { 
-                                      ...editData.config, 
-                                      credential_id: value === 'none' ? null : parseInt(value) 
+                                <Select
+                                  value={editData.config?.credential_id?.toString() || 'none'}
+                                  onValueChange={(value) => setEditData({
+                                    ...editData,
+                                    config: {
+                                      ...editData.config,
+                                      credential_id: value === 'none' ? null : parseInt(value)
                                     }
                                   })}
                                 >
@@ -393,6 +449,33 @@ const PluginDirectConfig = () => {
                                       <SelectItem key={cred.id} value={cred.id.toString()}>
                                         {cred.name || `${cred.domain || ''}\\${cred.username}`}
                                         {cred.verified && ' ✓'}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Proxy</Label>
+                                <Select
+                                  value={editData.proxy_id?.toString() || 'none'}
+                                  onValueChange={(value) => setEditData({
+                                    ...editData,
+                                    proxy_id: value === 'none' ? null : parseInt(value)
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Sem proxy</SelectItem>
+                                    {proxies.filter(p => p.proxy_type === 'socks5' || p.proxy_type === 'socks4').map((proxy) => (
+                                      <SelectItem key={proxy.id} value={proxy.id.toString()}>
+                                        {proxy.name} ({proxy.proxy_type?.toUpperCase()})
+                                      </SelectItem>
+                                    ))}
+                                    {proxies.filter(p => p.proxy_type !== 'socks5' && p.proxy_type !== 'socks4').map((proxy) => (
+                                      <SelectItem key={proxy.id} value={proxy.id.toString()} disabled>
+                                        {proxy.name} ({proxy.proxy_type?.toUpperCase()}) - Requer SOCKS
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -437,6 +520,13 @@ const PluginDirectConfig = () => {
                               <div className="text-xs text-muted-foreground flex items-center gap-1">
                                 <ShieldKeyIcon className="w-3 h-3" />
                                 Credencial: {getCredentialName(instance.config?.credential_id)}
+                              </div>
+                              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                {instance.proxy_id ? (
+                                  <><Wifi className="w-3 h-3" /> Proxy: {getProxyName(instance.proxy_id)}</>
+                                ) : (
+                                  <><WifiOff className="w-3 h-3" /> Sem proxy</>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
