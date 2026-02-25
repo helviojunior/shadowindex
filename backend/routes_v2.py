@@ -4328,33 +4328,35 @@ async def get_leaks_over_time(db: AsyncSession = Depends(get_db_readonly)):
     Retorna dados para o gráfico de Leaks vs. Tempo, agrupados por mês/ano
     usando a data de última modificação do arquivo (file_modified).
     """
-    from sqlalchemy import func, extract, case
+    from sqlalchemy import func, extract, case, and_
     from collections import defaultdict
     
-    # Buscar todos os findings com seus arquivos associados
-    # Fazemos join com DownloadedFile através do file_path ou extracted_file_version_id
+    # Buscar todos os findings com o ServerItem associado (que tem modified_at do plugin)
+    # Join via server_guid + share_name + server_path == full_path
     findings_result = await db.execute(
-        select(GitleaksFinding, DownloadedFile)
+        select(GitleaksFinding, ServerItem)
         .outerjoin(
-            DownloadedFile,
-            GitleaksFinding.extracted_file_version_id == DownloadedFile.id
+            ServerItem,
+            and_(
+                GitleaksFinding.extracted_server_guid == ServerItem.server_guid,
+                GitleaksFinding.share_name == ServerItem.share_name,
+                GitleaksFinding.server_path == ServerItem.full_path
+            )
         )
         .where(GitleaksFinding.is_false_positive == False)
     )
-    
+
     rows = findings_result.all()
-    
-    # Se não conseguiu fazer join pelo file_version_id, tentar pelo file_path
-    # Agrupar por mês/ano da data de modificação do arquivo
+
+    # Agrupar por mês/ano da data de modificação do arquivo (informada pelo plugin)
     monthly_counts = defaultdict(int)
-    
-    for finding, downloaded_file in rows:
+
+    for finding, server_item in rows:
         file_date = None
-        
-        # Tentar obter a data de modificação do arquivo
-        if downloaded_file and downloaded_file.downloaded_at:
-            # Usar a data de download como proxy para data de modificação
-            file_date = downloaded_file.downloaded_at
+
+        # Usar a data de última modificação do arquivo informada pelo plugin
+        if server_item and server_item.modified_at:
+            file_date = server_item.modified_at
         elif finding.scanned_at:
             # Fallback: usar data do scan
             file_date = finding.scanned_at
