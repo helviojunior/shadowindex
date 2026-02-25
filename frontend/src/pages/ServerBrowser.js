@@ -3360,6 +3360,52 @@ const ServerBrowser = () => {
                 Recarregar
               </ContextMenuItem>
             )}
+            {/* Enviar para fila - arquivos e diretórios */}
+            <ContextMenuItem onClick={async () => {
+              if (isFile) {
+                // Arquivo: adicionar na fila de downloads
+                const fileSize = parseInt(item.size) || 0;
+                const filePath = item.fullPath || item.full_path || path;
+                try {
+                  const response = await axios.post(`${API_V2}/downloads`, {
+                    server_id: parseInt(serverId),
+                    share_name: currentShareName,
+                    file_path: filePath,
+                    file_name: item.name,
+                    file_size: fileSize,
+                    max_file_size_bytes: null,
+                    max_depth: null
+                  });
+                  if (response.data.success) {
+                    toast.success(`Adicionado à fila: ${item.name}`);
+                  }
+                } catch (error) {
+                  const errorMsg = error.response?.data?.detail || 'Erro ao enviar para fila';
+                  toast.error(errorMsg);
+                }
+              } else {
+                // Diretório/Share: scan + download via backend
+                const shareName = isShare ? item.share_name : currentShareName;
+                const scanPath = item.fullPath || item.full_path || path;
+                try {
+                  const response = await axios.post(`${API_V2}/downloads/scan`, null, {
+                    params: {
+                      server_id: parseInt(serverId),
+                      share_name: shareName,
+                      path: scanPath,
+                      max_depth: bulkDownloadConfig.depth,
+                      max_file_size_mb: bulkDownloadConfig.maxSize
+                    }
+                  });
+                  toast.success(`${response.data.message}. Acompanhe em Arquivos > Downloads`);
+                } catch (error) {
+                  const errorMsg = error.response?.data?.detail || 'Erro ao enviar para fila';
+                  toast.error(errorMsg);
+                }
+              }
+            }}>
+              Enviar para fila
+            </ContextMenuItem>
             {/* Sync - apenas arquivos */}
             {isFile && (
               <ContextMenuItem onClick={async () => {
