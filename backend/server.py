@@ -496,6 +496,7 @@ class ServerResponse(BaseModel):
     discovered_items_count: int = 0  # Quantidade de arquivos/diretórios descobertos (ServerItems)
     last_verified_at: Optional[datetime]
     created_at: datetime
+    is_unreachable: bool = False
     plugin_instance_id: Optional[int] = None
     plugin_instance_name: Optional[str] = None  # Nome da instância do plugin
     plugin_type: Optional[str] = "soap_api"

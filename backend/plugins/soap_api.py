@@ -25,6 +25,7 @@ from .exceptions import (
     ItemNotFoundException,
     AccessDeniedException,
     ConnectionException,
+    ServerUnreachableException,
     TimeoutException,
     PluginException
 )
@@ -318,7 +319,7 @@ class SoapApiPlugin(BasePlugin):
                             # Check for specific error codes
                             # Code 53 = Network path not found / Server unavailable
                             if "code: 53" in error_message or "code:53" in error_message:
-                                raise ConnectionException(f"Servidor inacessível (erro de rede 53): {error_message}")
+                                raise ServerUnreachableException(server=server_ip, message=f"Servidor inacessível (erro de rede 53): {error_message}")
                             # Code 5 = Access denied
                             elif "code: 5" in error_message or "code:5" in error_message:
                                 raise AccessDeniedException(f"Acesso negado ao servidor: {error_message}")
@@ -372,6 +373,8 @@ class SoapApiPlugin(BasePlugin):
         except AccessDeniedException:
             raise
         except ConnectionException:
+            raise
+        except ServerUnreachableException:
             raise
         except Exception as e:
             logger.error(f"Error listing shares: {e}")

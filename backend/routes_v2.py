@@ -642,7 +642,7 @@ async def list_shares(
     """Lista todos os compartilhamentos do servidor"""
     from plugins.factory import get_plugin_for_server
     from plugins.base import ShareInfo
-    from plugins.exceptions import CredentialNotSetException, ConnectionException, AccessDeniedException
+    from plugins.exceptions import CredentialNotSetException, ConnectionException, AccessDeniedException, ServerUnreachableException
     import xml.etree.ElementTree as ET
     
     server = await get_server_or_404(db, server_id)
@@ -699,9 +699,26 @@ async def list_shares(
                     )
                     db.add(share)
             
+            # Listing succeeded — clear unreachable flag if it was set
+            if server.is_unreachable:
+                server.is_unreachable = False
+
             await db.commit()
             logger.info(f"Updated {len(shares_data)} shares in database for server {server.ip} using plugin {server.plugin_type}")
-        
+
+        except ServerUnreachableException as e:
+            logger.warning(f"Server unreachable {server.ip}: {e}")
+            server.is_unreachable = True
+            await db.commit()
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "server_unreachable",
+                    "message": str(e),
+                    "server_ip": server.ip
+                }
+            )
+
         except CredentialNotSetException as e:
             logger.warning(f"Credential not set for server {server.ip}: {e.message}")
             raise HTTPException(

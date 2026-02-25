@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Search, Plug, ShieldAlert, AlertTriangle, Loader2, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Search, Plug, ShieldAlert, AlertTriangle, Loader2, AlertCircle, Unplug } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -638,6 +638,7 @@ const Servers = () => {
                       </div>
                     </th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">Verificado</th>
+                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">Acesso</th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">
                       <Plug className="w-4 h-4 inline mr-1" />
                       Plugin
@@ -822,6 +823,19 @@ const Servers = () => {
                           <Badge variant="secondary">
                             <XCircle className="w-3 h-3 mr-1" />
                             Não
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        {server.is_unreachable ? (
+                          <Badge variant="destructive" className="bg-red-600">
+                            <Unplug className="w-3 h-3 mr-1" />
+                            No Access
+                          </Badge>
+                        ) : (
+                          <Badge variant="default" className="bg-green-600">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            OK
                           </Badge>
                         )}
                       </td>

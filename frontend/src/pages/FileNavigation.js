@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX } from 'lucide-react';
+import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -58,12 +58,19 @@ const FileNavigation = () => {
               !(server.access_denied_shares_count > 0 && server.discovered_items_count === 0)
   );
   
+  // Inacessíveis: servidor marcado como unreachable (erro de rede 53, etc.)
+  const unreachableServers = filteredServers.filter(
+    server => server.is_unreachable
+  );
+
   // Não acessados: nunca teve acesso verificado (sem shares, sem downloads, sem itens E sem tentativas de acesso negado)
+  // Exclui servidores inacessíveis (esses aparecem na aba própria)
   const notAccessedServers = filteredServers.filter(
-    server => server.shares_count === 0 && 
-              server.downloaded_files_count === 0 && 
+    server => server.shares_count === 0 &&
+              server.downloaded_files_count === 0 &&
               server.discovered_items_count === 0 &&
-              server.access_denied_shares_count === 0
+              server.access_denied_shares_count === 0 &&
+              !server.is_unreachable
   );
 
   const handleServerClick = (serverId) => {
@@ -238,10 +245,27 @@ const FileNavigation = () => {
           </button>
           
           <button
+            onClick={() => setActiveTab('unreachable')}
+            className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
+              activeTab === 'unreachable'
+                ? 'text-orange-500'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            data-testid="tab-unreachable"
+          >
+            <Unplug className="w-4 h-4" />
+            Inacessíveis
+            <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{unreachableServers.length}</span>
+            {activeTab === 'unreachable' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('not-accessed')}
             className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
-              activeTab === 'not-accessed' 
-                ? 'text-green-500' 
+              activeTab === 'not-accessed'
+                ? 'text-green-500'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
             data-testid="tab-not-accessed"
@@ -301,6 +325,34 @@ const FileNavigation = () => {
                   server={server} 
                   colorClass="text-red-500"
                   bgClass="from-red-500/20 to-red-500/5"
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'unreachable' && (
+        <>
+          {unreachableServers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Unplug className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">
+                  {searchTerm
+                    ? 'Nenhum servidor inacessível encontrado com esse filtro'
+                    : 'Nenhum servidor inacessível'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
+              {unreachableServers.map((server) => (
+                <ServerCardCompact
+                  key={server.id}
+                  server={server}
+                  colorClass="text-orange-500"
+                  bgClass="from-orange-500/20 to-orange-500/5"
                 />
               ))}
             </div>

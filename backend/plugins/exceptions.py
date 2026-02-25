@@ -101,6 +101,17 @@ class NotImplementedException(PluginException):
         self.plugin_name = plugin_name
 
 
+class ServerUnreachableException(PluginException):
+    """Raised when a server is unreachable (e.g., network error code 53)"""
+    def __init__(self, server: str, message: str = None, original_error: Exception = None):
+        super().__init__(
+            message or f"Servidor inacessível: {server}",
+            {"server": server, "original_error": str(original_error) if original_error else None}
+        )
+        self.server = server
+        self.original_error = original_error
+
+
 class CredentialNotSetException(PluginException):
     """Raised when a required credential is not configured for an operation"""
     def __init__(self, operation: str = None, plugin_name: str = None, message: str = None):

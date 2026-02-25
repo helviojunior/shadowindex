@@ -67,7 +67,8 @@ import {
   FileText,
   ScanText,
   ShieldAlert,
-  Shield
+  Shield,
+  Unplug
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
@@ -5663,9 +5664,18 @@ const ServerBrowser = () => {
                     <Loader2 className="w-6 h-6 animate-spin" />
                   </div>
                 ) : shares.length === 0 ? (
-                  <p className="text-center text-sm text-muted-foreground py-8">
-                    Nenhum compartilhamento encontrado
-                  </p>
+                  <div className="text-center py-8">
+                    {server?.is_unreachable ? (
+                      <>
+                        <Unplug className="w-8 h-8 mx-auto text-orange-500 mb-2" />
+                        <p className="text-sm font-medium text-orange-500">Servidor inacessível</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum compartilhamento encontrado
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   (() => {
                     // Se há um item focado

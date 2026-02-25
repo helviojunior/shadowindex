@@ -277,6 +277,7 @@ class Server(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     # Plugin configuration - referência para instância de plugin
     plugin_instance_id = Column(Integer, ForeignKey("plugin_instances.id"), nullable=True)
+    is_unreachable = Column(Boolean, default=False)  # True when server is unreachable (e.g., network error 53)
     # Legacy fields (mantidos para compatibilidade)
     plugin_type = Column(String, default="soap_api")  # Deprecated - use plugin_instance_id
     plugin_config = Column(JSON, nullable=True)  # Deprecated - use plugin_instance_id
