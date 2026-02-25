@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug, FolderOpen, FileX } from 'lucide-react';
+import { Server, Search, Loader2, HardDrive, CheckCircle, Clock, ShieldX, Unplug, FolderOpen, FileX, Star, CheckCheck } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -28,8 +28,16 @@ const ServerCard = ({ server, onServerClick }) => (
       >
     <div className="h-full p-4 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
       {/* Server Icon */}
-      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
-        <HardDrive className="w-8 h-8 text-primary" />
+      <div className="relative mb-3">
+        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
+          <HardDrive className="w-8 h-8 text-primary" />
+        </div>
+        {(server.favorite || server.is_checked) && (
+          <div className="absolute -bottom-1 -right-5 flex items-center gap-0.5" style={{ marginLeft: '-20px' }}>
+            {server.favorite && <Star className="w-4 h-4 fill-orange-400 text-orange-400" />}
+            {server.is_checked && <CheckCheck className="w-4 h-4 text-green-500" />}
+          </div>
+        )}
       </div>
 
       {/* Server Name */}

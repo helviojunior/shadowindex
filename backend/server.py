@@ -519,6 +519,8 @@ class ServerResponse(BaseModel):
     name: str
     ip: str
     verified: bool
+    favorite: bool = False
+    is_checked: bool = False
     shares_count: int
     downloaded_files_count: int
     leaks_count: int = 0  # Quantidade de leaks encontrados
@@ -1832,6 +1834,8 @@ async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
             name=server.name,
             ip=server.ip,
             verified=server.verified,
+            favorite=server.favorite,
+            is_checked=server.is_checked,
             shares_count=server.shares_count,
             downloaded_files_count=server.downloaded_files_count,
             leaks_count=leaks_count,
@@ -1949,6 +1953,8 @@ async def get_server(
         name=server.name,
         ip=server.ip,
         verified=server.verified,
+        favorite=server.favorite,
+        is_checked=server.is_checked,
         shares_count=server.shares_count,
         downloaded_files_count=server.downloaded_files_count,
         access_denied_shares_count=access_denied_shares,
@@ -2334,6 +2340,8 @@ class ServerUpdateRequest(BaseModel):
     ip: Optional[str] = None
     name: Optional[str] = None
     plugin_instance_id: Optional[int] = None
+    favorite: Optional[bool] = None
+    is_checked: Optional[bool] = None
     plugin_type: Optional[str] = None  # Deprecated
     plugin_config: Optional[dict] = None  # Deprecated
 
@@ -2351,6 +2359,10 @@ async def update_server(server_id: int, update_data: ServerUpdateRequest, db: As
         server.name = update_data.name
     if update_data.plugin_instance_id is not None:
         server.plugin_instance_id = update_data.plugin_instance_id if update_data.plugin_instance_id else None
+    if update_data.is_checked is not None:
+        server.is_checked = update_data.is_checked
+    if update_data.favorite is not None:
+        server.favorite = update_data.favorite
     # Legacy support
     if update_data.plugin_type is not None:
         server.plugin_type = update_data.plugin_type

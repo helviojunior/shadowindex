@@ -272,6 +272,8 @@ class Server(Base):
     name = Column(String, nullable=False)
     ip = Column(String, nullable=False)
     verified = Column(Boolean, default=False)
+    favorite = Column(Boolean, default=False)
+    is_checked = Column(Boolean, default=False)
     shares_count = Column(Integer, default=0)
     downloaded_files_count = Column(Integer, default=0)
     last_verified_at = Column(DateTime(timezone=True), nullable=True)
@@ -598,6 +600,30 @@ async def apply_pending_migrations():
                     "FOREIGN KEY (proxy_id) REFERENCES proxy_servers(id) ON DELETE SET NULL"
                 ))
                 logger.info("Migration applied: proxy_id added to plugin_instances")
+
+            # Verificar se favorite existe em servers
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'servers' AND column_name = 'favorite'"
+            ))
+            if not result.fetchone():
+                logger.info("Applying migration: adding favorite to servers")
+                await conn.execute(text(
+                    "ALTER TABLE servers ADD COLUMN favorite BOOLEAN DEFAULT FALSE"
+                ))
+                logger.info("Migration applied: favorite added to servers")
+
+            # Verificar se is_checked existe em servers
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'servers' AND column_name = 'is_checked'"
+            ))
+            if not result.fetchone():
+                logger.info("Applying migration: adding is_checked to servers")
+                await conn.execute(text(
+                    "ALTER TABLE servers ADD COLUMN is_checked BOOLEAN DEFAULT FALSE"
+                ))
+                logger.info("Migration applied: is_checked added to servers")
         else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))
@@ -608,6 +634,26 @@ async def apply_pending_migrations():
                     "ALTER TABLE plugin_instances ADD COLUMN proxy_id INTEGER REFERENCES proxy_servers(id)"
                 ))
                 logger.info("Migration applied: proxy_id added to plugin_instances")
+
+            # SQLite: verificar se favorite existe em servers
+            result = await conn.execute(text("PRAGMA table_info(servers)"))
+            columns = [row[1] for row in result.fetchall()]
+            if 'favorite' not in columns:
+                logger.info("Applying migration: adding favorite to servers")
+                await conn.execute(text(
+                    "ALTER TABLE servers ADD COLUMN favorite BOOLEAN DEFAULT FALSE"
+                ))
+                logger.info("Migration applied: favorite added to servers")
+
+            # SQLite: verificar se is_checked existe em servers
+            result = await conn.execute(text("PRAGMA table_info(servers)"))
+            columns = [row[1] for row in result.fetchall()]
+            if 'is_checked' not in columns:
+                logger.info("Applying migration: adding is_checked to servers")
+                await conn.execute(text(
+                    "ALTER TABLE servers ADD COLUMN is_checked BOOLEAN DEFAULT FALSE"
+                ))
+                logger.info("Migration applied: is_checked added to servers")
 
 
 async def init_db():

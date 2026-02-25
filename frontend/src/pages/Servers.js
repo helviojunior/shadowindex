@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Search, Plug, ShieldAlert, AlertTriangle, Loader2, AlertCircle, Unplug, FolderOpen } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Search, Plug, ShieldAlert, AlertTriangle, Loader2, AlertCircle, Unplug, FolderOpen, Star, CheckCheck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -840,8 +840,28 @@ const Servers = () => {
                                 </TooltipContent>
                               </Tooltip>
                             )}
+                            {server.favorite && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Star className="w-4 h-4 fill-orange-400 text-orange-400" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Favorito</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {server.is_checked && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <CheckCheck className="w-4 h-4 text-green-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Verificado</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </TooltipProvider>
-                          {!server.is_unreachable && !server.has_no_admin_shares && (
+                          {!server.is_unreachable && !server.has_no_admin_shares && !server.favorite && !server.is_checked && (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </div>

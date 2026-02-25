@@ -68,7 +68,9 @@ import {
   ScanText,
   ShieldAlert,
   Shield,
-  Unplug
+  Unplug,
+  Star,
+  CheckCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
@@ -5326,7 +5328,43 @@ const ServerBrowser = () => {
             {backLabel}
           </Button>
           <div>
-            <h1 className="text-xl font-semibold">{server.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold">{server.name}</h1>
+              <button
+                onClick={async () => {
+                  const newVal = !server.favorite;
+                  try {
+                    await fetch(`/api/servers/${server.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ favorite: newVal })
+                    });
+                    setServer(prev => ({ ...prev, favorite: newVal }));
+                  } catch (e) { console.error(e); }
+                }}
+                title={server.favorite ? 'Remover favorito' : 'Marcar como favorito'}
+                className="hover:scale-110 transition-transform"
+              >
+                <Star className={`w-5 h-5 ${server.favorite ? 'fill-orange-400 text-orange-400' : 'text-muted-foreground'}`} />
+              </button>
+              <button
+                onClick={async () => {
+                  const newVal = !server.is_checked;
+                  try {
+                    await fetch(`/api/servers/${server.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ is_checked: newVal })
+                    });
+                    setServer(prev => ({ ...prev, is_checked: newVal }));
+                  } catch (e) { console.error(e); }
+                }}
+                title={server.is_checked ? 'Remover verificado' : 'Marcar como verificado'}
+                className="hover:scale-110 transition-transform"
+              >
+                <CheckCheck className={`w-5 h-5 ${server.is_checked ? 'text-green-500' : 'text-muted-foreground'}`} />
+              </button>
+            </div>
             <div className="flex items-center gap-2">
               <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{server.ip}</code>
               {server.plugin_instance_name && (
