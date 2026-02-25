@@ -2239,7 +2239,11 @@ const ServerBrowser = () => {
         });
       }
       
-      // Diretório pode estar vazio, não precisa de toast
+      // Toast informativo quando diretório/share está vazio
+      if (items.length === 0) {
+        const label = (isSharePath || nodeId.startsWith('share-')) ? 'Compartilhamento' : 'Diretório';
+        toast.info(`${label} vazio`, { duration: 3000 });
+      }
     } catch (error) {
       console.error('Error loading directory:', error);
       
