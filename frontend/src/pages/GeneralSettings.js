@@ -39,7 +39,11 @@ const GeneralSettings = () => {
     auto_ocr_enabled: 'true',
     auto_ocr_extensions: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.odt,.ods,.odp',
     auto_ocr_mimetypes: 'application/pdf,image/,text/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument',
-    auto_ocr_excluded_extensions: '.svg,.jpeg,.jpg,.png,.gif,.ico,.css,.html,.htm,.ttf,.woff,.woff2,.pyc,.exe,.dll,.msi,.emf,.bdb,.vox,.bin,.dat,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc,.ascx'
+    auto_ocr_excluded_extensions: '.svg,.jpeg,.jpg,.png,.gif,.ico,.css,.html,.htm,.ttf,.woff,.woff2,.pyc,.exe,.dll,.msi,.emf,.bdb,.vox,.bin,.dat,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc,.ascx',
+    auto_index_enabled: 'true',
+    auto_index_max_size_mb: '10',
+    auto_index_extensions: '.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml',
+    auto_index_mimetypes: 'text/'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,6 +53,8 @@ const GeneralSettings = () => {
   const [newOcrExtension, setNewOcrExtension] = useState('');
   const [newOcrMimetype, setNewOcrMimetype] = useState('');
   const [newOcrExcludedExtension, setNewOcrExcludedExtension] = useState('');
+  const [newAutoIndexExtension, setNewAutoIndexExtension] = useState('');
+  const [newAutoIndexMimetype, setNewAutoIndexMimetype] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -685,6 +691,173 @@ const GeneralSettings = () => {
               <li>• Requer Apache Tika configurado e em execução</li>
               <li>• MIME types são verificados com match parcial (ex: "image/" captura "image/png", "image/jpeg", etc.)</li>
               <li>• <strong className="text-red-400">Extensões excluídas têm precedência</strong> sobre inclusões por extensão ou MIME type</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Auto-Index Settings */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <Database className="w-5 h-5 text-cyan-500" />
+            Auto-Index
+          </CardTitle>
+          <CardDescription>Indexação automática do conteúdo bruto de arquivos de texto quando o OCR não é executado ou falha</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Enable/Disable */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="auto_index_enabled" className="flex items-center gap-2">
+                {settings.auto_index_enabled === 'true' ? (
+                  <Eye className="w-4 h-4 text-cyan-500" />
+                ) : (
+                  <EyeOff className="w-4 h-4 text-muted-foreground" />
+                )}
+                Auto-Index habilitado
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">Indexar automaticamente conteúdo de arquivos de texto skipados pelo OCR</p>
+            </div>
+            <Switch
+              id="auto_index_enabled"
+              checked={settings.auto_index_enabled === 'true'}
+              onCheckedChange={(checked) => handleChange('auto_index_enabled', checked ? 'true' : 'false')}
+            />
+          </div>
+
+          {/* Max Size */}
+          <div>
+            <Label htmlFor="auto_index_max_size_mb">Tamanho máximo do arquivo (MB)</Label>
+            <Input
+              id="auto_index_max_size_mb"
+              type="number"
+              min="1"
+              max="500"
+              value={settings.auto_index_max_size_mb}
+              onChange={(e) => handleChange('auto_index_max_size_mb', e.target.value)}
+              className="w-32 mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Arquivos maiores que este limite não serão indexados</p>
+          </div>
+
+          {/* Extensions */}
+          <div>
+            <Label>Extensões para Auto-Index <span className="text-muted-foreground font-normal">(suporta wildcards: .env*)</span></Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                placeholder=".txt ou .env*"
+                value={newAutoIndexExtension}
+                onChange={(e) => setNewAutoIndexExtension(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newAutoIndexExtension.trim()) {
+                    const current = settings.auto_index_extensions ? settings.auto_index_extensions.split(',').filter(e => e) : [];
+                    const ext = newAutoIndexExtension.trim().startsWith('.') ? newAutoIndexExtension.trim() : '.' + newAutoIndexExtension.trim();
+                    if (!current.includes(ext.toLowerCase())) {
+                      handleChange('auto_index_extensions', [...current, ext.toLowerCase()].join(','));
+                    }
+                    setNewAutoIndexExtension('');
+                  }
+                }}
+                className="w-40"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (newAutoIndexExtension.trim()) {
+                    const current = settings.auto_index_extensions ? settings.auto_index_extensions.split(',').filter(e => e) : [];
+                    const ext = newAutoIndexExtension.trim().startsWith('.') ? newAutoIndexExtension.trim() : '.' + newAutoIndexExtension.trim();
+                    if (!current.includes(ext.toLowerCase())) {
+                      handleChange('auto_index_extensions', [...current, ext.toLowerCase()].join(','));
+                    }
+                    setNewAutoIndexExtension('');
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-2">
+              {(settings.auto_index_extensions || '').split(',').filter(e => e).map((ext, idx) => (
+                <Badge key={idx} variant="secondary" className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                  {ext}
+                  <button
+                    onClick={() => {
+                      const current = settings.auto_index_extensions.split(',').filter(e => e && e !== ext);
+                      handleChange('auto_index_extensions', current.join(','));
+                    }}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* MIME Types */}
+          <div>
+            <Label>MIME Types para Auto-Index</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                placeholder="text/"
+                value={newAutoIndexMimetype}
+                onChange={(e) => setNewAutoIndexMimetype(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newAutoIndexMimetype.trim()) {
+                    const current = settings.auto_index_mimetypes ? settings.auto_index_mimetypes.split(',').filter(m => m) : [];
+                    if (!current.includes(newAutoIndexMimetype.trim().toLowerCase())) {
+                      handleChange('auto_index_mimetypes', [...current, newAutoIndexMimetype.trim().toLowerCase()].join(','));
+                    }
+                    setNewAutoIndexMimetype('');
+                  }
+                }}
+                className="w-48"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (newAutoIndexMimetype.trim()) {
+                    const current = settings.auto_index_mimetypes ? settings.auto_index_mimetypes.split(',').filter(m => m) : [];
+                    if (!current.includes(newAutoIndexMimetype.trim().toLowerCase())) {
+                      handleChange('auto_index_mimetypes', [...current, newAutoIndexMimetype.trim().toLowerCase()].join(','));
+                    }
+                    setNewAutoIndexMimetype('');
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-2">
+              {(settings.auto_index_mimetypes || '').split(',').filter(m => m).map((mime, idx) => (
+                <Badge key={idx} variant="secondary" className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                  {mime}
+                  <button
+                    onClick={() => {
+                      const current = settings.auto_index_mimetypes.split(',').filter(m => m && m !== mime);
+                      handleChange('auto_index_mimetypes', current.join(','));
+                    }}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/30 p-4 mt-4">
+            <h4 className="text-sm font-medium text-cyan-400 mb-2">Sobre o Auto-Index</h4>
+            <ul className="text-xs text-cyan-300/80 space-y-1">
+              <li>• Quando o OCR é skipado ou falha, o Auto-Index tenta ler o conteúdo bruto do arquivo</li>
+              <li>• O conteúdo indexado fica disponível para busca, assim como o texto extraído pelo OCR</li>
+              <li>• <strong className="text-cyan-300">Todos os arquivos que tiverem o OCR executado com sucesso terão o conteúdo do OCR automaticamente indexado, independente desta configuração</strong></li>
+              <li>• Extensões suportam wildcards (ex: ".env*" captura ".env", ".env.local", ".env.production")</li>
+              <li>• MIME types são verificados com match parcial (ex: "text/" captura "text/plain", "text/csv", etc.)</li>
             </ul>
           </div>
         </CardContent>

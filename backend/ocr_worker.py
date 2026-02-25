@@ -934,6 +934,105 @@ class OCRWorker:
         # Não aguardamos aqui - as tasks rodam em background
         # Isso permite que o loop principal continue verificando novos jobs
     
+    async def _try_auto_index_content(self, job, db):
+        """Tenta indexar o conteúdo bruto do arquivo quando OCR não é executado ou falha."""
+        from database import AppSettings, FileVersion
+        import os
+        import mimetypes as mt_module
+
+        try:
+            # 1. Verificar se auto_index está habilitado
+            settings_result = await db.execute(
+                select(AppSettings).where(
+                    AppSettings.key.in_([
+                        'auto_index_enabled',
+                        'auto_index_max_size_mb',
+                        'auto_index_extensions',
+                        'auto_index_mimetypes'
+                    ])
+                )
+            )
+            settings_map = {s.key: s.value for s in settings_result.scalars().all()}
+
+            if settings_map.get('auto_index_enabled', 'true') != 'true':
+                return
+
+            # 2. Verificar se o arquivo existe
+            if not job.local_path or not os.path.exists(job.local_path):
+                return
+
+            # 3. Verificar tamanho do arquivo
+            max_size_mb = float(settings_map.get('auto_index_max_size_mb', '10'))
+            file_size = os.path.getsize(job.local_path)
+            if file_size > max_size_mb * 1024 * 1024:
+                logger.debug(f"Auto-index skipped for {job.file_name}: file too large ({file_size} bytes)")
+                return
+
+            # 4. Verificar extensão OU mimetype match
+            import fnmatch as fnmatch_module
+            allowed_extensions = [e.strip().lower() for e in settings_map.get('auto_index_extensions', '').split(',') if e.strip()]
+            allowed_mimetypes = [m.strip().lower() for m in settings_map.get('auto_index_mimetypes', '').split(',') if m.strip()]
+
+            file_name_lower = (job.file_name or '').lower()
+            file_ext = os.path.splitext(file_name_lower)[1].lower()
+            file_mimetype, _ = mt_module.guess_type(job.local_path or job.file_name or '')
+
+            ext_match = False
+            for pattern in allowed_extensions:
+                if '*' in pattern or '?' in pattern:
+                    # Wildcard: ex .env* casa com .env, .env.local, .env.production
+                    if fnmatch_module.fnmatch(file_name_lower, '*' + pattern if not pattern.startswith('*') else pattern):
+                        ext_match = True
+                        break
+                else:
+                    # Match exato de extensão
+                    if file_ext == pattern:
+                        ext_match = True
+                        break
+            mime_match = False
+            if file_mimetype:
+                for allowed_mime in allowed_mimetypes:
+                    if file_mimetype.lower().startswith(allowed_mime):
+                        mime_match = True
+                        break
+
+            if not ext_match and not mime_match:
+                return
+
+            # 5. Ler conteúdo do arquivo (UTF-8 com fallback latin-1)
+            content = None
+            try:
+                with open(job.local_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                try:
+                    with open(job.local_path, 'r', encoding='latin-1') as f:
+                        content = f.read()
+                except Exception:
+                    return
+            except Exception:
+                return
+
+            if not content or not content.strip():
+                return
+
+            # 6. Salvar em FileVersion.ocr_content
+            if job.version_id:
+                version_result = await db.execute(
+                    select(FileVersion).where(FileVersion.id == job.version_id)
+                )
+                version = version_result.scalar_one_or_none()
+                if version:
+                    version.ocr_content = content
+                    version.ocr_processed = True
+                    version.ocr_processed_at = datetime.now(timezone.utc)
+                    await db.commit()
+                    logger.info(f"Auto-indexed content for {job.file_name} ({len(content)} chars)")
+                    print(f"=== OCR WORKER: Auto-indexed content for {job.file_name} ({len(content)} chars) ===", flush=True)
+
+        except Exception as e:
+            logger.warning(f"Auto-index failed for {job.file_name}: {e}")
+
     async def _process_single_job(self, job_id: int):
         """Processa um único job de OCR (executado como task assíncrona)"""
         from database import AsyncSessionLocal, OCRJob, FileVersion, AppSettings, Server
@@ -1025,6 +1124,7 @@ class OCRWorker:
                     await db.commit()
                     print(f"=== OCR WORKER: Skipping job {job.id} for {job.file_name} ({skip_reason}) ===", flush=True)
                     logger.info(f"OCR job {job.id} skipped for {job.file_name} ({skip_reason})")
+                    await self._try_auto_index_content(job, db)
                     await emit_ocr_stats()
                     return
                 
@@ -1204,6 +1304,7 @@ class OCRWorker:
                         job.status = 'failed'
                         job.error_message = error or 'OCR failed - no text extracted'
                         print(f"=== OCR WORKER: Job {job.id} failed: {job.error_message} ===", flush=True)
+                        await self._try_auto_index_content(job, db)
                     
                 except FileNotFoundError as e:
                     job.status = 'failed'
