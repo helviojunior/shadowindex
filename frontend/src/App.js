@@ -23,6 +23,8 @@ import CriticalSearchSettings from "@/pages/CriticalSearchSettings";
 import PluginSoapConfig from "@/pages/PluginSoapConfig";
 import PluginDirectConfig from "@/pages/PluginDirectConfig";
 import ScanPools from "@/pages/ScanPools";
+import ShareScan from "@/pages/ShareScan";
+import ShareScanJobs from "@/pages/ShareScanJobs";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 import { ConnectionStatusProvider } from "@/contexts/ConnectionStatusContext";
@@ -52,12 +54,14 @@ function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/servers" element={<Servers />} />
                     <Route path="/servers/import" element={<ImportServers />} />
+                    <Route path="/servers/share-scan" element={<ShareScan />} />
                     <Route path="/servers/:serverId" element={<ServerBrowser />} />
                     <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
                     <Route path="/files/browse" element={<FileNavigation />} />
                     <Route path="/downloads" element={<Downloads />} />
                     <Route path="/leaks" element={<Leaks />} />
                     <Route path="/ocr" element={<OCRJobs />} />
+                    <Route path="/jobs/share-scan" element={<ShareScanJobs />} />
                     <Route path="/credentials" element={<Credentials />} />
                     <Route path="/sql" element={<DatabaseConnections />} />
                     <Route path="/sql/presets" element={<SqlPresets />} />

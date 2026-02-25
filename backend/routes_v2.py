@@ -5588,3 +5588,374 @@ async def reset_critical_search_config(db: AsyncSession = Depends(get_db)):
         await db.commit()
     
     return {"success": True, "config": DEFAULT_CRITICAL_SEARCH_CONFIG}
+
+
+# ==========================================
+# Share Scan Jobs
+# ==========================================
+
+def _filter_servers_by_pool(servers, pool):
+    """Filtra servidores pelas regras de include/exclude do ScanPool.
+    Exclusão tem precedência sobre inclusão."""
+    import fnmatch
+    import ipaddress
+
+    include_servers = [s.strip() for s in (pool.include_servers or "").split(",") if s.strip()]
+    exclude_servers = [s.strip() for s in (pool.exclude_servers or "").split(",") if s.strip()]
+    include_ips = [s.strip() for s in (pool.include_ips or "").split(",") if s.strip()]
+    exclude_ips = [s.strip() for s in (pool.exclude_ips or "").split(",") if s.strip()]
+
+    def _ip_matches(ip_str, patterns):
+        """Verifica se um IP bate com algum padrão (IP exato ou CIDR)"""
+        try:
+            addr = ipaddress.ip_address(ip_str)
+        except ValueError:
+            return False
+        for p in patterns:
+            try:
+                if '/' in p:
+                    if addr in ipaddress.ip_network(p, strict=False):
+                        return True
+                else:
+                    if addr == ipaddress.ip_address(p):
+                        return True
+            except ValueError:
+                continue
+        return False
+
+    def _name_matches(name, patterns):
+        """Verifica se um nome bate com algum padrão (wildcard)"""
+        for p in patterns:
+            if fnmatch.fnmatch(name, p):
+                return True
+        return False
+
+    filtered = []
+    for srv in servers:
+        # Exclusão tem precedência
+        if exclude_servers and _name_matches(srv.name, exclude_servers):
+            continue
+        if exclude_ips and _ip_matches(srv.ip, exclude_ips):
+            continue
+
+        # Se há filtros de inclusão, o servidor precisa bater em pelo menos um
+        has_include = bool(include_servers or include_ips)
+        if has_include:
+            name_ok = _name_matches(srv.name, include_servers) if include_servers else False
+            ip_ok = _ip_matches(srv.ip, include_ips) if include_ips else False
+            if not name_ok and not ip_ok:
+                continue
+
+        filtered.append(srv)
+
+    return filtered
+
+
+@router.get("/share-scan/preview/{pool_id}")
+async def preview_share_scan(pool_id: int, db: AsyncSession = Depends(get_db_readonly)):
+    """Preview: retorna servidores que seriam scaneados sem criar jobs"""
+    from database import ScanPool
+
+    result = await db.execute(select(ScanPool).where(ScanPool.id == pool_id))
+    pool = result.scalar_one_or_none()
+    if not pool:
+        raise HTTPException(status_code=404, detail="Scan Pool não encontrado")
+
+    servers_result = await db.execute(select(Server).order_by(Server.name))
+    all_servers = servers_result.scalars().all()
+
+    filtered = _filter_servers_by_pool(all_servers, pool)
+
+    return {
+        "pool": {
+            "id": pool.id,
+            "name": pool.name,
+            "simultaneous_scanners": pool.simultaneous_scanners,
+            "request_delay_min": pool.request_delay_min,
+            "request_delay_max": pool.request_delay_max,
+        },
+        "total_servers": len(all_servers),
+        "filtered_count": len(filtered),
+        "servers": [
+            {
+                "id": srv.id,
+                "name": srv.name,
+                "ip": srv.ip,
+                "verified": srv.verified,
+                "shares_count": srv.shares_count,
+                "is_unreachable": srv.is_unreachable,
+            }
+            for srv in filtered
+        ]
+    }
+
+
+@router.post("/share-scan/start")
+async def start_share_scan(
+    data: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """Inicia um scan de shares: cria 1 job por servidor filtrado pelo pool"""
+    from database import ScanPool, ShareScanJob
+
+    scan_pool_id = data.get("scan_pool_id")
+    if not scan_pool_id:
+        raise HTTPException(status_code=400, detail="scan_pool_id é obrigatório")
+
+    result = await db.execute(select(ScanPool).where(ScanPool.id == scan_pool_id))
+    pool = result.scalar_one_or_none()
+    if not pool:
+        raise HTTPException(status_code=404, detail="Scan Pool não encontrado")
+
+    servers_result = await db.execute(select(Server).order_by(Server.name))
+    all_servers = servers_result.scalars().all()
+
+    filtered = _filter_servers_by_pool(all_servers, pool)
+    if not filtered:
+        raise HTTPException(status_code=400, detail="Nenhum servidor encontrado com os filtros do pool")
+
+    jobs_created = 0
+    for srv in filtered:
+        job = ShareScanJob(
+            server_id=srv.id,
+            scan_pool_id=scan_pool_id,
+            status='pending',
+        )
+        db.add(job)
+        jobs_created += 1
+
+    await db.commit()
+
+    return {
+        "success": True,
+        "jobs_created": jobs_created,
+        "message": f"{jobs_created} jobs de scan criados"
+    }
+
+
+@router.get("/share-scan/jobs")
+async def list_share_scan_jobs(
+    status: Optional[str] = None,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db_readonly)
+):
+    """Lista jobs de share scan"""
+    from database import ShareScanJob, ScanPool
+    from sqlalchemy import case
+
+    status_order = case(
+        (ShareScanJob.status == 'running', 0),
+        (ShareScanJob.status == 'pending', 1),
+        else_=2
+    )
+
+    query = (
+        select(ShareScanJob, Server.name.label('server_name'), Server.ip.label('server_ip'))
+        .outerjoin(Server, ShareScanJob.server_id == Server.id)
+        .order_by(status_order, ShareScanJob.priority.desc(), ShareScanJob.created_at.asc())
+    )
+
+    if status:
+        query = query.where(ShareScanJob.status == status)
+
+    query = query.limit(limit)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    return [
+        {
+            "id": job.id,
+            "server_id": job.server_id,
+            "server_name": server_name or f"Server #{job.server_id}",
+            "server_ip": server_ip or "",
+            "scan_pool_id": job.scan_pool_id,
+            "status": job.status,
+            "shares_found": job.shares_found,
+            "error_message": job.error_message,
+            "priority": job.priority,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        }
+        for job, server_name, server_ip in rows
+    ]
+
+
+@router.get("/share-scan/stats")
+async def get_share_scan_stats(db: AsyncSession = Depends(get_db_readonly)):
+    """Retorna estatísticas dos jobs de share scan"""
+    from database import ShareScanJob
+    from sqlalchemy import func
+
+    status_result = await db.execute(
+        select(ShareScanJob.status, func.count(ShareScanJob.id))
+        .group_by(ShareScanJob.status)
+    )
+    status_counts = dict(status_result.all())
+
+    return {
+        "total": sum(status_counts.values()),
+        "pending": status_counts.get('pending', 0),
+        "running": status_counts.get('running', 0),
+        "completed": status_counts.get('completed', 0),
+        "failed": status_counts.get('failed', 0),
+        "cancelled": status_counts.get('cancelled', 0),
+    }
+
+
+@router.post("/share-scan/jobs/{job_id}/cancel")
+async def cancel_share_scan_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Cancela um job de share scan pendente ou em execução"""
+    from database import ShareScanJob
+
+    result = await db.execute(select(ShareScanJob).where(ShareScanJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    if job.status not in ['pending', 'running']:
+        raise HTTPException(status_code=400, detail=f"Não é possível cancelar job com status '{job.status}'")
+
+    job.status = 'cancelled'
+    job.error_message = 'Cancelado pelo usuário'
+    job.completed_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return {"success": True, "message": "Job cancelado com sucesso", "job_id": job_id}
+
+
+@router.post("/share-scan/jobs/{job_id}/retry")
+async def retry_share_scan_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Reexecuta um job de share scan (cancelled ou failed)"""
+    from database import ShareScanJob
+
+    result = await db.execute(select(ShareScanJob).where(ShareScanJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    if job.status not in ['cancelled', 'failed']:
+        raise HTTPException(status_code=400, detail=f"Apenas jobs cancelados ou falhados podem ser reexecutados. Status atual: {job.status}")
+
+    job.status = 'pending'
+    job.error_message = None
+    job.completed_at = None
+    job.shares_found = 0
+    job.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return {"success": True, "message": f"Job {job_id} reenfileirado para processamento"}
+
+
+@router.post("/share-scan/jobs/{job_id}/prioritize")
+async def prioritize_share_scan_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Prioriza um job de share scan pendente"""
+    from database import ShareScanJob
+    from sqlalchemy import func
+
+    result = await db.execute(select(ShareScanJob).where(ShareScanJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    if job.status != 'pending':
+        raise HTTPException(status_code=400, detail=f"Apenas jobs pendentes podem ser priorizados (status atual: '{job.status}')")
+
+    max_priority_result = await db.execute(
+        select(func.max(ShareScanJob.priority)).where(ShareScanJob.status == 'pending')
+    )
+    max_priority = max_priority_result.scalar() or 0
+    job.priority = max_priority + 1
+    await db.commit()
+
+    return {"success": True, "message": f"Job priorizado (prioridade: {job.priority})", "job_id": job_id, "new_priority": job.priority}
+
+
+@router.post("/share-scan/cancel-all")
+async def cancel_all_share_scan_jobs(db: AsyncSession = Depends(get_db)):
+    """Cancela todos os jobs de share scan pendentes ou em execução"""
+    from database import ShareScanJob
+
+    result = await db.execute(
+        update(ShareScanJob)
+        .where(ShareScanJob.status.in_(['pending', 'running']))
+        .values(
+            status='cancelled',
+            error_message='Cancelado pelo usuário (cancel-all)',
+            completed_at=datetime.now(timezone.utc)
+        )
+    )
+    await db.commit()
+
+    return {"success": True, "cancelled": result.rowcount, "message": f"{result.rowcount} jobs cancelados"}
+
+
+@router.post("/share-scan/retry-failed")
+async def retry_failed_share_scan_jobs(db: AsyncSession = Depends(get_db)):
+    """Reexecuta todos os jobs de share scan falhados"""
+    from database import ShareScanJob
+
+    result = await db.execute(
+        update(ShareScanJob)
+        .where(ShareScanJob.status == 'failed')
+        .values(
+            status='pending',
+            error_message=None,
+            completed_at=None,
+            shares_found=0,
+            updated_at=datetime.now(timezone.utc)
+        )
+    )
+    await db.commit()
+
+    return {"success": True, "count": result.rowcount, "message": f"{result.rowcount} jobs falhados reenfileirados"}
+
+
+@router.post("/share-scan/retry-cancelled")
+async def retry_cancelled_share_scan_jobs(db: AsyncSession = Depends(get_db)):
+    """Reexecuta todos os jobs de share scan cancelados"""
+    from database import ShareScanJob
+
+    result = await db.execute(
+        update(ShareScanJob)
+        .where(ShareScanJob.status == 'cancelled')
+        .values(
+            status='pending',
+            error_message=None,
+            completed_at=None,
+            shares_found=0,
+            updated_at=datetime.now(timezone.utc)
+        )
+    )
+    await db.commit()
+
+    return {"success": True, "count": result.rowcount, "message": f"{result.rowcount} jobs cancelados reenfileirados"}
+
+
+@router.delete("/share-scan/jobs/clear-finished")
+async def clear_finished_share_scan_jobs(db: AsyncSession = Depends(get_db)):
+    """Remove todos os jobs de share scan finalizados"""
+    from database import ShareScanJob
+
+    result = await db.execute(
+        delete(ShareScanJob).where(ShareScanJob.status.in_(['completed', 'failed', 'cancelled']))
+    )
+    await db.commit()
+
+    return {"deleted": result.rowcount, "message": f"{result.rowcount} jobs removidos"}
+
+
+@router.delete("/share-scan/jobs/{job_id}")
+async def delete_share_scan_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Remove um job de share scan específico"""
+    from database import ShareScanJob
+
+    result = await db.execute(select(ShareScanJob).where(ShareScanJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    if job.status in ['pending', 'running']:
+        raise HTTPException(status_code=400, detail="Não é possível deletar jobs pendentes ou em execução. Cancele primeiro.")
+
+    await db.execute(delete(ShareScanJob).where(ShareScanJob.id == job_id))
+    await db.commit()
+
+    return {"success": True, "message": f"Job {job_id} removido com sucesso"}

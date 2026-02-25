@@ -68,6 +68,7 @@ const menuStructure = [
     children: [
       { id: 'servers-list', path: '/servers', label: 'Servidores' },
       { id: 'servers-import', path: '/servers/import', label: 'Importar Servidores' },
+      { id: 'share-scan', path: '/servers/share-scan', label: 'Share Scan' },
     ]
   },
   { 
@@ -95,6 +96,7 @@ const menuStructure = [
     children: [
       { id: 'downloads', path: '/downloads', label: 'Downloads' },
       { id: 'ocr', path: '/ocr', label: 'OCR' },
+      { id: 'share-scan-jobs', path: '/jobs/share-scan', label: 'Share Scan' },
     ]
   },
   { 

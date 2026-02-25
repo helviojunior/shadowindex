@@ -519,6 +519,28 @@ class ScanPool(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
+class ShareScanJob(Base):
+    """Jobs de scan de shares em servidores"""
+    __tablename__ = "share_scan_jobs"
+    __table_args__ = (
+        Index('idx_share_scan_jobs_status', 'status'),
+        Index('idx_share_scan_jobs_server_id', 'server_id'),
+        Index('idx_share_scan_jobs_scan_pool_id', 'scan_pool_id'),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_id = Column(Integer, ForeignKey("servers.id"), nullable=False)
+    scan_pool_id = Column(Integer, ForeignKey("scan_pools.id"), nullable=False)
+    status = Column(String, default='pending')  # pending, running, completed, failed, cancelled
+    shares_found = Column(Integer, default=0)
+    error_message = Column(String, nullable=True)
+    priority = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
 class AppSettings(Base):
     """Configurações gerais da aplicação"""
     __tablename__ = "app_settings"
