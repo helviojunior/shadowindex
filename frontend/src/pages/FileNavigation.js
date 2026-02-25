@@ -291,7 +291,7 @@ const FileNavigation = () => {
             onClick={() => setActiveTab('not-accessed')}
             className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${
               activeTab === 'not-accessed'
-                ? 'text-green-500'
+                ? 'text-blue-500'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
             data-testid="tab-not-accessed"
@@ -300,7 +300,7 @@ const FileNavigation = () => {
             Não Acessados
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{notAccessedServers.length}</span>
             {activeTab === 'not-accessed' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
             )}
           </button>
         </div>
@@ -311,7 +311,7 @@ const FileNavigation = () => {
         <>
           {accessedServers.length === 0 ? (
             <Card>
-              <CardContent className="py-12 text-center">
+              <CardContent className="pt-[36px] pb-12 text-center">
                 <CheckCircle className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
                   {searchTerm 
@@ -334,7 +334,7 @@ const FileNavigation = () => {
         <>
           {accessDeniedServers.length === 0 ? (
             <Card>
-              <CardContent className="py-12 text-center">
+              <CardContent className="pt-[36px] pb-12 text-center">
                 <ShieldX className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
                   {searchTerm 
@@ -362,7 +362,7 @@ const FileNavigation = () => {
         <>
           {unreachableServers.length === 0 ? (
             <Card>
-              <CardContent className="py-12 text-center">
+              <CardContent className="pt-[36px] pb-12 text-center">
                 <Unplug className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
                   {searchTerm
@@ -390,7 +390,7 @@ const FileNavigation = () => {
         <>
           {notAccessedServers.length === 0 ? (
             <Card>
-              <CardContent className="py-12 text-center">
+              <CardContent className="pt-[36px] pb-12 text-center">
                 <Clock className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
                   {searchTerm 
