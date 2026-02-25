@@ -20,6 +20,7 @@ import os
 import sys
 import fnmatch
 import mimetypes
+import re
 from datetime import datetime, timezone
 
 # Adicionar o diretório backend ao path
@@ -79,11 +80,21 @@ def matches_mimetype(file_path, file_name, allowed_mimetypes):
 
 
 def read_file_content(file_path):
-    """Lê o conteúdo do arquivo (bytes -> decode UTF-8 ignorando erros)."""
     try:
         with open(file_path, 'rb') as f:
-            bData = f.read()
-        return bData.decode('utf-8', 'ignore')
+            content = f.read().decode('utf-8', 'ignore')
+
+        # remove \r
+        content = content.replace('\r', '')
+
+        # remove não-printáveis (exceto \n e \t)
+        content = re.sub(r'[^\x20-\x7E\n\t]', '', content)
+
+        # colapsa múltiplos \n em apenas um
+        content = re.sub(r'\n+', '\n', content)
+
+        return content
+
     except Exception:
         return None
 

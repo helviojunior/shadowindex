@@ -6,6 +6,7 @@ Processa arquivos na fila de OCR usando Apache Tika.
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -1003,8 +1004,16 @@ class OCRWorker:
             content = None
             try:
                 with open(job.local_path, 'rb') as f:
-                    bData = f.read()
-                content = bData.decode('utf-8', 'ignore')
+                    content = f.read().decode('utf-8', 'ignore')
+
+                # remove \r
+                content = content.replace('\r', '')
+
+                # remove não-printáveis (exceto \n e \t)
+                content = re.sub(r'[^\x20-\x7E\n\t]', '', content)
+
+                # colapsa múltiplos \n em apenas um
+                content = re.sub(r'\n+', '\n', content)
             except Exception:
                 return
 
