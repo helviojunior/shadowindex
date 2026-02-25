@@ -1140,7 +1140,12 @@ const ServerBrowser = () => {
         responseType: 'arraybuffer'
       });
 
-      const bytes = new Uint8Array(response.data);
+      const allBytes = new Uint8Array(response.data);
+      const totalSize = allBytes.length;
+      const MAX_HEXDUMP = 4096;
+      const truncated = totalSize > MAX_HEXDUMP;
+      const bytes = truncated ? allBytes.slice(0, MAX_HEXDUMP) : allBytes;
+
       let hexdump = '';
       const bytesPerLine = 16;
 
@@ -1164,7 +1169,16 @@ const ServerBrowser = () => {
         hexdump += `${offsetHex}  ${hexPart} |${asciiPart}|\n`;
       }
 
-      const totalSize = bytes.length;
+      if (truncated) {
+        const remaining = totalSize - MAX_HEXDUMP;
+        const remainingStr = remaining > 1024 * 1024
+          ? `${(remaining / (1024 * 1024)).toFixed(2)} MB`
+          : remaining > 1024
+            ? `${(remaining / 1024).toFixed(2)} KB`
+            : `${remaining} bytes`;
+        hexdump += `\n... truncado - mais ${remainingStr} restantes (${totalSize.toLocaleString()} bytes total) ...\n`;
+      }
+
       const sizeStr = totalSize > 1024 * 1024
         ? `${(totalSize / (1024 * 1024)).toFixed(2)} MB`
         : totalSize > 1024
