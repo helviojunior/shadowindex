@@ -32,7 +32,8 @@ from .exceptions import (
     AuthenticationFailureException,
     NotImplementedException,
     AccessDeniedException,
-    CredentialNotSetException
+    CredentialNotSetException,
+    ServerUnreachableException
 )
 from .cache import get_cache
 
@@ -476,6 +477,19 @@ class DirectInteractionPlugin(BasePlugin):
                     username=username,
                     domain=domain,
                     reason="Conta bloqueada"
+                )
+            elif any(keyword in error_msg for keyword in [
+                "timed out", "timeout", "connection refused",
+                "host unreachable", "network unreachable",
+                "no route to host", "connection error",
+                "errno 10061", "errno 10060", "errno 110", "errno 111",
+                "errno 113", "netbioserror", "netbiostimeout",
+                "connection aborted", "network is unreachable"
+            ]):
+                raise ServerUnreachableException(
+                    server=server_ip,
+                    message=f"Servidor inacessível: {str(e)}",
+                    original_error=e
                 )
             else:
                 raise ConnectionException(

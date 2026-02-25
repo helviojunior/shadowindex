@@ -1804,7 +1804,18 @@ const ServerBrowser = () => {
       
     } catch (error) {
       console.error('Error loading shares:', error);
-      
+
+      // Verificar se é erro de servidor inacessível (503)
+      if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
+        const detail = error.response.data.detail;
+        toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+          duration: 6000,
+          description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+        });
+        setLoadingShares(false);
+        return;
+      }
+
       // Verificar se é erro de credencial não configurada
       if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
         const detail = error.response.data.detail;
@@ -1852,8 +1863,14 @@ const ServerBrowser = () => {
         const fallbackResponse = await axios.get(`${API_V2}/servers/${serverId}/shares?refresh=${ignoreCache}`);
         setShares(fallbackResponse.data);
       } catch (fallbackError) {
-        // Verificar se fallback também é erro de credencial
-        if (fallbackError.response?.status === 422 && fallbackError.response?.data?.detail?.error === 'credential_not_set') {
+        // Verificar se fallback é erro de servidor inacessível (503)
+        if (fallbackError.response?.status === 503 && fallbackError.response?.data?.detail?.error === 'server_unreachable') {
+          const detail = fallbackError.response.data.detail;
+          toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+            duration: 6000,
+            description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+          });
+        } else if (fallbackError.response?.status === 422 && fallbackError.response?.data?.detail?.error === 'credential_not_set') {
           const detail = fallbackError.response.data.detail;
           toast.error(detail.message || 'Credencial não configurada para este servidor', {
             duration: 6000,
@@ -1935,9 +1952,16 @@ const ServerBrowser = () => {
       setNodeChildren(validNodeChildren);
     } catch (error) {
       console.error('Error refreshing shares:', error);
-      
-      // Verificar se é erro de credencial não configurada
-      if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
+
+      // Verificar se é erro de servidor inacessível (503)
+      if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
+        const detail = error.response.data.detail;
+        toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+          duration: 6000,
+          description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+        });
+      } else if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
+        // Verificar se é erro de credencial não configurada
         const detail = error.response.data.detail;
         toast.error(detail.message || 'Credencial não configurada para este servidor', {
           duration: 6000,
@@ -2247,9 +2271,15 @@ const ServerBrowser = () => {
       }
     } catch (error) {
       console.error('Error loading directory:', error);
-      
-      // Verificar se é erro de credencial não configurada
-      if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
+
+      // Verificar se é erro de servidor inacessível (503)
+      if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
+        const detail = error.response.data.detail;
+        toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+          duration: 6000,
+          description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+        });
+      } else if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
         const detail = error.response.data.detail;
         toast.error(detail.message || 'Credencial não configurada para este servidor', {
           duration: 6000,
