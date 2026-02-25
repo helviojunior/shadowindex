@@ -209,11 +209,11 @@ export default function GlobalSearch({ open, onClose }) {
                       </button>
                     </ContextMenuTrigger>
                     <ContextMenuContent className="z-[1000]">
-                      <ContextMenuItem onClick={() => handleSelect(result)}>
-                        Abrir
-                      </ContextMenuItem>
                       <ContextMenuItem onClick={() => handleOpenInNewTab(result)}>
                         Abrir em nova aba
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => handleSelect(result)}>
+                        Abrir
                       </ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>

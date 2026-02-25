@@ -745,11 +745,11 @@ const Servers = () => {
                                   </div>
                                 </ContextMenuTrigger>
                                 <ContextMenuContent>
-                                  <ContextMenuItem onClick={() => navigate(`/servers/${server.id}/browse?from=/servers`)}>
-                                    Abrir
-                                  </ContextMenuItem>
                                   <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/servers`, '_blank')}>
                                     Abrir em nova aba
+                                  </ContextMenuItem>
+                                  <ContextMenuItem onClick={() => navigate(`/servers/${server.id}/browse?from=/servers`)}>
+                                    Abrir
                                   </ContextMenuItem>
                                 </ContextMenuContent>
                               </ContextMenu>

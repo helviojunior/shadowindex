@@ -107,11 +107,11 @@ const FileNavigation = () => {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => handleServerClick(server.id)}>
-          Abrir
-        </ContextMenuItem>
         <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/files/browse`, '_blank')}>
           Abrir em nova aba
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => handleServerClick(server.id)}>
+          Abrir
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -154,11 +154,11 @@ const FileNavigation = () => {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => handleServerClick(server.id)}>
-          Abrir
-        </ContextMenuItem>
         <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/files/browse`, '_blank')}>
           Abrir em nova aba
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => handleServerClick(server.id)}>
+          Abrir
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
