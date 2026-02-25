@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sqlalchemy import select, func
 from database import AsyncSessionLocal, FileVersion, AppSettings
+from storage_utils import STORAGE_BASE_PATH
 
 
 async def load_auto_index_settings(db):
@@ -152,13 +153,22 @@ async def run_auto_index(dry_run=False, force=False):
             stats['total_checked'] += 1
 
             # 4a. Verificar se arquivo existe
-            if not version.local_path or not os.path.exists(version.local_path):
+            if not version.local_path:
+                stats['skipped_no_file'] += 1
+                continue
+
+            # Resolver caminho absoluto: local_path pode ser relativo ao STORAGE_BASE_PATH
+            resolved_path = version.local_path
+            if not os.path.isabs(resolved_path):
+                resolved_path = os.path.join(STORAGE_BASE_PATH, resolved_path)
+
+            if not os.path.exists(resolved_path):
                 stats['skipped_no_file'] += 1
                 continue
 
             # 4b. Verificar tamanho
             try:
-                file_size = os.path.getsize(version.local_path)
+                file_size = os.path.getsize(resolved_path)
             except OSError:
                 stats['skipped_no_file'] += 1
                 continue
@@ -172,14 +182,14 @@ async def run_auto_index(dry_run=False, force=False):
 
             # 4d. Verificar extensão OU mimetype
             ext_ok = matches_extension(file_name, settings['extensions'])
-            mime_ok = matches_mimetype(version.local_path, file_name, settings['mimetypes'])
+            mime_ok = matches_mimetype(resolved_path, file_name, settings['mimetypes'])
 
             if not ext_ok and not mime_ok:
                 stats['skipped_no_match'] += 1
                 continue
 
             # 4e. Ler conteúdo
-            content = read_file_content(version.local_path)
+            content = read_file_content(resolved_path)
             if content is None:
                 stats['skipped_read_error'] += 1
                 continue
