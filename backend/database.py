@@ -567,7 +567,7 @@ DEFAULT_SETTINGS = {
     'auto_ocr_mimetypes': ('application/pdf,image/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument,application/x-pkcs12,application/x-x509-ca-cert', 'MIME types para OCR automático (parcial match)'),
     'auto_ocr_excluded_extensions': ('.svg,.jpeg,.jpg,.png,.gif,.ico,.webp,.tiff,.tif,.psd,.raw,.heic,.heif,.css,.html,.htm,.ttf,.otf,.woff,.woff2,.eot,.pyc,.pyo,.class,.jar,.exe,.dll,.msi,.sys,.drv,.ocx,.cpl,.scr,.so,.dylib,.a,.bin,.dat,.pdb,.obj,.o,.mp4,.avi,.mkv,.mov,.wmv,.flv,.webm,.m4v,.mpeg,.mpg,.mp3,.wav,.wma,.aac,.flac,.ogg,.m4a,.zip,.rar,.7z,.tar,.gz,.tgz,.bz2,.xz,.lzma,.iso,.img,.vhd,.vhdx,.vmdk,.qcow2,.cab,.msp,.msm,.msu,.mdb,.accdb,.ldb,.etl,.evtx,.dmp,.emf,.bdb,.vox,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc,.ascx,.config,.aspx,.asp,.asmx,.json', 'Extensões excluídas do OCR automático (precedência sobre inclusão)'),
     'auto_index_enabled': ('true', 'Habilita auto-indexação de conteúdo bruto quando OCR não é executado'),
-    'auto_index_max_size_mb': ('10', 'Tamanho máximo do arquivo (MB) para auto-indexação'),
+    'auto_index_max_size_mb': ('1', 'Tamanho máximo do arquivo (MB) para auto-indexação'),
     'auto_index_extensions': ('.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml', 'Extensões de arquivo para auto-indexação (suporta wildcards como .env*)'),
     'auto_index_mimetypes': ('text/', 'MIME types para auto-indexação (parcial match)'),
 }

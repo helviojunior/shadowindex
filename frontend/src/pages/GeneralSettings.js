@@ -41,7 +41,7 @@ const GeneralSettings = () => {
     auto_ocr_mimetypes: 'application/pdf,image/,text/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument',
     auto_ocr_excluded_extensions: '.svg,.jpeg,.jpg,.png,.gif,.ico,.css,.html,.htm,.ttf,.woff,.woff2,.pyc,.exe,.dll,.msi,.emf,.bdb,.vox,.bin,.dat,.pkl,.parquet,.parq,.rsc,.DS_Store,.idea,.svn,.pyenv,.git,.gitignore,.npmrc,.yarnrc,.ascx',
     auto_index_enabled: 'true',
-    auto_index_max_size_mb: '10',
+    auto_index_max_size_mb: '1',
     auto_index_extensions: '.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml',
     auto_index_mimetypes: 'text/'
   });
