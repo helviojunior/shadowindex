@@ -24,6 +24,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
 
@@ -813,19 +814,33 @@ const Servers = () => {
                         )}
                       </td>
                       <td className="p-3">
-                        <div className="flex flex-wrap items-center justify-center gap-1">
-                          {server.is_unreachable && (
-                            <Badge variant="destructive" className="bg-red-600 text-xs">
-                              <Unplug className="w-3 h-3 mr-1" />
-                              No Access
-                            </Badge>
-                          )}
-                          {server.has_no_admin_shares && (
-                            <Badge className="bg-amber-600 hover:bg-amber-700 text-xs">
-                              <FolderOpen className="w-3 h-3 mr-1" />
-                              Shares Abertas
-                            </Badge>
-                          )}
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                          <TooltipProvider delayDuration={300}>
+                            {server.is_unreachable && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Badge variant="destructive" className="bg-red-600 px-1.5 py-0.5">
+                                    <Unplug className="w-3.5 h-3.5" />
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Servidor inacessível</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {server.has_no_admin_shares && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Badge className="bg-amber-600 hover:bg-amber-700 px-1.5 py-0.5">
+                                    <FolderOpen className="w-3.5 h-3.5" />
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Shares abertas</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </TooltipProvider>
                           {!server.is_unreachable && !server.has_no_admin_shares && (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}

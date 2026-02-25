@@ -1139,7 +1139,7 @@ async def browse_path(
     """Navega em um path usando o plugin do servidor e atualiza cache"""
     from plugins.factory import get_plugin_for_server
     from plugins.base import DirectoryItem
-    from plugins.exceptions import CredentialNotSetException
+    from plugins.exceptions import CredentialNotSetException, ServerUnreachableException
     from server import parse_exec4_directory_listing
     
     server = await get_server_or_404(db, server_id)
@@ -1287,12 +1287,12 @@ async def browse_path(
                 "plugin_name": e.plugin_name
             }
         )
-        
+
     except Exception as e:
         import traceback
         error_traceback = traceback.format_exc()
         logger.error(f"Error browsing path {path}: {e}\n{error_traceback}")
-        
+
         # Verificar erros de acesso
         error_str = str(e).lower()
         if "access" in error_str and "denied" in error_str:

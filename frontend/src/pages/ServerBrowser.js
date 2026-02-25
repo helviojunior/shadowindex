@@ -1808,6 +1808,7 @@ const ServerBrowser = () => {
       // Verificar se é erro de servidor inacessível (503)
       if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
         const detail = error.response.data.detail;
+        setServer(prev => ({ ...prev, is_unreachable: true }));
         toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
           duration: 6000,
           description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
@@ -1866,6 +1867,7 @@ const ServerBrowser = () => {
         // Verificar se fallback é erro de servidor inacessível (503)
         if (fallbackError.response?.status === 503 && fallbackError.response?.data?.detail?.error === 'server_unreachable') {
           const detail = fallbackError.response.data.detail;
+          setServer(prev => ({ ...prev, is_unreachable: true }));
           toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
             duration: 6000,
             description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
@@ -1956,6 +1958,7 @@ const ServerBrowser = () => {
       // Verificar se é erro de servidor inacessível (503)
       if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
         const detail = error.response.data.detail;
+        setServer(prev => ({ ...prev, is_unreachable: true }));
         toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
           duration: 6000,
           description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
@@ -2275,6 +2278,7 @@ const ServerBrowser = () => {
       // Verificar se é erro de servidor inacessível (503)
       if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
         const detail = error.response.data.detail;
+        setServer(prev => ({ ...prev, is_unreachable: true }));
         toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
           duration: 6000,
           description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'

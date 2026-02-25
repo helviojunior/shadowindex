@@ -606,7 +606,7 @@ class DirectInteractionPlugin(BasePlugin):
             logger.info(f"Listed {len(shares)} shares on {server_ip}")
             return shares
             
-        except (AuthenticationFailureException, ConnectionException):
+        except (AuthenticationFailureException, ConnectionException, ServerUnreachableException):
             raise
         except Exception as e:
             import traceback
@@ -721,7 +721,7 @@ class DirectInteractionPlugin(BasePlugin):
             logger.info(f"Listed {len(items)} items in {path}")
             return items
             
-        except (AuthenticationFailureException, ConnectionException, AccessDeniedException):
+        except (AuthenticationFailureException, ConnectionException, AccessDeniedException, ServerUnreachableException):
             raise
         except Exception as e:
             import traceback
@@ -835,7 +835,7 @@ class DirectInteractionPlugin(BasePlugin):
             logger.info(f"Downloaded {len(content.data)} bytes from {path}")
             return content
             
-        except (AuthenticationFailureException, ConnectionException, AccessDeniedException):
+        except (AuthenticationFailureException, ConnectionException, AccessDeniedException, ServerUnreachableException):
             raise
         except Exception as e:
             import traceback

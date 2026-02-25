@@ -1790,7 +1790,8 @@ async def get_servers(db: AsyncSession = Depends(get_db_readonly)):
             plugin_instance_name=plugin_names.get(server.plugin_instance_id) if server.plugin_instance_id else None,
             plugin_type=server.plugin_type,
             plugin_config=server.plugin_config,
-            has_no_admin_shares=server.has_no_admin_shares
+            has_no_admin_shares=server.has_no_admin_shares,
+            is_unreachable=server.is_unreachable
         ))
 
     return response
@@ -1904,7 +1905,8 @@ async def get_server(
         plugin_instance_name=plugin_instance_name,
         plugin_type=server.plugin_type,
         plugin_config=server.plugin_config,
-        has_no_admin_shares=server.has_no_admin_shares
+        has_no_admin_shares=server.has_no_admin_shares,
+        is_unreachable=server.is_unreachable
     )
 
 @api_router.put("/servers/{server_id}", response_model=ServerResponse)
