@@ -1113,6 +1113,90 @@ const ServerBrowser = () => {
     setBeautified(false);
   };
 
+  // View as HexDump - carrega arquivo e mostra no formato hexdump -C
+  const viewAsHexDump = async (item, itemPath, shareName) => {
+    const filePath = itemPath || item.fullPath || item.full_path;
+
+    // Verificar se o arquivo está baixado
+    if (!isFileDownloaded(filePath)) {
+      toast.error('Arquivo precisa ser sincronizado primeiro');
+      return;
+    }
+
+    // Obter file_id
+    let fileId = downloadedFilesInfo[filePath]?.id;
+    if (!fileId) {
+      fileId = await getFileIdByPath(filePath);
+    }
+
+    if (!fileId) {
+      toast.error('Arquivo não encontrado no banco de dados');
+      return;
+    }
+
+    setLoadingContent(true);
+    try {
+      const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
+        responseType: 'arraybuffer'
+      });
+
+      const bytes = new Uint8Array(response.data);
+      let hexdump = '';
+      const bytesPerLine = 16;
+
+      for (let offset = 0; offset < bytes.length; offset += bytesPerLine) {
+        const offsetHex = offset.toString(16).padStart(8, '0');
+        let hexPart = '';
+        let asciiPart = '';
+
+        for (let i = 0; i < bytesPerLine; i++) {
+          if (offset + i < bytes.length) {
+            const byte = bytes[offset + i];
+            hexPart += byte.toString(16).padStart(2, '0') + ' ';
+            asciiPart += (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
+          } else {
+            hexPart += '   ';
+            asciiPart += ' ';
+          }
+          if (i === 7) hexPart += ' ';
+        }
+
+        hexdump += `${offsetHex}  ${hexPart} |${asciiPart}|\n`;
+      }
+
+      const totalSize = bytes.length;
+      const sizeStr = totalSize > 1024 * 1024
+        ? `${(totalSize / (1024 * 1024)).toFixed(2)} MB`
+        : totalSize > 1024
+          ? `${(totalSize / 1024).toFixed(2)} KB`
+          : `${totalSize} bytes`;
+
+      setFileContent(`[HexDump - ${item.name} - ${sizeStr}]\n\n${hexdump}`);
+      setRawFileContent(`[HexDump - ${item.name} - ${sizeStr}]\n\n${hexdump}`);
+      setFilePreviewUrl(null);
+      setBase64Decoded(false);
+      setBeautified(false);
+      setActiveTab('view');
+    } catch (error) {
+      console.error('Error loading file for hexdump:', error);
+      let errorMessage = 'Erro ao carregar arquivo para hexdump';
+      if (error.response?.data instanceof ArrayBuffer) {
+        try {
+          const text = new TextDecoder().decode(error.response.data);
+          const parsed = JSON.parse(text);
+          errorMessage = parsed.detail || errorMessage;
+        } catch (e) {
+          // Ignore parse errors
+        }
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+      toast.error(errorMessage);
+    } finally {
+      setLoadingContent(false);
+    }
+  };
+
   // Download do arquivo para a máquina do usuário
   const openFile = async () => {
     if (!selectedItem) return;
@@ -3386,6 +3470,15 @@ const ServerBrowser = () => {
             }}>
               Abrir em nova aba
             </ContextMenuItem>
+            {/* View as HexDump - apenas arquivos baixados */}
+            {isFile && isDownloaded && (
+              <ContextMenuItem onClick={() => {
+                handleSelectItem(item, item.type, path, currentShareName);
+                setTimeout(() => viewAsHexDump(item, path, currentShareName), 100);
+              }}>
+                View as HexDump
+              </ContextMenuItem>
+            )}
             <ContextMenuSeparator />
             {/* Busca crítica */}
             <ContextMenuItem onClick={startCriticalSearch}>
@@ -3483,9 +3576,10 @@ const ServerBrowser = () => {
                 Sync
               </ContextMenuItem>
             )}
+
           </ContextMenuContent>
         </ContextMenu>
-        
+
         {/* Children */}
         {isExpanded && children.length > 0 && (
           <div>
@@ -4966,6 +5060,15 @@ const ServerBrowser = () => {
                             }
                           }}>
                             Sync
+                          </ContextMenuItem>
+                        )}
+                        {/* View as HexDump - apenas arquivos baixados */}
+                        {isFile && isItemDownloaded && (
+                          <ContextMenuItem onClick={() => {
+                            handleSelectItem(item, item.type, itemPath, shareName);
+                            setTimeout(() => viewAsHexDump(item, itemPath, shareName), 100);
+                          }}>
+                            View as HexDump
                           </ContextMenuItem>
                         )}
                       </ContextMenuContent>
