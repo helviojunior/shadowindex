@@ -502,6 +502,23 @@ class OCRJob(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
+class ScanPool(Base):
+    """Pools de configuração para scans de shares"""
+    __tablename__ = "scan_pools"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    simultaneous_scanners = Column(Integer, default=3)
+    request_delay_min = Column(Integer, default=100)   # ms
+    request_delay_max = Column(Integer, default=500)   # ms
+    include_servers = Column(String, default="")        # comma-separated
+    exclude_servers = Column(String, default="")        # comma-separated
+    include_ips = Column(String, default="")            # comma-separated (IPs e subnets)
+    exclude_ips = Column(String, default="")            # comma-separated (IPs e subnets)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
 class AppSettings(Base):
     """Configurações gerais da aplicação"""
     __tablename__ = "app_settings"

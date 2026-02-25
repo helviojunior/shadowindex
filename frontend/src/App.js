@@ -22,6 +22,7 @@ import GeneralSettings from "@/pages/GeneralSettings";
 import CriticalSearchSettings from "@/pages/CriticalSearchSettings";
 import PluginSoapConfig from "@/pages/PluginSoapConfig";
 import PluginDirectConfig from "@/pages/PluginDirectConfig";
+import ScanPools from "@/pages/ScanPools";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 import { ConnectionStatusProvider } from "@/contexts/ConnectionStatusContext";
@@ -67,6 +68,7 @@ function App() {
                     <Route path="/soap-operations" element={<SoapOperations />} />
                     <Route path="/settings" element={<GeneralSettings />} />
                     <Route path="/settings/critical-search" element={<CriticalSearchSettings />} />
+                    <Route path="/settings/scan-pools" element={<ScanPools />} />
                     <Route path="/plugins/soap" element={<PluginSoapConfig />} />
                     <Route path="/plugins/direct" element={<PluginDirectConfig />} />
                     <Route path="/beautify-test" element={<BeautifyTest />} />

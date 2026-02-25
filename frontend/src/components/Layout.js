@@ -115,6 +115,7 @@ const menuStructure = [
       { id: 'critical-search', path: '/settings/critical-search', label: 'Busca Crítica' },
       { id: 'proxy', path: '/proxy-servers', label: 'Proxy Servers' },
       { id: 'credentials', path: '/credentials', label: 'Credenciais' },
+      { id: 'scan-pools', path: '/settings/scan-pools', label: 'Scan Pool' },
     ]
   },
   { 

@@ -27,7 +27,7 @@ from database import (
     init_db, get_db, get_db_readonly,
     Credential, DatabaseConnection, ProxyServer, SoapApiUrl, SoapCache, AppConfig,
     Server, ServerShare, DownloadedFile, ServerItem, SqlPreset, SqlQueryHistory, DatabaseType,
-    FileVersion, PfxPassword, DownloadJob, AppSettings, PluginInstance, GitleaksFinding
+    FileVersion, PfxPassword, DownloadJob, AppSettings, PluginInstance, GitleaksFinding, ScanPool
 )
 from soap_service import SoapService, get_default_soap_service
 import uuid
@@ -402,6 +402,41 @@ class ProxyServerResponse(BaseModel):
     username: Optional[str] = None
     created_at: datetime
 
+
+# ==================== Scan Pool Models ====================
+
+class ScanPoolCreate(BaseModel):
+    name: str
+    simultaneous_scanners: Optional[int] = 3
+    request_delay_min: Optional[int] = 100
+    request_delay_max: Optional[int] = 500
+    include_servers: Optional[str] = ""
+    exclude_servers: Optional[str] = ""
+    include_ips: Optional[str] = ""
+    exclude_ips: Optional[str] = ""
+
+class ScanPoolUpdate(BaseModel):
+    name: Optional[str] = None
+    simultaneous_scanners: Optional[int] = None
+    request_delay_min: Optional[int] = None
+    request_delay_max: Optional[int] = None
+    include_servers: Optional[str] = None
+    exclude_servers: Optional[str] = None
+    include_ips: Optional[str] = None
+    exclude_ips: Optional[str] = None
+
+class ScanPoolResponse(BaseModel):
+    id: int
+    name: str
+    simultaneous_scanners: int
+    request_delay_min: int
+    request_delay_max: int
+    include_servers: Optional[str] = ""
+    exclude_servers: Optional[str] = ""
+    include_ips: Optional[str] = ""
+    exclude_ips: Optional[str] = ""
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
 # ==================== Plugin Instance Models ====================
 
@@ -1304,6 +1339,84 @@ async def update_proxy_server(proxy_id: int, proxy: ProxyServerUpdate, db: Async
     await db.commit()
     await db.refresh(db_proxy)
     return db_proxy
+
+# Scan Pools CRUD
+
+def _validate_ip_list(ip_string: str, field_name: str):
+    """Validate comma-separated list of IPs or CIDR subnets"""
+    if not ip_string:
+        return
+    for entry in ip_string.split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        # CIDR notation: 192.168.1.0/24
+        if '/' in entry:
+            parts = entry.split('/')
+            if len(parts) != 2:
+                raise HTTPException(status_code=422, detail=f"{field_name}: '{entry}' não é um IP/CIDR válido")
+            ip_part, mask = parts
+            if not is_valid_ipv4(ip_part):
+                raise HTTPException(status_code=422, detail=f"{field_name}: '{entry}' não é um IP/CIDR válido")
+            try:
+                mask_num = int(mask)
+                if mask_num < 0 or mask_num > 32:
+                    raise ValueError
+            except ValueError:
+                raise HTTPException(status_code=422, detail=f"{field_name}: máscara CIDR inválida em '{entry}' (0-32)")
+        else:
+            if not is_valid_ipv4(entry):
+                raise HTTPException(status_code=422, detail=f"{field_name}: '{entry}' não é um IPv4 válido")
+
+@api_router.post("/scan-pools", response_model=ScanPoolResponse)
+async def create_scan_pool(pool: ScanPoolCreate, db: AsyncSession = Depends(get_db)):
+    _validate_ip_list(pool.include_ips, "include_ips")
+    _validate_ip_list(pool.exclude_ips, "exclude_ips")
+    db_pool = ScanPool(**pool.model_dump())
+    db.add(db_pool)
+    await db.commit()
+    await db.refresh(db_pool)
+    return db_pool
+
+@api_router.get("/scan-pools", response_model=List[ScanPoolResponse])
+async def get_scan_pools(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ScanPool))
+    return result.scalars().all()
+
+@api_router.get("/scan-pools/{pool_id}", response_model=ScanPoolResponse)
+async def get_scan_pool(pool_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ScanPool).where(ScanPool.id == pool_id))
+    db_pool = result.scalar_one_or_none()
+    if not db_pool:
+        raise HTTPException(status_code=404, detail="Scan pool não encontrado")
+    return db_pool
+
+@api_router.put("/scan-pools/{pool_id}", response_model=ScanPoolResponse)
+async def update_scan_pool(pool_id: int, pool: ScanPoolUpdate, db: AsyncSession = Depends(get_db)):
+    if pool.include_ips is not None:
+        _validate_ip_list(pool.include_ips, "include_ips")
+    if pool.exclude_ips is not None:
+        _validate_ip_list(pool.exclude_ips, "exclude_ips")
+
+    result = await db.execute(select(ScanPool).where(ScanPool.id == pool_id))
+    db_pool = result.scalar_one_or_none()
+
+    if not db_pool:
+        raise HTTPException(status_code=404, detail="Scan pool não encontrado")
+
+    update_data = pool.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_pool, key, value)
+
+    await db.commit()
+    await db.refresh(db_pool)
+    return db_pool
+
+@api_router.delete("/scan-pools/{pool_id}")
+async def delete_scan_pool(pool_id: int, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(ScanPool).where(ScanPool.id == pool_id))
+    await db.commit()
+    return {"message": "Scan pool deleted"}
 
 # SOAP API URLs CRUD
 @api_router.post("/soap-apis", response_model=SoapApiUrlResponse)
