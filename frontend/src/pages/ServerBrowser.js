@@ -4797,37 +4797,142 @@ const ServerBrowser = () => {
                 // Pre-compute rows to avoid visual editor injecting <span> inside <tbody>
                 const tableRows = sortedChildren.map((item, idx) => {
                   const isDir = item.type === 'Directory';
+                  const isFile = item.type === 'File';
                   const isItemDownloaded = !isDir && isFileDownloaded(item.fullPath);
+                  const itemPath = item.fullPath || item.full_path;
+                  const shareName = selectedItem.share_name || selectedItem.shareName || selectedItem.name;
                   return (
-                    <tr
-                      key={item.id || idx}
-                      className="hover:bg-muted/50 cursor-pointer"
-                      onClick={() => handleItemClick(item)}
-                    >
-                      <td className="px-4 py-2 border-b border-border">
-                        <div className="flex items-center gap-2">
-                          {isDir ? (
-                            <Folder className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                          ) : isItemDownloaded ? (
-                            <FileCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          ) : (
-                            <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                          )}
-                          <span className="truncate text-blue-400 hover:underline">
-                            {item.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 border-b border-border text-muted-foreground">
-                        {item.type === 'Directory' ? 'Pasta' : 'Arquivo'}
-                      </td>
-                      <td className="px-4 py-2 border-b border-border text-right text-muted-foreground font-mono text-xs">
-                        {item.type === 'Directory' ? '—' : formatSize(item.size)}
-                      </td>
-                      <td className="px-4 py-2 border-b border-border text-muted-foreground text-xs">
-                        {item.modified_at ? formatDate(item.modified_at) : '—'}
-                      </td>
-                    </tr>
+                    <ContextMenu key={item.id || idx}>
+                      <ContextMenuTrigger asChild>
+                        <tr
+                          className="hover:bg-muted/50 cursor-pointer"
+                          onClick={() => handleItemClick(item)}
+                        >
+                          <td className="px-4 py-2 border-b border-border">
+                            <div className="flex items-center gap-2">
+                              {isDir ? (
+                                <Folder className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                              ) : isItemDownloaded ? (
+                                <FileCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              ) : (
+                                <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                              )}
+                              <span className="truncate text-blue-400 hover:underline">
+                                {item.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 border-b border-border text-muted-foreground">
+                            {item.type === 'Directory' ? 'Pasta' : 'Arquivo'}
+                          </td>
+                          <td className="px-4 py-2 border-b border-border text-right text-muted-foreground font-mono text-xs">
+                            {item.type === 'Directory' ? '—' : formatSize(item.size)}
+                          </td>
+                          <td className="px-4 py-2 border-b border-border text-muted-foreground text-xs">
+                            {item.modified_at ? formatDate(item.modified_at) : '—'}
+                          </td>
+                        </tr>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        {/* Abrir em nova aba */}
+                        <ContextMenuItem onClick={() => {
+                          window.open(`${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(itemPath)}&from=${encodeURIComponent(window.location.pathname)}`, '_blank');
+                        }}>
+                          Abrir em nova aba
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        {/* Busca Crítica */}
+                        <ContextMenuItem onClick={() => {
+                          handleSelectItem(item, item.type, itemPath, shareName);
+                          setTimeout(() => startCriticalSearch(), 100);
+                        }}>
+                          Busca Crítica
+                        </ContextMenuItem>
+                        {/* Recarregar - para diretórios */}
+                        {isDir && (
+                          <ContextMenuItem onClick={async () => {
+                            const dirNodeId = String(item.id || itemPath);
+                            setExpandedNodes(prev => ({ ...prev, [dirNodeId]: true }));
+                            await loadDirectory(dirNodeId, itemPath, shareName, true);
+                            toast.success(`Recarregado: ${item.name}`);
+                          }}>
+                            Recarregar
+                          </ContextMenuItem>
+                        )}
+                        {/* Enviar para fila */}
+                        <ContextMenuItem onClick={async () => {
+                          if (isFile) {
+                            const fileSize = parseInt(item.size) || 0;
+                            try {
+                              const response = await axios.post(`${API_V2}/downloads`, {
+                                server_id: parseInt(serverId),
+                                share_name: shareName,
+                                file_path: itemPath,
+                                file_name: item.name,
+                                file_size: fileSize,
+                                max_file_size_bytes: null,
+                                max_depth: null
+                              });
+                              if (response.data.success) {
+                                toast.success(`Adicionado à fila: ${item.name}`);
+                              }
+                            } catch (error) {
+                              const errorMsg = error.response?.data?.detail || 'Erro ao enviar para fila';
+                              toast.error(errorMsg);
+                            }
+                          } else {
+                            try {
+                              const response = await axios.post(`${API_V2}/downloads/scan`, null, {
+                                params: {
+                                  server_id: parseInt(serverId),
+                                  share_name: shareName,
+                                  path: itemPath,
+                                  max_depth: bulkDownloadConfig.depth,
+                                  max_file_size_mb: bulkDownloadConfig.maxSize
+                                }
+                              });
+                              toast.success(`${response.data.message}. Acompanhe em Arquivos > Downloads`);
+                            } catch (error) {
+                              const errorMsg = error.response?.data?.detail || 'Erro ao enviar para fila';
+                              toast.error(errorMsg);
+                            }
+                          }
+                        }}>
+                          Enviar para fila
+                        </ContextMenuItem>
+                        {/* Sync - apenas arquivos */}
+                        {isFile && (
+                          <ContextMenuItem onClick={async () => {
+                            handleSelectItem(item, item.type, itemPath, shareName);
+                            const fileSize = parseInt(item.size) || 0;
+                            const ONE_MB = 1024 * 1024;
+                            if (fileSize > ONE_MB) {
+                              try {
+                                const response = await axios.post(`${API_V2}/downloads`, {
+                                  server_id: parseInt(serverId),
+                                  share_name: shareName,
+                                  file_path: itemPath,
+                                  file_name: item.name,
+                                  file_size: fileSize,
+                                  max_file_size_bytes: null,
+                                  max_depth: null
+                                });
+                                if (response.data.success) {
+                                  toast.success(`Sync adicionado à fila (${(fileSize / ONE_MB).toFixed(2)} MB)`);
+                                }
+                              } catch (error) {
+                                const errorMsg = error.response?.data?.detail || 'Erro ao adicionar sync à fila';
+                                toast.error(errorMsg);
+                              }
+                            } else {
+                              setTimeout(() => handleDownload(), 100);
+                            }
+                          }}>
+                            Sync
+                          </ContextMenuItem>
+                        )}
+                      </ContextMenuContent>
+                    </ContextMenu>
                   );
                 });
 
