@@ -127,6 +127,159 @@ const ListSection = ({ icon: Icon, iconColor, title, description, items, onAdd, 
   );
 };
 
+const updateFormList = (setter, data, field, action, value) => {
+  if (action === 'add') {
+    setter({ ...data, [field]: [...data[field], value] });
+  } else {
+    setter({ ...data, [field]: data[field].filter(i => i !== value) });
+  }
+};
+
+const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon, isEdit, onCancel, loading }) => (
+  <form onSubmit={onSubmit} className="space-y-6">
+    {/* Basic settings */}
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Server className="w-5 h-5 text-purple-500" />
+          <CardTitle>Configurações Básicas</CardTitle>
+        </div>
+        <CardDescription>Nome da pool e parâmetros de performance do scan</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 md:grid-cols-4">
+          <div className="space-y-2">
+            <Label>Nome *</Label>
+            <Input
+              placeholder="Minha Pool"
+              value={data.name}
+              onChange={(e) => setData({ ...data, name: e.target.value })}
+              required
+              data-testid="pool-name-input"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Scanners simultâneos</Label>
+            <Input
+              type="number"
+              min="1"
+              max="10"
+              value={data.simultaneous_scanners}
+              onChange={(e) => setData({ ...data, simultaneous_scanners: e.target.value })}
+              data-testid="pool-scanners-input"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Delay mín. (ms)</Label>
+            <Input
+              type="number"
+              min="0"
+              value={data.request_delay_min}
+              onChange={(e) => setData({ ...data, request_delay_min: e.target.value })}
+              data-testid="pool-delay-min-input"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Delay máx. (ms)</Label>
+            <Input
+              type="number"
+              min="0"
+              value={data.request_delay_max}
+              onChange={(e) => setData({ ...data, request_delay_max: e.target.value })}
+              data-testid="pool-delay-max-input"
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Include Servers */}
+    <ListSection
+      icon={ShieldCheck}
+      iconColor="text-green-500"
+      title="Incluir Hostnames"
+      description="Hostnames que serão incluídos no scan. Suporta wildcards (ex: SRV-*, *-DB-*)."
+      items={data.include_servers}
+      onAdd={(val) => updateFormList(setData, data, 'include_servers', 'add', val)}
+      onRemove={(val) => updateFormList(setData, data, 'include_servers', 'remove', val)}
+      placeholder="Ex: SRV-WEB-* ou hostname exato"
+      testIdPrefix="include-servers"
+      infoItems={[
+        'Adicione hostnames que devem ser incluídos no scan',
+        '<strong>Wildcards:</strong> Use <code class="bg-green-500/20 px-1 rounded">SRV-*</code> para incluir todos que começam com SRV-',
+        'Se a lista estiver vazia, todos os hostnames serão considerados',
+      ]}
+    />
+
+    {/* Exclude Servers */}
+    <ListSection
+      icon={ShieldX}
+      iconColor="text-red-500"
+      title="Excluir Hostnames"
+      description="Hostnames que serão excluídos do scan. A exclusão sempre tem precedência sobre a inclusão. Suporta wildcards."
+      items={data.exclude_servers}
+      onAdd={(val) => updateFormList(setData, data, 'exclude_servers', 'add', val)}
+      onRemove={(val) => updateFormList(setData, data, 'exclude_servers', 'remove', val)}
+      placeholder="Ex: SRV-DEV-* ou hostname exato"
+      testIdPrefix="exclude-servers"
+      infoItems={[
+        'Hostnames nesta lista serão <strong>sempre ignorados</strong>, mesmo que estejam na lista de inclusão',
+        '<strong>Wildcards:</strong> Use <code class="bg-red-500/20 px-1 rounded">*-DEV-*</code> para excluir hostnames de desenvolvimento',
+        'A lista de exclusão sempre terá precedência sobre a de inclusão',
+      ]}
+    />
+
+    {/* Include IPs */}
+    <ListSection
+      icon={Network}
+      iconColor="text-blue-500"
+      title="Incluir IP/Subnet"
+      description="IPs ou subnets que serão incluídos no scan. Suporta notação CIDR."
+      items={data.include_ips}
+      onAdd={(val) => updateFormList(setData, data, 'include_ips', 'add', val)}
+      onRemove={(val) => updateFormList(setData, data, 'include_ips', 'remove', val)}
+      placeholder="Ex: 192.168.1.1 ou 10.0.0.0/24"
+      testIdPrefix="include-ips"
+      validateIp
+      infoItems={[
+        'Adicione IPs individuais (ex: <code class="bg-blue-500/20 px-1 rounded">192.168.1.1</code>) ou subnets em notação CIDR (ex: <code class="bg-blue-500/20 px-1 rounded">10.0.0.0/24</code>)',
+        'Se a lista estiver vazia, todos os IPs serão considerados',
+      ]}
+    />
+
+    {/* Exclude IPs */}
+    <ListSection
+      icon={ShieldX}
+      iconColor="text-red-500"
+      title="Excluir IP/Subnet"
+      description="IPs ou subnets que serão excluídos do scan. A exclusão sempre tem precedência sobre a inclusão."
+      items={data.exclude_ips}
+      onAdd={(val) => updateFormList(setData, data, 'exclude_ips', 'add', val)}
+      onRemove={(val) => updateFormList(setData, data, 'exclude_ips', 'remove', val)}
+      placeholder="Ex: 10.0.0.5 ou 172.16.0.0/12"
+      testIdPrefix="exclude-ips"
+      validateIp
+      infoItems={[
+        'IPs e subnets nesta lista serão <strong>sempre ignorados</strong>, mesmo que estejam na lista de inclusão',
+        'Use CIDR para excluir subnets inteiras (ex: <code class="bg-red-500/20 px-1 rounded">192.168.99.0/24</code>)',
+        'A lista de exclusão sempre terá precedência sobre a de inclusão',
+      ]}
+    />
+
+    <div className="flex gap-2">
+      <Button type="submit" disabled={loading} data-testid="pool-submit-btn">
+        {SubmitIcon && <SubmitIcon className="w-4 h-4 mr-2" />}
+        {submitLabel}
+      </Button>
+      {isEdit && (
+        <Button type="button" variant="ghost" onClick={onCancel} data-testid="pool-cancel-btn">
+          <X className="w-4 h-4 mr-1" /> Cancelar
+        </Button>
+      )}
+    </div>
+  </form>
+);
+
 const ScanPools = () => {
   const [pools, setPools] = useState([]);
   const [formData, setFormData] = useState({ ...emptyForm });
@@ -228,160 +381,6 @@ const ScanPools = () => {
     }
   };
 
-  const updateFormList = (setter, data, field, action, value) => {
-    if (action === 'add') {
-      setter({ ...data, [field]: [...data[field], value] });
-    } else {
-      setter({ ...data, [field]: data[field].filter(i => i !== value) });
-    }
-  };
-
-  // Reusable form for create and edit
-  const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon, isEdit }) => (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* Basic settings */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Server className="w-5 h-5 text-purple-500" />
-            <CardTitle>Configurações Básicas</CardTitle>
-          </div>
-          <CardDescription>Nome da pool e parâmetros de performance do scan</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="space-y-2">
-              <Label>Nome *</Label>
-              <Input
-                placeholder="Minha Pool"
-                value={data.name}
-                onChange={(e) => setData({ ...data, name: e.target.value })}
-                required
-                data-testid="pool-name-input"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Scanners simultâneos</Label>
-              <Input
-                type="number"
-                min="1"
-                max="10"
-                value={data.simultaneous_scanners}
-                onChange={(e) => setData({ ...data, simultaneous_scanners: e.target.value })}
-                data-testid="pool-scanners-input"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Delay mín. (ms)</Label>
-              <Input
-                type="number"
-                min="0"
-                value={data.request_delay_min}
-                onChange={(e) => setData({ ...data, request_delay_min: e.target.value })}
-                data-testid="pool-delay-min-input"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Delay máx. (ms)</Label>
-              <Input
-                type="number"
-                min="0"
-                value={data.request_delay_max}
-                onChange={(e) => setData({ ...data, request_delay_max: e.target.value })}
-                data-testid="pool-delay-max-input"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Include Servers */}
-      <ListSection
-        icon={ShieldCheck}
-        iconColor="text-green-500"
-        title="Incluir Hostnames"
-        description="Hostnames que serão incluídos no scan. Suporta wildcards (ex: SRV-*, *-DB-*)."
-        items={data.include_servers}
-        onAdd={(val) => updateFormList(setData, data, 'include_servers', 'add', val)}
-        onRemove={(val) => updateFormList(setData, data, 'include_servers', 'remove', val)}
-        placeholder="Ex: SRV-WEB-* ou hostname exato"
-        testIdPrefix="include-servers"
-        infoItems={[
-          'Adicione hostnames que devem ser incluídos no scan',
-          '<strong>Wildcards:</strong> Use <code class="bg-green-500/20 px-1 rounded">SRV-*</code> para incluir todos que começam com SRV-',
-          'Se a lista estiver vazia, todos os hostnames serão considerados',
-        ]}
-      />
-
-      {/* Exclude Servers */}
-      <ListSection
-        icon={ShieldX}
-        iconColor="text-red-500"
-        title="Excluir Hostnames"
-        description="Hostnames que serão excluídos do scan. A exclusão sempre tem precedência sobre a inclusão. Suporta wildcards."
-        items={data.exclude_servers}
-        onAdd={(val) => updateFormList(setData, data, 'exclude_servers', 'add', val)}
-        onRemove={(val) => updateFormList(setData, data, 'exclude_servers', 'remove', val)}
-        placeholder="Ex: SRV-DEV-* ou hostname exato"
-        testIdPrefix="exclude-servers"
-        infoItems={[
-          'Hostnames nesta lista serão <strong>sempre ignorados</strong>, mesmo que estejam na lista de inclusão',
-          '<strong>Wildcards:</strong> Use <code class="bg-red-500/20 px-1 rounded">*-DEV-*</code> para excluir hostnames de desenvolvimento',
-          'A lista de exclusão sempre terá precedência sobre a de inclusão',
-        ]}
-      />
-
-      {/* Include IPs */}
-      <ListSection
-        icon={Network}
-        iconColor="text-blue-500"
-        title="Incluir IP/Subnet"
-        description="IPs ou subnets que serão incluídos no scan. Suporta notação CIDR."
-        items={data.include_ips}
-        onAdd={(val) => updateFormList(setData, data, 'include_ips', 'add', val)}
-        onRemove={(val) => updateFormList(setData, data, 'include_ips', 'remove', val)}
-        placeholder="Ex: 192.168.1.1 ou 10.0.0.0/24"
-        testIdPrefix="include-ips"
-        validateIp
-        infoItems={[
-          'Adicione IPs individuais (ex: <code class="bg-blue-500/20 px-1 rounded">192.168.1.1</code>) ou subnets em notação CIDR (ex: <code class="bg-blue-500/20 px-1 rounded">10.0.0.0/24</code>)',
-          'Se a lista estiver vazia, todos os IPs serão considerados',
-        ]}
-      />
-
-      {/* Exclude IPs */}
-      <ListSection
-        icon={ShieldX}
-        iconColor="text-red-500"
-        title="Excluir IP/Subnet"
-        description="IPs ou subnets que serão excluídos do scan. A exclusão sempre tem precedência sobre a inclusão."
-        items={data.exclude_ips}
-        onAdd={(val) => updateFormList(setData, data, 'exclude_ips', 'add', val)}
-        onRemove={(val) => updateFormList(setData, data, 'exclude_ips', 'remove', val)}
-        placeholder="Ex: 10.0.0.5 ou 172.16.0.0/12"
-        testIdPrefix="exclude-ips"
-        validateIp
-        infoItems={[
-          'IPs e subnets nesta lista serão <strong>sempre ignorados</strong>, mesmo que estejam na lista de inclusão',
-          'Use CIDR para excluir subnets inteiras (ex: <code class="bg-red-500/20 px-1 rounded">192.168.99.0/24</code>)',
-          'A lista de exclusão sempre terá precedência sobre a de inclusão',
-        ]}
-      />
-
-      <div className="flex gap-2">
-        <Button type="submit" disabled={loading} data-testid="pool-submit-btn">
-          {SubmitIcon && <SubmitIcon className="w-4 h-4 mr-2" />}
-          {submitLabel}
-        </Button>
-        {isEdit && (
-          <Button type="button" variant="ghost" onClick={cancelEdit} data-testid="pool-cancel-btn">
-            <X className="w-4 h-4 mr-1" /> Cancelar
-          </Button>
-        )}
-      </div>
-    </form>
-  );
-
   return (
     <div className="space-y-6" data-testid="scan-pools-page">
       <div className="flex items-center justify-between">
@@ -417,6 +416,7 @@ const ScanPools = () => {
           submitLabel="Criar Pool"
           submitIcon={Plus}
           isEdit={false}
+          loading={loading}
         />
       )}
 
@@ -446,6 +446,8 @@ const ScanPools = () => {
                         submitLabel="Salvar"
                         submitIcon={Check}
                         isEdit={true}
+                        onCancel={cancelEdit}
+                        loading={loading}
                       />
                     </div>
                   ) : (

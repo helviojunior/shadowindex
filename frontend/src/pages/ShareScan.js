@@ -28,6 +28,25 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 const API_V2 = `${BACKEND_URL}/api/v2`;
 
+const ShareScanServerCard = ({ server }) => (
+  <div className="h-full p-2 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30">
+    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center mb-1.5">
+      <HardDrive className="w-4 h-4 text-blue-500" />
+    </div>
+    <h3 className="font-medium text-[11px] truncate w-full mb-0.5" title={server.name}>
+      {server.name}
+    </h3>
+    <p className="text-[9px] text-muted-foreground font-mono truncate w-full" title={server.ip}>
+      {server.ip}
+    </p>
+    {server.shares_count > 0 && (
+      <span className="mt-1 text-[8px] text-muted-foreground/70">
+        {server.shares_count} shares
+      </span>
+    )}
+  </div>
+);
+
 const ShareScan = () => {
   const navigate = useNavigate();
   const [pools, setPools] = useState([]);
@@ -97,25 +116,6 @@ const ShareScan = () => {
       if (isMounted.current) setStarting(false);
     }
   };
-
-  const ServerCardCompact = ({ server }) => (
-    <div className="h-full p-2 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30">
-      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center mb-1.5">
-        <HardDrive className="w-4 h-4 text-blue-500" />
-      </div>
-      <h3 className="font-medium text-[11px] truncate w-full mb-0.5" title={server.name}>
-        {server.name}
-      </h3>
-      <p className="text-[9px] text-muted-foreground font-mono truncate w-full" title={server.ip}>
-        {server.ip}
-      </p>
-      {server.shares_count > 0 && (
-        <span className="mt-1 text-[8px] text-muted-foreground/70">
-          {server.shares_count} shares
-        </span>
-      )}
-    </div>
-  );
 
   if (loadingPools) {
     return (
@@ -322,7 +322,7 @@ const ShareScan = () => {
                   ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
                       {preview.servers.map((server) => (
-                        <ServerCardCompact key={server.id} server={server} />
+                        <ShareScanServerCard key={server.id} server={server} />
                       ))}
                     </div>
                   )}

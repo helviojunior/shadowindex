@@ -17,6 +17,98 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+const ServerCard = ({ server, onServerClick }) => (
+  <ContextMenu>
+    <ContextMenuTrigger asChild>
+      <div
+        key={server.id}
+        onClick={() => onServerClick(server.id)}
+        className="group cursor-pointer"
+        data-testid={`server-card-${server.id}`}
+      >
+    <div className="h-full p-4 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
+      {/* Server Icon */}
+      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
+        <HardDrive className="w-8 h-8 text-primary" />
+      </div>
+
+      {/* Server Name */}
+      <h3 className="font-semibold text-sm truncate w-full mb-1" title={server.name}>
+        {server.name}
+      </h3>
+
+      {/* Server IP */}
+      <p className="text-xs text-muted-foreground font-mono truncate w-full" title={server.ip}>
+        {server.ip}
+      </p>
+
+      {/* Plugin Badge */}
+      {(server.plugin_instance_name || server.plugin_type) && (
+        <Badge variant="outline" className="mt-2 text-[10px]">
+          {server.plugin_instance_name ||
+            (server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type)}
+        </Badge>
+      )}
+    </div>
+      </div>
+    </ContextMenuTrigger>
+    <ContextMenuContent>
+      <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/files/browse`, '_blank')}>
+        Abrir em nova aba
+      </ContextMenuItem>
+      <ContextMenuItem onClick={() => onServerClick(server.id)}>
+        Abrir
+      </ContextMenuItem>
+    </ContextMenuContent>
+  </ContextMenu>
+);
+
+const ServerCardCompact = ({ server, onServerClick, colorClass = 'text-gray-500', bgClass = 'from-gray-500/20 to-gray-500/5' }) => (
+  <ContextMenu>
+    <ContextMenuTrigger asChild>
+      <div
+        key={server.id}
+        onClick={() => onServerClick(server.id)}
+        className="group cursor-pointer"
+        data-testid={`server-card-compact-${server.id}`}
+      >
+        <div className="h-full p-2 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
+          {/* Server Icon - Menor */}
+          <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${bgClass} flex items-center justify-center mb-1.5 group-hover:opacity-80 transition-all`}>
+            <HardDrive className={`w-4 h-4 ${colorClass}`} />
+          </div>
+
+          {/* Server Name */}
+          <h3 className={`font-medium text-[11px] truncate w-full mb-0.5 ${colorClass}`} title={server.name}>
+            {server.name}
+          </h3>
+
+          {/* Server IP */}
+          <p className="text-[9px] text-muted-foreground font-mono truncate w-full" title={server.ip}>
+            {server.ip}
+          </p>
+
+          {/* Plugin Badge - Muito pequeno */}
+          {(server.plugin_instance_name || server.plugin_type) && (
+            <span className="mt-1 text-[8px] text-muted-foreground/70 truncate w-full">
+              {server.plugin_instance_name ||
+                (server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type)}
+            </span>
+          )}
+        </div>
+      </div>
+    </ContextMenuTrigger>
+    <ContextMenuContent>
+      <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/files/browse`, '_blank')}>
+        Abrir em nova aba
+      </ContextMenuItem>
+      <ContextMenuItem onClick={() => onServerClick(server.id)}>
+        Abrir
+      </ContextMenuItem>
+    </ContextMenuContent>
+  </ContextMenu>
+);
+
 const FileNavigation = () => {
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,13 +146,13 @@ const FileNavigation = () => {
   const accessDeniedServers = filteredServers.filter(
     server => server.access_denied_shares_count > 0 && server.discovered_items_count === 0
   );
-  
+
   // Acessados: tem shares OU downloads OU itens descobertos (excluindo os que estão em "Acesso Negado")
   const accessedServers = filteredServers.filter(
-    server => (server.shares_count > 0 || server.downloaded_files_count > 0 || server.discovered_items_count > 0) && 
+    server => (server.shares_count > 0 || server.downloaded_files_count > 0 || server.discovered_items_count > 0) &&
               !(server.access_denied_shares_count > 0 && server.discovered_items_count === 0)
   );
-  
+
   // Inacessíveis: servidor marcado como unreachable (erro de rede 53, etc.)
   const unreachableServers = filteredServers.filter(
     server => server.is_unreachable
@@ -79,100 +171,6 @@ const FileNavigation = () => {
   const handleServerClick = (serverId) => {
     navigate(`/servers/${serverId}/browse?from=/files/browse`);
   };
-
-  // Componente de card de servidor (tamanho normal)
-  const ServerCard = ({ server }) => (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div
-          key={server.id}
-          onClick={() => handleServerClick(server.id)}
-          className="group cursor-pointer"
-          data-testid={`server-card-${server.id}`}
-        >
-      <div className="h-full p-4 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
-        {/* Server Icon */}
-        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
-          <HardDrive className="w-8 h-8 text-primary" />
-        </div>
-        
-        {/* Server Name */}
-        <h3 className="font-semibold text-sm truncate w-full mb-1" title={server.name}>
-          {server.name}
-        </h3>
-        
-        {/* Server IP */}
-        <p className="text-xs text-muted-foreground font-mono truncate w-full" title={server.ip}>
-          {server.ip}
-        </p>
-        
-        {/* Plugin Badge */}
-        {(server.plugin_instance_name || server.plugin_type) && (
-          <Badge variant="outline" className="mt-2 text-[10px]">
-            {server.plugin_instance_name ||
-              (server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type)}
-          </Badge>
-        )}
-      </div>
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/files/browse`, '_blank')}>
-          Abrir em nova aba
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => handleServerClick(server.id)}>
-          Abrir
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
-  );
-
-  // Componente de card de servidor (tamanho compacto)
-  const ServerCardCompact = ({ server, colorClass = 'text-gray-500', bgClass = 'from-gray-500/20 to-gray-500/5' }) => (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div
-          key={server.id}
-          onClick={() => handleServerClick(server.id)}
-          className="group cursor-pointer"
-          data-testid={`server-card-compact-${server.id}`}
-        >
-          <div className="h-full p-2 flex flex-col items-center text-center rounded-lg transition-all duration-200 hover:bg-muted/30 group-hover:scale-[1.02]">
-            {/* Server Icon - Menor */}
-            <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${bgClass} flex items-center justify-center mb-1.5 group-hover:opacity-80 transition-all`}>
-              <HardDrive className={`w-4 h-4 ${colorClass}`} />
-            </div>
-
-            {/* Server Name */}
-            <h3 className={`font-medium text-[11px] truncate w-full mb-0.5 ${colorClass}`} title={server.name}>
-              {server.name}
-            </h3>
-
-            {/* Server IP */}
-            <p className="text-[9px] text-muted-foreground font-mono truncate w-full" title={server.ip}>
-              {server.ip}
-            </p>
-
-            {/* Plugin Badge - Muito pequeno */}
-            {(server.plugin_instance_name || server.plugin_type) && (
-              <span className="mt-1 text-[8px] text-muted-foreground/70 truncate w-full">
-                {server.plugin_instance_name ||
-                  (server.plugin_type === 'direct_interaction' ? 'SMB' : server.plugin_type)}
-              </span>
-            )}
-          </div>
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/files/browse`, '_blank')}>
-          Abrir em nova aba
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => handleServerClick(server.id)}>
-          Abrir
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
-  );
 
   if (loading) {
     return (
@@ -323,7 +321,7 @@ const FileNavigation = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {accessedServers.map((server) => (
-                <ServerCard key={server.id} server={server} />
+                <ServerCard key={server.id} server={server} onServerClick={handleServerClick} />
               ))}
             </div>
           )}
@@ -346,9 +344,10 @@ const FileNavigation = () => {
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
               {accessDeniedServers.map((server) => (
-                <ServerCardCompact 
-                  key={server.id} 
-                  server={server} 
+                <ServerCardCompact
+                  key={server.id}
+                  server={server}
+                  onServerClick={handleServerClick}
                   colorClass="text-red-500"
                   bgClass="from-red-500/20 to-red-500/5"
                 />
@@ -377,6 +376,7 @@ const FileNavigation = () => {
                 <ServerCardCompact
                   key={server.id}
                   server={server}
+                  onServerClick={handleServerClick}
                   colorClass="text-orange-500"
                   bgClass="from-orange-500/20 to-orange-500/5"
                 />
@@ -402,7 +402,7 @@ const FileNavigation = () => {
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
               {notAccessedServers.map((server) => (
-                <ServerCardCompact key={server.id} server={server} />
+                <ServerCardCompact key={server.id} server={server} onServerClick={handleServerClick} />
               ))}
             </div>
           )}

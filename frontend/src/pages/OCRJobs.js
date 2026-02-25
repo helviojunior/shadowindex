@@ -48,6 +48,27 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api/v2`;
 
+const OCRStatusBadge = ({ status }) => {
+  const variants = {
+    pending: { icon: Clock, className: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50' },
+    running: { icon: Loader2, className: 'bg-blue-500/20 text-blue-500 border-blue-500/50', spin: true },
+    completed: { icon: CheckCircle, className: 'bg-green-500/20 text-green-500 border-green-500/50' },
+    failed: { icon: XCircle, className: 'bg-red-500/20 text-red-500 border-red-500/50' },
+    skipped: { icon: SkipForward, className: 'bg-gray-500/20 text-gray-400 border-gray-500/50' },
+    cancelled: { icon: StopCircle, className: 'bg-orange-500/20 text-orange-500 border-orange-500/50' }
+  };
+
+  const variant = variants[status] || variants.pending;
+  const Icon = variant.icon;
+
+  return (
+    <Badge variant="outline" className={cn("gap-1", variant.className)}>
+      <Icon className={cn("w-3 h-3", variant.spin && "animate-spin")} />
+      {status}
+    </Badge>
+  );
+};
+
 const OCRJobs = () => {
   const { isConnected } = useWebSocket();
   const [jobs, setJobs] = useState([]);
@@ -276,28 +297,6 @@ const OCRJobs = () => {
       String(job.id).includes(term)
     );
   });
-
-  // Status badge
-  const StatusBadge = ({ status }) => {
-    const variants = {
-      pending: { icon: Clock, className: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50' },
-      running: { icon: Loader2, className: 'bg-blue-500/20 text-blue-500 border-blue-500/50', spin: true },
-      completed: { icon: CheckCircle, className: 'bg-green-500/20 text-green-500 border-green-500/50' },
-      failed: { icon: XCircle, className: 'bg-red-500/20 text-red-500 border-red-500/50' },
-      skipped: { icon: SkipForward, className: 'bg-gray-500/20 text-gray-400 border-gray-500/50' },
-      cancelled: { icon: StopCircle, className: 'bg-orange-500/20 text-orange-500 border-orange-500/50' }
-    };
-    
-    const variant = variants[status] || variants.pending;
-    const Icon = variant.icon;
-    
-    return (
-      <Badge variant="outline" className={cn("gap-1", variant.className)}>
-        <Icon className={cn("w-3 h-3", variant.spin && "animate-spin")} />
-        {status}
-      </Badge>
-    );
-  };
 
   // Formatar data
   const formatDate = (dateString) => {
@@ -562,7 +561,7 @@ const OCRJobs = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={job.status} />
+                        <OCRStatusBadge status={job.status} />
                       </TableCell>
                       <TableCell className="text-xs">
                         {job.status === 'completed' ? (
