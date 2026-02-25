@@ -4904,6 +4904,14 @@ async def startup_event():
     except Exception as e:
         print(f"=== STARTUP ERROR: Failed to start OCR worker: {e} ===", flush=True)
     
+    # Iniciar worker de share scan em background
+    try:
+        from share_scan_worker import start_share_scan_worker
+        await start_share_scan_worker()
+        print("=== STARTUP: Share scan worker started successfully ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP ERROR: Failed to start share scan worker: {e} ===", flush=True)
+
     # Iniciar watchdog de banco de dados
     try:
         from db_watchdog import start_db_watchdog
@@ -4973,6 +4981,14 @@ async def shutdown_event():
     from directory_scanner import stop_directory_scanner
     await stop_directory_scanner()
     logging.info("Directory scanner stopped")
+
+    # Parar worker de share scan
+    try:
+        from share_scan_worker import stop_share_scan_worker
+        await stop_share_scan_worker()
+        logging.info("Share scan worker stopped")
+    except Exception as e:
+        logging.warning(f"Error stopping share scan worker: {e}")
 
 if __name__ == "__main__":
     import uvicorn

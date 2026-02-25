@@ -182,7 +182,15 @@ class WebSocketManager:
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
-    async def emit_file_status_change(self, file_path: str, server_id: int, 
+    async def emit_share_scan_stats(self, stats: Dict[str, int]):
+        """Emite estatísticas de share scan"""
+        await self.broadcast({
+            "type": "share_scan_stats",
+            "data": stats,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+
+    async def emit_file_status_change(self, file_path: str, server_id: int,
                                        status: str, file_id: int = None):
         """Emite mudança de status de arquivo (para tree view)"""
         await self.broadcast({
