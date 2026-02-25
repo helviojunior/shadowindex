@@ -1794,9 +1794,9 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
                 
                 if should_ocr:
                     from ocr_worker import queue_ocr_job
-                    
+
                     version_id = file_version.id if file_version else None
-                    
+
                     ocr_job_id = await queue_ocr_job(
                         db=db,
                         file_id=downloaded_file.id,
@@ -1809,7 +1809,19 @@ async def download_item(server_id: int, item_id: int, db: AsyncSession = Depends
                         priority=1  # Prioridade maior para sync manual
                     )
                     logger.info(f"OCR job {ocr_job_id} queued for {item.name}")
-                    
+                else:
+                    # Se OCR não foi agendado, tentar auto-index do conteúdo bruto
+                    try:
+                        from download_worker import try_auto_index_content
+                        await try_auto_index_content(
+                            db=db,
+                            version_id=file_version.id if file_version else None,
+                            file_name=item.name,
+                            local_path=local_path,
+                        )
+                    except Exception as idx_err:
+                        logger.warning(f"Failed to auto-index content for {item.name}: {idx_err}")
+
         except Exception as ocr_err:
             logger.warning(f"Failed to queue OCR job for {item.name}: {ocr_err}")
         
@@ -2199,10 +2211,22 @@ async def download_file_by_path(
     
     if not existing:
         server.downloaded_files_count = (server.downloaded_files_count or 0) + 1
-    
+
     await db.commit()
     await db.refresh(downloaded_file)
-    
+
+    # Tentar auto-index do conteúdo bruto (para arquivos de texto)
+    try:
+        from download_worker import try_auto_index_content
+        await try_auto_index_content(
+            db=db,
+            version_id=new_version.id,
+            file_name=file_path.split('\\')[-1] if '\\' in file_path else file_path,
+            local_path=local_path,
+        )
+    except Exception as idx_err:
+        logger.warning(f"Failed to auto-index content: {idx_err}")
+
     return {
         "success": True,
         "file_id": downloaded_file.id,

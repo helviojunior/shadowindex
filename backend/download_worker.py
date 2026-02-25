@@ -796,9 +796,9 @@ class DownloadWorker:
             if should_ocr:
                 try:
                     from ocr_worker import queue_ocr_job
-                    
+
                     version_id = version.id if version else None
-                    
+
                     await queue_ocr_job(
                         db=db,
                         file_id=downloaded_file.id,
@@ -813,7 +813,18 @@ class DownloadWorker:
                     logger.info(f"OCR job queued for {job.file_name}")
                 except Exception as ocr_err:
                     logger.warning(f"Failed to queue OCR job: {ocr_err}")
-            
+            else:
+                # Se OCR não foi agendado, tentar auto-index do conteúdo bruto
+                try:
+                    await try_auto_index_content(
+                        db=db,
+                        version_id=version.id if version else None,
+                        file_name=job.file_name,
+                        local_path=str(full_storage_path),
+                    )
+                except Exception as idx_err:
+                    logger.warning(f"Failed to auto-index content: {idx_err}")
+
         except Exception as e:
             logger.error(f"Error saving file content: {e}")
             raise
@@ -851,3 +862,103 @@ async def stop_download_worker():
     """Para o worker de downloads"""
     worker = get_worker()
     await worker.stop()
+
+
+async def try_auto_index_content(db, version_id: int, file_name: str, local_path: str):
+    """
+    Tenta indexar o conteúdo bruto do arquivo (texto) em FileVersion.ocr_content.
+    Chamado após todo download quando OCR não é agendado.
+    Replica a lógica de OcrWorker._try_auto_index_content mas como função standalone.
+    """
+    from database import AppSettings, FileVersion
+    import os
+    import re
+    import mimetypes as mt_module
+    import fnmatch as fnmatch_module
+
+    try:
+        # 1. Verificar se auto_index está habilitado
+        settings_result = await db.execute(
+            select(AppSettings).where(
+                AppSettings.key.in_([
+                    'auto_index_enabled',
+                    'auto_index_max_size_mb',
+                    'auto_index_extensions',
+                    'auto_index_mimetypes'
+                ])
+            )
+        )
+        settings_map = {s.key: s.value for s in settings_result.scalars().all()}
+
+        if settings_map.get('auto_index_enabled', 'true') != 'true':
+            return
+
+        # 2. Verificar se o arquivo existe
+        if not local_path or not os.path.exists(local_path):
+            return
+
+        # 3. Verificar tamanho do arquivo
+        max_size_mb = float(settings_map.get('auto_index_max_size_mb', '10'))
+        file_size = os.path.getsize(local_path)
+        if file_size > max_size_mb * 1024 * 1024:
+            logger.debug(f"Auto-index skipped for {file_name}: file too large ({file_size} bytes)")
+            return
+
+        # 4. Verificar extensão OU mimetype match
+        allowed_extensions = [e.strip().lower() for e in settings_map.get('auto_index_extensions', '').split(',') if e.strip()]
+        allowed_mimetypes = [m.strip().lower() for m in settings_map.get('auto_index_mimetypes', '').split(',') if m.strip()]
+
+        file_name_lower = (file_name or '').lower()
+        file_ext = os.path.splitext(file_name_lower)[1].lower()
+        file_mimetype, _ = mt_module.guess_type(local_path or file_name or '')
+
+        ext_match = False
+        for pattern in allowed_extensions:
+            if '*' in pattern or '?' in pattern:
+                if fnmatch_module.fnmatch(file_name_lower, '*' + pattern if not pattern.startswith('*') else pattern):
+                    ext_match = True
+                    break
+            else:
+                if file_ext == pattern:
+                    ext_match = True
+                    break
+
+        mime_match = False
+        if file_mimetype:
+            for allowed_mime in allowed_mimetypes:
+                if file_mimetype.lower().startswith(allowed_mime):
+                    mime_match = True
+                    break
+
+        if not ext_match and not mime_match:
+            return
+
+        # 5. Ler conteúdo do arquivo (bytes -> decode UTF-8 ignorando erros)
+        content = None
+        try:
+            with open(local_path, 'rb') as f:
+                content = f.read().decode('utf-8', 'ignore')
+            content = content.replace('\r', '')
+            content = re.sub(r'[^\x20-\x7E\n\t]', '', content)
+            content = re.sub(r'\n+', '\n', content)
+        except Exception:
+            return
+
+        if not content or not content.strip():
+            return
+
+        # 6. Salvar em FileVersion.ocr_content
+        if version_id:
+            version_result = await db.execute(
+                select(FileVersion).where(FileVersion.id == version_id)
+            )
+            version = version_result.scalar_one_or_none()
+            if version and not version.ocr_content:
+                version.ocr_content = content
+                version.ocr_processed = True
+                version.ocr_processed_at = datetime.now(timezone.utc)
+                await db.commit()
+                logger.info(f"Auto-indexed content for {file_name} ({len(content)} chars)")
+
+    except Exception as e:
+        logger.warning(f"Auto-index failed for {file_name}: {e}")
