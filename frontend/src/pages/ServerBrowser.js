@@ -3484,6 +3484,15 @@ const ServerBrowser = () => {
             }}>
               Abrir em nova aba
             </ContextMenuItem>
+            {/* Copiar link */}
+            <ContextMenuItem onClick={() => {
+              const url = `${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(path)}&from=${encodeURIComponent(window.location.pathname)}`;
+              navigator.clipboard.writeText(url).then(() => {
+                toast.success('Link copiado!');
+              });
+            }}>
+              Copiar link
+            </ContextMenuItem>
             {/* View as HexDump - apenas arquivos baixados */}
             {isFile && isDownloaded && (
               <ContextMenuItem onClick={() => {
@@ -4984,6 +4993,15 @@ const ServerBrowser = () => {
                           window.open(`${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(itemPath)}&from=${encodeURIComponent(window.location.pathname)}`, '_blank');
                         }}>
                           Abrir em nova aba
+                        </ContextMenuItem>
+                        {/* Copiar link */}
+                        <ContextMenuItem onClick={() => {
+                          const url = `${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(itemPath)}&from=${encodeURIComponent(window.location.pathname)}`;
+                          navigator.clipboard.writeText(url).then(() => {
+                            toast.success('Link copiado!');
+                          });
+                        }}>
+                          Copiar link
                         </ContextMenuItem>
                         <ContextMenuSeparator />
                         {/* Busca Crítica */}
