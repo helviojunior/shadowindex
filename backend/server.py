@@ -4101,6 +4101,7 @@ async def get_download_stats(db: AsyncSession = Depends(get_db_readonly)):
         "downloading": status_counts.get('downloading', 0),
         "completed": status_counts.get('completed', 0),
         "failed": status_counts.get('failed', 0),
+        "paused": status_counts.get('paused', 0),
         "cancelled": status_counts.get('cancelled', 0),
         "skipped": status_counts.get('skipped', 0),
         "total_size_bytes": total_size_bytes
@@ -4477,32 +4478,111 @@ async def cancel_download_job(
     job_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """Cancela um job de download"""
+    """Cancela um job de download e limpa arquivos temporários"""
     result = await db.execute(select(DownloadJob).where(DownloadJob.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     if job.status in ['completed', 'cancelled']:
         raise HTTPException(status_code=400, detail="Job já finalizado")
-    
+
     job.status = 'cancelled'
     job.completed_at = datetime.now(timezone.utc)
+
+    # Limpar segmentos do DB
+    from database import DownloadSegment
+    await db.execute(
+        delete(DownloadSegment).where(DownloadSegment.job_id == job_id)
+    )
     await db.commit()
-    
+
+    # Limpar arquivos temporários do disco
+    try:
+        from storage_utils import cleanup_temp_files
+        cleanup_temp_files(job_id)
+    except Exception:
+        pass
+
     return {"success": True}
 
 
 @api_router.post("/downloads/cancel-all")
 async def cancel_all_download_jobs(db: AsyncSession = Depends(get_db)):
-    """Cancela todos os jobs pendentes/em andamento"""
+    """Cancela todos os jobs pendentes/em andamento e limpa temp files"""
+    # Buscar IDs dos jobs que serão cancelados para limpar temp files
+    result = await db.execute(
+        select(DownloadJob.id)
+        .where(DownloadJob.status.in_(['pending', 'downloading', 'paused']))
+    )
+    job_ids = [row[0] for row in result.all()]
+
     await db.execute(
         update(DownloadJob)
-        .where(DownloadJob.status.in_(['pending', 'downloading']))
+        .where(DownloadJob.status.in_(['pending', 'downloading', 'paused']))
         .values(status='cancelled', completed_at=datetime.now(timezone.utc))
     )
+
+    # Limpar segmentos do DB
+    if job_ids:
+        from database import DownloadSegment
+        await db.execute(
+            delete(DownloadSegment).where(DownloadSegment.job_id.in_(job_ids))
+        )
+
     await db.commit()
-    
+
+    # Limpar arquivos temporários do disco
+    try:
+        from storage_utils import cleanup_temp_files
+        for job_id in job_ids:
+            cleanup_temp_files(job_id)
+    except Exception:
+        pass
+
+    return {"success": True}
+
+
+@api_router.post("/downloads/{job_id}/pause")
+async def pause_download_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Pausa um job de download em andamento"""
+    result = await db.execute(select(DownloadJob).where(DownloadJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status not in ['downloading', 'pending']:
+        raise HTTPException(status_code=400, detail="Apenas jobs em andamento ou pendentes podem ser pausados")
+
+    job.status = 'paused'
+    await db.commit()
+
+    return {"success": True}
+
+
+@api_router.post("/downloads/{job_id}/resume")
+async def resume_download_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Retoma um job de download pausado"""
+    result = await db.execute(select(DownloadJob).where(DownloadJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != 'paused':
+        raise HTTPException(status_code=400, detail="Apenas jobs pausados podem ser retomados")
+
+    job.status = 'pending'
+    job.error_message = None
+    job.started_at = None
+    job.completed_at = None
+    await db.commit()
+
     return {"success": True}
 
 

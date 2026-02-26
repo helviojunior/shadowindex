@@ -27,6 +27,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useWebSocket, useDownloadEvents, useScanEvents } from '@/hooks/useWebSocket';
 
@@ -36,6 +46,7 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 const statusConfig = {
   pending: { label: 'Pendente', color: 'bg-yellow-500', icon: Clock, textColor: 'text-yellow-500', borderColor: 'border-l-yellow-500', ringColor: 'ring-yellow-500' },
   downloading: { label: 'Baixando', color: 'bg-blue-500', icon: Download, textColor: 'text-blue-500', borderColor: 'border-l-blue-500', ringColor: 'ring-blue-500' },
+  paused: { label: 'Pausado', color: 'bg-amber-500', icon: Pause, textColor: 'text-amber-500', borderColor: 'border-l-amber-500', ringColor: 'ring-amber-500' },
   completed: { label: 'Concluído', color: 'bg-green-500', icon: CheckCircle, textColor: 'text-green-500', borderColor: 'border-l-green-500', ringColor: 'ring-green-500' },
   failed: { label: 'Falhou', color: 'bg-red-500', icon: XCircle, textColor: 'text-red-500', borderColor: 'border-l-red-500', ringColor: 'ring-red-500' },
   cancelled: { label: 'Cancelado', color: 'bg-gray-500', icon: X, textColor: 'text-gray-500', borderColor: 'border-l-gray-500', ringColor: 'ring-gray-500' },
@@ -63,14 +74,17 @@ const Downloads = () => {
     total: 0,
     pending: 0,
     downloading: 0,
+    paused: 0,
     completed: 0,
     failed: 0,
     cancelled: 0,
     skipped: 0
   });
   
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, action: null, jobId: null, jobName: null });
+
   // Cache de jobs carregados por status
-  const [loadedStatuses, setLoadedStatuses] = useState(new Set(['downloading', 'pending']));
+  const [loadedStatuses, setLoadedStatuses] = useState(new Set(['downloading', 'pending', 'paused']));
   const [loadingStatus, setLoadingStatus] = useState(null);
   
   // Histórico de progresso para cálculo de ETA (speed baseado nos últimos ~10s)
@@ -99,14 +113,14 @@ const Downloads = () => {
     if (pollingPausedRef.current) return;
     
     try {
-      const response = await axios.get(`${API}/downloads?status=downloading,pending&limit=100`);
+      const response = await axios.get(`${API}/downloads?status=downloading,pending,paused&limit=100`);
       const activeJobs = response.data || [];
-      
+
       errorCountRef.current = 0;
-      
+
       setDownloadJobs(prev => {
         // Manter jobs de outros status, atualizar apenas ativos
-        const otherJobs = prev.filter(j => !['downloading', 'pending'].includes(j.status));
+        const otherJobs = prev.filter(j => !['downloading', 'pending', 'paused'].includes(j.status));
         return [...activeJobs, ...otherJobs];
       });
       
@@ -131,7 +145,7 @@ const Downloads = () => {
 
   // Carregar jobs por status específico (sob demanda)
   const loadJobsByStatus = useCallback(async (status) => {
-    if (loadedStatuses.has(status) && status !== 'downloading' && status !== 'pending') {
+    if (loadedStatuses.has(status) && status !== 'downloading' && status !== 'pending' && status !== 'paused') {
       return; // Já carregado
     }
     
@@ -279,7 +293,7 @@ const Downloads = () => {
     pollingPausedRef.current = false;
     errorCountRef.current = 0;
     setLoading(true);
-    setLoadedStatuses(new Set(['downloading', 'pending']));
+    setLoadedStatuses(new Set(['downloading', 'pending', 'paused']));
     loadStats();
     loadActiveJobs();
     loadScanJobs();
@@ -384,6 +398,30 @@ const Downloads = () => {
     }
   };
 
+  // Pause single job
+  const pauseJob = async (jobId) => {
+    try {
+      await axios.post(`${API}/downloads/${jobId}/pause`);
+      loadStats();
+      loadActiveJobs();
+    } catch (error) {
+      console.error('Error pausing job:', error);
+      toast.error('Erro ao pausar download');
+    }
+  };
+
+  // Resume paused job
+  const resumeJob = async (jobId) => {
+    try {
+      await axios.post(`${API}/downloads/${jobId}/resume`);
+      loadStats();
+      loadActiveJobs();
+    } catch (error) {
+      console.error('Error resuming job:', error);
+      toast.error('Erro ao retomar download');
+    }
+  };
+
   // Force download (for skipped files)
   const forceDownload = async (jobId) => {
     try {
@@ -422,7 +460,7 @@ const Downloads = () => {
       const response = await axios.get(`${API}/downloads/stats`);
       setStats(response.data);
       // Resetar cache de status finalizados
-      setLoadedStatuses(new Set(['downloading', 'pending']));
+      setLoadedStatuses(new Set(['downloading', 'pending', 'paused']));
       setDownloadJobs(prev => prev.filter(j => ['downloading', 'pending'].includes(j.status)));
       toast.success('Histórico limpo com sucesso');
     } catch (error) {
@@ -450,8 +488,8 @@ const Downloads = () => {
 
   // Group jobs by server (with sorting: downloading > pending > others)
   const sortedFilteredJobs = [...filteredJobs].sort((a, b) => {
-    // Ordem: downloading > pending > completed > failed > cancelled > skipped
-    const statusOrder = { downloading: 0, pending: 1, completed: 2, failed: 3, cancelled: 4, skipped: 5 };
+    // Ordem: downloading > paused > pending > completed > failed > cancelled > skipped
+    const statusOrder = { downloading: 0, paused: 1, pending: 2, completed: 3, failed: 4, cancelled: 5, skipped: 6 };
     return (statusOrder[a.status] ?? 6) - (statusOrder[b.status] ?? 6);
   });
   
@@ -553,7 +591,7 @@ const Downloads = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         {Object.entries(statusConfig).map(([status, config]) => {
           const count = stats[status] || 0;
           const isActive = activeFilter === status;
@@ -580,7 +618,7 @@ const Downloads = () => {
                     <p className="text-2xl font-bold">{count}</p>
                     <p className={cn("text-xs uppercase", config.textColor)}>
                       {config.label}
-                      {!isLoaded && !['downloading', 'pending'].includes(status) && count > 0 && (
+                      {!isLoaded && !['downloading', 'pending', 'paused'].includes(status) && count > 0 && (
                         <span className="text-muted-foreground ml-1">(clique)</span>
                       )}
                     </p>
@@ -650,8 +688,8 @@ const Downloads = () => {
             <Download className="w-4 h-4" />
             Downloads
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-              {stats.downloading + stats.pending > 0 ? (
-                <span className="text-blue-400">{stats.downloading + stats.pending} ativos</span>
+              {stats.downloading + stats.pending + stats.paused > 0 ? (
+                <span className="text-blue-400">{stats.downloading + stats.pending + stats.paused} ativos</span>
               ) : (
                 downloadJobs.length
               )}
@@ -697,7 +735,7 @@ const Downloads = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={clearFinished}
+              onClick={() => setConfirmDialog({ open: true, action: 'clearFinished', jobId: null, jobName: null })}
               data-testid="clear-finished"
             >
               <Trash2 className="w-4 h-4 mr-2" />
@@ -706,7 +744,7 @@ const Downloads = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={retryAllFailed}
+              onClick={() => setConfirmDialog({ open: true, action: 'retryAllFailed', jobId: null, jobName: null })}
               disabled={stats.failed === 0}
               data-testid="retry-all-failed"
             >
@@ -716,8 +754,8 @@ const Downloads = () => {
             <Button
               variant="destructive"
               size="sm"
-              onClick={cancelAllJobs}
-              disabled={stats.pending === 0 && stats.downloading === 0}
+              onClick={() => setConfirmDialog({ open: true, action: 'cancelAll', jobId: null, jobName: null })}
+              disabled={stats.pending === 0 && stats.downloading === 0 && stats.paused === 0}
               data-testid="cancel-all"
             >
               <X className="w-4 h-4 mr-2" />
@@ -836,7 +874,7 @@ const Downloads = () => {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => cancelJob(job.id)}
+                                    onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id, jobName: job.file_name || job.file_path })}
                                     className="h-8 w-8 p-0"
                                     title="Cancelar"
                                   >
@@ -844,21 +882,54 @@ const Downloads = () => {
                                   </Button>
                                 )}
                                 {job.status === 'downloading' && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => cancelJob(job.id)}
-                                    className="h-8 w-8 p-0"
-                                    title="Cancelar"
-                                  >
-                                    <Pause className="w-4 h-4" />
-                                  </Button>
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setConfirmDialog({ open: true, action: 'pause', jobId: job.id, jobName: job.file_name || job.file_path })}
+                                      className="h-8 w-8 p-0"
+                                      title="Pausar"
+                                    >
+                                      <Pause className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id, jobName: job.file_name || job.file_path })}
+                                      className="h-8 w-8 p-0"
+                                      title="Cancelar"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                {job.status === 'paused' && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setConfirmDialog({ open: true, action: 'resume', jobId: job.id, jobName: job.file_name || job.file_path })}
+                                      className="h-8 w-8 p-0"
+                                      title="Retomar"
+                                    >
+                                      <Play className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id, jobName: job.file_name || job.file_path })}
+                                      className="h-8 w-8 p-0"
+                                      title="Cancelar"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </>
                                 )}
                                 {job.status === 'failed' && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => retryDownload(job.id)}
+                                    onClick={() => setConfirmDialog({ open: true, action: 'retry', jobId: job.id, jobName: job.file_name || job.file_path })}
                                     className="h-8 w-8 p-0"
                                     title="Tentar novamente"
                                   >
@@ -869,7 +940,7 @@ const Downloads = () => {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => forceDownload(job.id)}
+                                    onClick={() => setConfirmDialog({ open: true, action: 'force', jobId: job.id, jobName: job.file_name || job.file_path })}
                                     className="h-8 w-8 p-0"
                                     title="Forçar download"
                                   >
@@ -899,7 +970,7 @@ const Downloads = () => {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={clearFinishedScans}
+                onClick={() => setConfirmDialog({ open: true, action: 'clearFinishedScans', jobId: null, jobName: null })}
                 data-testid="clear-finished-scans"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -910,7 +981,7 @@ const Downloads = () => {
               <Button
                 size="sm"
                 variant="destructive"
-                onClick={cancelAllScans}
+                onClick={() => setConfirmDialog({ open: true, action: 'cancelAllScans', jobId: null, jobName: null })}
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancelar Todos
@@ -1030,7 +1101,7 @@ const Downloads = () => {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => cancelScanJob(scan.id)}
+                                onClick={() => setConfirmDialog({ open: true, action: 'cancelScan', jobId: scan.id, jobName: scan.server_name || scan.share_path })}
                                 className="h-8 w-8 p-0"
                                 title="Cancelar scan"
                               >
@@ -1060,6 +1131,75 @@ const Downloads = () => {
           )}
         </div>
       )}
+      {/* Confirm Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDialog.action === 'cancel' ? 'Cancelar Download' :
+               confirmDialog.action === 'pause' ? 'Pausar Download' :
+               confirmDialog.action === 'resume' ? 'Retomar Download' :
+               confirmDialog.action === 'retry' ? 'Tentar Novamente' :
+               confirmDialog.action === 'force' ? 'Forçar Download' :
+               confirmDialog.action === 'cancelAll' ? 'Cancelar Todos os Downloads' :
+               confirmDialog.action === 'clearFinished' ? 'Limpar Concluídos' :
+               confirmDialog.action === 'retryAllFailed' ? 'Refazer Todos os Falhados' :
+               confirmDialog.action === 'cancelScan' ? 'Cancelar Scan' :
+               confirmDialog.action === 'cancelAllScans' ? 'Cancelar Todos os Scans' :
+               confirmDialog.action === 'clearFinishedScans' ? 'Limpar Scans Finalizados' :
+               'Confirmar Ação'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.action === 'cancel'
+                ? `Tem certeza que deseja cancelar o download de "${confirmDialog.jobName}"?`
+                : confirmDialog.action === 'pause'
+                ? `Tem certeza que deseja pausar o download de "${confirmDialog.jobName}"?`
+                : confirmDialog.action === 'resume'
+                ? `Tem certeza que deseja retomar o download de "${confirmDialog.jobName}"?`
+                : confirmDialog.action === 'retry'
+                ? `Tem certeza que deseja tentar novamente o download de "${confirmDialog.jobName}"?`
+                : confirmDialog.action === 'force'
+                ? `Tem certeza que deseja forçar o download de "${confirmDialog.jobName}"?`
+                : confirmDialog.action === 'cancelAll'
+                ? `Isso cancelará ${stats.pending + stats.downloading + stats.paused} downloads pendentes, em andamento e pausados.`
+                : confirmDialog.action === 'clearFinished'
+                ? 'Isso removerá todos os downloads concluídos, falhados, cancelados e ignorados da lista.'
+                : confirmDialog.action === 'retryAllFailed'
+                ? `Isso reenfileirará ${stats.failed} downloads falhados para tentar novamente.`
+                : confirmDialog.action === 'cancelScan'
+                ? `Tem certeza que deseja cancelar o scan de "${confirmDialog.jobName}"?`
+                : confirmDialog.action === 'cancelAllScans'
+                ? 'Isso cancelará todos os scans pendentes e em execução.'
+                : confirmDialog.action === 'clearFinishedScans'
+                ? 'Isso removerá todos os scans concluídos, cancelados e falhados da lista.'
+                : 'Tem certeza que deseja executar esta ação?'
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const { action, jobId } = confirmDialog;
+                if (action === 'cancel') cancelJob(jobId);
+                else if (action === 'pause') pauseJob(jobId);
+                else if (action === 'resume') resumeJob(jobId);
+                else if (action === 'retry') retryDownload(jobId);
+                else if (action === 'force') forceDownload(jobId);
+                else if (action === 'cancelAll') cancelAllJobs();
+                else if (action === 'clearFinished') clearFinished();
+                else if (action === 'retryAllFailed') retryAllFailed();
+                else if (action === 'cancelScan') cancelScanJob(jobId);
+                else if (action === 'cancelAllScans') cancelAllScans();
+                else if (action === 'clearFinishedScans') clearFinishedScans();
+                setConfirmDialog({ open: false, action: null, jobId: null, jobName: null });
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

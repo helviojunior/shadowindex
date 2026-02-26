@@ -343,9 +343,10 @@ class DownloadWorker:
             
             if not job or job.status != 'pending':
                 return
-            
-            # Marcar como downloading
+
+            # Marcar como downloading (limpar mensagem de erro de reset anterior)
             job.status = 'downloading'
+            job.error_message = None
             job.started_at = datetime.now(timezone.utc)
             await db.commit()
             
@@ -387,7 +388,12 @@ class DownloadWorker:
                 else:
                     # Download direto
                     await self._download_direct_via_plugin(db, job, plugin, full_path, server)
-                
+
+                # Verificar se foi pausado/cancelado durante o download
+                await db.refresh(job)
+                if job.status in ('paused', 'cancelled'):
+                    return
+
                 # Marcar como concluído
                 job.status = 'completed'
                 job.progress = 100
@@ -580,6 +586,12 @@ class DownloadWorker:
 
                     if file_content.is_complete or len(file_content.data) < CHUNK_SIZE:
                         break
+
+                    # Verificar se job foi pausado ou cancelado
+                    await db.refresh(job)
+                    if job.status in ('paused', 'cancelled'):
+                        logger.info(f"Download job {job.id} {job.status} during chunked download at {downloaded}/{total_size}")
+                        return
 
             # Ler arquivo completo do disco e salvar no storage final
             with open(temp_path, 'rb') as f:
@@ -795,6 +807,13 @@ class DownloadWorker:
                                     file_name=job.file_name,
                                     file_path=job.file_path
                                 )
+
+                                # Verificar se job foi pausado ou cancelado
+                                if job.status in ('paused', 'cancelled'):
+                                    logger.info(f"Download job {job_id} {job.status} during segment {seg.segment_index}")
+                                    seg.downloaded_bytes = downloaded
+                                    await db.commit()
+                                    return
 
                         if file_content.is_complete or len(file_content.data) < chunk_len:
                             break

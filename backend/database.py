@@ -388,7 +388,7 @@ class DownloadJob(Base):
     downloaded_bytes = Column(BigInteger, default=0)  # Bytes baixados
     total_bytes = Column(BigInteger, nullable=True)  # Total a baixar
     progress = Column(Integer, default=0)  # Porcentagem 0-100
-    status = Column(String, default='pending')  # pending, downloading, completed, failed, cancelled, skipped
+    status = Column(String, default='pending')  # pending, downloading, paused, completed, failed, cancelled, skipped
     error_message = Column(String, nullable=True)
     skip_reason = Column(String, nullable=True)  # Motivo se foi ignorado (ex: tamanho)
     priority = Column(Integer, default=0)  # Prioridade na fila
