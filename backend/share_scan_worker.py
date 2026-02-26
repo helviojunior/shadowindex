@@ -183,7 +183,29 @@ class ShareScanWorker:
                 try:
                     # Get plugin and list shares
                     plugin = await get_plugin_for_server(db, server)
-                    shares_list = await plugin.list_shares(server.ip, ignore_cache=True)
+
+                    # Se o IP não é um IPv4 válido (é hostname), resolver antes
+                    target_ip = server.ip
+                    if not self._is_valid_ipv4(target_ip):
+                        logger.info(f"Share scan job {job_id}: server.ip '{target_ip}' is not a valid IPv4, resolving...")
+                        try:
+                            resolved = await plugin.resolve_address(target_ip, ignore_cache=True)
+                            if resolved:
+                                from server import extract_ipv4_from_resolve_result
+                                ipv4 = extract_ipv4_from_resolve_result(resolved)
+                                if ipv4:
+                                    logger.info(f"Share scan job {job_id}: resolved '{target_ip}' -> '{ipv4}'")
+                                    target_ip = ipv4
+                                    # Atualizar o IP do server no banco
+                                    server.ip = ipv4
+                                else:
+                                    logger.warning(f"Share scan job {job_id}: resolve returned no valid IPv4 for '{target_ip}', using original value")
+                            else:
+                                logger.warning(f"Share scan job {job_id}: resolve returned empty for '{target_ip}', using original value")
+                        except Exception as resolve_err:
+                            logger.warning(f"Share scan job {job_id}: failed to resolve '{target_ip}': {resolve_err}, using original value")
+
+                    shares_list = await plugin.list_shares(target_ip, ignore_cache=True)
 
                     shares_data = []
                     if shares_list:
@@ -293,6 +315,17 @@ class ShareScanWorker:
             await self._emit_stats()
         except Exception as e:
             logger.warning(f"Error emitting share scan stats: {e}")
+
+    @staticmethod
+    def _is_valid_ipv4(ip: str) -> bool:
+        """Verifica se é um endereço IPv4 válido"""
+        if not ip:
+            return False
+        import re
+        if not re.match(r'^(\d{1,3}\.){3}\d{1,3}$', ip):
+            return False
+        parts = ip.split('.')
+        return all(0 <= int(part) <= 255 for part in parts)
 
     async def _emit_stats(self):
         """Emite estatísticas de share scan via WebSocket"""
