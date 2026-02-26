@@ -493,14 +493,16 @@ const Dashboard = () => {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1a1a1a', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1a1a1a',
                         border: '1px solid #333',
                         borderRadius: '8px'
                       }}
+                      itemStyle={{ color: '#e5e5e5' }}
+                      labelStyle={{ color: '#e5e5e5' }}
                     />
-                    <Legend 
+                    <Legend
                       verticalAlign="bottom" 
                       height={30}
                       formatter={(value) => (
