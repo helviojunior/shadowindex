@@ -3487,9 +3487,7 @@ const ServerBrowser = () => {
             {/* Copiar link */}
             <ContextMenuItem onClick={() => {
               const url = `${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(path)}&from=${encodeURIComponent(window.location.pathname)}`;
-              navigator.clipboard.writeText(url).then(() => {
-                toast.success('Link copiado!');
-              });
+              copyToClipboard(url, 'link');
             }}>
               Copiar link
             </ContextMenuItem>
@@ -4997,9 +4995,7 @@ const ServerBrowser = () => {
                         {/* Copiar link */}
                         <ContextMenuItem onClick={() => {
                           const url = `${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(itemPath)}&from=${encodeURIComponent(window.location.pathname)}`;
-                          navigator.clipboard.writeText(url).then(() => {
-                            toast.success('Link copiado!');
-                          });
+                          copyToClipboard(url, 'link');
                         }}>
                           Copiar link
                         </ContextMenuItem>
