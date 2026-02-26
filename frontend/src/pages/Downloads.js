@@ -73,6 +73,9 @@ const Downloads = () => {
   const [loadedStatuses, setLoadedStatuses] = useState(new Set(['downloading', 'pending']));
   const [loadingStatus, setLoadingStatus] = useState(null);
   
+  // Histórico de progresso para cálculo de ETA (speed baseado nos últimos ~10s)
+  const progressHistoryRef = useRef({}); // { jobId: [{ bytes, time }] }
+
   // Controle de erros - para polling após muitos erros
   const errorCountRef = useRef(0);
   const pollingPausedRef = useRef(false);
@@ -167,11 +170,23 @@ const Downloads = () => {
   
   // Handler para progresso de download
   const handleDownloadProgress = useCallback((data) => {
-    setDownloadJobs(prev => prev.map(job => 
-      job.id === data.job_id 
-        ? { 
-            ...job, 
-            progress: data.progress, 
+    // Registrar snapshot para cálculo de ETA
+    const now = Date.now();
+    const jobId = data.job_id;
+    if (!progressHistoryRef.current[jobId]) {
+      progressHistoryRef.current[jobId] = [];
+    }
+    const history = progressHistoryRef.current[jobId];
+    history.push({ bytes: data.downloaded_bytes, time: now });
+    // Manter apenas snapshots dos últimos 15s
+    const cutoff = now - 15000;
+    progressHistoryRef.current[jobId] = history.filter(s => s.time > cutoff);
+
+    setDownloadJobs(prev => prev.map(job =>
+      job.id === data.job_id
+        ? {
+            ...job,
+            progress: data.progress,
             downloaded_bytes: data.downloaded_bytes,
             total_bytes: data.total_bytes,
             status: 'downloading'
@@ -182,8 +197,9 @@ const Downloads = () => {
   
   // Handler para download concluído
   const handleDownloadComplete = useCallback((data) => {
-    setDownloadJobs(prev => prev.map(job => 
-      job.id === data.job_id 
+    delete progressHistoryRef.current[data.job_id];
+    setDownloadJobs(prev => prev.map(job =>
+      job.id === data.job_id
         ? { ...job, status: 'completed', progress: 100 }
         : job
     ));
@@ -197,8 +213,9 @@ const Downloads = () => {
   
   // Handler para download falhado
   const handleDownloadFailed = useCallback((data) => {
-    setDownloadJobs(prev => prev.map(job => 
-      job.id === data.job_id 
+    delete progressHistoryRef.current[data.job_id];
+    setDownloadJobs(prev => prev.map(job =>
+      job.id === data.job_id
         ? { ...job, status: 'failed', error_message: data.error }
         : job
     ));
@@ -466,6 +483,36 @@ const Downloads = () => {
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleString('pt-BR');
+  };
+
+  // Calcula velocidade e ETA a partir do histórico de snapshots
+  const getDownloadEta = (job) => {
+    const history = progressHistoryRef.current[job.id];
+    if (!history || history.length < 2) return null;
+    const first = history[0];
+    const last = history[history.length - 1];
+    const elapsed = (last.time - first.time) / 1000; // segundos
+    if (elapsed < 1) return null;
+    const bytesDelta = last.bytes - first.bytes;
+    if (bytesDelta <= 0) return null;
+    const speed = bytesDelta / elapsed; // bytes/s
+    const totalBytes = job.total_bytes || job.file_size;
+    if (!totalBytes) return { speed, eta: null };
+    const remaining = totalBytes - last.bytes;
+    if (remaining <= 0) return { speed, eta: 0 };
+    return { speed, eta: remaining / speed }; // eta em segundos
+  };
+
+  const formatDuration = (seconds) => {
+    if (seconds == null || !isFinite(seconds)) return '';
+    seconds = Math.round(seconds);
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    if (m < 60) return `${m}m${s > 0 ? ` ${s}s` : ''}`;
+    const h = Math.floor(m / 60);
+    const rm = m % 60;
+    return `${h}h${rm > 0 ? ` ${rm}m` : ''}`;
   };
 
   return (
@@ -751,14 +798,25 @@ const Downloads = () => {
                                 </p>
                                 
                                 {/* Progress bar for downloading */}
-                                {job.status === 'downloading' && (
-                                  <div className="mt-2">
-                                    <Progress value={progress} className="h-1" />
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {progress}% - {formatFileSize(job.downloaded_bytes)} / {formatFileSize(job.file_size)}
-                                    </p>
-                                  </div>
-                                )}
+                                {job.status === 'downloading' && (() => {
+                                  const etaInfo = getDownloadEta(job);
+                                  return (
+                                    <div className="mt-2">
+                                      <Progress value={progress} className="h-1" />
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {progress}% - {formatFileSize(job.downloaded_bytes)} / {formatFileSize(job.file_size)}
+                                        {etaInfo?.speed > 0 && (
+                                          <span className="ml-2">
+                                            • {formatFileSize(Math.round(etaInfo.speed))}/s
+                                            {etaInfo.eta != null && (
+                                              <span> • resta {formatDuration(etaInfo.eta)}</span>
+                                            )}
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  );
+                                })()}
                                 
                                 {/* Error message */}
                                 {job.error_message && (
