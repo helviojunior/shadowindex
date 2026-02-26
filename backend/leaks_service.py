@@ -1266,6 +1266,27 @@ class GitleaksService:
             logger.error(f"Erro ao atualizar finding {fingerprint}: {e}")
             return False
     
+    async def bulk_toggle_false_positive(self, fingerprints: List[str], is_false_positive: bool) -> int:
+        """Marca ou desmarca múltiplos findings como falso positivo em batch. Retorna quantidade atualizada."""
+        from database import async_session_maker, GitleaksFinding
+        from sqlalchemy import update as sa_update
+
+        try:
+            async with async_session_maker() as db:
+                result = await db.execute(
+                    sa_update(GitleaksFinding)
+                    .where(GitleaksFinding.fingerprint.in_(fingerprints))
+                    .values(is_false_positive=is_false_positive)
+                )
+                await db.commit()
+                count = result.rowcount
+                logger.info(f"Bulk toggle FP: {count} findings marcados como falso_positivo={is_false_positive}")
+                return count
+
+        except Exception as e:
+            logger.error(f"Erro no bulk toggle FP: {e}")
+            return 0
+
     async def load_findings_from_db(self) -> int:
         """Método depreciado - findings são carregados sob demanda do banco"""
         logger.info("load_findings_from_db() não é mais necessário - dados são buscados do banco sob demanda")

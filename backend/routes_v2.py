@@ -5093,6 +5093,26 @@ async def delete_leak_finding(fingerprint: str):
         return {"success": False, "message": "Leak não encontrado"}
 
 
+class BulkToggleFPRequest(BaseModel):
+    fingerprints: List[str]
+    is_false_positive: bool
+
+@router.post("/gitleaks/findings/bulk-toggle-false-positive")
+async def bulk_toggle_false_positive(request: BulkToggleFPRequest):
+    """
+    Marca ou desmarca múltiplos findings como falso positivo em batch.
+    """
+    from leaks_service import get_gitleaks_service
+
+    if not request.fingerprints:
+        return {"success": False, "message": "Nenhum fingerprint fornecido", "count": 0}
+
+    service = get_gitleaks_service()
+    count = await service.bulk_toggle_false_positive(request.fingerprints, request.is_false_positive)
+
+    status = "marcados" if request.is_false_positive else "desmarcados"
+    return {"success": True, "message": f"{count} findings {status} como falso positivo", "count": count}
+
 @router.post("/gitleaks/findings/toggle-false-positive")
 async def toggle_finding_false_positive(
     fingerprint: str,

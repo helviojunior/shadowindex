@@ -77,10 +77,13 @@ import {
   ShieldOff,
   ShieldCheck,
   ChevronsUpDown,
-  Check
+  Check,
+  Filter,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShieldKeyIcon } from '@/components/icons';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -119,11 +122,19 @@ const Leaks = () => {
     return servers.find(s => s.id.toString() === selectedServer);
   }, [selectedServer, servers]);
   
+  // State para filtros
+  const [selectedRules, setSelectedRules] = useState(new Set());
+  const [fpFilter, setFpFilter] = useState('no_fp'); // 'all' | 'only_fp' | 'no_fp'
+  const [ruleComboOpen, setRuleComboOpen] = useState(false);
+
+  // State para bulk actions
+  const [selectedFingerprints, setSelectedFingerprints] = useState(new Set());
+
   // State para diálogo de confirmação
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    open: false, 
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
     action: null, // 'clearAll' ou 'deleteFinding'
-    fingerprint: null 
+    fingerprint: null
   });
 
   // Carregar status do GitLeaks
@@ -383,6 +394,37 @@ const Leaks = () => {
     }
   };
 
+  // Bulk toggle false positive
+  const handleBulkToggleFP = async (isFP) => {
+    if (selectedFingerprints.size === 0) return;
+    const fps = Array.from(selectedFingerprints);
+    try {
+      const response = await axios.post(`${API}/gitleaks/findings/bulk-toggle-false-positive`, {
+        fingerprints: fps,
+        is_false_positive: isFP
+      });
+      if (response.data.success) {
+        const fpSet = new Set(fps);
+        setFindings(prev => prev.map(f =>
+          fpSet.has(f.Fingerprint) ? { ...f, is_false_positive: isFP } : f
+        ));
+        setFiles(prev => prev.map(file => ({
+          ...file,
+          findings: file.findings.map(f =>
+            fpSet.has(f.Fingerprint) ? { ...f, is_false_positive: isFP } : f
+          )
+        })));
+        setSelectedFingerprints(new Set());
+        toast.success(response.data.message);
+      } else {
+        toast.error(response.data.message || 'Erro ao atualizar findings');
+      }
+    } catch (error) {
+      console.error('Erro bulk toggle FP:', error);
+      toast.error(`Erro: ${error.response?.data?.detail || error.message}`);
+    }
+  };
+
   // Abrir diálogo de confirmação para limpar todos os findings
   const confirmClearAllFindings = () => {
     setConfirmDialog({ open: true, action: 'clearAll', fingerprint: null });
@@ -429,20 +471,68 @@ const Leaks = () => {
     }
   };
 
-  // Filtrar arquivos por termo de busca
-  const filteredFiles = files.filter(file => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      file.file.toLowerCase().includes(term) ||
-      file.findings.some(f =>
-        f.RuleID?.toLowerCase().includes(term) ||
-        f.Description?.toLowerCase().includes(term) ||
-        f.Secret?.toLowerCase().includes(term) ||
-        f.Fingerprint?.toLowerCase().includes(term)
-      )
-    );
-  });
+  // Lista de regras disponíveis (extraída dos findings carregados)
+  const availableRules = useMemo(() => {
+    const rules = new Set();
+    findings.forEach(f => { if (f.RuleID) rules.add(f.RuleID); });
+    return Array.from(rules).sort();
+  }, [findings]);
+
+  // Filtragem combinada: texto + regras + FP
+  const filteredFiles = useMemo(() => {
+    return files.map(file => {
+      const filtered = file.findings.filter(f => {
+        // Filtro FP
+        if (fpFilter === 'no_fp' && f.is_false_positive) return false;
+        if (fpFilter === 'only_fp' && !f.is_false_positive) return false;
+
+        // Filtro por regras selecionadas
+        if (selectedRules.size > 0 && !selectedRules.has(f.RuleID)) return false;
+
+        // Filtro por texto
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          const match =
+            file.file.toLowerCase().includes(term) ||
+            f.RuleID?.toLowerCase().includes(term) ||
+            f.Description?.toLowerCase().includes(term) ||
+            f.Secret?.toLowerCase().includes(term) ||
+            f.Fingerprint?.toLowerCase().includes(term);
+          if (!match) return false;
+        }
+
+        return true;
+      });
+      return { ...file, findings: filtered };
+    }).filter(file => file.findings.length > 0);
+  }, [files, searchTerm, selectedRules, fpFilter]);
+
+  // Helper: todos os fingerprints filtrados visíveis
+  const allVisibleFingerprints = useMemo(() => {
+    const fps = [];
+    filteredFiles.forEach(file => file.findings.forEach(f => { if (f.Fingerprint) fps.push(f.Fingerprint); }));
+    return fps;
+  }, [filteredFiles]);
+
+  const allVisibleSelected = allVisibleFingerprints.length > 0 && allVisibleFingerprints.every(fp => selectedFingerprints.has(fp));
+  const someVisibleSelected = allVisibleFingerprints.some(fp => selectedFingerprints.has(fp));
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedFingerprints(new Set());
+    } else {
+      setSelectedFingerprints(new Set(allVisibleFingerprints));
+    }
+  };
+
+  const toggleSelectOne = (fingerprint) => {
+    setSelectedFingerprints(prev => {
+      const next = new Set(prev);
+      if (next.has(fingerprint)) next.delete(fingerprint);
+      else next.add(fingerprint);
+      return next;
+    });
+  };
 
   // Ler hash #leak_{id} e preencher o campo de busca automaticamente
   useEffect(() => {
@@ -759,12 +849,28 @@ const Leaks = () => {
       {/* Main Table - Inspirado no Sn1per */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileWarning className="w-5 h-5 text-orange-500" />
-              Findings
-            </CardTitle>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <FileWarning className="w-5 h-5 text-orange-500" />
+                Findings
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => loadFindings(true)} disabled={refreshing}>
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+                {totalFindings > 0 && (
+                  <Button variant="destructive" size="sm" onClick={confirmClearAllFindings}>
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Filters Row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -774,14 +880,91 @@ const Leaks = () => {
                   className="pl-10 w-64"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={() => loadFindings(true)} disabled={refreshing}>
-                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              </Button>
-              {totalFindings > 0 && (
-                <Button variant="destructive" size="sm" onClick={confirmClearAllFindings}>
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Limpar
+
+              {/* Rule Multi-Select */}
+              <Popover open={ruleComboOpen} onOpenChange={setRuleComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-1">
+                    <Filter className="w-4 h-4" />
+                    Regra
+                    {selectedRules.size > 0 && (
+                      <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                        {selectedRules.size}
+                      </Badge>
+                    )}
+                    <ChevronsUpDown className="w-3 h-3 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar regra..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhuma regra encontrada.</CommandEmpty>
+                      <CommandGroup>
+                        {availableRules.map(rule => (
+                          <CommandItem
+                            key={rule}
+                            onSelect={() => {
+                              setSelectedRules(prev => {
+                                const next = new Set(prev);
+                                if (next.has(rule)) next.delete(rule);
+                                else next.add(rule);
+                                return next;
+                              });
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedRules.has(rule) ? "opacity-100" : "opacity-0")} />
+                            <span className="font-mono text-xs truncate">{rule}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {selectedRules.size > 0 && (
+                <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setSelectedRules(new Set())}>
+                  <X className="w-3 h-3 mr-1" />
+                  Limpar regras
                 </Button>
+              )}
+
+              {/* Separator */}
+              <div className="w-px h-6 bg-border" />
+
+              {/* FP Filter Toggle */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant={fpFilter === 'no_fp' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setFpFilter('no_fp')}
+                >
+                  Reais
+                </Button>
+                <Button
+                  variant={fpFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setFpFilter('all')}
+                >
+                  Todos
+                </Button>
+                <Button
+                  variant={fpFilter === 'only_fp' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setFpFilter('only_fp')}
+                >
+                  Falsos Positivos
+                </Button>
+              </div>
+
+              {/* Filtered count */}
+              {(searchTerm || selectedRules.size > 0 || fpFilter !== 'all') && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {filteredFiles.reduce((acc, f) => acc + f.findings.length, 0)} de {totalFindings} findings
+                </span>
               )}
             </div>
           </div>
@@ -802,6 +985,12 @@ const Leaks = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead className="font-semibold">SERVIDOR</TableHead>
                     <TableHead className="font-semibold">ARQUIVO</TableHead>
                     <TableHead className="font-semibold">LINHA</TableHead>
@@ -849,6 +1038,13 @@ const Leaks = () => {
                           key={`${file.file}-${fIndex}`} 
                           className={`hover:bg-muted/30 ${finding.is_false_positive ? 'opacity-50' : ''}`}
                         >
+                          {/* Coluna Checkbox */}
+                          <TableCell className="w-10">
+                            <Checkbox
+                              checked={selectedFingerprints.has(finding.Fingerprint)}
+                              onCheckedChange={() => toggleSelectOne(finding.Fingerprint)}
+                            />
+                          </TableCell>
                           {/* Coluna Servidor */}
                           <TableCell>
                             <div className="min-w-0">
@@ -1029,6 +1225,27 @@ const Leaks = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk Actions Bar */}
+      {selectedFingerprints.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3">
+          <span className="text-sm font-medium">{selectedFingerprints.size} selecionado{selectedFingerprints.size > 1 ? 's' : ''}</span>
+          <div className="w-px h-5 bg-border" />
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => handleBulkToggleFP(true)}>
+            <ShieldCheck className="w-4 h-4" />
+            Marcar como FP
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => handleBulkToggleFP(false)}>
+            <ShieldOff className="w-4 h-4" />
+            Desmarcar FP
+          </Button>
+          <div className="w-px h-5 bg-border" />
+          <Button size="sm" variant="ghost" className="gap-1" onClick={() => setSelectedFingerprints(new Set())}>
+            <X className="w-4 h-4" />
+            Limpar
+          </Button>
+        </div>
+      )}
 
       {/* Finding Detail Modal */}
       <Dialog open={!!selectedFinding} onOpenChange={() => setSelectedFinding(null)}>
