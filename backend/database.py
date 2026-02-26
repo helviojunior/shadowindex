@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, inspect, JSON, Float, event, Index
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Text, Boolean, ForeignKey, inspect, JSON, Float, event, Index
 from datetime import datetime, timezone
 import os
 import logging
@@ -312,7 +312,7 @@ class DownloadedFile(Base):
     file_name = Column(String, nullable=True)  # Nome do arquivo
     sanitized_path = Column(String, nullable=False)
     local_path = Column(String, nullable=True)  # Caminho local completo do arquivo
-    file_size = Column(Integer, nullable=True)
+    file_size = Column(BigInteger, nullable=True)
     sha1_hash = Column(String(40), nullable=True)  # SHA1 hash do arquivo
     mimetype = Column(String, nullable=True)  # MIME type do arquivo (calculado via libmagic)
     downloaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -328,7 +328,7 @@ class FileVersion(Base):
     file_path = Column(String, nullable=False, index=True)  # Caminho original do arquivo
     version_number = Column(Integer, nullable=False, default=1)  # Número da versão
     sha1_hash = Column(String(40), nullable=False)  # SHA1 hash desta versão
-    file_size = Column(Integer, nullable=True)
+    file_size = Column(BigInteger, nullable=True)
     mimetype = Column(String, nullable=True)  # MIME type do arquivo (calculado via libmagic)
     local_path = Column(String, nullable=False)  # Caminho local onde está armazenado
     is_current = Column(Boolean, default=True)  # Se é a versão atual
@@ -384,16 +384,16 @@ class DownloadJob(Base):
     share_name = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
     file_name = Column(String, nullable=True)
-    file_size = Column(Integer, nullable=True)  # Tamanho esperado
-    downloaded_bytes = Column(Integer, default=0)  # Bytes baixados
-    total_bytes = Column(Integer, nullable=True)  # Total a baixar
+    file_size = Column(BigInteger, nullable=True)  # Tamanho esperado
+    downloaded_bytes = Column(BigInteger, default=0)  # Bytes baixados
+    total_bytes = Column(BigInteger, nullable=True)  # Total a baixar
     progress = Column(Integer, default=0)  # Porcentagem 0-100
     status = Column(String, default='pending')  # pending, downloading, completed, failed, cancelled, skipped
     error_message = Column(String, nullable=True)
     skip_reason = Column(String, nullable=True)  # Motivo se foi ignorado (ex: tamanho)
     priority = Column(Integer, default=0)  # Prioridade na fila
     # Parâmetros de configuração do job
-    max_file_size_bytes = Column(Integer, nullable=True)  # Limite de tamanho para ignorar (null = sem limite)
+    max_file_size_bytes = Column(BigInteger, nullable=True)  # Limite de tamanho para ignorar (null = sem limite)
     max_depth = Column(Integer, nullable=True)  # Limite de profundidade para diretórios
     is_directory = Column(Boolean, default=False)  # Se é um diretório (download recursivo)
     parent_job_id = Column(Integer, nullable=True)  # Job pai (para downloads recursivos)
