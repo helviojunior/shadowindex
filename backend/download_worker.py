@@ -223,21 +223,32 @@ class DownloadWorker:
         logger.info("Download worker started")
     
     async def _reset_stale_downloading_jobs(self):
-        """Reseta jobs que ficaram com status 'downloading' de execuções anteriores"""
-        from database import async_session_maker, DownloadJob
+        """Reseta jobs que ficaram com status 'downloading' de execuções anteriores.
+        Preserva downloaded_bytes e progress para permitir resume."""
+        from database import async_session_maker, DownloadJob, DownloadSegment
         from sqlalchemy import update
-        
+
         try:
             async with async_session_maker() as db:
+                # Reset jobs: downloading → pending (preserva progresso para resume)
                 result = await db.execute(
                     update(DownloadJob)
                     .where(DownloadJob.status == 'downloading')
-                    .values(status='queued', progress=0, downloaded_bytes=0, error_message='Resetado: download interrompido')
+                    .values(status='pending', error_message='Resetado: download interrompido (resume disponível)')
                 )
-                await db.commit()
-                
                 if result.rowcount > 0:
-                    logger.warning(f"Reset {result.rowcount} stale downloading jobs to queued")
+                    logger.warning(f"Reset {result.rowcount} stale downloading jobs to pending (preserving progress)")
+
+                # Reset segments: downloading → pending (preserva progresso)
+                seg_result = await db.execute(
+                    update(DownloadSegment)
+                    .where(DownloadSegment.status == 'downloading')
+                    .values(status='pending')
+                )
+                if seg_result.rowcount > 0:
+                    logger.warning(f"Reset {seg_result.rowcount} stale download segments to pending")
+
+                await db.commit()
         except Exception as e:
             logger.error(f"Error resetting stale jobs: {e}")
     
@@ -438,6 +449,12 @@ class DownloadWorker:
                 ws_manager = get_websocket_manager()
                 await ws_manager.emit_download_failed(job.id, job.file_path, str(e))
                 await emit_download_stats()
+                # Limpar temp files em falha permanente
+                try:
+                    from storage_utils import cleanup_temp_files
+                    cleanup_temp_files(job.id)
+                except Exception:
+                    pass
                 raise
     
     async def _download_direct_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
@@ -476,11 +493,21 @@ class DownloadWorker:
         await self._save_file_content_bytes(db, job, file_content.data, server)
     
     async def _download_chunked_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
-        """Download em chunks usando o plugin (arquivo grande)"""
+        """Download em chunks usando o plugin (arquivo grande).
+        Escreve chunks diretamente em disco para evitar acumulação em memória.
+        Suporta resume: se o temp file já existe com tamanho == downloaded_bytes, continua do offset."""
+        from storage_utils import get_temp_download_path, get_temp_file_size, cleanup_temp_files
+
         total_size = job.file_size or 0
-        downloaded = 0
-        chunks = []
-        
+
+        # Verificar se deve usar multi-thread
+        MULTI_THREAD_THRESHOLD = 100 * 1024 * 1024  # 100MB
+        if total_size >= MULTI_THREAD_THRESHOLD:
+            threads = await self._get_download_threads_per_file()
+            if threads > 1:
+                await self._download_multithreaded(db, job, plugin, full_path, server, threads)
+                return
+
         # Emitir evento de início
         ws_manager = get_websocket_manager()
         await ws_manager.emit_download_started(
@@ -488,61 +515,303 @@ class DownloadWorker:
             file_path=job.file_path,
             file_name=job.file_name or full_path.split('\\')[-1]
         )
-        
+
         # Se o arquivo tem tamanho 0, não precisa fazer loop de chunks
         if total_size == 0:
             logger.info(f"Zero-byte file detected: {full_path}")
             await self._save_file_content_bytes(db, job, b'', server)
             return
-        
-        while downloaded < total_size:
-            # Calcular expected_size para este chunk
-            remaining = total_size - downloaded
-            expected_chunk_size = min(CHUNK_SIZE, remaining)
-            
-            file_content = await plugin.download_file(
-                full_path, 
-                offset=downloaded, 
-                length=CHUNK_SIZE, 
-                ignore_cache=True,
-                expected_size=expected_chunk_size
-            )
-            
-            if not file_content or file_content.data is None:
-                break
-            
-            # Se retornou vazio mas esperava conteúdo, é um erro
-            if len(file_content.data) == 0 and expected_chunk_size > 0:
-                logger.warning(f"Empty chunk for file {full_path} at offset {downloaded}")
-                break
-            
-            chunks.append(file_content.data)
-            downloaded += len(file_content.data)
-            
-            # Atualizar progresso
-            job.downloaded_bytes = downloaded
-            job.total_bytes = total_size
-            job.progress = int((downloaded / total_size) * 100)
-            await db.commit()
-            
-            # Emitir evento de progresso via WebSocket
-            await ws_manager.emit_download_progress(
-                job_id=job.id,
-                progress=job.progress,
-                downloaded_bytes=downloaded,
-                total_bytes=total_size,
-                file_name=job.file_name,
-                file_path=job.file_path
-            )
-            
-            # Se o plugin indicou que é o último chunk, parar
-            if file_content.is_complete or len(file_content.data) < CHUNK_SIZE:
-                break
-        
-        # Concatenar chunks e salvar
-        full_content = b''.join(chunks)
-        await self._save_file_content_bytes(db, job, full_content, server)
+
+        temp_path = get_temp_download_path(job.id)
+        downloaded = 0
+
+        # Resume: verificar se temp file existe e é consistente
+        existing_size = get_temp_file_size(temp_path)
+        if existing_size > 0 and existing_size == (job.downloaded_bytes or 0) and existing_size < total_size:
+            downloaded = existing_size
+            logger.info(f"Resuming download job {job.id} from offset {downloaded}/{total_size}")
+            mode = 'ab'  # append
+        else:
+            mode = 'wb'  # write from scratch
+            if existing_size > 0:
+                logger.info(f"Temp file size mismatch for job {job.id} (file={existing_size}, db={job.downloaded_bytes}), restarting")
+
+        try:
+            with open(temp_path, mode) as f:
+                while downloaded < total_size:
+                    remaining = total_size - downloaded
+                    expected_chunk_size = min(CHUNK_SIZE, remaining)
+
+                    file_content = await plugin.download_file(
+                        full_path,
+                        offset=downloaded,
+                        length=CHUNK_SIZE,
+                        ignore_cache=True,
+                        expected_size=expected_chunk_size
+                    )
+
+                    if not file_content or file_content.data is None:
+                        break
+
+                    if len(file_content.data) == 0 and expected_chunk_size > 0:
+                        logger.warning(f"Empty chunk for file {full_path} at offset {downloaded}")
+                        break
+
+                    # Escrever chunk diretamente em disco
+                    f.write(file_content.data)
+                    f.flush()
+                    downloaded += len(file_content.data)
+
+                    # Atualizar progresso no DB
+                    job.downloaded_bytes = downloaded
+                    job.total_bytes = total_size
+                    job.progress = int((downloaded / total_size) * 100)
+                    await db.commit()
+
+                    # Emitir evento de progresso via WebSocket
+                    await ws_manager.emit_download_progress(
+                        job_id=job.id,
+                        progress=job.progress,
+                        downloaded_bytes=downloaded,
+                        total_bytes=total_size,
+                        file_name=job.file_name,
+                        file_path=job.file_path
+                    )
+
+                    if file_content.is_complete or len(file_content.data) < CHUNK_SIZE:
+                        break
+
+            # Ler arquivo completo do disco e salvar no storage final
+            with open(temp_path, 'rb') as f:
+                full_content = f.read()
+            await self._save_file_content_bytes(db, job, full_content, server)
+            cleanup_temp_files(job.id)
+        except Exception:
+            # Não limpar temp files em caso de erro — permite resume na próxima tentativa
+            raise
     
+    async def _get_download_threads_per_file(self) -> int:
+        """Lê setting download_threads_per_file do DB, retorna int (default 3, clamp 1-10)."""
+        from database import AppSettings, AsyncSessionLocal
+
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(AppSettings).where(AppSettings.key == 'download_threads_per_file')
+                )
+                setting = result.scalar_one_or_none()
+                if setting and setting.value:
+                    val = int(setting.value)
+                    return max(1, min(10, val))
+        except Exception as e:
+            logger.warning(f"Error getting download_threads_per_file: {e}")
+        return 3
+
+    async def _download_multithreaded(self, db: AsyncSession, job, plugin, full_path: str, server, num_threads: int):
+        """Download multi-segmento para arquivos grandes (>100MB).
+        Cada segmento é baixado em paralelo e salvo diretamente em disco.
+        Suporta resume: se segments já existem no DB, retoma de onde parou."""
+        from database import DownloadSegment, AsyncSessionLocal
+        from storage_utils import get_temp_download_path, get_temp_file_size, cleanup_temp_files
+
+        total_size = job.file_size
+        ws_manager = get_websocket_manager()
+
+        await ws_manager.emit_download_started(
+            job_id=job.id,
+            file_path=job.file_path,
+            file_name=job.file_name or full_path.split('\\')[-1]
+        )
+
+        # Verificar se já existem segments no DB (caso de resume)
+        existing_segs = await db.execute(
+            select(DownloadSegment)
+            .where(DownloadSegment.job_id == job.id)
+            .order_by(DownloadSegment.segment_index)
+        )
+        segments = existing_segs.scalars().all()
+
+        if not segments:
+            # Criar N segmentos dividindo file_size igualmente
+            segment_size = total_size // num_threads
+            for i in range(num_threads):
+                offset_start = i * segment_size
+                offset_end = (i + 1) * segment_size if i < num_threads - 1 else total_size
+                temp_path = str(get_temp_download_path(job.id, segment_index=i))
+                seg = DownloadSegment(
+                    job_id=job.id,
+                    segment_index=i,
+                    offset_start=offset_start,
+                    offset_end=offset_end,
+                    downloaded_bytes=0,
+                    status='pending',
+                    temp_path=temp_path
+                )
+                db.add(seg)
+            await db.commit()
+
+            # Recarregar segments
+            existing_segs = await db.execute(
+                select(DownloadSegment)
+                .where(DownloadSegment.job_id == job.id)
+                .order_by(DownloadSegment.segment_index)
+            )
+            segments = existing_segs.scalars().all()
+
+        num_segments = len(segments)
+        logger.info(f"Multi-threaded download job {job.id}: {num_segments} segments for {total_size} bytes")
+
+        # Lançar tasks paralelas para segments não completados
+        tasks = []
+        for seg in segments:
+            if seg.status != 'completed':
+                task = asyncio.create_task(
+                    self._download_segment(job.id, seg.id, plugin, full_path, total_size, ws_manager)
+                )
+                tasks.append(task)
+
+        # Aguardar todas as tasks
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            # Verificar se alguma falhou
+            for r in results:
+                if isinstance(r, Exception):
+                    raise r
+
+        # Verificar que todos estão completed
+        async with AsyncSessionLocal() as check_db:
+            final_segs = await check_db.execute(
+                select(DownloadSegment)
+                .where(DownloadSegment.job_id == job.id)
+                .order_by(DownloadSegment.segment_index)
+            )
+            final_segments = final_segs.scalars().all()
+            failed = [s for s in final_segments if s.status != 'completed']
+            if failed:
+                raise Exception(f"{len(failed)} segments failed for job {job.id}")
+
+        # Concatenar segmentos diretamente do disco para o storage final
+        # Em vez de carregar tudo na memória, salvamos via streaming
+        from storage_utils import concatenate_segment_files
+        full_content = concatenate_segment_files(job.id, num_segments)
+        await self._save_file_content_bytes(db, job, full_content, server)
+        cleanup_temp_files(job.id)
+
+        # Limpar segments do DB
+        from sqlalchemy import delete
+        await db.execute(delete(DownloadSegment).where(DownloadSegment.job_id == job.id))
+        await db.commit()
+
+    async def _download_segment(self, job_id: int, segment_id: int, plugin, full_path: str, total_file_size: int, ws_manager):
+        """Baixa um segmento individual. Cada segment usa sua própria sessão DB.
+        Suporta resume via temp file + seg.downloaded_bytes.
+        Emite progresso agregado a cada 5 chunks."""
+        from database import DownloadSegment, DownloadJob, AsyncSessionLocal
+        from storage_utils import get_temp_file_size
+
+        chunk_counter = 0
+
+        async with AsyncSessionLocal() as db:
+            # Carregar segment
+            result = await db.execute(select(DownloadSegment).where(DownloadSegment.id == segment_id))
+            seg = result.scalar_one_or_none()
+            if not seg:
+                raise Exception(f"Segment {segment_id} not found")
+
+            seg.status = 'downloading'
+            await db.commit()
+
+            segment_size = seg.offset_end - seg.offset_start
+            downloaded = 0
+            temp_path = seg.temp_path
+
+            # Resume: verificar temp file
+            existing_size = get_temp_file_size(temp_path)
+            if existing_size > 0 and existing_size == (seg.downloaded_bytes or 0) and existing_size < segment_size:
+                downloaded = existing_size
+                logger.info(f"Resuming segment {seg.segment_index} of job {job_id} from {downloaded}/{segment_size}")
+                mode = 'ab'
+            else:
+                mode = 'wb'
+
+            try:
+                with open(temp_path, mode) as f:
+                    current_offset = seg.offset_start + downloaded
+                    end_offset = seg.offset_end
+
+                    while current_offset < end_offset:
+                        remaining = end_offset - current_offset
+                        chunk_len = min(CHUNK_SIZE, remaining)
+
+                        file_content = await plugin.download_file(
+                            full_path,
+                            offset=current_offset,
+                            length=chunk_len,
+                            ignore_cache=True,
+                            expected_size=chunk_len
+                        )
+
+                        if not file_content or file_content.data is None:
+                            break
+
+                        if len(file_content.data) == 0 and chunk_len > 0:
+                            logger.warning(f"Empty chunk at offset {current_offset} for segment {seg.segment_index}")
+                            break
+
+                        f.write(file_content.data)
+                        f.flush()
+                        downloaded += len(file_content.data)
+                        current_offset += len(file_content.data)
+                        chunk_counter += 1
+
+                        # Atualizar segment no DB e emitir progresso a cada 5 chunks
+                        if chunk_counter % 5 == 0 or current_offset >= end_offset:
+                            seg.downloaded_bytes = downloaded
+                            await db.commit()
+
+                            # Calcular progresso total do job (soma de todos os segments)
+                            all_segs = await db.execute(
+                                select(func.sum(DownloadSegment.downloaded_bytes))
+                                .where(DownloadSegment.job_id == job_id)
+                            )
+                            total_downloaded = all_segs.scalar() or 0
+
+                            # Atualizar job
+                            job_result = await db.execute(
+                                select(DownloadJob).where(DownloadJob.id == job_id)
+                            )
+                            job = job_result.scalar_one_or_none()
+                            if job:
+                                job.downloaded_bytes = total_downloaded
+                                job.total_bytes = total_file_size
+                                job.progress = int((total_downloaded / total_file_size) * 100) if total_file_size > 0 else 0
+                                await db.commit()
+
+                                await ws_manager.emit_download_progress(
+                                    job_id=job_id,
+                                    progress=job.progress,
+                                    downloaded_bytes=total_downloaded,
+                                    total_bytes=total_file_size,
+                                    file_name=job.file_name,
+                                    file_path=job.file_path
+                                )
+
+                        if file_content.is_complete or len(file_content.data) < chunk_len:
+                            break
+
+                # Marcar segment como completed
+                seg.downloaded_bytes = downloaded
+                seg.status = 'completed'
+                seg.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+                logger.info(f"Segment {seg.segment_index} of job {job_id} completed ({downloaded} bytes)")
+
+            except Exception as e:
+                seg.status = 'failed'
+                seg.error_message = str(e)
+                await db.commit()
+                raise
+
     async def _save_file_content_bytes(self, db: AsyncSession, job, content: bytes, server):
         """Salva o conteúdo do arquivo (bytes) no storage usando estrutura padrão"""
         from database import DownloadedFile, ServerShare

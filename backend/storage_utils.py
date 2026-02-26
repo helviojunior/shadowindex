@@ -410,6 +410,61 @@ def get_file_path_by_id(server_id: int, file_id: int, version: int = 1) -> str:
     return str(get_file_storage_path_by_id(server_id, file_id, version))
 
 
+## Temp download file helpers
+
+TEMP_DOWNLOAD_DIR = os.path.join(STORAGE_BASE_PATH, ".tmp")
+
+
+def get_temp_download_path(job_id: int, segment_index: int = None) -> Path:
+    """
+    Retorna o caminho do arquivo temporário para download.
+    Formato: data/storage/.tmp/download_{job_id}[_seg{N}].part
+    """
+    os.makedirs(TEMP_DOWNLOAD_DIR, exist_ok=True)
+    if segment_index is not None:
+        filename = f"download_{job_id}_seg{segment_index}.part"
+    else:
+        filename = f"download_{job_id}.part"
+    return Path(TEMP_DOWNLOAD_DIR) / filename
+
+
+def get_temp_file_size(path) -> int:
+    """Retorna o tamanho do arquivo temporário ou 0 se não existir."""
+    try:
+        return os.path.getsize(path)
+    except (OSError, TypeError):
+        return 0
+
+
+def cleanup_temp_files(job_id: int):
+    """Remove todos os arquivos .part de um job."""
+    try:
+        if not os.path.exists(TEMP_DOWNLOAD_DIR):
+            return
+        prefix = f"download_{job_id}"
+        for filename in os.listdir(TEMP_DOWNLOAD_DIR):
+            if filename.startswith(prefix) and filename.endswith('.part'):
+                try:
+                    os.remove(os.path.join(TEMP_DOWNLOAD_DIR, filename))
+                except OSError:
+                    pass
+    except Exception:
+        pass
+
+
+def concatenate_segment_files(job_id: int, segment_count: int) -> bytes:
+    """
+    Lê e concatena todos os segmentos de um job em ordem.
+    Retorna os bytes combinados.
+    """
+    parts = []
+    for i in range(segment_count):
+        seg_path = get_temp_download_path(job_id, segment_index=i)
+        with open(seg_path, 'rb') as f:
+            parts.append(f.read())
+    return b''.join(parts)
+
+
 def format_size(size_bytes: int) -> str:
     """Formata tamanho em bytes para formato legível"""
     if size_bytes is None:

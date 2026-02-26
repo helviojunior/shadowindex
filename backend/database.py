@@ -402,6 +402,23 @@ class DownloadJob(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class DownloadSegment(Base):
+    """Segmentos de download para multi-thread e resume"""
+    __tablename__ = "download_segments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, nullable=False, index=True)
+    segment_index = Column(Integer, nullable=False)        # 0, 1, 2...
+    offset_start = Column(BigInteger, nullable=False)
+    offset_end = Column(BigInteger, nullable=False)        # exclusive
+    downloaded_bytes = Column(BigInteger, default=0)
+    status = Column(String, default='pending')             # pending/downloading/completed/failed
+    temp_path = Column(String, nullable=True)
+    error_message = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class ScanJob(Base):
     """Jobs de scan de diretório para download em massa"""
     __tablename__ = "scan_jobs"
@@ -572,6 +589,7 @@ DEFAULT_SETTINGS = {
     'auto_index_max_size_mb': ('1', 'Tamanho máximo do arquivo (MB) para auto-indexação'),
     'auto_index_extensions': ('.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml', 'Extensões de arquivo para auto-indexação (suporta wildcards como .env*)'),
     'auto_index_mimetypes': ('text/', 'MIME types para auto-indexação (parcial match)'),
+    'download_threads_per_file': ('3', 'Segmentos paralelos por arquivo grande (>100MB)'),
 }
 
 

@@ -29,6 +29,7 @@ const DEFAULT_SMB_PORT = 445;
 const GeneralSettings = () => {
   const [settings, setSettings] = useState({
     max_simultaneous_downloads: '3',
+    download_threads_per_file: '3',
     max_simultaneous_ocr_jobs: '2',
     max_simultaneous_scans: '3',
     ocr_auto_cleanup_minutes: '15',
@@ -215,6 +216,26 @@ const GeneralSettings = () => {
               />
               <p className="text-xs text-muted-foreground">
                 Número máximo de downloads em paralelo (1-10). Afeta diretamente o processamento no servidor.
+              </p>
+            </div>
+
+            {/* Download Threads per File */}
+            <div className="space-y-2">
+              <Label htmlFor="download_threads_per_file" className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-muted-foreground" />
+                Threads por Arquivo
+              </Label>
+              <Input
+                id="download_threads_per_file"
+                type="number"
+                min="1"
+                max="10"
+                value={settings.download_threads_per_file}
+                onChange={(e) => handleChange('download_threads_per_file', e.target.value)}
+                data-testid="download-threads-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                Segmentos paralelos para arquivos &gt;100MB (1 = sequencial).
               </p>
             </div>
 
