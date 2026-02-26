@@ -3105,13 +3105,16 @@ const ServerBrowser = () => {
         const textArea = document.createElement('textarea');
         textArea.value = text;
         textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
+        textArea.style.left = '0';
+        textArea.style.top = '0';
+        textArea.style.opacity = '0';
+        textArea.style.zIndex = '-1';
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        document.execCommand('copy');
+        const result = document.execCommand('copy');
         document.body.removeChild(textArea);
+        if (!result) throw new Error('execCommand copy failed');
       }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
@@ -3487,7 +3490,7 @@ const ServerBrowser = () => {
             {/* Copiar link */}
             <ContextMenuItem onClick={() => {
               const url = `${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(path)}&from=${encodeURIComponent(window.location.pathname)}`;
-              copyToClipboard(url, 'link');
+              setTimeout(() => copyToClipboard(url, 'link'), 100);
             }}>
               Copiar link
             </ContextMenuItem>
@@ -4995,7 +4998,7 @@ const ServerBrowser = () => {
                         {/* Copiar link */}
                         <ContextMenuItem onClick={() => {
                           const url = `${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(itemPath)}&from=${encodeURIComponent(window.location.pathname)}`;
-                          copyToClipboard(url, 'link');
+                          setTimeout(() => copyToClipboard(url, 'link'), 100);
                         }}>
                           Copiar link
                         </ContextMenuItem>
