@@ -30,7 +30,6 @@ const TYPE_CONFIG = {
   item:      { icon: FileText,  label: 'Arquivo',    color: 'text-green-400' },
   directory: { icon: FolderOpen,label: 'Diretório',  color: 'text-yellow-400' },
   file:      { icon: HardDrive, label: 'Download',   color: 'text-purple-400' },
-  ocr:       { icon: Eye,       label: 'OCR',        color: 'text-orange-400' },
   leak:      { icon: Shield,    label: 'Leak',       color: 'text-red-400' },
 };
 
@@ -202,6 +201,12 @@ export default function GlobalSearch({ open, onClose }) {
                             <span className={`text-xs px-1.5 py-0.5 rounded bg-white/10 ${cfg.color} flex-shrink-0`}>
                               {cfg.label}
                             </span>
+                            {result.ocr_match && (
+                              <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 flex-shrink-0" title="Encontrado via OCR">
+                                <Eye size={10} />
+                                OCR
+                              </span>
+                            )}
                             {(result.type === 'item' || result.type === 'directory') && result.modified_at && (
                               <span className="flex items-center gap-1 text-xs text-white/30 flex-shrink-0" title="Última alteração">
                                 <Calendar size={10} />

@@ -28,9 +28,8 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 const TABS = [
-  { key: 'items',   label: 'Itens',       icon: FileText, color: 'green',  activeClass: 'text-green-500',  barClass: 'bg-green-500' },
+  { key: 'items',   label: 'Arquivos',     icon: FileText, color: 'green',  activeClass: 'text-green-500',  barClass: 'bg-green-500' },
   { key: 'servers', label: 'Servidores',   icon: Server,   color: 'blue',   activeClass: 'text-blue-500',   barClass: 'bg-blue-500' },
-  { key: 'ocr',     label: 'OCR',          icon: Eye,      color: 'orange', activeClass: 'text-orange-500', barClass: 'bg-orange-500' },
   { key: 'leaks',   label: 'Leaks',        icon: Shield,   color: 'red',    activeClass: 'text-red-500',    barClass: 'bg-red-500' },
 ];
 
@@ -61,6 +60,7 @@ const getSortValue = (row, key) => {
     case 'modified_at': return row.modified_at ? new Date(row.modified_at).getTime() || 0 : 0;
     case 'type': return (row.type || '').toLowerCase();
     case 'downloaded': return row.downloaded ? 1 : 0;
+    case 'ocr_match': return row.ocr_match ? 1 : 0;
     case 'ip': return (row.subtitle || '').toLowerCase();
     case 'mimetype': return (row.mimetype || '').toLowerCase();
     case 'rule_id': return (row.rule_id || '').toLowerCase();
@@ -79,7 +79,7 @@ export default function AdvancedSearch() {
   const [query, setQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [results, setResults] = useState([]);
-  const [counts, setCounts] = useState({ servers: 0, items: 0, ocr: 0, leaks: 0 });
+  const [counts, setCounts] = useState({ servers: 0, items: 0, leaks: 0 });
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -307,24 +307,11 @@ export default function AdvancedSearch() {
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('type')}>
                     <span className="flex items-center gap-1">Tipo <SortIcon columnKey="type" /></span>
                   </th>
+                  <th className="px-4 py-3 text-center cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('ocr_match')}>
+                    <span className="flex items-center justify-center gap-1">OCR <SortIcon columnKey="ocr_match" /></span>
+                  </th>
                   <th className="px-4 py-3 text-center cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('downloaded')}>
                     <span className="flex items-center justify-center gap-1">DL <SortIcon columnKey="downloaded" /></span>
-                  </th>
-                </>
-              )}
-              {activeTab === 'ocr' && (
-                <>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('title')}>
-                    <span className="flex items-center gap-1">Arquivo <SortIcon columnKey="title" /></span>
-                  </th>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('subtitle')}>
-                    <span className="flex items-center gap-1">Caminho <SortIcon columnKey="subtitle" /></span>
-                  </th>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('server_name')}>
-                    <span className="flex items-center gap-1">Servidor <SortIcon columnKey="server_name" /></span>
-                  </th>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('mimetype')}>
-                    <span className="flex items-center gap-1">Tipo <SortIcon columnKey="mimetype" /></span>
                   </th>
                 </>
               )}
@@ -393,23 +380,11 @@ export default function AdvancedSearch() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
+                          {r.ocr_match && <Eye size={14} className="text-orange-400 mx-auto" title="Encontrado via OCR" />}
+                        </td>
+                        <td className="px-4 py-3 text-center">
                           {r.downloaded && <Download size={14} className="text-emerald-400 mx-auto" />}
                         </td>
-                      </>
-                    )}
-                    {activeTab === 'ocr' && (
-                      <>
-                        <td className="px-4 py-3 font-medium">
-                          <div className="flex items-center gap-2">
-                            <Eye size={14} className="text-orange-400 flex-shrink-0" />
-                            <span className="truncate max-w-[250px]" title={r.title}>{r.title}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">
-                          <span className="truncate max-w-[300px] block" title={r.subtitle}>{r.subtitle}</span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{r.server_name}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{r.mimetype || '—'}</td>
                       </>
                     )}
                     {activeTab === 'leaks' && (
