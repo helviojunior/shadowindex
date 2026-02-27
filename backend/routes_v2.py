@@ -496,6 +496,12 @@ async def quick_search(
 async def global_search(
     q: str,
     limit: int = 30,
+    offset: int = 0,
+    tab: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    extension: Optional[str] = None,
+    item_type: Optional[str] = None,
     db: AsyncSession = Depends(get_db_readonly)
 ):
     """
@@ -503,13 +509,266 @@ async def global_search(
     servidores, arquivos/diretórios descobertos, arquivos baixados,
     conteúdo OCR e findings do GitLeaks.
     Requer ao menos 3 caracteres.
+
+    Quando `tab` é definido, busca apenas nessa categoria com paginação (offset/limit).
+    Na primeira página (offset=0), retorna `counts` com totais de cada categoria.
     """
-    from sqlalchemy import or_
+    import asyncio
+    from sqlalchemy import or_, func
     from urllib.parse import quote
+    from datetime import datetime
 
     if len(q) < 3:
-        return {"query": q, "results": [], "total": 0}
+        return {"query": q, "results": [], "total": 0, "has_more": False}
 
+    # Parse date filters
+    parsed_date_from = None
+    parsed_date_to = None
+    if date_from:
+        try:
+            parsed_date_from = datetime.strptime(date_from, "%Y-%m-%d")
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            parsed_date_to = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        except ValueError:
+            pass
+
+    # Normalize extension filter
+    ext_filter = None
+    if extension:
+        ext_filter = extension.strip().lower()
+        if not ext_filter.startswith('.'):
+            ext_filter = '.' + ext_filter
+
+    # Helper: build items query with filters
+    def _items_base_query():
+        base = (
+            select(ServerItem, Server)
+            .join(Server, Server.guid == ServerItem.server_guid)
+            .where(ServerItem.name.ilike(f"%{q}%"))
+        )
+        if parsed_date_from:
+            base = base.where(ServerItem.modified_at >= parsed_date_from)
+        if parsed_date_to:
+            base = base.where(ServerItem.modified_at <= parsed_date_to)
+        if ext_filter:
+            base = base.where(ServerItem.name.ilike(f"%{ext_filter}"))
+        if item_type:
+            base = base.where(ServerItem.item_type == item_type)
+        return base
+
+    def _items_count_query():
+        base = (
+            select(func.count(ServerItem.id))
+            .join(Server, Server.guid == ServerItem.server_guid)
+            .where(ServerItem.name.ilike(f"%{q}%"))
+        )
+        if parsed_date_from:
+            base = base.where(ServerItem.modified_at >= parsed_date_from)
+        if parsed_date_to:
+            base = base.where(ServerItem.modified_at <= parsed_date_to)
+        if ext_filter:
+            base = base.where(ServerItem.name.ilike(f"%{ext_filter}"))
+        if item_type:
+            base = base.where(ServerItem.item_type == item_type)
+        return base
+
+    # --- Tab-specific mode: paginated single-category search ---
+    if tab:
+        results = []
+        total = 0
+
+        if tab == "servers":
+            srv_count_q = await db.execute(
+                select(func.count(Server.id)).where(
+                    or_(Server.name.ilike(f"%{q}%"), Server.ip.ilike(f"%{q}%"))
+                )
+            )
+            total = srv_count_q.scalar() or 0
+            srv_q = await db.execute(
+                select(Server).where(
+                    or_(Server.name.ilike(f"%{q}%"), Server.ip.ilike(f"%{q}%"))
+                ).offset(offset).limit(limit)
+            )
+            for s in srv_q.scalars().all():
+                results.append({
+                    "type": "server",
+                    "id": s.id,
+                    "title": s.name,
+                    "subtitle": s.ip,
+                    "server_id": s.id,
+                    "server_name": s.name,
+                    "server_ip": s.ip,
+                    "navigate_to": f"/servers/{s.id}",
+                })
+
+        elif tab == "items":
+            items_count_q = await db.execute(_items_count_query())
+            total = items_count_q.scalar() or 0
+            items_q = await db.execute(
+                _items_base_query().offset(offset).limit(limit)
+            )
+            item_rows = items_q.all()
+            # Batch download check
+            downloaded_paths = set()
+            if item_rows:
+                for item, srv in item_rows:
+                    dl_check = await db.execute(
+                        select(DownloadedFile.id).where(
+                            DownloadedFile.server_guid == item.server_guid,
+                            DownloadedFile.file_path == item.full_path
+                        ).limit(1)
+                    )
+                    if dl_check.scalar():
+                        downloaded_paths.add((item.server_guid, item.full_path))
+            for item, srv in item_rows:
+                results.append({
+                    "type": "directory" if item.item_type == "Directory" else "item",
+                    "id": item.id,
+                    "title": item.name,
+                    "subtitle": item.full_path,
+                    "path": item.full_path,
+                    "share_name": item.share_name,
+                    "server_id": srv.id,
+                    "server_name": srv.name,
+                    "server_ip": srv.ip,
+                    "modified_at": item.modified_at.strftime("%Y/%m/%d") if item.modified_at else None,
+                    "downloaded": (item.server_guid, item.full_path) in downloaded_paths,
+                    "navigate_to": f"/servers/{srv.id}/browse?path={quote(item.full_path, safe='')}",
+                })
+
+        elif tab == "ocr":
+            ocr_count_q = await db.execute(
+                select(func.count(FileVersion.id))
+                .join(Server, Server.guid == FileVersion.server_guid)
+                .where(
+                    FileVersion.ocr_processed == True,
+                    FileVersion.ocr_content.ilike(f"%{q}%"),
+                )
+            )
+            total = ocr_count_q.scalar() or 0
+            ocr_q = await db.execute(
+                select(FileVersion, Server)
+                .join(Server, Server.guid == FileVersion.server_guid)
+                .where(
+                    FileVersion.ocr_processed == True,
+                    FileVersion.ocr_content.ilike(f"%{q}%"),
+                ).offset(offset).limit(limit)
+            )
+            for fv, srv in ocr_q.all():
+                name = fv.file_path.split("\\")[-1] if "\\" in fv.file_path else fv.file_path.split("/")[-1]
+                results.append({
+                    "type": "ocr",
+                    "id": fv.id,
+                    "title": name,
+                    "subtitle": fv.file_path,
+                    "path": fv.file_path,
+                    "share_name": fv.share_name,
+                    "mimetype": fv.mimetype,
+                    "server_id": srv.id,
+                    "server_name": srv.name,
+                    "server_ip": srv.ip,
+                    "navigate_to": f"/servers/{srv.id}/browse?path={quote(fv.file_path, safe='')}",
+                })
+
+        elif tab == "leaks":
+            leaks_count_q = await db.execute(
+                select(func.count(GitleaksFinding.id)).where(
+                    or_(
+                        GitleaksFinding.file_name.ilike(f"%{q}%"),
+                        GitleaksFinding.rule_id.ilike(f"%{q}%"),
+                        GitleaksFinding.description.ilike(f"%{q}%"),
+                        GitleaksFinding.server_path.ilike(f"%{q}%"),
+                        GitleaksFinding.server_name.ilike(f"%{q}%"),
+                        GitleaksFinding.server_ip.ilike(f"%{q}%"),
+                    )
+                )
+            )
+            total = leaks_count_q.scalar() or 0
+            leaks_q = await db.execute(
+                select(GitleaksFinding).where(
+                    or_(
+                        GitleaksFinding.file_name.ilike(f"%{q}%"),
+                        GitleaksFinding.rule_id.ilike(f"%{q}%"),
+                        GitleaksFinding.description.ilike(f"%{q}%"),
+                        GitleaksFinding.server_path.ilike(f"%{q}%"),
+                        GitleaksFinding.server_name.ilike(f"%{q}%"),
+                        GitleaksFinding.server_ip.ilike(f"%{q}%"),
+                    )
+                ).offset(offset).limit(limit)
+            )
+            for finding in leaks_q.scalars().all():
+                results.append({
+                    "type": "leak",
+                    "id": finding.id,
+                    "title": finding.file_name or finding.rule_id,
+                    "subtitle": f"{finding.rule_id} — {(finding.server_name or '')} {(finding.server_ip or '')}".strip(" —").strip(),
+                    "path": finding.server_path,
+                    "rule_id": finding.rule_id,
+                    "description": finding.description,
+                    "server_id": finding.server_id,
+                    "server_name": finding.server_name,
+                    "server_ip": finding.server_ip,
+                    "navigate_to": f"/leaks#leak_{finding.id}",
+                })
+
+        # Counts (only on first page)
+        counts = None
+        if offset == 0:
+            async def count_servers():
+                r = await db.execute(
+                    select(func.count(Server.id)).where(
+                        or_(Server.name.ilike(f"%{q}%"), Server.ip.ilike(f"%{q}%"))
+                    )
+                )
+                return r.scalar() or 0
+
+            async def count_items():
+                r = await db.execute(_items_count_query())
+                return r.scalar() or 0
+
+            async def count_ocr():
+                r = await db.execute(
+                    select(func.count(FileVersion.id))
+                    .join(Server, Server.guid == FileVersion.server_guid)
+                    .where(
+                        FileVersion.ocr_processed == True,
+                        FileVersion.ocr_content.ilike(f"%{q}%"),
+                    )
+                )
+                return r.scalar() or 0
+
+            async def count_leaks():
+                r = await db.execute(
+                    select(func.count(GitleaksFinding.id)).where(
+                        or_(
+                            GitleaksFinding.file_name.ilike(f"%{q}%"),
+                            GitleaksFinding.rule_id.ilike(f"%{q}%"),
+                            GitleaksFinding.description.ilike(f"%{q}%"),
+                            GitleaksFinding.server_path.ilike(f"%{q}%"),
+                            GitleaksFinding.server_name.ilike(f"%{q}%"),
+                            GitleaksFinding.server_ip.ilike(f"%{q}%"),
+                        )
+                    )
+                )
+                return r.scalar() or 0
+
+            c_srv, c_items, c_ocr, c_leaks = await asyncio.gather(
+                count_servers(), count_items(), count_ocr(), count_leaks()
+            )
+            counts = {"servers": c_srv, "items": c_items, "ocr": c_ocr, "leaks": c_leaks}
+
+        return {
+            "query": q,
+            "results": results,
+            "total": total,
+            "has_more": (offset + len(results)) < total,
+            "counts": counts,
+        }
+
+    # --- Default mode (dialog): mixed results, no offset ---
     per_type = max(5, limit // 5)
     results = []
 
@@ -658,7 +917,7 @@ async def global_search(
             "navigate_to": f"/leaks#leak_{finding.id}",
         })
 
-    return {"query": q, "results": results[:limit], "total": len(results)}
+    return {"query": q, "results": results[:limit], "total": len(results), "has_more": False}
 
 
 # ==========================================

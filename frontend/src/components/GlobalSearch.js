@@ -110,8 +110,12 @@ export default function GlobalSearch({ open, onClose }) {
         e.preventDefault();
         setSelectedIndex(i => Math.max(i - 1, 0));
       }
-      if (e.key === 'Enter' && results[selectedIndex]) {
-        handleSelect(results[selectedIndex]);
+      if (e.key === 'Enter') {
+        if (query.length >= 3) {
+          navigate(`/search?q=${encodeURIComponent(query)}`);
+          onClose();
+        }
+        return;
       }
     };
     window.addEventListener('keydown', handleKey);
@@ -236,7 +240,7 @@ export default function GlobalSearch({ open, onClose }) {
             <div className="h-px bg-white/10" />
             <div className="px-3 py-1.5 text-xs text-white/25 flex justify-between">
               <span>{results.length} resultado{results.length !== 1 ? 's' : ''}</span>
-              <span>↑↓ navegar · Enter selecionar · Esc fechar</span>
+              <span>↑↓ navegar · Enter busca avançada · Esc fechar</span>
             </div>
           </>
         )}
@@ -244,7 +248,8 @@ export default function GlobalSearch({ open, onClose }) {
         {/* Empty state */}
         {!loading && query.length >= 3 && results.length === 0 && (
           <div className="px-4 py-6 text-center text-sm text-white/40">
-            Nenhum resultado para "{query}"
+            <div>Nenhum resultado para "{query}"</div>
+            <div className="mt-2 text-xs text-white/20">Pressione Enter para busca avançada</div>
           </div>
         )}
 

@@ -70,6 +70,7 @@ const menuStructure = [
     label: 'Arquivos',
     children: [
       { id: 'navigation', path: '/files/browse', label: 'Navegação' },
+      { id: 'advanced-search', path: '/search', label: 'Search' },
       { id: 'leaks', path: '/leaks', label: 'Leaks' },
     ]
   },
@@ -572,7 +573,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 {/* Version info - only when expanded */}
                 {!effectiveCollapsed && (
                   <div className="text-xs text-muted-foreground">
-                    <div className="text-[11px] font-medium">ShadowIndex v1.0.31</div>
+                    <div className="text-[11px] font-medium">ShadowIndex v1.0.33</div>
                     <div className="text-[10px] text-muted-foreground/60">© StrataSec 2026</div>
                   </div>
                 )}
