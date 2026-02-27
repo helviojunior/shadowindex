@@ -605,43 +605,37 @@ async def global_search(
                 })
 
         elif tab == "items":
-            # Fetch all items by name match
+            # Subqueries for download and OCR flags (single JOIN, no N+1)
+            dl_sub = (
+                select(DownloadedFile.server_guid, DownloadedFile.file_path)
+                .distinct()
+                .subquery()
+            )
+            ocr_sub = (
+                select(
+                    FileVersion.server_guid,
+                    FileVersion.file_path,
+                )
+                .where(
+                    FileVersion.ocr_processed == True,
+                    FileVersion.ocr_content.ilike(f"%{q}%"),
+                )
+                .distinct()
+                .subquery()
+            )
+
+            # Items by name match with download + OCR flags in one query
             items_q = await db.execute(
-                _items_base_query().offset(offset).limit(limit)
+                _items_base_query()
+                .outerjoin(dl_sub, (dl_sub.c.server_guid == ServerItem.server_guid) & (dl_sub.c.file_path == ServerItem.full_path))
+                .outerjoin(ocr_sub, (ocr_sub.c.server_guid == ServerItem.server_guid) & (ocr_sub.c.file_path == ServerItem.full_path))
+                .add_columns(dl_sub.c.file_path.label("dl_path"), ocr_sub.c.file_path.label("ocr_path"))
+                .offset(offset).limit(limit)
             )
             item_rows = items_q.all()
 
-            # Track seen paths for deduplication
             seen_paths = set()
-            # Batch download check
-            downloaded_paths = set()
-            if item_rows:
-                for item, srv in item_rows:
-                    dl_check = await db.execute(
-                        select(DownloadedFile.id).where(
-                            DownloadedFile.server_guid == item.server_guid,
-                            DownloadedFile.file_path == item.full_path
-                        ).limit(1)
-                    )
-                    if dl_check.scalar():
-                        downloaded_paths.add((item.server_guid, item.full_path))
-
-            # Check which name-matched items also have OCR match
-            ocr_paths = set()
-            if item_rows:
-                for item, srv in item_rows:
-                    ocr_check = await db.execute(
-                        select(FileVersion.id).where(
-                            FileVersion.server_guid == item.server_guid,
-                            FileVersion.file_path == item.full_path,
-                            FileVersion.ocr_processed == True,
-                            FileVersion.ocr_content.ilike(f"%{q}%"),
-                        ).limit(1)
-                    )
-                    if ocr_check.scalar():
-                        ocr_paths.add((item.server_guid, item.full_path))
-
-            for item, srv in item_rows:
+            for item, srv, dl_path, ocr_path in item_rows:
                 seen_paths.add((item.server_guid, item.full_path))
                 results.append({
                     "type": "directory" if item.item_type == "Directory" else "item",
@@ -654,30 +648,49 @@ async def global_search(
                     "server_name": srv.name,
                     "server_ip": srv.ip,
                     "modified_at": item.modified_at.strftime("%Y/%m/%d") if item.modified_at else None,
-                    "downloaded": (item.server_guid, item.full_path) in downloaded_paths,
-                    "ocr_match": (item.server_guid, item.full_path) in ocr_paths,
+                    "downloaded": dl_path is not None,
+                    "ocr_match": ocr_path is not None,
                     "navigate_to": f"/servers/{srv.id}/browse?path={quote(item.full_path, safe='')}",
                 })
+
+            # Count: items by name + OCR-only (excluding overlap)
+            items_count_q = await db.execute(_items_count_query())
+            name_total = items_count_q.scalar() or 0
+
+            name_matched_sub = (
+                select(ServerItem.server_guid, ServerItem.full_path)
+                .where(ServerItem.name.ilike(f"%{q}%"))
+                .subquery()
+            )
+            ocr_only_count_q = await db.execute(
+                select(func.count(FileVersion.id))
+                .outerjoin(name_matched_sub, (name_matched_sub.c.server_guid == FileVersion.server_guid) & (name_matched_sub.c.full_path == FileVersion.file_path))
+                .where(
+                    FileVersion.ocr_processed == True,
+                    FileVersion.ocr_content.ilike(f"%{q}%"),
+                    name_matched_sub.c.server_guid == None,
+                )
+            )
+            ocr_only_total = ocr_only_count_q.scalar() or 0
+            total = name_total + ocr_only_total
 
             remaining = limit - len(results)
 
             # Fetch OCR-only matches (not already found by name) if there's remaining space
             if remaining > 0:
+                ocr_offset = max(0, offset - name_total)
                 ocr_q = await db.execute(
                     select(FileVersion, Server, ServerItem.modified_at)
                     .join(Server, Server.guid == FileVersion.server_guid)
                     .outerjoin(ServerItem, (ServerItem.server_guid == FileVersion.server_guid) & (ServerItem.full_path == FileVersion.file_path))
+                    .outerjoin(name_matched_sub, (name_matched_sub.c.server_guid == FileVersion.server_guid) & (name_matched_sub.c.full_path == FileVersion.file_path))
                     .where(
                         FileVersion.ocr_processed == True,
                         FileVersion.ocr_content.ilike(f"%{q}%"),
-                    ).limit(remaining + len(seen_paths))  # fetch extra to account for skipped dupes
+                        name_matched_sub.c.server_guid == None,
+                    ).offset(ocr_offset).limit(remaining)
                 )
                 for fv, srv, item_modified_at in ocr_q.all():
-                    if len(results) >= limit:
-                        break
-                    if (fv.server_guid, fv.file_path) in seen_paths:
-                        continue
-                    seen_paths.add((fv.server_guid, fv.file_path))
                     name = fv.file_path.split("\\")[-1] if "\\" in fv.file_path else fv.file_path.split("/")[-1]
                     results.append({
                         "type": "item",
@@ -694,23 +707,6 @@ async def global_search(
                         "ocr_match": True,
                         "navigate_to": f"/servers/{srv.id}/browse?path={quote(fv.file_path, safe='')}",
                     })
-
-            # Count: items by name + OCR-only (excluding overlap)
-            items_count_q = await db.execute(_items_count_query())
-            name_total = items_count_q.scalar() or 0
-            # Count OCR entries that do NOT match by name
-            ocr_only_count_q = await db.execute(
-                select(func.count(FileVersion.id))
-                .join(Server, Server.guid == FileVersion.server_guid)
-                .outerjoin(ServerItem, (ServerItem.server_guid == FileVersion.server_guid) & (ServerItem.full_path == FileVersion.file_path) & (ServerItem.name.ilike(f"%{q}%")))
-                .where(
-                    FileVersion.ocr_processed == True,
-                    FileVersion.ocr_content.ilike(f"%{q}%"),
-                    ServerItem.id == None,
-                )
-            )
-            ocr_only_total = ocr_only_count_q.scalar() or 0
-            total = name_total + ocr_only_total
 
         elif tab == "leaks":
             leaks_count_q = await db.execute(
@@ -768,14 +764,18 @@ async def global_search(
                 # Items by name + OCR-only (excluding overlap)
                 r1 = await db.execute(_items_count_query())
                 name_count = r1.scalar() or 0
+                nm_sub = (
+                    select(ServerItem.server_guid, ServerItem.full_path)
+                    .where(ServerItem.name.ilike(f"%{q}%"))
+                    .subquery()
+                )
                 r2 = await db.execute(
                     select(func.count(FileVersion.id))
-                    .join(Server, Server.guid == FileVersion.server_guid)
-                    .outerjoin(ServerItem, (ServerItem.server_guid == FileVersion.server_guid) & (ServerItem.full_path == FileVersion.file_path) & (ServerItem.name.ilike(f"%{q}%")))
+                    .outerjoin(nm_sub, (nm_sub.c.server_guid == FileVersion.server_guid) & (nm_sub.c.full_path == FileVersion.file_path))
                     .where(
                         FileVersion.ocr_processed == True,
                         FileVersion.ocr_content.ilike(f"%{q}%"),
-                        ServerItem.id == None,
+                        nm_sub.c.server_guid == None,
                     )
                 )
                 ocr_only_count = r2.scalar() or 0
@@ -831,30 +831,22 @@ async def global_search(
             "navigate_to": f"/servers/{s.id}",
         })
 
-    # 2. Itens descobertos (arquivos e diretórios)
+    # 2. Itens descobertos (arquivos e diretórios) — single query with download flag
+    dl_sub_default = (
+        select(DownloadedFile.server_guid, DownloadedFile.file_path)
+        .distinct()
+        .subquery()
+    )
     items_q = await db.execute(
-        select(ServerItem, Server)
+        select(ServerItem, Server, dl_sub_default.c.file_path.label("dl_path"))
         .join(Server, Server.guid == ServerItem.server_guid)
+        .outerjoin(dl_sub_default, (dl_sub_default.c.server_guid == ServerItem.server_guid) & (dl_sub_default.c.file_path == ServerItem.full_path))
         .where(ServerItem.name.ilike(f"%{q}%"))
         .limit(per_type)
     )
     item_rows = items_q.all()
 
-    # Verificar quais itens já foram baixados (batch lookup)
-    downloaded_paths = set()
-    if item_rows:
-        item_guids_paths = [(item.server_guid, item.full_path) for item, srv in item_rows]
-        for sguid, fpath in item_guids_paths:
-            dl_check = await db.execute(
-                select(DownloadedFile.id).where(
-                    DownloadedFile.server_guid == sguid,
-                    DownloadedFile.file_path == fpath
-                ).limit(1)
-            )
-            if dl_check.scalar():
-                downloaded_paths.add((sguid, fpath))
-
-    for item, srv in item_rows:
+    for item, srv, dl_path in item_rows:
         results.append({
             "type": "directory" if item.item_type == "Directory" else "item",
             "id": item.id,
@@ -866,7 +858,7 @@ async def global_search(
             "server_name": srv.name,
             "server_ip": srv.ip,
             "modified_at": item.modified_at.strftime("%Y/%m") if item.modified_at else None,
-            "downloaded": (item.server_guid, item.full_path) in downloaded_paths,
+            "downloaded": dl_path is not None,
             "ocr_match": False,
             "navigate_to": f"/servers/{srv.id}/browse?path={quote(item.full_path, safe='')}",
         })
