@@ -18,6 +18,8 @@ import {
   Shield,
   Eye,
   HardDrive,
+  Download,
+  Calendar,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -63,7 +65,7 @@ export default function GlobalSearch({ open, onClose }) {
       const { data } = await axios.get(`${BACKEND_URL}/api/v2/search/global`, {
         params: { q, limit: 30 },
       });
-      setResults(data.results || []);
+      setResults((data.results || []).filter(r => r.type !== 'file'));
       setSelectedIndex(0);
     } catch {
       setResults([]);
@@ -196,6 +198,17 @@ export default function GlobalSearch({ open, onClose }) {
                             <span className={`text-xs px-1.5 py-0.5 rounded bg-white/10 ${cfg.color} flex-shrink-0`}>
                               {cfg.label}
                             </span>
+                            {(result.type === 'item' || result.type === 'directory') && result.modified_at && (
+                              <span className="flex items-center gap-1 text-xs text-white/30 flex-shrink-0" title="Última alteração">
+                                <Calendar size={10} />
+                                {result.modified_at}
+                              </span>
+                            )}
+                            {(result.type === 'item' || result.type === 'directory') && result.downloaded && (
+                              <span className="flex-shrink-0" title="Download realizado">
+                                <Download size={12} className="text-emerald-400" />
+                              </span>
+                            )}
                           </div>
                           {result.subtitle && (
                             <div className="text-xs text-white/40 truncate">{result.subtitle}</div>

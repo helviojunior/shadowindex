@@ -16,7 +16,7 @@ Estrutura:
 """
 
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
@@ -538,7 +538,23 @@ async def global_search(
         .where(ServerItem.name.ilike(f"%{q}%"))
         .limit(per_type)
     )
-    for item, srv in items_q.all():
+    item_rows = items_q.all()
+
+    # Verificar quais itens já foram baixados (batch lookup)
+    downloaded_paths = set()
+    if item_rows:
+        item_guids_paths = [(item.server_guid, item.full_path) for item, srv in item_rows]
+        for sguid, fpath in item_guids_paths:
+            dl_check = await db.execute(
+                select(DownloadedFile.id).where(
+                    DownloadedFile.server_guid == sguid,
+                    DownloadedFile.file_path == fpath
+                ).limit(1)
+            )
+            if dl_check.scalar():
+                downloaded_paths.add((sguid, fpath))
+
+    for item, srv in item_rows:
         results.append({
             "type": "directory" if item.item_type == "Directory" else "item",
             "id": item.id,
@@ -549,6 +565,8 @@ async def global_search(
             "server_id": srv.id,
             "server_name": srv.name,
             "server_ip": srv.ip,
+            "modified_at": item.modified_at.strftime("%Y/%m") if item.modified_at else None,
+            "downloaded": (item.server_guid, item.full_path) in downloaded_paths,
             "navigate_to": f"/servers/{srv.id}/browse?path={quote(item.full_path, safe='')}",
         })
 
@@ -3841,6 +3859,208 @@ async def import_servers_from_nmap_xml_file(
             "skipped": 0,
             "hosts_found": 0
         }
+
+
+# ==========================================
+# Check Existing Servers (para filtrar antes de importar)
+# ==========================================
+
+class CheckExistingRequest(BaseModel):
+    names: Optional[List[str]] = []
+    ips: Optional[List[str]] = []
+
+@router.post("/servers/check-existing")
+async def check_existing_servers(
+    request: CheckExistingRequest,
+    db: AsyncSession = Depends(get_db_readonly)
+):
+    """
+    Verifica quais servidores já existem no banco por nome e/ou IP.
+    Retorna os sets de nomes e IPs que já existem.
+    """
+    existing_names = set()
+    existing_ips = set()
+
+    if request.names:
+        result = await db.execute(
+            select(Server.name).where(Server.name.in_(request.names))
+        )
+        existing_names = {row[0] for row in result.fetchall()}
+
+    if request.ips:
+        result = await db.execute(
+            select(Server.ip).where(Server.ip.in_(request.ips))
+        )
+        existing_ips = {row[0] for row in result.fetchall()}
+
+    return {
+        "existing_names": list(existing_names),
+        "existing_ips": list(existing_ips)
+    }
+
+
+# ==========================================
+# BloodHound Import Endpoints
+# ==========================================
+
+class BloodHoundHostData(BaseModel):
+    name: str
+    ip: Optional[str] = None
+    os: Optional[str] = None
+    domain: Optional[str] = None
+    plugin_instance_id: Optional[int] = None
+
+class BloodHoundImportRequest(BaseModel):
+    hosts: List[BloodHoundHostData]
+
+@router.post("/servers/import/bloodhound/parse")
+async def parse_bloodhound_zip(file: UploadFile = File(...)):
+    """
+    Recebe um arquivo ZIP do BloodHound, extrai o JSON de computers
+    e retorna a lista de hosts enabled para seleção no frontend.
+    """
+    import zipfile
+    import io
+    import json
+
+    if not file.filename.endswith('.zip'):
+        raise HTTPException(status_code=400, detail="Arquivo deve ser .zip")
+
+    content = await file.read()
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            # Procurar arquivo JSON com 'computers' no nome
+            computers_file = None
+            for name in zf.namelist():
+                if 'computers' in name.lower() and name.lower().endswith('.json'):
+                    computers_file = name
+                    break
+
+            if not computers_file:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Nenhum arquivo JSON de computers encontrado no ZIP"
+                )
+
+            with zf.open(computers_file) as f:
+                data = json.loads(f.read())
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Arquivo ZIP inválido")
+
+    import time
+
+    # Parsear: pode ser {"data": [...]} ou array direto
+    computers = data if isinstance(data, list) else data.get("data", [])
+
+    one_year_ago = time.time() - 365 * 24 * 60 * 60
+
+    hosts = []
+    for comp in computers:
+        props = comp.get("Properties", {})
+        enabled = props.get("enabled", False)
+        if not enabled:
+            continue
+        name = props.get("name", "")
+        if not name:
+            continue
+        # Filtrar por lastlogon < 1 ano
+        lastlogon = props.get("lastlogon", 0) or 0
+        if lastlogon < one_year_ago:
+            continue
+        hosts.append({
+            "name": name.lower(),
+            "os": props.get("operatingsystem", ""),
+            "domain": props.get("domain", ""),
+            "enabled": True
+        })
+
+    return {"success": True, "hosts": hosts, "source_file": computers_file, "total_in_file": len(computers)}
+
+
+@router.post("/servers/import/bloodhound", response_model=NmapImportResponse)
+async def import_servers_from_bloodhound(
+    request: BloodHoundImportRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Importa servidores a partir de dados do BloodHound.
+    Usa o campo 'name' (FQDN) como nome e IP do servidor.
+    Detecta duplicatas pelo nome.
+    """
+    import uuid
+
+    results = {
+        "imported": [],
+        "failed": [],
+        "skipped": []
+    }
+
+    for host in request.hosts:
+        try:
+            # Verificar se servidor já existe pelo nome
+            existing = await db.execute(
+                select(Server).where(Server.name == host.name.lower())
+            )
+            existing_server = existing.scalar_one_or_none()
+
+            if existing_server:
+                results["skipped"].append({
+                    "ip": host.ip or host.name,
+                    "name": host.name,
+                    "reason": f"Servidor já existe (ID: {existing_server.id})"
+                })
+                continue
+
+            # Determinar plugin_type a partir da instância
+            plugin_type = "direct_interaction"
+            if host.plugin_instance_id:
+                instance_result = await db.execute(
+                    select(PluginInstance).where(PluginInstance.id == host.plugin_instance_id)
+                )
+                instance = instance_result.scalar_one_or_none()
+                if instance:
+                    plugin_type = instance.plugin_type
+
+            host_name = host.name.lower()
+            new_server = Server(
+                guid=str(uuid.uuid4()),
+                name=host_name,
+                ip=(host.ip or host_name).lower(),
+                plugin_instance_id=host.plugin_instance_id,
+                plugin_type=plugin_type,
+                plugin_config={
+                    "imported_from": "bloodhound",
+                    "os": host.os,
+                    "domain": host.domain
+                }
+            )
+            db.add(new_server)
+            await db.flush()
+
+            results["imported"].append({
+                "id": new_server.id,
+                "ip": host.ip or host.name,
+                "name": host.name
+            })
+
+        except Exception as e:
+            logger.error(f"Error importing BloodHound server {host.name}: {e}")
+            results["failed"].append({
+                "ip": host.ip or host.name,
+                "name": host.name,
+                "error": str(e)
+            })
+
+    await db.commit()
+
+    return NmapImportResponse(
+        success=True,
+        imported=len(results["imported"]),
+        failed=len(results["failed"]),
+        skipped=len(results["skipped"]),
+        details=results["imported"] + results["failed"] + results["skipped"]
+    )
 
 
 # ==========================================
