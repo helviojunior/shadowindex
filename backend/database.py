@@ -643,7 +643,7 @@ async def apply_pending_migrations():
                     "ALTER TABLE servers ADD COLUMN is_checked BOOLEAN DEFAULT FALSE"
                 ))
                 logger.info("Migration applied: is_checked added to servers")
-        else:
+
             # Verificar se retry_count existe em download_segments
             result = await conn.execute(text(
                 "SELECT column_name FROM information_schema.columns "
@@ -655,7 +655,7 @@ async def apply_pending_migrations():
                     "ALTER TABLE download_segments ADD COLUMN retry_count INTEGER DEFAULT 0"
                 ))
                 logger.info("Migration applied: retry_count added to download_segments")
-
+        else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))
             columns = [row[1] for row in result.fetchall()]
