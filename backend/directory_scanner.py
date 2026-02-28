@@ -793,8 +793,9 @@ class DirectoryScanner:
     
     async def _scan_directory(self, db: AsyncSession, scan_job: ScanJob):
         """Escaneia um diretório e adiciona arquivos à fila"""
-        from database import Server, DownloadJob, AppSettings
+        from database import Server, ServerItem, DownloadJob, AppSettings
         from plugins.factory import get_plugin_for_server
+        from sqlalchemy import delete
         
         print(f"=== SCANNER: _scan_directory called for {scan_job.path}, depth={scan_job.depth}/{scan_job.max_depth} ===", flush=True)
         
@@ -857,6 +858,21 @@ class DirectoryScanner:
             
             if not items:
                 print("=== SCANNER: Empty result from list_directory ===", flush=True)
+                # Mesmo sem itens, atualizar o pai como children_fetched
+                try:
+                    parent_result = await db.execute(
+                        select(ServerItem).where(
+                            ServerItem.server_guid == scan_job.server_guid,
+                            ServerItem.full_path == full_path
+                        )
+                    )
+                    parent_item = parent_result.scalar_one_or_none()
+                    if parent_item:
+                        parent_item.children_fetched = True
+                        parent_item.has_children = False
+                        await db.commit()
+                except Exception as e:
+                    print(f"=== SCANNER: Error updating empty dir parent: {e} ===", flush=True)
                 return
             
             files_added = 0
@@ -977,13 +993,75 @@ class DirectoryScanner:
             scan_job.files_found = files_added
             scan_job.dirs_found = dirs_added
             scan_job.critical_files_found = critical_files_added
-            
+
+            # === Inserir ServerItem no banco (igual ao browse da tree view) ===
+            try:
+                # Remover itens antigos deste parent_path
+                await db.execute(
+                    delete(ServerItem).where(
+                        ServerItem.server_guid == scan_job.server_guid,
+                        ServerItem.parent_path == full_path
+                    )
+                )
+
+                # Inserir todos os itens listados como ServerItem
+                for item in items:
+                    item_type = item.item_type
+                    item_name = item.name
+                    item_size = item.size or 0
+                    item_full_path = item.full_path or f"{full_path}\\{item_name}"
+
+                    # Handle modified_at
+                    modified_val = getattr(item, 'modified_at', None)
+                    if modified_val is not None and isinstance(modified_val, str):
+                        try:
+                            modified_val = datetime.fromisoformat(modified_val)
+                        except (ValueError, TypeError):
+                            modified_val = None
+
+                    db_item = ServerItem(
+                        server_guid=scan_job.server_guid,
+                        share_name=scan_job.share_name,
+                        parent_path=full_path,
+                        item_type=item_type,
+                        name=item_name,
+                        full_path=item_full_path,
+                        size=str(item_size) if item_size else None,
+                        modified_at=modified_val
+                    )
+                    db.add(db_item)
+
+                # Atualizar o item pai: setar children_fetched e has_children
+                parent_result = await db.execute(
+                    select(ServerItem).where(
+                        ServerItem.server_guid == scan_job.server_guid,
+                        ServerItem.full_path == full_path
+                    )
+                )
+                parent_item = parent_result.scalar_one_or_none()
+                if parent_item:
+                    parent_item.children_fetched = True
+                    parent_item.has_children = len(items) > 0
+                    parent_item.access_denied = False
+                    parent_item.error_message = None
+
+                await db.commit()
+                print(f"=== SCANNER: Inserted {len(items)} ServerItems for {full_path}, parent updated ===", flush=True)
+            except Exception as e:
+                print(f"=== SCANNER: Error inserting ServerItems: {e} ===", flush=True)
+                logger.error(f"Error inserting ServerItems for {full_path}: {e}")
+                # Não falhar o scan por causa disso - o download já foi enfileirado
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+
             if scan_job.critical_only:
                 print(f"=== SCANNER: Critical scan {full_path}, found {critical_files_added} critical files, {dirs_added} subdirs ===", flush=True)
             else:
                 print(f"=== SCANNER: Scanned {full_path}, added {files_added} files, {dirs_added} subdirs ===", flush=True)
             logger.info(f"Scanned directory: {full_path}, found {len(items)} items")
-            
+
         except Exception as e:
             print(f"=== SCANNER ERROR in _scan_directory: {e} ===", flush=True)
             logger.error(f"Error scanning {full_path}: {e}")
