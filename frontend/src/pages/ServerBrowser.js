@@ -4369,7 +4369,7 @@ const ServerBrowser = () => {
                       </div>
                     )}
                   </div>
-                ) : fileContent && isCertificateFile(selectedItem?.name) ? (
+                ) : fileContent && typeof fileContent === 'object' && isCertificateFile(selectedItem?.name) ? (
                   <div className="space-y-4">
                     {/* Certificate Info */}
                     {fileContent.error ? (
