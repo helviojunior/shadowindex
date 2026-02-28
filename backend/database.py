@@ -415,6 +415,7 @@ class DownloadSegment(Base):
     status = Column(String, default='pending')             # pending/downloading/completed/failed
     temp_path = Column(String, nullable=True)
     error_message = Column(String, nullable=True)
+    retry_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime(timezone=True), nullable=True)
 

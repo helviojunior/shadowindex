@@ -14,6 +14,7 @@ import asyncio
 import logging
 import base64
 import hashlib
+import os
 from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -673,22 +674,60 @@ class DownloadWorker:
         num_segments = len(segments)
         logger.info(f"Multi-threaded download job {job.id}: {num_segments} segments for {total_size} bytes")
 
-        # Lançar tasks paralelas para segments não completados
-        tasks = []
-        for seg in segments:
-            if seg.status != 'completed':
+        MAX_CHUNK_RETRIES = 3
+
+        # Loop de retry: tenta até MAX_CHUNK_RETRIES vezes para chunks falhos
+        for attempt in range(MAX_CHUNK_RETRIES + 1):
+            # Recarregar segments para pegar status atualizado
+            if attempt > 0:
+                async with AsyncSessionLocal() as retry_db:
+                    retry_segs = await retry_db.execute(
+                        select(DownloadSegment)
+                        .where(DownloadSegment.job_id == job.id)
+                        .order_by(DownloadSegment.segment_index)
+                    )
+                    segments = retry_segs.scalars().all()
+
+            # Lançar tasks paralelas para segments não completados
+            pending_segs = [s for s in segments if s.status != 'completed']
+            if not pending_segs:
+                break
+
+            if attempt > 0:
+                logger.info(f"Retry attempt {attempt}/{MAX_CHUNK_RETRIES} for {len(pending_segs)} failed chunks of job {job.id}")
+                # Resetar status dos segments falhos para pending antes do retry
+                async with AsyncSessionLocal() as reset_db:
+                    for seg in pending_segs:
+                        result = await reset_db.execute(
+                            select(DownloadSegment).where(DownloadSegment.id == seg.id)
+                        )
+                        s = result.scalar_one_or_none()
+                        if s:
+                            s.status = 'pending'
+                            s.retry_count = (s.retry_count or 0) + 1
+                            s.error_message = None
+                            # Resetar downloaded_bytes para recomeçar o chunk do zero
+                            s.downloaded_bytes = 0
+                    await reset_db.commit()
+
+            tasks = []
+            for seg in pending_segs:
                 task = asyncio.create_task(
                     self._download_segment(job.id, seg.id, plugin, full_path, total_size, ws_manager)
                 )
                 tasks.append(task)
 
-        # Aguardar todas as tasks
-        if tasks:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            # Verificar se alguma falhou
-            for r in results:
-                if isinstance(r, Exception):
-                    raise r
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                # Checar se houve falhas
+                has_failures = any(isinstance(r, Exception) for r in results)
+                if not has_failures:
+                    break
+                # Se é a última tentativa, não continua o loop
+                if attempt == MAX_CHUNK_RETRIES:
+                    break
+                # Caso contrário, o loop vai retentar os falhos
+                logger.warning(f"Some chunks failed for job {job.id}, will retry...")
 
         # Verificar que todos estão completed
         async with AsyncSessionLocal() as check_db:
@@ -700,12 +739,24 @@ class DownloadWorker:
             final_segments = final_segs.scalars().all()
             failed = [s for s in final_segments if s.status != 'completed']
             if failed:
-                raise Exception(f"{len(failed)} segments failed for job {job.id}")
+                # Após esgotar retries, pausar o job em vez de falhar
+                # Isso permite que o usuário faça retry manual depois
+                failed_indices = [s.segment_index for s in failed]
+                logger.error(
+                    f"Job {job.id}: {len(failed)} chunks still failed after {MAX_CHUNK_RETRIES} retries "
+                    f"(segments: {failed_indices}). Pausing job for manual retry."
+                )
+                job.status = 'paused'
+                job.error_message = (
+                    f"{len(failed)} chunks failed after {MAX_CHUNK_RETRIES} retries "
+                    f"(segments: {failed_indices}). Resume to retry."
+                )
+                await db.commit()
+                return
 
         # Concatenar segmentos diretamente do disco para o storage final
-        # Em vez de carregar tudo na memória, salvamos via streaming
         from storage_utils import concatenate_segment_files
-        full_content = concatenate_segment_files(job.id, num_segments)
+        full_content = concatenate_segment_files(job.id)
         await self._save_file_content_bytes(db, job, full_content, server)
         cleanup_temp_files(job.id)
 
@@ -747,6 +798,8 @@ class DownloadWorker:
                 mode = 'wb'
 
             try:
+                # Garantir que o diretório pai (.tmp/{job_id}/) exista
+                os.makedirs(os.path.dirname(temp_path), exist_ok=True)
                 with open(temp_path, mode) as f:
                     current_offset = seg.offset_start + downloaded
                     end_offset = seg.offset_end

@@ -418,14 +418,16 @@ TEMP_DOWNLOAD_DIR = os.path.join(STORAGE_BASE_PATH, ".tmp")
 def get_temp_download_path(job_id: int, segment_index: int = None) -> Path:
     """
     Retorna o caminho do arquivo temporário para download.
-    Formato: data/storage/.tmp/download_{job_id}[_seg{N}].part
+    Multi-segment: data/storage/.tmp/{job_id}/dwn_{XXXXXXXX}.part
+    Single-file:   data/storage/.tmp/{job_id}/dwn_00000000.part
     """
-    os.makedirs(TEMP_DOWNLOAD_DIR, exist_ok=True)
+    job_dir = os.path.join(TEMP_DOWNLOAD_DIR, str(job_id))
+    os.makedirs(job_dir, exist_ok=True)
     if segment_index is not None:
-        filename = f"download_{job_id}_seg{segment_index}.part"
+        filename = f"dwn_{segment_index:08X}.part"
     else:
-        filename = f"download_{job_id}.part"
-    return Path(TEMP_DOWNLOAD_DIR) / filename
+        filename = "dwn_00000000.part"
+    return Path(job_dir) / filename
 
 
 def get_temp_file_size(path) -> int:
@@ -437,30 +439,32 @@ def get_temp_file_size(path) -> int:
 
 
 def cleanup_temp_files(job_id: int):
-    """Remove todos os arquivos .part de um job."""
+    """Remove o diretório inteiro .tmp/{job_id}/ de um job."""
+    import shutil
     try:
-        if not os.path.exists(TEMP_DOWNLOAD_DIR):
-            return
-        prefix = f"download_{job_id}"
-        for filename in os.listdir(TEMP_DOWNLOAD_DIR):
-            if filename.startswith(prefix) and filename.endswith('.part'):
-                try:
-                    os.remove(os.path.join(TEMP_DOWNLOAD_DIR, filename))
-                except OSError:
-                    pass
+        job_dir = os.path.join(TEMP_DOWNLOAD_DIR, str(job_id))
+        if os.path.isdir(job_dir):
+            shutil.rmtree(job_dir, ignore_errors=True)
     except Exception:
         pass
 
 
-def concatenate_segment_files(job_id: int, segment_count: int) -> bytes:
+def concatenate_segment_files(job_id: int, segment_count: int = None) -> bytes:
     """
     Lê e concatena todos os segmentos de um job em ordem.
+    Usa glob para encontrar os arquivos dwn_*.part e ordena pelo nome hex.
+    O parâmetro segment_count é mantido por compatibilidade mas não é mais necessário.
     Retorna os bytes combinados.
     """
+    import glob
+    job_dir = os.path.join(TEMP_DOWNLOAD_DIR, str(job_id))
+    pattern = os.path.join(job_dir, "dwn_*.part")
+    chunk_files = sorted(glob.glob(pattern))
+    if not chunk_files:
+        raise FileNotFoundError(f"No chunk files found in {job_dir}")
     parts = []
-    for i in range(segment_count):
-        seg_path = get_temp_download_path(job_id, segment_index=i)
-        with open(seg_path, 'rb') as f:
+    for chunk_path in chunk_files:
+        with open(chunk_path, 'rb') as f:
             parts.append(f.read())
     return b''.join(parts)
 
