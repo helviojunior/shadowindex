@@ -814,6 +814,16 @@ const ServerBrowser = () => {
       return;
     }
 
+    // Verificar tamanho do arquivo (limite de 1MB para visualização de texto)
+    const MAX_VIEW_SIZE = 1 * 1024 * 1024; // 1MB
+    const fileSize = parseInt(downloadedFilesInfo[filePath]?.file_size || selectedItem.size) || 0;
+    if (fileSize > MAX_VIEW_SIZE) {
+      setFileContent(`Arquivo muito grande para ser exibido (${formatSize(fileSize)}). Tamanho máximo para visualização: 1 MB.`);
+      setRawFileContent(null);
+      setFilePreviewUrl(null);
+      return;
+    }
+
     // Para arquivos de texto
     setLoadingContent(true);
     try {
