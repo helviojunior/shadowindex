@@ -1113,7 +1113,7 @@ const ServerBrowser = () => {
     setBeautified(false);
   };
 
-  // View as HexDump - carrega arquivo e mostra no formato hexdump -C
+  // View as HexDump - backend gera o hexdump e envia apenas o texto formatado
   const viewAsHexDump = async (item, itemPath, shareName) => {
     const filePath = itemPath || item.fullPath || item.full_path;
 
@@ -1136,75 +1136,18 @@ const ServerBrowser = () => {
 
     setLoadingContent(true);
     try {
-      const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
-        responseType: 'arraybuffer'
-      });
+      const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/hexdump`);
+      const { hexdump, file_name, size_str } = response.data;
 
-      const allBytes = new Uint8Array(response.data);
-      const totalSize = allBytes.length;
-      const MAX_HEXDUMP = 4096;
-      const truncated = totalSize > MAX_HEXDUMP;
-      const bytes = truncated ? allBytes.slice(0, MAX_HEXDUMP) : allBytes;
-
-      let hexdump = '';
-      const bytesPerLine = 16;
-
-      for (let offset = 0; offset < bytes.length; offset += bytesPerLine) {
-        const offsetHex = offset.toString(16).padStart(8, '0');
-        let hexPart = '';
-        let asciiPart = '';
-
-        for (let i = 0; i < bytesPerLine; i++) {
-          if (offset + i < bytes.length) {
-            const byte = bytes[offset + i];
-            hexPart += byte.toString(16).padStart(2, '0') + ' ';
-            asciiPart += (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
-          } else {
-            hexPart += '   ';
-            asciiPart += ' ';
-          }
-          if (i === 7) hexPart += ' ';
-        }
-
-        hexdump += `${offsetHex}  ${hexPart} |${asciiPart}|\n`;
-      }
-
-      if (truncated) {
-        const remaining = totalSize - MAX_HEXDUMP;
-        const remainingStr = remaining > 1024 * 1024
-          ? `${(remaining / (1024 * 1024)).toFixed(2)} MB`
-          : remaining > 1024
-            ? `${(remaining / 1024).toFixed(2)} KB`
-            : `${remaining} bytes`;
-        hexdump += `\n... truncado - mais ${remainingStr} restantes (${totalSize.toLocaleString()} bytes total) ...\n`;
-      }
-
-      const sizeStr = totalSize > 1024 * 1024
-        ? `${(totalSize / (1024 * 1024)).toFixed(2)} MB`
-        : totalSize > 1024
-          ? `${(totalSize / 1024).toFixed(2)} KB`
-          : `${totalSize} bytes`;
-
-      setFileContent(`[HexDump - ${item.name} - ${sizeStr}]\n\n${hexdump}`);
-      setRawFileContent(`[HexDump - ${item.name} - ${sizeStr}]\n\n${hexdump}`);
+      setFileContent(`[HexDump - ${file_name} - ${size_str}]\n\n${hexdump}`);
+      setRawFileContent(`[HexDump - ${file_name} - ${size_str}]\n\n${hexdump}`);
       setFilePreviewUrl(null);
       setBase64Decoded(false);
       setBeautified(false);
       setActiveTab('view');
     } catch (error) {
       console.error('Error loading file for hexdump:', error);
-      let errorMessage = 'Erro ao carregar arquivo para hexdump';
-      if (error.response?.data instanceof ArrayBuffer) {
-        try {
-          const text = new TextDecoder().decode(error.response.data);
-          const parsed = JSON.parse(text);
-          errorMessage = parsed.detail || errorMessage;
-        } catch (e) {
-          // Ignore parse errors
-        }
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      }
+      const errorMessage = error.response?.data?.detail || 'Erro ao carregar hexdump';
       toast.error(errorMessage);
     } finally {
       setLoadingContent(false);

@@ -3678,23 +3678,97 @@ async def download_file(server_id: int, file_id: int, db: AsyncSession = Depends
     from fastapi.responses import FileResponse
     from storage_utils import get_file_path
     import os
-    
+
     server = await get_server_or_404(db, server_id)
     file = await get_downloaded_file_or_404(db, server, file_id)
-    
+
     full_path = get_file_path(server.guid, file.share_name, file.sanitized_path)
-    
+
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
-    
+
     # Extrair nome do arquivo
     file_name = file.file_path.split('\\')[-1] if '\\' in file.file_path else file.file_path.split('/')[-1]
-    
+
     return FileResponse(
         path=full_path,
         filename=file_name,
         media_type=file.mimetype or 'application/octet-stream'
     )
+
+
+@router.get("/servers/{server_id}/files/{file_id}/hexdump")
+async def file_hexdump(server_id: int, file_id: int, max_bytes: int = 4096, db: AsyncSession = Depends(get_db)):
+    """Gera hexdump dos primeiros N bytes do arquivo (padrão 4096) sem enviar o arquivo inteiro"""
+    from storage_utils import get_file_path
+    import os
+
+    server = await get_server_or_404(db, server_id)
+    file = await get_downloaded_file_or_404(db, server, file_id)
+
+    full_path = get_file_path(server.guid, file.share_name, file.sanitized_path)
+
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
+
+    total_size = os.path.getsize(full_path)
+    read_size = min(max_bytes, total_size)
+
+    with open(full_path, 'rb') as f:
+        data = f.read(read_size)
+
+    # Gerar hexdump no formato hexdump -C
+    lines = []
+    bytes_per_line = 16
+    for offset in range(0, len(data), bytes_per_line):
+        chunk = data[offset:offset + bytes_per_line]
+        offset_hex = f"{offset:08x}"
+
+        hex_parts = []
+        for i in range(bytes_per_line):
+            if i < len(chunk):
+                hex_parts.append(f"{chunk[i]:02x}")
+            else:
+                hex_parts.append("  ")
+            if i == 7:
+                hex_parts.append("")  # espaço extra entre colunas 8 e 9
+        hex_str = " ".join(hex_parts)
+
+        ascii_str = ""
+        for b in chunk:
+            ascii_str += chr(b) if 32 <= b <= 126 else "."
+
+        lines.append(f"{offset_hex}  {hex_str}  |{ascii_str}|")
+
+    hexdump = "\n".join(lines) + "\n"
+
+    truncated = total_size > max_bytes
+    if truncated:
+        remaining = total_size - max_bytes
+        if remaining > 1024 * 1024:
+            remaining_str = f"{remaining / (1024 * 1024):.2f} MB"
+        elif remaining > 1024:
+            remaining_str = f"{remaining / 1024:.2f} KB"
+        else:
+            remaining_str = f"{remaining} bytes"
+        hexdump += f"\n... truncado - mais {remaining_str} restantes ({total_size:,} bytes total) ...\n"
+
+    if total_size > 1024 * 1024:
+        size_str = f"{total_size / (1024 * 1024):.2f} MB"
+    elif total_size > 1024:
+        size_str = f"{total_size / 1024:.2f} KB"
+    else:
+        size_str = f"{total_size} bytes"
+
+    file_name = file.file_path.split('\\')[-1] if '\\' in file.file_path else file.file_path.split('/')[-1]
+
+    return {
+        "hexdump": hexdump,
+        "file_name": file_name,
+        "total_size": total_size,
+        "size_str": size_str,
+        "truncated": truncated
+    }
 
 
 # ==========================================
