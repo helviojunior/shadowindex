@@ -417,7 +417,7 @@ TEMP_DOWNLOAD_DIR = os.path.join(STORAGE_BASE_PATH, ".tmp")
 
 def get_temp_download_path(job_id: int, segment_index: int = None) -> Path:
     """
-    Retorna o caminho do arquivo temporário para download.
+    Retorna o caminho do arquivo temporário para download (legado, mantido por compatibilidade).
     Multi-segment: data/storage/.tmp/{job_id}/dwn_{XXXXXXXX}.part
     Single-file:   data/storage/.tmp/{job_id}/dwn_00000000.part
     """
@@ -427,6 +427,18 @@ def get_temp_download_path(job_id: int, segment_index: int = None) -> Path:
         filename = f"dwn_{segment_index:08X}.part"
     else:
         filename = "dwn_00000000.part"
+    return Path(job_dir) / filename
+
+
+def get_chunk_path(job_id: int, chunk_index: int) -> Path:
+    """
+    Retorna o caminho do arquivo de chunk individual.
+    Formato: data/storage/.tmp/{job_id}/chunk_{XXXXXXXX}.part
+    Cada requisição ao plugin gera um chunk file separado.
+    """
+    job_dir = os.path.join(TEMP_DOWNLOAD_DIR, str(job_id))
+    os.makedirs(job_dir, exist_ok=True)
+    filename = f"chunk_{chunk_index:08X}.part"
     return Path(job_dir) / filename
 
 
@@ -451,15 +463,20 @@ def cleanup_temp_files(job_id: int):
 
 def concatenate_segment_files(job_id: int, segment_count: int = None) -> bytes:
     """
-    Lê e concatena todos os segmentos de um job em ordem.
-    Usa glob para encontrar os arquivos dwn_*.part e ordena pelo nome hex.
+    Lê e concatena todos os chunks de um job em ordem.
+    Primeiro tenta chunk_*.part (novo formato per-chunk), depois dwn_*.part (legado).
     O parâmetro segment_count é mantido por compatibilidade mas não é mais necessário.
     Retorna os bytes combinados.
     """
     import glob
     job_dir = os.path.join(TEMP_DOWNLOAD_DIR, str(job_id))
-    pattern = os.path.join(job_dir, "dwn_*.part")
+    # Novo formato: chunk_*.part (1 arquivo por requisição ao plugin)
+    pattern = os.path.join(job_dir, "chunk_*.part")
     chunk_files = sorted(glob.glob(pattern))
+    if not chunk_files:
+        # Fallback para formato legado: dwn_*.part
+        pattern = os.path.join(job_dir, "dwn_*.part")
+        chunk_files = sorted(glob.glob(pattern))
     if not chunk_files:
         raise FileNotFoundError(f"No chunk files found in {job_dir}")
     parts = []

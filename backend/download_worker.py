@@ -501,9 +501,11 @@ class DownloadWorker:
     
     async def _download_chunked_via_plugin(self, db: AsyncSession, job, plugin, full_path: str, server):
         """Download em chunks usando o plugin (arquivo grande).
-        Escreve chunks diretamente em disco para evitar acumulação em memória.
-        Suporta resume: se o temp file já existe com tamanho == downloaded_bytes, continua do offset."""
-        from storage_utils import get_temp_download_path, get_temp_file_size, cleanup_temp_files
+        Cada requisição ao plugin salva o resultado como arquivo separado (chunk_XXXXXXXX.part).
+        Resume natural: chunks já baixados (arquivo existe com tamanho correto) são pulados.
+        No final, todos os chunk files são concatenados na ordem correta."""
+        from storage_utils import get_chunk_path, get_temp_file_size, cleanup_temp_files
+        import math
 
         total_size = job.file_size or 0
 
@@ -529,74 +531,76 @@ class DownloadWorker:
             await self._save_file_content_bytes(db, job, b'', server)
             return
 
-        temp_path = get_temp_download_path(job.id)
+        total_chunks = math.ceil(total_size / CHUNK_SIZE)
         downloaded = 0
 
-        # Resume: verificar se temp file existe e é consistente
-        existing_size = get_temp_file_size(temp_path)
-        if existing_size > 0 and existing_size == (job.downloaded_bytes or 0) and existing_size < total_size:
-            downloaded = existing_size
-            logger.info(f"Resuming download job {job.id} from offset {downloaded}/{total_size}")
-            mode = 'ab'  # append
-        else:
-            mode = 'wb'  # write from scratch
-            if existing_size > 0:
-                logger.info(f"Temp file size mismatch for job {job.id} (file={existing_size}, db={job.downloaded_bytes}), restarting")
-
         try:
-            with open(temp_path, mode) as f:
-                while downloaded < total_size:
-                    remaining = total_size - downloaded
-                    expected_chunk_size = min(CHUNK_SIZE, remaining)
+            for chunk_idx in range(total_chunks):
+                offset = chunk_idx * CHUNK_SIZE
+                remaining = total_size - offset
+                expected_chunk_size = min(CHUNK_SIZE, remaining)
+                chunk_path = get_chunk_path(job.id, chunk_idx)
 
-                    file_content = await plugin.download_file(
-                        full_path,
-                        offset=downloaded,
-                        length=CHUNK_SIZE,
-                        ignore_cache=True,
-                        expected_size=expected_chunk_size
-                    )
-
-                    if not file_content or file_content.data is None:
-                        break
-
-                    if len(file_content.data) == 0 and expected_chunk_size > 0:
-                        logger.warning(f"Empty chunk for file {full_path} at offset {downloaded}")
-                        break
-
-                    # Escrever chunk diretamente em disco
-                    f.write(file_content.data)
-                    f.flush()
-                    downloaded += len(file_content.data)
-
-                    # Atualizar progresso no DB
+                # Resume: se o chunk já existe com tamanho correto, pular
+                existing_size = get_temp_file_size(chunk_path)
+                if existing_size == expected_chunk_size:
+                    downloaded += existing_size
+                    # Atualizar progresso
                     job.downloaded_bytes = downloaded
                     job.total_bytes = total_size
                     job.progress = int((downloaded / total_size) * 100)
                     await db.commit()
+                    continue
 
-                    # Emitir evento de progresso via WebSocket
-                    await ws_manager.emit_download_progress(
-                        job_id=job.id,
-                        progress=job.progress,
-                        downloaded_bytes=downloaded,
-                        total_bytes=total_size,
-                        file_name=job.file_name,
-                        file_path=job.file_path
-                    )
+                file_content = await plugin.download_file(
+                    full_path,
+                    offset=offset,
+                    length=CHUNK_SIZE,
+                    ignore_cache=True,
+                    expected_size=expected_chunk_size
+                )
 
-                    if file_content.is_complete or len(file_content.data) < CHUNK_SIZE:
-                        break
+                if not file_content or file_content.data is None:
+                    break
 
-                    # Verificar se job foi pausado ou cancelado
-                    await db.refresh(job)
-                    if job.status in ('paused', 'cancelled'):
-                        logger.info(f"Download job {job.id} {job.status} during chunked download at {downloaded}/{total_size}")
-                        return
+                if len(file_content.data) == 0 and expected_chunk_size > 0:
+                    logger.warning(f"Empty chunk for file {full_path} at offset {offset}")
+                    break
 
-            # Ler arquivo completo do disco e salvar no storage final
-            with open(temp_path, 'rb') as f:
-                full_content = f.read()
+                # Salvar chunk como arquivo individual
+                with open(chunk_path, 'wb') as f:
+                    f.write(file_content.data)
+
+                downloaded += len(file_content.data)
+
+                # Atualizar progresso no DB
+                job.downloaded_bytes = downloaded
+                job.total_bytes = total_size
+                job.progress = int((downloaded / total_size) * 100)
+                await db.commit()
+
+                # Emitir evento de progresso via WebSocket
+                await ws_manager.emit_download_progress(
+                    job_id=job.id,
+                    progress=job.progress,
+                    downloaded_bytes=downloaded,
+                    total_bytes=total_size,
+                    file_name=job.file_name,
+                    file_path=job.file_path
+                )
+
+                if file_content.is_complete or len(file_content.data) < CHUNK_SIZE:
+                    break
+
+                # Verificar se job foi pausado ou cancelado
+                await db.refresh(job)
+                if job.status in ('paused', 'cancelled'):
+                    logger.info(f"Download job {job.id} {job.status} during chunked download at {downloaded}/{total_size}")
+                    return
+
+            # Concatenar todos os chunk files e salvar no storage final
+            from storage_utils import concatenate_segment_files
+            full_content = concatenate_segment_files(job.id)
             await self._save_file_content_bytes(db, job, full_content, server)
             cleanup_temp_files(job.id)
         except Exception:
@@ -622,10 +626,10 @@ class DownloadWorker:
 
     async def _download_multithreaded(self, db: AsyncSession, job, plugin, full_path: str, server, num_threads: int):
         """Download multi-segmento para arquivos grandes (>100MB).
-        Cada segmento é baixado em paralelo e salvo diretamente em disco.
+        Cada segmento é baixado em paralelo, com cada chunk salvo como arquivo individual.
         Suporta resume: se segments já existem no DB, retoma de onde parou."""
         from database import DownloadSegment, AsyncSessionLocal
-        from storage_utils import get_temp_download_path, get_temp_file_size, cleanup_temp_files
+        from storage_utils import cleanup_temp_files, TEMP_DOWNLOAD_DIR
 
         total_size = job.file_size
         ws_manager = get_websocket_manager()
@@ -650,7 +654,6 @@ class DownloadWorker:
             for i in range(num_threads):
                 offset_start = i * segment_size
                 offset_end = (i + 1) * segment_size if i < num_threads - 1 else total_size
-                temp_path = str(get_temp_download_path(job.id, segment_index=i))
                 seg = DownloadSegment(
                     job_id=job.id,
                     segment_index=i,
@@ -658,7 +661,7 @@ class DownloadWorker:
                     offset_end=offset_end,
                     downloaded_bytes=0,
                     status='pending',
-                    temp_path=temp_path
+                    temp_path=str(os.path.join(TEMP_DOWNLOAD_DIR, str(job.id)))
                 )
                 db.add(seg)
             await db.commit()
@@ -706,8 +709,7 @@ class DownloadWorker:
                             s.status = 'pending'
                             s.retry_count = (s.retry_count or 0) + 1
                             s.error_message = None
-                            # Resetar downloaded_bytes para recomeçar o chunk do zero
-                            s.downloaded_bytes = 0
+                            # downloaded_bytes não é resetado — chunks já em disco serão pulados automaticamente
                     await reset_db.commit()
 
             tasks = []
@@ -767,10 +769,11 @@ class DownloadWorker:
 
     async def _download_segment(self, job_id: int, segment_id: int, plugin, full_path: str, total_file_size: int, ws_manager):
         """Baixa um segmento individual. Cada segment usa sua própria sessão DB.
-        Suporta resume via temp file + seg.downloaded_bytes.
+        Cada requisição ao plugin salva o resultado como chunk file separado (chunk_{global_index}.part).
+        Resume: chunks com tamanho correto são pulados automaticamente.
         Emite progresso agregado a cada 5 chunks."""
         from database import DownloadSegment, DownloadJob, AsyncSessionLocal
-        from storage_utils import get_temp_file_size
+        from storage_utils import get_chunk_path, get_temp_file_size
 
         chunk_counter = 0
 
@@ -786,90 +789,91 @@ class DownloadWorker:
 
             segment_size = seg.offset_end - seg.offset_start
             downloaded = 0
-            temp_path = seg.temp_path
-
-            # Resume: verificar temp file
-            existing_size = get_temp_file_size(temp_path)
-            if existing_size > 0 and existing_size == (seg.downloaded_bytes or 0) and existing_size < segment_size:
-                downloaded = existing_size
-                logger.info(f"Resuming segment {seg.segment_index} of job {job_id} from {downloaded}/{segment_size}")
-                mode = 'ab'
-            else:
-                mode = 'wb'
 
             try:
-                # Garantir que o diretório pai (.tmp/{job_id}/) exista
-                os.makedirs(os.path.dirname(temp_path), exist_ok=True)
-                with open(temp_path, mode) as f:
-                    current_offset = seg.offset_start + downloaded
-                    end_offset = seg.offset_end
+                current_offset = seg.offset_start
+                end_offset = seg.offset_end
 
-                    while current_offset < end_offset:
-                        remaining = end_offset - current_offset
-                        chunk_len = min(CHUNK_SIZE, remaining)
+                while current_offset < end_offset:
+                    remaining = end_offset - current_offset
+                    chunk_len = min(CHUNK_SIZE, remaining)
 
-                        file_content = await plugin.download_file(
-                            full_path,
-                            offset=current_offset,
-                            length=chunk_len,
-                            ignore_cache=True,
-                            expected_size=chunk_len
-                        )
+                    # Índice global do chunk baseado no offset absoluto
+                    global_chunk_idx = current_offset // CHUNK_SIZE
+                    chunk_path = get_chunk_path(job_id, global_chunk_idx)
 
-                        if not file_content or file_content.data is None:
-                            break
-
-                        if len(file_content.data) == 0 and chunk_len > 0:
-                            logger.warning(f"Empty chunk at offset {current_offset} for segment {seg.segment_index}")
-                            break
-
-                        f.write(file_content.data)
-                        f.flush()
-                        downloaded += len(file_content.data)
-                        current_offset += len(file_content.data)
+                    # Resume: se o chunk já existe com tamanho correto, pular
+                    existing_size = get_temp_file_size(chunk_path)
+                    if existing_size == chunk_len:
+                        downloaded += chunk_len
+                        current_offset += chunk_len
                         chunk_counter += 1
+                        continue
 
-                        # Atualizar segment no DB e emitir progresso a cada 5 chunks
-                        if chunk_counter % 5 == 0 or current_offset >= end_offset:
-                            seg.downloaded_bytes = downloaded
+                    file_content = await plugin.download_file(
+                        full_path,
+                        offset=current_offset,
+                        length=chunk_len,
+                        ignore_cache=True,
+                        expected_size=chunk_len
+                    )
+
+                    if not file_content or file_content.data is None:
+                        break
+
+                    if len(file_content.data) == 0 and chunk_len > 0:
+                        logger.warning(f"Empty chunk at offset {current_offset} for segment {seg.segment_index}")
+                        break
+
+                    # Salvar chunk como arquivo individual
+                    with open(chunk_path, 'wb') as f:
+                        f.write(file_content.data)
+
+                    downloaded += len(file_content.data)
+                    current_offset += len(file_content.data)
+                    chunk_counter += 1
+
+                    # Atualizar segment no DB e emitir progresso a cada 5 chunks
+                    if chunk_counter % 5 == 0 or current_offset >= end_offset:
+                        seg.downloaded_bytes = downloaded
+                        await db.commit()
+
+                        # Calcular progresso total do job (soma de todos os segments)
+                        all_segs = await db.execute(
+                            select(func.sum(DownloadSegment.downloaded_bytes))
+                            .where(DownloadSegment.job_id == job_id)
+                        )
+                        total_downloaded = all_segs.scalar() or 0
+
+                        # Atualizar job
+                        job_result = await db.execute(
+                            select(DownloadJob).where(DownloadJob.id == job_id)
+                        )
+                        job = job_result.scalar_one_or_none()
+                        if job:
+                            job.downloaded_bytes = total_downloaded
+                            job.total_bytes = total_file_size
+                            job.progress = int((total_downloaded / total_file_size) * 100) if total_file_size > 0 else 0
                             await db.commit()
 
-                            # Calcular progresso total do job (soma de todos os segments)
-                            all_segs = await db.execute(
-                                select(func.sum(DownloadSegment.downloaded_bytes))
-                                .where(DownloadSegment.job_id == job_id)
+                            await ws_manager.emit_download_progress(
+                                job_id=job_id,
+                                progress=job.progress,
+                                downloaded_bytes=total_downloaded,
+                                total_bytes=total_file_size,
+                                file_name=job.file_name,
+                                file_path=job.file_path
                             )
-                            total_downloaded = all_segs.scalar() or 0
 
-                            # Atualizar job
-                            job_result = await db.execute(
-                                select(DownloadJob).where(DownloadJob.id == job_id)
-                            )
-                            job = job_result.scalar_one_or_none()
-                            if job:
-                                job.downloaded_bytes = total_downloaded
-                                job.total_bytes = total_file_size
-                                job.progress = int((total_downloaded / total_file_size) * 100) if total_file_size > 0 else 0
+                            # Verificar se job foi pausado ou cancelado
+                            if job.status in ('paused', 'cancelled'):
+                                logger.info(f"Download job {job_id} {job.status} during segment {seg.segment_index}")
+                                seg.downloaded_bytes = downloaded
                                 await db.commit()
+                                return
 
-                                await ws_manager.emit_download_progress(
-                                    job_id=job_id,
-                                    progress=job.progress,
-                                    downloaded_bytes=total_downloaded,
-                                    total_bytes=total_file_size,
-                                    file_name=job.file_name,
-                                    file_path=job.file_path
-                                )
-
-                                # Verificar se job foi pausado ou cancelado
-                                if job.status in ('paused', 'cancelled'):
-                                    logger.info(f"Download job {job_id} {job.status} during segment {seg.segment_index}")
-                                    seg.downloaded_bytes = downloaded
-                                    await db.commit()
-                                    return
-
-                        if file_content.is_complete or len(file_content.data) < chunk_len:
-                            break
+                    if file_content.is_complete or len(file_content.data) < chunk_len:
+                        break
 
                 # Marcar segment como completed
                 seg.downloaded_bytes = downloaded
