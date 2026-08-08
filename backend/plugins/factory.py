@@ -127,8 +127,8 @@ async def get_proxy_config_for_instance(db: AsyncSession, instance) -> Optional[
                 username = credential.username
                 password = credential.password
 
-        if proxy_type == 'socks5':
-            proxy_url = f"socks5://{proxy.ip}:{proxy.port}"
+        if proxy_type in ('socks5', 'socks4'):
+            proxy_url = f"{proxy_type}://{proxy.ip}:{proxy.port}"
         else:
             proxy_url = f"http://{proxy.ip}:{proxy.port}"
 
@@ -180,8 +180,8 @@ async def get_proxy_config_by_id(db: AsyncSession, proxy_id: int) -> Optional[Di
                 username = credential.username
                 password = credential.password
 
-        if proxy_type == 'socks5':
-            proxy_url = f"socks5://{proxy.ip}:{proxy.port}"
+        if proxy_type in ('socks5', 'socks4'):
+            proxy_url = f"{proxy_type}://{proxy.ip}:{proxy.port}"
         else:
             proxy_url = f"http://{proxy.ip}:{proxy.port}"
 
@@ -422,13 +422,31 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
             credential = cred_result.scalar_one_or_none()
 
             if credential:
+                if credential.credential_type != "user_password":
+                    raise CredentialNotSetException(
+                        operation="SMB",
+                        plugin_name=instance.name,
+                        message="Apenas credenciais do tipo 'Usuário/Senha' são suportadas para SMB."
+                    )
+
                 plugin.set_credential({
                     "id": credential.id,
+                    "credential_type": credential.credential_type,
                     "username": credential.username,
                     "password": credential.get_password() if hasattr(credential, 'get_password') else credential.password,
                     "domain": credential.domain,
                     "ntlm_hash": credential.ntlm_hash if hasattr(credential, 'ntlm_hash') else None
-                })
+                }, credential_id=credential.id)
+
+                # Set callback for credential verification
+                from credential_verification import mark_credential_verified
+
+                async def on_auth_success(cred_id):
+                    from database import AsyncSessionLocal
+                    async with AsyncSessionLocal() as session:
+                        await mark_credential_verified(session, cred_id, context="SMB/Direct Interaction")
+
+                plugin.set_on_auth_success_callback(on_auth_success)
 
     return plugin
 
