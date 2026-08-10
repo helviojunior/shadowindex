@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, ChevronUp, Globe, Shield, Pencil, X, Check, User, Ban } from 'lucide-react';
+import { Trash2, Plus, ChevronUp, Globe, Shield, Pencil, X, Check, User, Ban, Network } from 'lucide-react';
 import { toast } from 'sonner';
 import { CredentialKeyIcon } from '@/components/icons/ShieldKeyIcon';
 
@@ -15,12 +15,13 @@ const API = `${BACKEND_URL}/api`;
 const ProxyServers = () => {
   const [proxies, setProxies] = useState([]);
   const [credentials, setCredentials] = useState([]);
-  const [formData, setFormData] = useState({ 
-    name: '', 
-    ip: '', 
-    port: '', 
+  const [formData, setFormData] = useState({
+    name: '',
+    ip: '',
+    port: '',
     proxy_type: 'http',
-    credential_id: 'none'
+    credential_id: 'none',
+    dns_servers: ''
   });
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -63,17 +64,18 @@ const ProxyServers = () => {
         ip: formData.ip,
         port: parseInt(formData.port),
         proxy_type: formData.proxy_type,
-        credential_id: formData.credential_id !== 'none' ? parseInt(formData.credential_id) : null
+        credential_id: formData.credential_id !== 'none' ? parseInt(formData.credential_id) : null,
+        dns_servers: formData.dns_servers.trim() || null
       };
-      
+
       await axios.post(`${API}/proxy-servers`, payload);
       toast.success('Proxy server cadastrado com sucesso');
-      setFormData({ name: '', ip: '', port: '', proxy_type: 'http', credential_id: 'none' });
+      setFormData({ name: '', ip: '', port: '', proxy_type: 'http', credential_id: 'none', dns_servers: '' });
       setShowAddForm(false);
       loadProxies();
     } catch (error) {
       console.error('Error creating proxy:', error);
-      toast.error('Erro ao cadastrar proxy server');
+      toast.error(error.response?.data?.detail || 'Erro ao cadastrar proxy server');
     } finally {
       setLoading(false);
     }
@@ -97,7 +99,8 @@ const ProxyServers = () => {
       ip: proxy.ip,
       port: proxy.port.toString(),
       proxy_type: proxy.proxy_type || 'http',
-      credential_id: proxy.credential_id ? proxy.credential_id.toString() : 'none'
+      credential_id: proxy.credential_id ? proxy.credential_id.toString() : 'none',
+      dns_servers: proxy.dns_servers || ''
     });
   };
 
@@ -113,9 +116,10 @@ const ProxyServers = () => {
         ip: editData.ip,
         port: parseInt(editData.port),
         proxy_type: editData.proxy_type,
-        credential_id: editData.credential_id !== 'none' ? parseInt(editData.credential_id) : null
+        credential_id: editData.credential_id !== 'none' ? parseInt(editData.credential_id) : null,
+        dns_servers: (editData.dns_servers || '').trim() || null
       };
-      
+
       await axios.put(`${API}/proxy-servers/${id}`, payload);
       toast.success('Proxy server atualizado com sucesso');
       setEditingId(null);
@@ -123,7 +127,7 @@ const ProxyServers = () => {
       loadProxies();
     } catch (error) {
       console.error('Error updating proxy:', error);
-      toast.error('Erro ao atualizar proxy server');
+      toast.error(error.response?.data?.detail || 'Erro ao atualizar proxy server');
     }
   };
 
@@ -265,7 +269,22 @@ const ProxyServers = () => {
                   </Select>
                 </div>
               </div>
-              
+
+              <div className="space-y-2">
+                <Label htmlFor="dns_servers">Servidores DNS (opcional)</Label>
+                <Input
+                  id="dns_servers"
+                  data-testid="proxy-dns-servers-input"
+                  placeholder="10.0.0.10, 10.0.0.11"
+                  value={formData.dns_servers}
+                  onChange={(e) => setFormData({ ...formData, dns_servers: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  IPs separados por vírgula, alcançáveis através deste proxy. Usados pela
+                  Interação Direta para resolver nomes da rede alvo pelo túnel.
+                </p>
+              </div>
+
               <Button type="submit" disabled={loading} data-testid="add-proxy-btn">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Proxy
@@ -344,6 +363,12 @@ const ProxyServers = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                      <Input
+                        value={editData.dns_servers || ''}
+                        onChange={(e) => setEditData({ ...editData, dns_servers: e.target.value })}
+                        placeholder="Servidores DNS (IPs separados por vírgula)"
+                        data-testid={`edit-dns-servers-${proxy.id}`}
+                      />
                       <div className="flex gap-2">
                         <Button type="button" size="sm" onClick={() => saveEdit(proxy.id)} data-testid={`save-edit-${proxy.id}`}>
                           <Check className="w-4 h-4 mr-1" /> Salvar
@@ -356,7 +381,7 @@ const ProxyServers = () => {
                   ) : (
                     // View mode
                     <>
-                      <div className="flex-1 grid grid-cols-4 gap-4">
+                      <div className="flex-1 grid grid-cols-5 gap-4">
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Nome</div>
                           <div className="font-medium">{proxy.name}</div>
@@ -387,6 +412,19 @@ const ProxyServers = () => {
                               </span>
                             ) : (
                               <span className="text-muted-foreground">Sem autenticação</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Servidores DNS</div>
+                          <div className="font-medium">
+                            {proxy.dns_servers ? (
+                              <span className="flex items-center gap-2" title={proxy.dns_servers}>
+                                <Network className="w-4 h-4 text-primary shrink-0" />
+                                <span className="truncate">{proxy.dns_servers}</span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Não definidos</span>
                             )}
                           </div>
                         </div>

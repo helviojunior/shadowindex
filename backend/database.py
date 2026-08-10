@@ -213,6 +213,9 @@ class ProxyServer(Base):
     port = Column(Integer, nullable=False)
     proxy_type = Column(String, default="http")  # "http" or "socks5"
     credential_id = Column(Integer, nullable=True)  # FK para Credential (user_password type)
+    # IPs de servidores DNS separados por vírgula, alcançáveis através deste proxy.
+    # Usados para resolver nomes da rede alvo pelo túnel.
+    dns_servers = Column(String, nullable=True)
     username = Column(String, nullable=True)  # Deprecated - use credential_id
     password = Column(String, nullable=True)  # Deprecated - use credential_id
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -655,6 +658,18 @@ async def apply_pending_migrations():
                     "ALTER TABLE download_segments ADD COLUMN retry_count INTEGER DEFAULT 0"
                 ))
                 logger.info("Migration applied: retry_count added to download_segments")
+
+            # Verificar se dns_servers existe em proxy_servers
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'proxy_servers' AND column_name = 'dns_servers'"
+            ))
+            if not result.fetchone():
+                logger.info("Applying migration: adding dns_servers to proxy_servers")
+                await conn.execute(text(
+                    "ALTER TABLE proxy_servers ADD COLUMN dns_servers VARCHAR"
+                ))
+                logger.info("Migration applied: dns_servers added to proxy_servers")
         else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))
@@ -695,6 +710,16 @@ async def apply_pending_migrations():
                     "ALTER TABLE download_segments ADD COLUMN retry_count INTEGER DEFAULT 0"
                 ))
                 logger.info("Migration applied: retry_count added to download_segments")
+
+            # SQLite: verificar se dns_servers existe em proxy_servers
+            result = await conn.execute(text("PRAGMA table_info(proxy_servers)"))
+            columns = [row[1] for row in result.fetchall()]
+            if 'dns_servers' not in columns:
+                logger.info("Applying migration: adding dns_servers to proxy_servers")
+                await conn.execute(text(
+                    "ALTER TABLE proxy_servers ADD COLUMN dns_servers VARCHAR"
+                ))
+                logger.info("Migration applied: dns_servers added to proxy_servers")
 
 
 async def init_db():

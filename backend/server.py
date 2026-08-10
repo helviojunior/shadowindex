@@ -45,6 +45,7 @@ load_dotenv(ROOT_DIR / '.env')
 
 # Regex para validar IPv4
 import re
+import ipaddress
 IPV4_REGEX = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
 
 def is_valid_ipv4(ip: str) -> bool:
@@ -380,6 +381,7 @@ class ProxyServerCreate(BaseModel):
     port: int
     proxy_type: Optional[str] = "http"  # "http" or "socks5"
     credential_id: Optional[int] = None  # FK para Credential
+    dns_servers: Optional[str] = None  # IPs separados por vírgula
     username: Optional[str] = None  # Deprecated
     password: Optional[str] = None  # Deprecated
 
@@ -389,6 +391,7 @@ class ProxyServerUpdate(BaseModel):
     port: Optional[int] = None
     proxy_type: Optional[str] = None
     credential_id: Optional[int] = None
+    dns_servers: Optional[str] = None
     username: Optional[str] = None  # Deprecated
     password: Optional[str] = None  # Deprecated
 
@@ -399,6 +402,7 @@ class ProxyServerResponse(BaseModel):
     port: int
     proxy_type: Optional[str] = "http"
     credential_id: Optional[int] = None
+    dns_servers: Optional[str] = None
     username: Optional[str] = None
     created_at: datetime
 
@@ -1063,29 +1067,30 @@ async def check_plugin_health(
     db: AsyncSession = Depends(get_db)
 ):
     """Check plugin health with provided configuration and optional proxy_id"""
-    from plugins.factory import PluginFactory, get_proxy_config_by_id
+    from plugins.factory import (
+        PluginFactory, get_proxy_config_by_id, apply_direct_interaction_proxy_config
+    )
     from credential_verification import mark_credential_verified
 
     try:
         proxy_config = await get_proxy_config_by_id(db, proxy_id) if proxy_id else None
         proxy_url = proxy_config.get("proxy_url") if proxy_config else None
 
-        # For direct_interaction, validate proxy type and add credentials
-        if plugin_type == "direct_interaction" and proxy_config:
-            proxy_type = proxy_config.get("proxy_type", "http")
-            proxy_name = proxy_config.get("proxy_name", "Unknown")
-
-            if proxy_type not in ("socks5", "socks4"):
+        # Apply the proxy's credentials and DNS servers, same as a real operation
+        if plugin_type == "direct_interaction":
+            try:
+                config = apply_direct_interaction_proxy_config(
+                    config, proxy_config, "Interação Direta"
+                )
+            except ValueError as e:
                 return {
                     "healthy": False,
-                    "message": f"Proxy selecionado '{proxy_name}' não suportado para 'Interação Direta'. "
-                               f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
-                               f"Tipo atual: {proxy_type}",
-                    "details": {"proxy_type": proxy_type, "required": ["socks4", "socks5"]}
+                    "message": str(e),
+                    "details": {
+                        "proxy_type": proxy_config.get("proxy_type"),
+                        "required": ["socks4", "socks5"]
+                    }
                 }
-
-            config["proxy_user"] = proxy_config.get("proxy_user")
-            config["proxy_pass"] = proxy_config.get("proxy_pass")
 
         plugin = PluginFactory.create_plugin(plugin_type, config, proxy_url)
         health = await plugin.health_check()
@@ -1234,7 +1239,9 @@ async def delete_plugin_instance(instance_id: int, db: AsyncSession = Depends(ge
 @api_router.post("/plugin-instances/{instance_id}/health")
 async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depends(get_db)):
     """Check health of a plugin instance using its own proxy_id"""
-    from plugins.factory import PluginFactory, get_proxy_config_for_instance
+    from plugins.factory import (
+        PluginFactory, get_proxy_config_for_instance, apply_direct_interaction_proxy_config
+    )
     from credential_verification import mark_credential_verified
 
     result = await db.execute(select(PluginInstance).where(PluginInstance.id == instance_id))
@@ -1262,22 +1269,21 @@ async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depe
                         "details": {"missing": "soap_url"}
                     }
 
-        # For direct_interaction, validate proxy type and add credentials
-        if instance.plugin_type == "direct_interaction" and proxy_config:
-            proxy_type = proxy_config.get("proxy_type", "http")
-            proxy_name = proxy_config.get("proxy_name", "Unknown")
-
-            if proxy_type not in ("socks5", "socks4"):
+        # Apply the proxy's credentials and DNS servers, same as a real operation
+        if instance.plugin_type == "direct_interaction":
+            try:
+                config = apply_direct_interaction_proxy_config(
+                    config, proxy_config, instance.name
+                )
+            except ValueError as e:
                 return {
                     "healthy": False,
-                    "message": f"Proxy selecionado '{proxy_name}' não suportado para '{instance.name}'. "
-                               f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
-                               f"Tipo atual: {proxy_type}",
-                    "details": {"proxy_type": proxy_type, "required": ["socks4", "socks5"]}
+                    "message": str(e),
+                    "details": {
+                        "proxy_type": proxy_config.get("proxy_type"),
+                        "required": ["socks4", "socks5"]
+                    }
                 }
-
-            config["proxy_user"] = proxy_config.get("proxy_user")
-            config["proxy_pass"] = proxy_config.get("proxy_pass")
 
         plugin = PluginFactory.create_plugin(instance.plugin_type, config, proxy_url)
         health = await plugin.health_check()
@@ -1302,9 +1308,42 @@ async def check_plugin_instance_health(instance_id: int, db: AsyncSession = Depe
 
 
 # Proxy Servers CRUD
+
+def _normalize_dns_servers(dns_servers: Optional[str]) -> Optional[str]:
+    """
+    Validate and normalize a comma-separated list of DNS server IPs.
+
+    Hostnames are rejected: these servers are queried through the tunnel, so
+    resolving their own names would need the DNS we are trying to reach.
+
+    Returns the normalized string, or None when the list is empty.
+    """
+    if not dns_servers or not dns_servers.strip():
+        return None
+
+    normalized = []
+    for entry in dns_servers.split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            ipaddress.ip_address(entry)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Servidor DNS inválido: '{entry}'. Informe endereços IP separados por vírgula."
+            )
+        if entry not in normalized:
+            normalized.append(entry)
+
+    return ','.join(normalized) if normalized else None
+
+
 @api_router.post("/proxy-servers", response_model=ProxyServerResponse)
 async def create_proxy_server(proxy: ProxyServerCreate, db: AsyncSession = Depends(get_db)):
-    db_proxy = ProxyServer(**proxy.model_dump())
+    data = proxy.model_dump()
+    data["dns_servers"] = _normalize_dns_servers(data.get("dns_servers"))
+    db_proxy = ProxyServer(**data)
     db.add(db_proxy)
     await db.commit()
     await db.refresh(db_proxy)
@@ -1330,9 +1369,11 @@ async def update_proxy_server(proxy_id: int, proxy: ProxyServerUpdate, db: Async
         raise HTTPException(status_code=404, detail="Proxy server não encontrado")
     
     update_data = proxy.model_dump(exclude_unset=True)
+    if "dns_servers" in update_data:
+        update_data["dns_servers"] = _normalize_dns_servers(update_data["dns_servers"])
     for key, value in update_data.items():
         setattr(db_proxy, key, value)
-    
+
     await db.commit()
     await db.refresh(db_proxy)
     return db_proxy

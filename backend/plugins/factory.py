@@ -5,7 +5,7 @@ Factory for creating and managing plugin instances.
 """
 
 import logging
-from typing import Dict, Type, Optional, Any
+from typing import Dict, List, Type, Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -94,6 +94,62 @@ class PluginFactory:
         logger.info(f"Registered plugin: {plugin_type}")
 
 
+def _parse_dns_servers(dns_servers: Optional[str]) -> List[str]:
+    """Split the proxy's comma-separated DNS server list into a list of IPs."""
+    if not dns_servers:
+        return []
+    return [ip.strip() for ip in dns_servers.split(',') if ip.strip()]
+
+
+def apply_direct_interaction_proxy_config(plugin_config: Dict[str, Any],
+                                          proxy_config: Optional[Dict[str, Any]],
+                                          instance_name: str) -> Dict[str, Any]:
+    """
+    Merge a proxy's settings into a direct_interaction plugin config.
+
+    Validates the proxy type, forwards the proxy credentials, and adopts the
+    proxy's DNS servers. Those servers live on the proxy because they are only
+    reachable through that tunnel; an instance that configures its own servers
+    still wins, since that is the more specific setting.
+
+    Raises:
+        ValueError: If the proxy is not a SOCKS proxy.
+    """
+    if not proxy_config:
+        return plugin_config
+
+    proxy_type = proxy_config.get("proxy_type", "http")
+    proxy_name = proxy_config.get("proxy_name", "Unknown")
+
+    # direct_interaction tunnels raw TCP (SMB, DNS), which HTTP proxies cannot carry
+    if proxy_type not in ("socks5", "socks4"):
+        raise ValueError(
+            f"Proxy selecionado '{proxy_name}' não suportado para '{instance_name}'. "
+            f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
+            f"Tipo atual: {proxy_type}"
+        )
+
+    plugin_config["proxy_user"] = proxy_config.get("proxy_user")
+    plugin_config["proxy_pass"] = proxy_config.get("proxy_pass")
+
+    proxy_dns = proxy_config.get("dns_servers") or []
+    if proxy_dns:
+        if plugin_config.get("dns_mode") == "custom" and plugin_config.get("dns_servers"):
+            logger.info(
+                f"Instance '{instance_name}' defines its own DNS servers "
+                f"({plugin_config['dns_servers']}); ignoring the ones from proxy '{proxy_name}'"
+            )
+        else:
+            plugin_config["dns_mode"] = "custom"
+            plugin_config["dns_servers"] = proxy_dns
+            logger.info(
+                f"Instance '{instance_name}' using DNS servers from proxy "
+                f"'{proxy_name}': {proxy_dns}"
+            )
+
+    return plugin_config
+
+
 async def get_proxy_config_for_instance(db: AsyncSession, instance) -> Optional[Dict[str, Any]]:
     """Get proxy configuration for a specific plugin instance based on its proxy_id"""
     from database import ProxyServer, Credential
@@ -141,7 +197,8 @@ async def get_proxy_config_for_instance(db: AsyncSession, instance) -> Optional[
             "proxy_port": proxy.port,
             "proxy_name": proxy_name,
             "proxy_id": proxy.id,
-            "credential_id": credential_id
+            "credential_id": credential_id,
+            "dns_servers": _parse_dns_servers(getattr(proxy, 'dns_servers', None))
         }
     except Exception as e:
         logger.warning(f"Error loading proxy config for instance '{instance.name}': {e}")
@@ -194,7 +251,8 @@ async def get_proxy_config_by_id(db: AsyncSession, proxy_id: int) -> Optional[Di
             "proxy_port": proxy.port,
             "proxy_name": proxy_name,
             "proxy_id": proxy.id,
-            "credential_id": credential_id
+            "credential_id": credential_id,
+            "dns_servers": _parse_dns_servers(getattr(proxy, 'dns_servers', None))
         }
     except Exception as e:
         logger.warning(f"Error loading proxy config for proxy_id {proxy_id}: {e}")
@@ -274,22 +332,12 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
             "Acesse Plugins > SOAP API > Instâncias e configure a URL do WebService."
         )
 
-    # Add proxy credentials to plugin config for direct_interaction
-    if plugin_type == "direct_interaction" and proxy_config:
-        proxy_type = proxy_config.get("proxy_type", "http")
-        proxy_name = proxy_config.get("proxy_name", "Unknown")
-        instance_name = instance.name if instance else "Interação Direta"
-
-        # Validate proxy type - direct_interaction only supports SOCKS proxies
-        if proxy_type not in ("socks5", "socks4"):
-            raise ValueError(
-                f"Proxy selecionado '{proxy_name}' não suportado para '{instance_name}'. "
-                f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
-                f"Tipo atual: {proxy_type}"
-            )
-
-        plugin_config["proxy_user"] = proxy_config.get("proxy_user")
-        plugin_config["proxy_pass"] = proxy_config.get("proxy_pass")
+    # Apply proxy credentials and DNS servers to plugin config for direct_interaction
+    if plugin_type == "direct_interaction":
+        plugin_config = apply_direct_interaction_proxy_config(
+            plugin_config, proxy_config,
+            instance.name if instance else "Interação Direta"
+        )
 
     # Create the plugin instance
     plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
@@ -393,20 +441,11 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
             "Edite a instância e configure a URL do WebService."
         )
 
-    # Add proxy credentials and validate proxy type for direct_interaction
-    if plugin_type == "direct_interaction" and proxy_config:
-        proxy_type = proxy_config.get("proxy_type", "http")
-        proxy_name = proxy_config.get("proxy_name", "Unknown")
-
-        if proxy_type not in ("socks5", "socks4"):
-            raise ValueError(
-                f"Proxy selecionado '{proxy_name}' não suportado para '{instance.name}'. "
-                f"O plugin de Interação Direta requer um proxy do tipo SOCKS (SOCKS4 ou SOCKS5). "
-                f"Tipo atual: {proxy_type}"
-            )
-
-        plugin_config["proxy_user"] = proxy_config.get("proxy_user")
-        plugin_config["proxy_pass"] = proxy_config.get("proxy_pass")
+    # Apply proxy credentials and DNS servers to plugin config for direct_interaction
+    if plugin_type == "direct_interaction":
+        plugin_config = apply_direct_interaction_proxy_config(
+            plugin_config, proxy_config, instance.name
+        )
 
     # Create the plugin instance
     plugin = PluginFactory.create_plugin(plugin_type, plugin_config, proxy_url)
