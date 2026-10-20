@@ -654,7 +654,7 @@ Portuguese (pt-BR)
   - Badges indicando portas SMB e tipos de banco de dados
   - Resultados separados: importados, ignorados (duplicados), falhas
 - [x] **Rodapé do Layout atualizado:**
-  - Agora mostra "ShadowIndex v1.0.0" e "© StrataSec 2026"
+  - Agora mostra "ShadowIndex v1.0.0" e "© M4v3r1ck 2026"
 - [x] **Testes:**
   - 9 testes backend passando (100%)
   - Todos testes frontend passando

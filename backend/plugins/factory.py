@@ -367,13 +367,13 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
             )
         
         # Check credential type
-        if credential.credential_type != "user_password":
+        if credential.credential_type not in ("user_password", "anonymous"):
             raise CredentialNotSetException(
                 operation="SMB",
                 plugin_name="Interação Direta",
-                message="Apenas credenciais do tipo 'Usuário/Senha' são suportadas para SMB."
+                message="Apenas credenciais do tipo 'Usuário/Senha' ou 'Anônima' são suportadas para SMB."
             )
-        
+
         # Set credential on plugin with ID for verification tracking
         plugin.set_credential({
             "credential_type": credential.credential_type,
@@ -461,19 +461,19 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
             credential = cred_result.scalar_one_or_none()
 
             if credential:
-                if credential.credential_type != "user_password":
+                if credential.credential_type not in ("user_password", "anonymous"):
                     raise CredentialNotSetException(
                         operation="SMB",
                         plugin_name=instance.name,
-                        message="Apenas credenciais do tipo 'Usuário/Senha' são suportadas para SMB."
+                        message="Apenas credenciais do tipo 'Usuário/Senha' ou 'Anônima' são suportadas para SMB."
                     )
 
                 plugin.set_credential({
                     "id": credential.id,
                     "credential_type": credential.credential_type,
+                    "domain": credential.domain,
                     "username": credential.username,
                     "password": credential.get_password() if hasattr(credential, 'get_password') else credential.password,
-                    "domain": credential.domain,
                     "ntlm_hash": credential.ntlm_hash if hasattr(credential, 'ntlm_hash') else None
                 }, credential_id=credential.id)
 

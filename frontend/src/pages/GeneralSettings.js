@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database, FileSearch, Eye, EyeOff, Ban } from 'lucide-react';
+import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database, FileSearch, Eye, EyeOff, Ban, Image as ImageIcon, Palette, AlignLeft, AlignCenter, AlignRight, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useUiSettings, resolveBrandingUrl } from '@/contexts/UiSettingsContext';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -44,7 +46,12 @@ const GeneralSettings = () => {
     auto_index_enabled: 'true',
     auto_index_max_size_mb: '1',
     auto_index_extensions: '.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml',
-    auto_index_mimetypes: 'text/'
+    auto_index_mimetypes: 'text/',
+    // Aparência / UI
+    ui_logo_url: 'https://media.sec4us.com.br/logo/sec4us-dark-mode.svg',
+    ui_logo_alignment: 'left',
+    ui_sidebar_active_color: '#34d399',
+    ui_favicon_url: 'https://media.sec4us.com.br/icon/favicon.ico'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,6 +63,9 @@ const GeneralSettings = () => {
   const [newOcrExcludedExtension, setNewOcrExcludedExtension] = useState('');
   const [newAutoIndexExtension, setNewAutoIndexExtension] = useState('');
   const [newAutoIndexMimetype, setNewAutoIndexMimetype] = useState('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const { reloadUiSettings } = useUiSettings();
 
   useEffect(() => {
     loadSettings();
@@ -84,11 +94,38 @@ const GeneralSettings = () => {
         settings: settings
       });
       toast.success('Configurações salvas com sucesso');
+      // Atualiza logo/favicon/cor/alinhamento na interface imediatamente
+      reloadUiSettings();
     } catch (error) {
       console.error('Error saving settings:', error);
       toast.error('Erro ao salvar configurações');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Upload de logo/favicon - arquivo salvo em ./shadowindex_data/branding
+  const handleBrandingUpload = async (kind, file) => {
+    if (!file) return;
+    const setUploading = kind === 'logo' ? setUploadingLogo : setUploadingFavicon;
+    const settingKey = kind === 'logo' ? 'ui_logo_url' : 'ui_favicon_url';
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const { data } = await axios.post(`${API}/branding/${kind}`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      // Backend já atualizou a setting; refletir no formulário e na UI
+      handleChange(settingKey, data.url);
+      reloadUiSettings();
+      toast.success(`${kind === 'logo' ? 'Logo' : 'Favicon'} enviado com sucesso`);
+    } catch (error) {
+      console.error('Error uploading branding:', error);
+      const msg = error.response?.data?.detail || 'Erro ao enviar arquivo';
+      toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -185,6 +222,173 @@ const GeneralSettings = () => {
           {saving ? 'Salvando...' : 'Salvar Configurações'}
         </Button>
       </div>
+
+      {/* Aparência / Branding */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="w-5 h-5 text-pink-500" />
+            <CardTitle>Aparência</CardTitle>
+          </div>
+          <CardDescription>
+            Personalize a logo, o favicon, o alinhamento da logo e a cor do item selecionado no menu lateral
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Logo */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              Logo do sistema
+            </Label>
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-40 flex items-center justify-center rounded border border-border bg-muted/30 overflow-hidden">
+                {settings.ui_logo_url ? (
+                  <img
+                    src={resolveBrandingUrl(settings.ui_logo_url)}
+                    alt="Prévia da logo"
+                    className="max-h-10 max-w-full object-contain"
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sem logo</span>
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <Input
+                  placeholder="https://.../logo.svg"
+                  value={settings.ui_logo_url}
+                  onChange={(e) => handleChange('ui_logo_url', e.target.value)}
+                  data-testid="ui-logo-url-input"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    id="logo-file-input"
+                    type="file"
+                    accept="image/svg+xml,image/png,image/jpeg,image/gif,image/webp,image/x-icon"
+                    className="hidden"
+                    onChange={(e) => { handleBrandingUpload('logo', e.target.files?.[0]); e.target.value = ''; }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingLogo}
+                    onClick={() => document.getElementById('logo-file-input').click()}
+                    data-testid="upload-logo-btn"
+                  >
+                    {uploadingLogo ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                    Enviar arquivo
+                  </Button>
+                  <span className="text-xs text-muted-foreground">SVG, PNG, JPG, GIF ou WEBP. Salvo no servidor.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Alinhamento da logo */}
+          <div className="space-y-2 max-w-xs">
+            <Label className="flex items-center gap-2">
+              <AlignCenter className="w-4 h-4 text-muted-foreground" />
+              Alinhamento da logo
+            </Label>
+            <Select
+              value={settings.ui_logo_alignment}
+              onValueChange={(value) => handleChange('ui_logo_alignment', value)}
+            >
+              <SelectTrigger data-testid="ui-logo-alignment-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="left"><span className="flex items-center gap-2"><AlignLeft className="w-4 h-4" /> Esquerda</span></SelectItem>
+                <SelectItem value="center"><span className="flex items-center gap-2"><AlignCenter className="w-4 h-4" /> Centralizada</span></SelectItem>
+                <SelectItem value="right"><span className="flex items-center gap-2"><AlignRight className="w-4 h-4" /> Direita</span></SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Cor do menu selecionado */}
+          <div className="space-y-2 max-w-xs">
+            <Label className="flex items-center gap-2">
+              <Palette className="w-4 h-4 text-muted-foreground" />
+              Cor do item selecionado (menu lateral)
+            </Label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(settings.ui_sidebar_active_color) ? settings.ui_sidebar_active_color : '#34d399'}
+                onChange={(e) => handleChange('ui_sidebar_active_color', e.target.value)}
+                className="h-9 w-12 rounded border border-border bg-transparent cursor-pointer"
+                data-testid="ui-sidebar-color-input"
+              />
+              <Input
+                value={settings.ui_sidebar_active_color}
+                onChange={(e) => handleChange('ui_sidebar_active_color', e.target.value)}
+                placeholder="#34d399"
+                className="font-mono w-32"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Aplica-se somente ao item selecionado da barra lateral.</p>
+          </div>
+
+          {/* Favicon */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              Favicon (ícone da aba)
+            </Label>
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 flex items-center justify-center rounded border border-border bg-muted/30 overflow-hidden">
+                {settings.ui_favicon_url ? (
+                  <img
+                    src={resolveBrandingUrl(settings.ui_favicon_url)}
+                    alt="Prévia do favicon"
+                    className="max-h-8 max-w-full object-contain"
+                  />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">Sem</span>
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <Input
+                  placeholder="https://.../favicon.ico"
+                  value={settings.ui_favicon_url}
+                  onChange={(e) => handleChange('ui_favicon_url', e.target.value)}
+                  data-testid="ui-favicon-url-input"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    id="favicon-file-input"
+                    type="file"
+                    accept="image/x-icon,image/png,image/svg+xml,image/gif"
+                    className="hidden"
+                    onChange={(e) => { handleBrandingUpload('favicon', e.target.files?.[0]); e.target.value = ''; }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingFavicon}
+                    onClick={() => document.getElementById('favicon-file-input').click()}
+                    data-testid="upload-favicon-btn"
+                  >
+                    {uploadingFavicon ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                    Enviar arquivo
+                  </Button>
+                  <span className="text-xs text-muted-foreground">ICO, PNG, SVG ou GIF. Salvo no servidor.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-pink-500/10 border border-pink-500/30 p-4">
+            <ul className="text-xs text-pink-300/80 space-y-1">
+              <li>• Arquivos enviados ficam em <code className="bg-pink-500/20 px-1 rounded">./shadowindex_data/branding</code> no servidor.</li>
+              <li>• Você pode informar uma URL externa ou enviar um arquivo — o upload tem precedência.</li>
+              <li>• As alterações de URL/cor/alinhamento são aplicadas ao clicar em <strong>Salvar Configurações</strong>; uploads são aplicados na hora.</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Download Settings */}
       <Card>

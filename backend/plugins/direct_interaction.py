@@ -152,9 +152,9 @@ class DirectInteractionPlugin(BasePlugin):
             credential: Credential dict with domain, username, password/ntlm_hash
             credential_id: Optional ID of the credential for verification tracking
         """
-        if credential.get("credential_type") != "user_password":
+        if credential.get("credential_type") not in ("user_password", "anonymous"):
             raise PluginException(
-                "Credencial inválida: apenas credenciais do tipo 'user_password' são suportadas",
+                "Credencial inválida: apenas credenciais do tipo 'user_password' ou 'anonymous' são suportadas",
                 {"credential_type": credential.get("credential_type")}
             )
         self._credential = credential
@@ -731,25 +731,28 @@ class DirectInteractionPlugin(BasePlugin):
             )
         
         # Validate credential has required fields
+        credential_type = self._credential.get("credential_type") or "user_password"
+        is_anonymous = credential_type == "anonymous"
         username = self._credential.get("username")
         password = self._credential.get("password")
         ntlm_hash = self._credential.get("ntlm_hash")
-        
-        if not username:
-            raise CredentialNotSetException(
-                operation="SMB",
-                plugin_name=self.PLUGIN_NAME,
-                message="Credencial inválida: username não configurado."
-            )
-        
-        # At least one auth method required (password or NTLM hash)
-        if not password and not ntlm_hash:
-            raise CredentialNotSetException(
-                operation="SMB",
-                plugin_name=self.PLUGIN_NAME,
-                message="Credencial inválida: senha ou hash NTLM não configurado."
-            )
-        
+
+        if not is_anonymous:
+            if not username:
+                raise CredentialNotSetException(
+                    operation="SMB",
+                    plugin_name=self.PLUGIN_NAME,
+                    message="Credencial inválida: username não configurado."
+                )
+
+            # At least one auth method required (password or NTLM hash)
+            if not password and not ntlm_hash:
+                raise CredentialNotSetException(
+                    operation="SMB",
+                    plugin_name=self.PLUGIN_NAME,
+                    message="Credencial inválida: senha ou hash NTLM não configurado."
+                )
+
         try:
             from impacket.smbconnection import SMBConnection
             from impacket.nmb import NetBIOSError
@@ -777,8 +780,12 @@ class DirectInteractionPlugin(BasePlugin):
             with self._smb_socket_factory():
                 smb_conn = SMBConnection(server_ip, server_ip, timeout=30)
 
-            # Authenticate - priority: password > NTLM hash
-            if password:
+            # Authenticate - priority: anonymous > password > NTLM hash
+            if is_anonymous:
+                # Anonymous / null session: empty username and password
+                logger.info(f"Using anonymous (null session) authentication for {server_ip}")
+                smb_conn.login("", "", "")
+            elif password:
                 # Use password authentication (priority)
                 logger.info(f"Using password authentication for {domain}\\{username}")
                 smb_conn.login(username, password, domain)
@@ -792,12 +799,27 @@ class DirectInteractionPlugin(BasePlugin):
                     plugin_name=self.PLUGIN_NAME,
                     message="Credencial inválida: senha ou hash NTLM não configurado."
                 )
-            
-            logger.info(f"SMB authentication successful for {domain}\\{username}")
+
+            if is_anonymous:
+                logger.info(f"SMB anonymous authentication successful for {server_ip}")
+            else:
+                logger.info(f"SMB authentication successful for {domain}\\{username}")
             return smb_conn
             
         except Exception as e:
             error_msg = str(e).lower()
+            # Anonymous session explicitly refused by the server.
+            # Hardened/modern Windows returns STATUS_INVALID_PARAMETER (or ACCESS_DENIED)
+            # for a null-session SESSION_SETUP when anonymous logon is restricted.
+            if is_anonymous and any(k in error_msg for k in [
+                "status_invalid_parameter", "status_access_denied",
+                "status_logon_failure", "logon failure"
+            ]):
+                raise AuthenticationFailureException(
+                    username="",
+                    domain="",
+                    reason="Servidor não permite autenticação anônima (null session)."
+                )
             if "status_logon_failure" in error_msg or "logon failure" in error_msg:
                 raise AuthenticationFailureException(
                     username=username,

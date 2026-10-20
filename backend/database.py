@@ -594,6 +594,11 @@ DEFAULT_SETTINGS = {
     'auto_index_extensions': ('.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml', 'Extensões de arquivo para auto-indexação (suporta wildcards como .env*)'),
     'auto_index_mimetypes': ('text/', 'MIME types para auto-indexação (parcial match)'),
     'download_threads_per_file': ('3', 'Segmentos paralelos por arquivo grande (>100MB)'),
+    # Aparência / UI
+    'ui_logo_url': ('https://media.sec4us.com.br/logo/sec4us-dark-mode.svg', 'URL da logo exibida no cabeçalho do sistema'),
+    'ui_logo_alignment': ('left', 'Alinhamento da logo no cabeçalho: left, center ou right'),
+    'ui_sidebar_active_color': ('#34d399', 'Cor do item selecionado no menu lateral (sidebar)'),
+    'ui_favicon_url': ('https://media.sec4us.com.br/icon/favicon.ico', 'URL do favicon (ícone da aba do navegador)'),
 }
 
 

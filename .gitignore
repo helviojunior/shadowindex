@@ -125,3 +125,8 @@ temp/
 *.swp
 *.swo
 *~
+
+# SQLite runtime files
+*.db-shm
+*.db-wal
+*.db-journal

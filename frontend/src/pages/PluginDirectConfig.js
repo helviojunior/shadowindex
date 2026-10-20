@@ -53,15 +53,17 @@ const PluginDirectConfig = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [pluginRes, instancesRes, credRes, proxiesRes] = await Promise.all([
+      const [pluginRes, instancesRes, credRes, anonCredRes, proxiesRes] = await Promise.all([
         axios.get(`${API}/plugins/direct_interaction`),
         axios.get(`${API}/plugin-instances?plugin_type=direct_interaction`),
         axios.get(`${API}/credentials/by-type/user_password`),
+        axios.get(`${API}/credentials/by-type/anonymous`),
         axios.get(`${API}/proxy-servers`)
       ]);
       setPluginInfo(pluginRes.data);
       setInstances(instancesRes.data);
-      setCredentials(credRes.data);
+      // SMB aceita credenciais usuário/senha e anônimas (null session)
+      setCredentials([...credRes.data, ...anonCredRes.data]);
       setProxies(proxiesRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -78,11 +80,17 @@ const PluginDirectConfig = () => {
     return `${proxy.name} (${proxy.ip}:${proxy.port})`;
   };
 
+  const getCredentialLabel = (cred) => {
+    if (cred.name) return cred.name;
+    if (cred.credential_type === 'anonymous') return 'Anônima (null session)';
+    return `${cred.domain ? cred.domain + '\\' : ''}${cred.username || ''}`;
+  };
+
   const getCredentialName = (credId) => {
     if (!credId) return 'Sem autenticação';
     const cred = credentials.find(c => c.id === credId);
     if (!cred) return `ID: ${credId}`;
-    return cred.name || `${cred.domain ? cred.domain + '\\' : ''}${cred.username}`;
+    return getCredentialLabel(cred);
   };
 
   // Instance CRUD
@@ -325,7 +333,7 @@ const PluginDirectConfig = () => {
                               <SelectItem value="none">Sem autenticação</SelectItem>
                               {credentials.map((cred) => (
                                 <SelectItem key={cred.id} value={cred.id.toString()}>
-                                  {cred.name || `${cred.domain || ''}\\${cred.username}`}
+                                  {getCredentialLabel(cred)}
                                   {cred.verified && ' ✓'}
                                 </SelectItem>
                               ))}
@@ -447,7 +455,7 @@ const PluginDirectConfig = () => {
                                     <SelectItem value="none">Sem autenticação</SelectItem>
                                     {credentials.map((cred) => (
                                       <SelectItem key={cred.id} value={cred.id.toString()}>
-                                        {cred.name || `${cred.domain || ''}\\${cred.username}`}
+                                        {getCredentialLabel(cred)}
                                         {cred.verified && ' ✓'}
                                       </SelectItem>
                                     ))}

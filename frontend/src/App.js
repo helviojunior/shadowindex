@@ -28,6 +28,7 @@ import ShareScanJobs from "@/pages/ShareScanJobs";
 import AdvancedSearch from "@/pages/AdvancedSearch";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
+import { UiSettingsProvider } from "@/contexts/UiSettingsContext";
 import { ConnectionStatusProvider } from "@/contexts/ConnectionStatusContext";
 import { WebSocketProvider } from "@/hooks/useWebSocket";
 import ConnectionBridge from "@/components/ConnectionBridge";
@@ -49,6 +50,7 @@ function App() {
         <WebSocketProvider>
           <ConnectionBridge>
             <AppProvider>
+              <UiSettingsProvider>
               <BrowserRouter>
                 <Layout darkMode={darkMode} setDarkMode={setDarkMode}>
                   <Routes>
@@ -82,6 +84,7 @@ function App() {
                 </Layout>
               </BrowserRouter>
               <Toaster position="top-right" richColors />
+              </UiSettingsProvider>
             </AppProvider>
           </ConnectionBridge>
         </WebSocketProvider>

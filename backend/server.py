@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, desc, update
@@ -222,11 +222,11 @@ api_router = APIRouter(prefix="/api")
 
 # Pydantic Models
 # Credential type enum
-CREDENTIAL_TYPES = ["user_password", "token", "ssh_key"]
+CREDENTIAL_TYPES = ["user_password", "token", "ssh_key", "anonymous"]
 
 class CredentialCreate(BaseModel):
     name: Optional[str] = None
-    credential_type: str = "user_password"  # user_password, token, ssh_key
+    credential_type: str = "user_password"  # user_password, token, ssh_key, anonymous
     # For user_password type
     domain: Optional[str] = None
     username: Optional[str] = None
@@ -256,6 +256,9 @@ class CredentialCreate(BaseModel):
         elif self.credential_type == "ssh_key":
             if not self.ssh_private_key:
                 raise ValueError('Chave SSH privada é obrigatória para credencial tipo ssh_key')
+        elif self.credential_type == "anonymous":
+            # Anonymous credential carries no secret - used for anonymous/null SMB sessions
+            pass
         return self
 
 class CredentialUpdate(BaseModel):
@@ -4835,6 +4838,111 @@ async def update_multiple_settings(request: UpdateMultipleSettingsRequest, db: A
         worker.semaphore = asyncio.Semaphore(int(request.settings['max_simultaneous_downloads']))
     
     return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Branding (logo / favicon) - upload e servir arquivos enviados pelo usuário
+# ---------------------------------------------------------------------------
+# Diretório persistente mapeado no host como ./shadowindex_data
+BRANDING_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "branding")
+
+# Tipos de arquivo aceitos por "kind"
+_BRANDING_KINDS = {
+    "logo": {
+        "setting_key": "ui_logo_url",
+        "content_types": {
+            "image/svg+xml": ".svg", "image/png": ".png", "image/jpeg": ".jpg",
+            "image/gif": ".gif", "image/webp": ".webp", "image/x-icon": ".ico",
+            "image/vnd.microsoft.icon": ".ico",
+        },
+    },
+    "favicon": {
+        "setting_key": "ui_favicon_url",
+        "content_types": {
+            "image/x-icon": ".ico", "image/vnd.microsoft.icon": ".ico",
+            "image/png": ".png", "image/svg+xml": ".svg", "image/gif": ".gif",
+        },
+    },
+}
+
+
+def _find_branding_file(kind: str):
+    """Retorna o caminho do arquivo de branding existente para o kind, ou None."""
+    if not os.path.isdir(BRANDING_DIR):
+        return None
+    for name in os.listdir(BRANDING_DIR):
+        if name.startswith(f"{kind}."):
+            return os.path.join(BRANDING_DIR, name)
+    return None
+
+
+@api_router.post("/branding/{kind}")
+async def upload_branding(
+    kind: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Faz upload de uma logo ou favicon. O arquivo é salvo em ./shadowindex_data/branding
+    e a configuração correspondente passa a apontar para o endpoint que serve o arquivo."""
+    import shutil
+
+    if kind not in _BRANDING_KINDS:
+        raise HTTPException(status_code=400, detail="Tipo inválido. Use 'logo' ou 'favicon'.")
+
+    allowed = _BRANDING_KINDS[kind]["content_types"]
+    ext = allowed.get((file.content_type or "").lower())
+    if not ext:
+        # fallback pela extensão do nome do arquivo
+        _, name_ext = os.path.splitext(file.filename or "")
+        if name_ext.lower() in set(allowed.values()):
+            ext = name_ext.lower()
+    if not ext:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Formato não suportado para {kind}. Aceitos: {', '.join(sorted(set(allowed.values())))}",
+        )
+
+    os.makedirs(BRANDING_DIR, exist_ok=True)
+
+    # Remove arquivos antigos do mesmo kind (evita múltiplas extensões)
+    existing = _find_branding_file(kind)
+    if existing and os.path.isfile(existing):
+        try:
+            os.remove(existing)
+        except OSError:
+            pass
+
+    dest = os.path.join(BRANDING_DIR, f"{kind}{ext}")
+    with open(dest, "wb") as out:
+        shutil.copyfileobj(file.file, out)
+
+    # Atualiza a setting para apontar para o arquivo servido (com cache-bust)
+    import time as _time
+    served_url = f"/api/branding/{kind}?v={int(_time.time())}"
+    setting_key = _BRANDING_KINDS[kind]["setting_key"]
+    result = await db.execute(select(AppSettings).where(AppSettings.key == setting_key))
+    setting = result.scalar_one_or_none()
+    if setting:
+        setting.value = served_url
+        setting.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+
+    return {"success": True, "kind": kind, "url": served_url}
+
+
+@api_router.get("/branding/{kind}")
+async def get_branding(kind: str):
+    """Serve o arquivo de logo/favicon enviado pelo usuário."""
+    from fastapi.responses import FileResponse
+
+    if kind not in _BRANDING_KINDS:
+        raise HTTPException(status_code=400, detail="Tipo inválido.")
+
+    path = _find_branding_file(kind)
+    if not path or not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+
+    return FileResponse(path)
 
 
 # Include router

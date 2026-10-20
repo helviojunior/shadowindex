@@ -297,7 +297,7 @@ class TestLayoutFooter:
         # Keeping this as a placeholder to document the requirement
         print("✓ Footer content verified via Playwright test")
         print("  - 'ShadowIndex v1.0.0' visible in footer")
-        print("  - '© StrataSec 2026' visible in footer")
+        print("  - '© M4v3r1ck 2026' visible in footer")
 
 
 if __name__ == "__main__":

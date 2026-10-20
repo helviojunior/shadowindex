@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
+import { useUiSettings } from '@/contexts/UiSettingsContext';
 import { useConnectionStatus } from '@/contexts/ConnectionStatusContext';
 import { useJobCompletionSFX } from '@/hooks/useJobCompletionSFX';
 import GlobalSearch from '@/components/GlobalSearch';
@@ -144,6 +145,18 @@ const findActiveMenu = (pathname) => {
   return { menuId: 'dashboard', subMenuId: null };
 };
 
+// Retorna a cor com transparência (ex: '#34d399' + 0.1 -> 'rgba(...)') para o fundo
+// do item ativo. Se não for um hex #rrggbb válido, cai na própria cor.
+const colorWithAlpha = (hex, alpha) => {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return hex;
+  const int = parseInt(m[1], 16);
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 const Layout = ({ children, darkMode, setDarkMode }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -160,6 +173,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   const location = useLocation();
   const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode } = useApp();
   const { isConnected, errorMessage, resetConnection } = useConnectionStatus();
+  const { logoUrl, logoAlignment, sidebarActiveColor } = useUiSettings();
   
   // Ativar notificações sonoras globais para conclusão de jobs
   useJobCompletionSFX(true);
@@ -270,13 +284,14 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
         <Link
           to={item.path}
           data-testid={`nav-${item.id}`}
+          style={isActive ? { color: sidebarActiveColor } : undefined}
           className={cn(
             "flex items-center transition-all text-sm relative",
-            effectiveCollapsed 
-              ? "justify-center p-2.5" 
+            effectiveCollapsed
+              ? "justify-center p-2.5"
               : "justify-start gap-3 px-4 py-2.5",
             isActive
-              ? "text-emerald-400 font-medium"
+              ? "font-medium"
               : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
           )}
         >
@@ -378,10 +393,11 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                     key={child.id}
                     to={child.path}
                     data-testid={`nav-flyout-${child.id}`}
+                    style={isChildActive ? { color: sidebarActiveColor, backgroundColor: colorWithAlpha(sidebarActiveColor, 0.1) } : undefined}
                     className={cn(
                       "block px-4 py-2 text-sm transition-colors",
                       isChildActive
-                        ? "text-emerald-400 bg-emerald-400/10 font-medium"
+                        ? "font-medium"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                     onClick={() => setHoveredMenu(null)}
@@ -405,10 +421,11 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                   key={child.id}
                   to={child.path}
                   data-testid={`nav-${child.id}`}
+                  style={isChildActive ? { color: sidebarActiveColor } : undefined}
                   className={cn(
                     "block w-full pl-11 pr-4 py-2 text-sm transition-colors",
                     isChildActive
-                      ? "text-emerald-400 font-medium"
+                      ? "font-medium"
                       : "text-muted-foreground/70 hover:text-foreground hover:bg-white/5"
                   )}
                 >
@@ -465,13 +482,22 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
         {/* Top Header - Fixed, spans full width */}
         <header className="flex items-center justify-between bg-card border-b border-border z-50">
           {/* Left side - Logo area (fixed width, independent of sidebar) */}
-          <div className="flex items-center justify-center px-4 py-3 border-r border-border w-52">
-            {/* Logo - Always the same regardless of sidebar state */}
-            <img 
-              src="/assets/stratasec_light.png" 
-              alt="StrataSec" 
-              className="h-7 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-            />
+          <div
+            className={cn(
+              "flex items-center px-4 py-3 border-r border-border w-52",
+              logoAlignment === 'center' ? "justify-center"
+                : logoAlignment === 'right' ? "justify-end"
+                : "justify-start"
+            )}
+          >
+            {/* Logo configurável via Configurações → Gerais → Aparência */}
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className="h-7 w-auto max-w-full object-contain"
+              />
+            )}
           </div>
           
           {/* Right side - Controls */}
@@ -574,7 +600,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 {!effectiveCollapsed && (
                   <div className="text-xs text-muted-foreground">
                     <div className="text-[11px] font-medium">ShadowIndex v1.0.42</div>
-                    <div className="text-[10px] text-muted-foreground/60">© StrataSec 2026</div>
+                    <div className="text-[10px] text-muted-foreground/60">© M4v3r1ck 2026</div>
                   </div>
                 )}
                 

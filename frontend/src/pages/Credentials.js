@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Plus, ChevronUp, Pencil, X, Check, Hash, Ticket, KeyRound, CheckCircle, XCircle, Loader2, Key } from 'lucide-react';
+import { Trash2, Plus, ChevronUp, Pencil, X, Check, Hash, Ticket, KeyRound, CheckCircle, XCircle, Loader2, Key, Ghost } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ShieldKeyIcon } from '@/components/icons';
@@ -18,7 +18,8 @@ const API = `${BACKEND_URL}/api`;
 const CREDENTIAL_TYPES = {
   user_password: { label: 'Usuário e Senha/NTLM', icon: ShieldKeyIcon, color: 'text-blue-500' },
   token: { label: 'Token', icon: Ticket, color: 'text-green-500' },
-  ssh_key: { label: 'Chave SSH', icon: KeyRound, color: 'text-purple-500' }
+  ssh_key: { label: 'Chave SSH', icon: KeyRound, color: 'text-purple-500' },
+  anonymous: { label: 'Anônima', icon: Ghost, color: 'text-amber-500' }
 };
 
 const Credentials = () => {
@@ -230,6 +231,36 @@ const Credentials = () => {
           </div>
         </div>
       );
+    } else if (type === 'anonymous') {
+      return (
+        <div className="flex-1 grid grid-cols-3 gap-4">
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Nome</div>
+            <div className="font-medium">{cred.name || '-'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
+            <Badge variant="outline" className="gap-1">
+              <Ghost className="w-3 h-3" />
+              Anônima (null session)
+            </Badge>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Status</div>
+            {cred.verified ? (
+              <Badge variant="default" className="gap-1 bg-green-600">
+                <CheckCircle className="w-3 h-3" />
+                Verificada
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                <XCircle className="w-3 h-3" />
+                Não verificada
+              </Badge>
+            )}
+          </div>
+        </div>
+      );
     } else if (type === 'ssh_key') {
       return (
         <div className="flex-1 grid grid-cols-4 gap-4">
@@ -299,7 +330,7 @@ const Credentials = () => {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsList className="grid w-full grid-cols-4 mb-6">
                 <TabsTrigger value="user_password" className="gap-2">
                   <Key className="w-4 h-4" />
                   Usuário/Senha
@@ -311,6 +342,10 @@ const Credentials = () => {
                 <TabsTrigger value="ssh_key" className="gap-2">
                   <KeyRound className="w-4 h-4" />
                   Chave SSH
+                </TabsTrigger>
+                <TabsTrigger value="anonymous" className="gap-2">
+                  <Ghost className="w-4 h-4" />
+                  Anônima
                 </TabsTrigger>
               </TabsList>
 
@@ -463,6 +498,20 @@ const Credentials = () => {
                       className="font-mono text-sm"
                       rows={3}
                     />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="anonymous" className="space-y-4 mt-0">
+                  <div className="flex items-start gap-3 text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg">
+                    <Ghost className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">Autenticação anônima (null session)</p>
+                      <p>
+                        Este tipo de credencial não possui usuário nem senha. Ao selecioná-la em um
+                        servidor, o scan tentará uma sessão SMB anônima (usuário e senha vazios).
+                        Útil para servidores que permitem acesso anônimo a shares.
+                      </p>
+                    </div>
                   </div>
                 </TabsContent>
 
