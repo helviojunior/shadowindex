@@ -974,7 +974,7 @@ async def list_shares(
     """Lista todos os compartilhamentos do servidor"""
     from plugins.factory import get_plugin_for_server
     from plugins.base import ShareInfo
-    from plugins.exceptions import CredentialNotSetException, ConnectionException, AccessDeniedException, ServerUnreachableException
+    from plugins.exceptions import CredentialNotSetException, ConnectionException, AccessDeniedException, ServerUnreachableException, AuthenticationFailureException
     import xml.etree.ElementTree as ET
     
     server = await get_server_or_404(db, server_id)
@@ -1066,6 +1066,17 @@ async def list_shares(
                 }
             )
         
+        except AuthenticationFailureException as e:
+            logger.warning(f"Authentication failed for server {server.ip}: {e}")
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error": "auth_error",
+                    "message": e.reason or str(e),
+                    "server_ip": server.ip
+                }
+            )
+
         except ConnectionException as e:
             logger.warning(f"Connection error for server {server.ip}: {e}")
             raise HTTPException(
@@ -1076,7 +1087,7 @@ async def list_shares(
                     "server_ip": server.ip
                 }
             )
-        
+
         except AccessDeniedException as e:
             logger.warning(f"Access denied for server {server.ip}: {e}")
             raise HTTPException(

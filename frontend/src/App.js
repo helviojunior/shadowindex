@@ -26,6 +26,7 @@ import ScanPools from "@/pages/ScanPools";
 import ShareScan from "@/pages/ShareScan";
 import ShareScanJobs from "@/pages/ShareScanJobs";
 import AdvancedSearch from "@/pages/AdvancedSearch";
+import ChangeDomainPassword from "@/pages/ChangeDomainPassword";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 import { UiSettingsProvider } from "@/contexts/UiSettingsContext";
@@ -74,6 +75,7 @@ function App() {
                     <Route path="/proxy-servers" element={<ProxyServers />} />
                     <Route path="/soap-apis" element={<SoapApis />} />
                     <Route path="/soap-operations" element={<SoapOperations />} />
+                    <Route path="/tools/change-password" element={<ChangeDomainPassword />} />
                     <Route path="/settings" element={<GeneralSettings />} />
                     <Route path="/settings/critical-search" element={<CriticalSearchSettings />} />
                     <Route path="/settings/scan-pools" element={<ScanPools />} />

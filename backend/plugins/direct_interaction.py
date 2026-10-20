@@ -838,6 +838,12 @@ class DirectInteractionPlugin(BasePlugin):
                     domain=domain,
                     reason="Senha expirada"
                 )
+            elif "status_password_must_change" in error_msg:
+                raise AuthenticationFailureException(
+                    username=username,
+                    domain=domain,
+                    reason="A senha da conta precisa ser alterada antes do primeiro logon (flag 'usuário deve alterar a senha no próximo logon' ativa no Active Directory)."
+                )
             elif "status_account_locked_out" in error_msg:
                 raise AuthenticationFailureException(
                     username=username,

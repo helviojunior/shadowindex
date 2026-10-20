@@ -1917,26 +1917,30 @@ const ServerBrowser = () => {
         const fallbackResponse = await axios.get(`${API_V2}/servers/${serverId}/shares?refresh=${ignoreCache}`);
         setShares(fallbackResponse.data);
       } catch (fallbackError) {
-        // Verificar se fallback é erro de servidor inacessível (503)
-        if (fallbackError.response?.status === 503 && fallbackError.response?.data?.detail?.error === 'server_unreachable') {
-          const detail = fallbackError.response.data.detail;
-          setServer(prev => ({ ...prev, is_unreachable: true }));
-          toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
-            duration: 6000,
-            description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
-          });
-        } else if (fallbackError.response?.status === 422 && fallbackError.response?.data?.detail?.error === 'credential_not_set') {
-          const detail = fallbackError.response.data.detail;
-          toast.error(detail.message || 'Credencial não configurada para este servidor', {
-            duration: 6000,
-            description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
-          });
-        } else if (fallbackError.response?.status === 500 && fallbackError.response?.data?.detail) {
-          const detail = fallbackError.response.data.detail;
-          toast.error(detail.message || 'Erro ao carregar compartilhamentos', {
-            duration: 6000,
-            description: 'Verifique os logs do servidor para mais detalhes.'
-          });
+        const detail = fallbackError.response?.data?.detail;
+        if (detail && typeof detail === 'object') {
+          if (detail.error === 'server_unreachable') {
+            setServer(prev => ({ ...prev, is_unreachable: true }));
+            toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+              duration: 6000,
+              description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+            });
+          } else {
+            const descriptions = {
+              credential_not_set: 'Configure uma credencial válida nas configurações do plugin do servidor.',
+              credential_error: 'Verifique as credenciais configuradas no plugin.',
+              auth_error: 'A autenticação foi recusada pelo servidor. Verifique usuário, senha/estado da conta.',
+              access_denied: 'A credencial não tem permissão para acessar este recurso.',
+              connection_error: 'Verifique se o servidor está acessível na rede.',
+              timeout_error: 'Servidor demorou muito para responder.',
+              config_error: 'Verifique as configurações do plugin (URL, credenciais, etc).',
+              plugin_not_configured: 'Configure o plugin do servidor antes de prosseguir.'
+            };
+            toast.error(detail.message || 'Erro ao carregar compartilhamentos', {
+              duration: 7000,
+              description: descriptions[detail.error] || 'Verifique os logs do servidor para mais detalhes.'
+            });
+          }
         } else {
           toast.error('Erro ao carregar compartilhamentos', {
             duration: 4000,
@@ -2008,48 +2012,33 @@ const ServerBrowser = () => {
     } catch (error) {
       console.error('Error refreshing shares:', error);
 
-      // Verificar se é erro de servidor inacessível (503)
-      if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
-        const detail = error.response.data.detail;
-        setServer(prev => ({ ...prev, is_unreachable: true }));
-        toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
-          duration: 6000,
-          description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
-        });
-      } else if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
-        // Verificar se é erro de credencial não configurada
-        const detail = error.response.data.detail;
-        toast.error(detail.message || 'Credencial não configurada para este servidor', {
-          duration: 6000,
-          description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
-        });
-      } else if (error.response?.status === 500 && error.response?.data?.detail) {
-        // Tratamento para erros estruturados do plugin
-        const detail = error.response.data.detail;
-        let errorMessage = detail.message || 'Erro ao atualizar compartilhamentos';
-        let description = '';
-        
-        switch (detail.error) {
-          case 'credential_error':
-            description = 'Verifique as credenciais configuradas no plugin.';
-            break;
-          case 'connection_error':
-            description = 'Verifique se o servidor está acessível na rede.';
-            break;
-          case 'timeout_error':
-            description = 'Servidor demorou muito para responder.';
-            break;
-          case 'config_error':
-            description = 'Verifique as configurações do plugin (URL, credenciais, etc).';
-            break;
-          default:
-            description = 'Verifique os logs para mais detalhes.';
+      // Erro estruturado do backend: { detail: { error, message, server_ip } }
+      const detail = error.response?.data?.detail;
+      if (detail && typeof detail === 'object') {
+        // Servidor inacessível: marcar flag visual
+        if (detail.error === 'server_unreachable') {
+          setServer(prev => ({ ...prev, is_unreachable: true }));
+          toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+            duration: 6000,
+            description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+          });
+        } else {
+          // Descrição auxiliar por tipo de erro
+          const descriptions = {
+            credential_not_set: 'Configure uma credencial válida nas configurações do plugin do servidor.',
+            credential_error: 'Verifique as credenciais configuradas no plugin.',
+            auth_error: 'A autenticação foi recusada pelo servidor. Verifique usuário, senha/estado da conta.',
+            access_denied: 'A credencial não tem permissão para acessar este recurso.',
+            connection_error: 'Verifique se o servidor está acessível na rede.',
+            timeout_error: 'Servidor demorou muito para responder.',
+            config_error: 'Verifique as configurações do plugin (URL, credenciais, etc).',
+            plugin_not_configured: 'Configure o plugin do servidor antes de prosseguir.'
+          };
+          toast.error(detail.message || 'Erro ao atualizar compartilhamentos', {
+            duration: 7000,
+            description: descriptions[detail.error] || 'Verifique os logs para mais detalhes.'
+          });
         }
-        
-        toast.error(errorMessage, {
-          duration: 6000,
-          description
-        });
       } else {
         toast.error('Erro ao atualizar compartilhamentos', {
           duration: 4000,

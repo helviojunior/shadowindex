@@ -4945,6 +4945,123 @@ async def get_branding(kind: str):
     return FileResponse(path)
 
 
+# ---------------------------------------------------------------------------
+# Tools: Trocar senha de domínio (MS-SAMR ChangePasswordUser2)
+# Funciona mesmo quando a conta exige troca de senha (STATUS_PASSWORD_MUST_CHANGE),
+# pois usa uma sessão NULL ao pipe SAMR conhecendo a senha atual.
+# ---------------------------------------------------------------------------
+class ChangeDomainPasswordRequest(BaseModel):
+    domain: Optional[str] = None
+    username: str
+    current_password: str
+    new_password: str
+    target: Optional[str] = None  # DC/host alvo; se vazio, usa o domínio
+
+
+def _do_change_domain_password(target: str, username: str, old_password: str, new_password: str):
+    """Executa a troca de senha via MS-SAMR (bloqueante). Deve rodar em thread."""
+    from impacket.dcerpc.v5 import transport, samr
+
+    stringbinding = r'ncacn_np:%s[\pipe\samr]' % target
+    rpctransport = transport.DCERPCTransportFactory(stringbinding)
+    rpctransport.set_dport(445)
+    if hasattr(rpctransport, 'set_connect_timeout'):
+        rpctransport.set_connect_timeout(15)
+    # Sessão NULL: a conta pode não conseguir autenticar (senha expirada/deve trocar)
+    if hasattr(rpctransport, 'set_credentials'):
+        rpctransport.set_credentials('', '', '', '', '', None, None)
+
+    dce = rpctransport.get_dce_rpc()
+    dce.connect()
+    try:
+        dce.bind(samr.MSRPC_UUID_SAMR)
+        # serverName NULL, userName = sAMAccountName
+        samr.hSamrUnicodeChangePasswordUser2(
+            dce, '\x00', username, old_password, new_password, '', ''
+        )
+    finally:
+        try:
+            dce.disconnect()
+        except Exception:
+            pass
+
+
+@api_router.post("/tools/change-domain-password")
+async def change_domain_password(request: ChangeDomainPasswordRequest):
+    """Troca a senha de uma conta de domínio conhecendo a senha atual."""
+    import asyncio as _asyncio
+
+    username = (request.username or "").strip()
+    # Aceita formatos DOMINIO\\usuario ou usuario@dominio no campo usuário
+    domain = (request.domain or "").strip()
+    if "\\" in username:
+        dpart, username = username.split("\\", 1)
+        domain = domain or dpart
+    elif "@" in username:
+        username, dpart = username.split("@", 1)
+        domain = domain or dpart
+
+    if not username:
+        raise HTTPException(status_code=422, detail="Usuário é obrigatório.")
+    if not request.current_password:
+        raise HTTPException(status_code=422, detail="Senha atual é obrigatória.")
+    if not request.new_password:
+        raise HTTPException(status_code=422, detail="Nova senha é obrigatória.")
+    if request.new_password == request.current_password:
+        raise HTTPException(status_code=422, detail="A nova senha deve ser diferente da atual.")
+
+    # Alvo: DC informado ou o próprio domínio (que normalmente resolve para um DC)
+    target = (request.target or "").strip() or domain
+    if not target:
+        raise HTTPException(
+            status_code=422,
+            detail="Informe o domínio ou o controlador de domínio (DC) de destino.",
+        )
+
+    try:
+        await _asyncio.to_thread(
+            _do_change_domain_password,
+            target, username, request.current_password, request.new_password,
+        )
+    except Exception as e:
+        err = str(e)
+        low = err.lower()
+        if "password_restriction" in low or "status_password_restriction" in low:
+            raise HTTPException(status_code=400, detail={
+                "error": "password_policy",
+                "message": "A nova senha não atende à política de senha do domínio (tamanho, complexidade ou histórico).",
+            })
+        if "wrong_password" in low or "status_wrong_password" in low:
+            raise HTTPException(status_code=401, detail={
+                "error": "wrong_password",
+                "message": "Senha atual incorreta.",
+            })
+        if "no_such_user" in low or "status_no_such_user" in low:
+            raise HTTPException(status_code=404, detail={
+                "error": "no_such_user",
+                "message": "Usuário não encontrado no domínio.",
+            })
+        if any(k in low for k in ["timed out", "timeout", "connection refused",
+                                   "unreachable", "econnrefused", "errno 111",
+                                   "errno 110", "netbios"]):
+            raise HTTPException(status_code=503, detail={
+                "error": "connection_error",
+                "message": f"Não foi possível conectar ao alvo '{target}': {err}",
+            })
+        raise HTTPException(status_code=500, detail={
+            "error": "change_password_failed",
+            "message": f"Falha ao trocar a senha: {err}",
+        })
+
+    return {
+        "success": True,
+        "message": f"Senha alterada com sucesso para '{username}'.",
+        "username": username,
+        "domain": domain or None,
+        "target": target,
+    }
+
+
 # Include router
 app.include_router(api_router)
 

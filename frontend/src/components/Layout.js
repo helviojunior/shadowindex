@@ -121,6 +121,7 @@ const menuStructure = [
     label: 'Tools',
     children: [
       { id: 'soap-ops', path: '/soap-operations', label: 'Operações SOAP' },
+      { id: 'change-domain-password', path: '/tools/change-password', label: 'Change domain password' },
     ]
   },
 ];
