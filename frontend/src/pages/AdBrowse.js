@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import {
   ArrowLeft, Network, Search, ChevronRight, ChevronDown, Loader2,
-  Folder, FolderOpen, Users, User, Monitor, FileText, Box, Shield, Building2, Database, Radio, RefreshCw
+  Folder, FolderOpen, Users, User, Monitor, FileText, Box, Shield, Building2, Database, Radio, RefreshCw, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -64,7 +64,6 @@ const TreeNode = ({ node, depth, selectedKey, onSelect, fetchChildren }) => {
         </button>
         {node.has_children ? (expanded ? <FolderOpen className="w-4 h-4 text-amber-400 shrink-0" /> : <Folder className="w-4 h-4 text-amber-400 shrink-0" />) : <Icon className={`w-4 h-4 shrink-0 ${typeColor(node.object_type)}`} />}
         <span className="truncate text-sm">{node.name || node.object_id}</span>
-        {node.object_type && <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 shrink-0">{node.object_type}</Badge>}
         {node.child_count > 0 && <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{node.child_count}</span>}
       </div>
       {expanded && children && children.map((c) => (
@@ -78,10 +77,10 @@ const AdBrowse = () => {
   const { domainId } = useParams();
   const navigate = useNavigate();
   const [domain, setDomain] = useState(null);
-  const [mode, setMode] = useState('db'); // 'db' (importado) | 'live' (LDAP)
+  const [mode, setMode] = useState('db');
   const [roots, setRoots] = useState([]);
   const [loadingRoots, setLoadingRoots] = useState(true);
-  const [treeKey, setTreeKey] = useState(0); // força remontar a árvore ao trocar de modo
+  const [treeKey, setTreeKey] = useState(0);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -95,13 +94,11 @@ const AdBrowse = () => {
     setSelected(null);
     setDetail(null);
     try {
-      if (m === 'live') {
-        const { data } = await axios.get(`${API}/ad/domains/${domainId}/ldap-browse`);
-        setRoots(data);
-      } else {
-        const { data } = await axios.get(`${API}/ad/domains/${domainId}/tree`);
-        setRoots(data);
-      }
+      const url = m === 'live'
+        ? `${API}/ad/domains/${domainId}/ldap-browse`
+        : `${API}/ad/domains/${domainId}/tree`;
+      const { data } = await axios.get(url);
+      setRoots(data);
       setTreeKey((k) => k + 1);
     } catch (e) {
       const msg = e.response?.data?.detail || 'Erro ao carregar a árvore';
@@ -134,7 +131,6 @@ const AdBrowse = () => {
   const selectNode = useCallback(async (node) => {
     setSelected(node);
     if (mode === 'live') {
-      // Nó ao vivo já traz as properties
       setDetail(node);
       return;
     }
@@ -167,87 +163,103 @@ const AdBrowse = () => {
 
   const clearSearch = () => { setSearchTerm(''); setSearchResults(null); };
 
+  const ModeToggle = () => (
+    <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+      <button onClick={() => setMode('db')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'db' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-db">
+        <Database className="w-3.5 h-3.5" />Importado
+      </button>
+      <button onClick={() => setMode('live')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'live' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-live">
+        <Radio className="w-3.5 h-3.5" />LDAP ao vivo
+      </button>
+    </div>
+  );
+
   return (
-    <div className="space-y-4" data-testid="ad-browse-page">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/ad')}><ArrowLeft className="w-4 h-4 mr-1" />Domínios</Button>
-        <h1 className="text-2xl font-bold flex items-center gap-2 min-w-0">
-          <Network className="w-6 h-6 text-indigo-400 shrink-0" />
-          <span className="truncate">{domain?.name || `Domínio ${domainId}`}</span>
-        </h1>
-        {domain?.object_count != null && <Badge variant="outline">{domain.object_count.toLocaleString()} objetos</Badge>}
-        <Button variant="ghost" size="sm" onClick={() => loadRoots(mode)} title="Atualizar árvore">
-          <RefreshCw className={`w-4 h-4 ${loadingRoots ? 'animate-spin' : ''}`} />
-        </Button>
-        {/* Alternador de modo */}
-        <div className="ml-auto flex items-center gap-1 rounded-lg border border-border p-0.5">
-          <button onClick={() => setMode('db')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'db' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-db">
-            <Database className="w-3.5 h-3.5" />Importado
-          </button>
-          <button onClick={() => setMode('live')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'live' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-live">
-            <Radio className="w-3.5 h-3.5" />LDAP ao vivo
-          </button>
+    <div className="h-[calc(100vh-120px)] flex flex-col relative" data-testid="ad-browse-page">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/ad')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />Domínios
+          </Button>
+          <div className="flex items-center gap-2 min-w-0">
+            <Network className="w-5 h-5 text-indigo-400 shrink-0" />
+            <h1 className="text-xl font-semibold truncate">{domain?.name || `Domínio ${domainId}`}</h1>
+            {domain?.object_count != null && <Badge variant="outline" className="shrink-0">{domain.object_count.toLocaleString()} objetos</Badge>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => loadRoots(mode)} title="Atualizar árvore">
+            <RefreshCw className={`w-4 h-4 ${loadingRoots ? 'animate-spin' : ''}`} />
+          </Button>
+          <ModeToggle />
         </div>
       </div>
 
-      {/* Busca (apenas no modo importado) */}
-      {mode === 'db' && (
-        <form onSubmit={runSearch} className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-xl">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Buscar por nome, samAccountName, DN, descrição ou SID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="ad-search-input" />
-          </div>
-          <Button type="submit" disabled={searching} data-testid="ad-search-btn">
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-          </Button>
-          {searchResults !== null && <Button type="button" variant="ghost" onClick={clearSearch}>Limpar</Button>}
-        </form>
-      )}
-      {mode === 'live' && (
-        <p className="text-sm text-muted-foreground flex items-center gap-2">
-          <Radio className="w-4 h-4 text-indigo-400" />
-          Navegação ao vivo via LDAP — os filhos de cada OU/container são buscados sob demanda ao expandir. (A busca global usa os dados importados.)
-        </p>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="min-h-[400px]">
-          <CardContent className="p-2 max-h-[70vh] overflow-auto">
-            {mode === 'db' && searchResults !== null ? (
-              <div>
-                <div className="px-2 py-1 text-xs text-muted-foreground">{searchResults.length} resultado(s)</div>
-                {searchResults.map((r) => {
-                  const Icon = typeIcon(r.object_type);
-                  return (
-                    <div key={r.id} className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer hover:bg-muted/50 ${selected?.id === r.id ? 'bg-primary/10' : ''}`} onClick={() => selectNode(r)}>
-                      <Icon className={`w-4 h-4 shrink-0 ${typeColor(r.object_type)}`} />
-                      <span className="truncate text-sm">{r.name || r.object_id}</span>
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">{r.object_type}</Badge>
-                    </div>
-                  );
-                })}
-                {searchResults.length === 0 && <div className="p-4 text-center text-muted-foreground text-sm">Nenhum objeto encontrado</div>}
-              </div>
-            ) : loadingRoots ? (
-              <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-            ) : roots.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">
-                {mode === 'live' ? 'Nada retornado do LDAP — verifique a conexão do domínio.' : 'Árvore vazia — importe os arquivos do BloodHound ou use o modo "LDAP ao vivo".'}
+      {/* Split View */}
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        {/* Painel esquerdo - árvore */}
+        <ResizablePanel defaultSize={32} minSize={18} maxSize={55}>
+          <div className="h-full border-r border-border bg-card flex flex-col">
+            {mode === 'db' ? (
+              <div className="p-3 border-b border-border">
+                <form onSubmit={runSearch} className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="pl-9 h-9" placeholder="Buscar objeto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="ad-search-input" />
+                  </div>
+                  <Button type="submit" size="sm" disabled={searching} data-testid="ad-search-btn">
+                    {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  </Button>
+                  {searchResults !== null && <Button type="button" size="sm" variant="ghost" onClick={clearSearch}><X className="w-4 h-4" /></Button>}
+                </form>
               </div>
             ) : (
-              <div key={treeKey}>
-                {roots.map((n) => <TreeNode key={nodeKey(n)} node={n} depth={0} selectedKey={selected ? nodeKey(selected) : null} onSelect={selectNode} fetchChildren={fetchChildren} />)}
+              <div className="p-3 border-b border-border text-xs text-muted-foreground flex items-center gap-2">
+                <Radio className="w-4 h-4 text-indigo-400 shrink-0" />
+                Navegação ao vivo via LDAP — filhos buscados sob demanda ao expandir.
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        <Card className="min-h-[400px]">
-          <CardContent className="p-4 max-h-[70vh] overflow-auto">
+            <div className="flex-1 overflow-auto p-1">
+              {mode === 'db' && searchResults !== null ? (
+                <div>
+                  <div className="px-2 py-1 text-xs text-muted-foreground">{searchResults.length} resultado(s)</div>
+                  {searchResults.map((r) => {
+                    const Icon = typeIcon(r.object_type);
+                    return (
+                      <div key={r.id} className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer hover:bg-muted/50 ${selected?.id === r.id ? 'bg-primary/10' : ''}`} onClick={() => selectNode(r)}>
+                        <Icon className={`w-4 h-4 shrink-0 ${typeColor(r.object_type)}`} />
+                        <span className="truncate text-sm">{r.name || r.object_id}</span>
+                      </div>
+                    );
+                  })}
+                  {searchResults.length === 0 && <div className="p-4 text-center text-muted-foreground text-sm">Nenhum objeto encontrado</div>}
+                </div>
+              ) : loadingRoots ? (
+                <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : roots.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  {mode === 'live' ? 'Nada retornado do LDAP — verifique a conexão do domínio.' : 'Árvore vazia — importe o BloodHound, inicie uma varredura ou use "LDAP ao vivo".'}
+                </div>
+              ) : (
+                <div key={treeKey}>
+                  {roots.map((n) => <TreeNode key={nodeKey(n)} node={n} depth={0} selectedKey={selected ? nodeKey(selected) : null} onSelect={selectNode} fetchChildren={fetchChildren} />)}
+                </div>
+              )}
+            </div>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* Painel direito - detalhe */}
+        <ResizablePanel defaultSize={68}>
+          <div className="h-full overflow-auto p-4">
             {loadingDetail ? (
               <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
             ) : !detail ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">Selecione um objeto para ver os detalhes.</div>
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Selecione um objeto para ver os detalhes.</div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -279,9 +291,9 @@ const AdBrowse = () => {
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 };
