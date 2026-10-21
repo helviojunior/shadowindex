@@ -395,6 +395,51 @@ async def _run_ldap_scan(job_id: int, domain_id: int, scan_kwargs: dict):
                 await session.commit()
 
 
+async def recover_interrupted_ad_jobs():
+    """Re-lança jobs de AD (import/varredura) que ficaram 'running'/'pending'
+    após um reinício do backend — torna os jobs resilientes a restart.
+
+    As gravações são idempotentes (ON CONFLICT upsert), então reexecutar o job
+    o conclui corretamente (reinicia a contagem, mas finaliza a árvore)."""
+    to_launch = []
+    async with AsyncSessionLocal() as session:
+        jobs = (await session.execute(
+            select(AdScanJob).where(AdScanJob.status.in_(["running", "pending"]))
+        )).scalars().all()
+        for job in jobs:
+            dom = (await session.execute(select(AdDomain).where(AdDomain.id == job.domain_id))).scalar_one_or_none()
+            if job.job_type == "bloodhound" and job.source_path and os.path.isdir(job.source_path):
+                job.status = "pending"
+                job.processed_objects = 0
+                job.current_step = "Retomando após reinício do backend"
+                to_launch.append(("bh", job.id, job.domain_id, job.source_path))
+            elif job.job_type == "ldap" and dom:
+                try:
+                    host = (job.source_path or dom.selected_dc or "").strip()
+                    kwargs = await _resolve_scan_kwargs(session, dom, host)
+                    job.status = "pending"
+                    job.processed_objects = 0
+                    job.current_step = "Retomando após reinício do backend"
+                    to_launch.append(("ldap", job.id, job.domain_id, kwargs))
+                except Exception as e:
+                    job.status = "failed"
+                    job.error_message = f"Interrompido por reinício; não foi possível retomar: {e}"
+                    job.finished_at = datetime.now(timezone.utc)
+            else:
+                job.status = "failed"
+                job.error_message = "Interrompido por reinício do backend (sem origem para retomar)."
+                job.finished_at = datetime.now(timezone.utc)
+        await session.commit()
+
+    for item in to_launch:
+        if item[0] == "bh":
+            asyncio.create_task(_run_bloodhound_import(item[1], item[2], item[3]))
+        else:
+            asyncio.create_task(_run_ldap_scan(item[1], item[2], item[3]))
+    if to_launch:
+        logger.info(f"AD Explorer: {len(to_launch)} job(s) retomados após reinício")
+
+
 class ScanRequest(BaseModel):
     host: Optional[str] = None
 
@@ -424,6 +469,40 @@ async def start_ldap_scan(domain_id: int, payload: ScanRequest, db=Depends(get_d
 
     asyncio.create_task(_run_ldap_scan(job.id, domain_id, scan_kwargs))
     return job
+
+
+@router.get("/domains/{domain_id}/ldap-browse")
+async def ldap_browse_live(domain_id: int, dn: Optional[str] = None,
+                           host: Optional[str] = None, db=Depends(get_db)):
+    """Navegação LDAP ao vivo: lista os filhos imediatos de um nó (ou a raiz do
+    domínio quando dn é vazio), buscando sob demanda — sem varredura prévia."""
+    from ad_scan import ldap_browse
+
+    dom = (await db.execute(select(AdDomain).where(AdDomain.id == domain_id))).scalar_one_or_none()
+    if not dom:
+        raise HTTPException(status_code=404, detail="Domínio não encontrado")
+
+    target = (host or dom.selected_dc or "").strip()
+    if not target and dom.dc_hosts:
+        target = dom.dc_hosts.replace(";", ",").split(",")[0].strip()
+    if not target:
+        raise HTTPException(status_code=422, detail="Nenhum DC definido. Rode a descoberta ou informe um DC.")
+
+    k = await _resolve_scan_kwargs(db, dom, target)
+    try:
+        nodes = await asyncio.to_thread(
+            ldap_browse,
+            k["host"], k["use_ldaps"], (dn or None), k["auth_method"],
+            k.get("domain"), k.get("username"), k.get("password"), k.get("nthash"),
+            k.get("ccache_b64"), k.get("kdc_host"), (not dn), k["base_dn"],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao navegar no LDAP: {e}")
+
+    # Atribui um id sintético (sem persistência) para o front usar como chave
+    for i, n in enumerate(nodes):
+        n["id"] = i
+    return nodes
 
 
 @router.get("/jobs", response_model=List[AdJobResponse])

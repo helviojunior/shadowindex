@@ -5485,6 +5485,14 @@ async def startup_event():
     except Exception as e:
         print(f"=== STARTUP ERROR: Failed to start DB watchdog: {e} ===", flush=True)
 
+    # Retomar jobs do AD Explorer interrompidos por reinício do backend
+    try:
+        from ad_routes import recover_interrupted_ad_jobs
+        await recover_interrupted_ad_jobs()
+        print("=== STARTUP: AD Explorer jobs recovered ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP ERROR: Failed to recover AD jobs: {e} ===", flush=True)
+
 
 async def create_default_plugin_instances():
     """

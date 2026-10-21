@@ -278,7 +278,7 @@ const AdDomains = () => {
           const activeJob = domJobs.find((j) => j.status === 'running' || j.status === 'pending');
           return (
             <Card key={dom.id} data-testid={`ad-domain-${dom.id}`}>
-              <CardContent className="py-5">
+              <CardContent className="pt-6">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0 flex-wrap">
@@ -328,7 +328,9 @@ const AdDomains = () => {
                           <div className="flex items-center justify-between">
                             <span className={`flex items-center gap-2 ${meta.cls}`}>
                               <Icon className={`w-4 h-4 ${spinning ? 'animate-spin' : ''}`} />
-                              {meta.label}
+                              {job.status === 'running'
+                                ? (job.job_type === 'ldap' ? 'Varrendo (LDAP)' : 'Importando')
+                                : meta.label}
                               {job.current_step && <span className="text-muted-foreground">— {job.current_step}</span>}
                             </span>
                             <span className="text-muted-foreground font-mono text-xs">

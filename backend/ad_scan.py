@@ -120,6 +120,84 @@ def _parent_dn(dn):
     return dn.split(",", 1)[1].strip()
 
 
+def _parse_search_entry(item):
+    """Converte uma SearchResultEntry do impacket em (dn, attrs dict)."""
+    from impacket.ldap import ldapasn1
+    if not isinstance(item, ldapasn1.SearchResultEntry):
+        return None, None
+    dn = _decode(item["objectName"])
+    attrs = {}
+    for attr in item["attributes"]:
+        key = str(attr["type"])
+        vals = attr["vals"]
+        if key == "objectSid":
+            attrs["_objectSid_raw"] = _raw_bytes(vals[0]) if len(vals) else b""
+            continue
+        if key == "objectGUID":
+            attrs["_objectGUID_raw"] = _raw_bytes(vals[0]) if len(vals) else b""
+            continue
+        decoded = [_decode(v) for v in vals]
+        if key in ("objectClass", "servicePrincipalName", "memberOf", "member"):
+            attrs[key] = decoded
+        else:
+            attrs[key] = decoded[0] if decoded else None
+    return dn, attrs
+
+
+CONTAINER_TYPES = {"Domain", "OU", "Container"}
+
+
+def _attrs_to_node(dn, attrs):
+    """Monta um nó (dict) para navegação ao vivo a partir dos atributos LDAP."""
+    classes = attrs.get("objectClass") or []
+    otype = _object_type_from_classes(classes)
+    oid = None
+    if attrs.get("_objectSid_raw"):
+        oid = _format_sid(attrs["_objectSid_raw"])
+    if not oid and attrs.get("_objectGUID_raw"):
+        oid = _format_guid(attrs["_objectGUID_raw"])
+    oid = oid or dn
+
+    uac = attrs.get("userAccountControl")
+    enabled = None
+    try:
+        if uac is not None:
+            enabled = not (int(uac) & 0x2)
+    except Exception:
+        enabled = None
+
+    admincount = attrs.get("adminCount")
+    props = {
+        "name": attrs.get("name"),
+        "distinguishedname": dn,
+        "samaccountname": attrs.get("sAMAccountName"),
+        "description": attrs.get("description"),
+        "displayname": attrs.get("displayName"),
+        "email": attrs.get("mail"),
+        "enabled": enabled,
+        "admincount": str(admincount) == "1" if admincount is not None else None,
+        "operatingsystem": attrs.get("operatingSystem"),
+        "serviceprincipalnames": attrs.get("servicePrincipalName"),
+        "memberof": attrs.get("memberOf"),
+        "whencreated": _gentime_to_epoch(attrs.get("whenCreated")),
+        "objectclass": classes,
+    }
+    props = {k: v for k, v in props.items() if v is not None}
+    return {
+        "object_id": oid,
+        "object_type": otype,
+        "name": attrs.get("name") or dn,
+        "distinguished_name": dn,
+        "samaccountname": attrs.get("sAMAccountName"),
+        "description": attrs.get("description"),
+        "enabled": enabled,
+        "highvalue": (str(admincount) == "1") or None,
+        "has_children": otype in CONTAINER_TYPES,
+        "child_count": 0,
+        "properties": props,
+    }
+
+
 class _TreeWriter:
     """Acumula objetos e grava em lote em ad_objects; progresso no job."""
 
@@ -313,24 +391,9 @@ def scan_ldap_tree(pg_dsn, domain_id, host, use_ldaps, base_dn,
         writer = _TreeWriter(pg_dsn, domain_id, job_id)
 
         def process(item):
-            if not isinstance(item, ldapasn1.SearchResultEntry):
+            dn, attrs = _parse_search_entry(item)
+            if dn is None:
                 return
-            dn = _decode(item["objectName"])
-            attrs = {}
-            for attr in item["attributes"]:
-                key = str(attr["type"])
-                vals = attr["vals"]
-                if key == "objectSid":
-                    attrs["_objectSid_raw"] = _raw_bytes(vals[0]) if len(vals) else b""
-                    continue
-                if key == "objectGUID":
-                    attrs["_objectGUID_raw"] = _raw_bytes(vals[0]) if len(vals) else b""
-                    continue
-                decoded = [_decode(v) for v in vals]
-                if key in ("objectClass", "servicePrincipalName", "memberOf", "member"):
-                    attrs[key] = decoded
-                else:
-                    attrs[key] = decoded[0] if decoded else None
             try:
                 writer.add(_entry_to_row(writer, dn, attrs))
             except Exception as e:
@@ -359,6 +422,74 @@ def scan_ldap_tree(pg_dsn, domain_id, host, use_ldaps, base_dn,
         except Exception:
             pass
         return {"total_objects": total, "domain_sid": domain_sid}
+    finally:
+        if cc_path:
+            try:
+                os.unlink(cc_path)
+            except OSError:
+                pass
+        if prev is None:
+            os.environ.pop("KRB5CCNAME", None)
+        else:
+            os.environ["KRB5CCNAME"] = prev
+
+
+def ldap_browse(host, use_ldaps, parent_dn, auth_method, domain=None, username=None,
+                password=None, nthash=None, ccache_b64=None, kdc_host=None,
+                root=False, base_dn=None):
+    """Lista os filhos imediatos de um nó (scope singleLevel) ou o próprio nó raiz
+    (baseObject). Usado para navegação LDAP ao vivo, sem persistência."""
+    from impacket.ldap import ldap as impkt_ldap, ldapasn1
+
+    search_base = base_dn if root else parent_dn
+    proto = "ldaps" if use_ldaps else "ldap"
+    conn = impkt_ldap.LDAPConnection(f"{proto}://{host}", base_dn or parent_dn, kdc_host)
+
+    prev = os.environ.get("KRB5CCNAME")
+    cc_path = None
+    try:
+        if auth_method == "kerberos":
+            raw = base64.b64decode(ccache_b64, validate=False)
+            fd, cc_path = tempfile.mkstemp(prefix="shadowindex_ad_", suffix=".ccache")
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(raw)
+            os.environ["KRB5CCNAME"] = cc_path
+            conn.kerberosLogin(username or "", "", (domain or "").upper(), "", "", "", kdcHost=kdc_host, useCache=True)
+        else:
+            lm, nt = ("", "")
+            if nthash:
+                nthash = nthash.strip()
+                lm, nt = (nthash.split(":", 1) if ":" in nthash else ("", nthash))
+            conn.login(username or "", password or "", domain or "", lm, nt)
+
+        scope = ldapasn1.Scope("baseObject") if root else ldapasn1.Scope("singleLevel")
+        nodes = []
+
+        def cb(item):
+            dn, attrs = _parse_search_entry(item)
+            if dn is None:
+                return
+            # Em singleLevel, ignora eventual retorno do próprio base
+            if not root and dn and dn.strip().lower() == (search_base or "").strip().lower():
+                return
+            nodes.append(_attrs_to_node(dn, attrs))
+
+        try:
+            sc = ldapasn1.SimplePagedResultsControl(criticality=True, size=1000)
+        except Exception:
+            sc = None
+
+        conn.search(searchBase=search_base, scope=scope, searchFilter="(objectClass=*)",
+                    attributes=LDAP_ATTRIBUTES, sizeLimit=0,
+                    searchControls=[sc] if sc else None, perRecordCallback=cb)
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+        rank = {"Domain": 0, "OU": 1, "Container": 2, "GPO": 3, "Group": 4, "User": 5, "Computer": 6}
+        nodes.sort(key=lambda n: (rank.get(n["object_type"], 9), (n["name"] or "").lower()))
+        return nodes
     finally:
         if cc_path:
             try:

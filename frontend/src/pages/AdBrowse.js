@@ -7,13 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, Network, Search, ChevronRight, ChevronDown, Loader2,
-  Folder, FolderOpen, Users, User, Monitor, FileText, Box, Shield, Building2
+  Folder, FolderOpen, Users, User, Monitor, FileText, Box, Shield, Building2, Database, Radio
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// Ícone e cor por tipo de objeto AD
 const TYPE_META = {
   Domain: { icon: Network, color: 'text-indigo-400' },
   OU: { icon: Building2, color: 'text-amber-400' },
@@ -23,12 +22,11 @@ const TYPE_META = {
   User: { icon: User, color: 'text-blue-400' },
   Computer: { icon: Monitor, color: 'text-cyan-400' },
 };
-
 const typeIcon = (type) => (TYPE_META[type]?.icon || FileText);
 const typeColor = (type) => (TYPE_META[type]?.color || 'text-muted-foreground');
+const nodeKey = (n) => n.distinguished_name || String(n.id);
 
-// Nó da árvore (recursivo, carregamento lazy)
-const TreeNode = ({ domainId, node, depth, selectedId, onSelect }) => {
+const TreeNode = ({ node, depth, selectedKey, onSelect, fetchChildren }) => {
   const [expanded, setExpanded] = useState(false);
   const [children, setChildren] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -41,8 +39,7 @@ const TreeNode = ({ domainId, node, depth, selectedId, onSelect }) => {
     if (next && children === null) {
       setLoading(true);
       try {
-        const { data } = await axios.get(`${API}/ad/domains/${domainId}/tree`, { params: { parent: node.object_id } });
-        setChildren(data);
+        setChildren(await fetchChildren(node));
       } catch {
         toast.error('Erro ao carregar filhos');
         setChildren([]);
@@ -55,10 +52,9 @@ const TreeNode = ({ domainId, node, depth, selectedId, onSelect }) => {
   return (
     <div>
       <div
-        className={`flex items-center gap-1 py-1 px-2 rounded cursor-pointer hover:bg-muted/50 ${selectedId === node.id ? 'bg-primary/10' : ''}`}
+        className={`flex items-center gap-1 py-1 px-2 rounded cursor-pointer hover:bg-muted/50 ${selectedKey === nodeKey(node) ? 'bg-primary/10' : ''}`}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
         onClick={() => onSelect(node)}
-        data-testid={`ad-node-${node.id}`}
       >
         <button
           onClick={(e) => { e.stopPropagation(); toggle(); }}
@@ -72,7 +68,7 @@ const TreeNode = ({ domainId, node, depth, selectedId, onSelect }) => {
         {node.child_count > 0 && <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{node.child_count}</span>}
       </div>
       {expanded && children && children.map((c) => (
-        <TreeNode key={c.id} domainId={domainId} node={c} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
+        <TreeNode key={nodeKey(c)} node={c} depth={depth + 1} selectedKey={selectedKey} onSelect={onSelect} fetchChildren={fetchChildren} />
       ))}
     </div>
   );
@@ -82,8 +78,10 @@ const AdBrowse = () => {
   const { domainId } = useParams();
   const navigate = useNavigate();
   const [domain, setDomain] = useState(null);
+  const [mode, setMode] = useState('db'); // 'db' (importado) | 'live' (LDAP)
   const [roots, setRoots] = useState([]);
   const [loadingRoots, setLoadingRoots] = useState(true);
+  const [treeKey, setTreeKey] = useState(0); // força remontar a árvore ao trocar de modo
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -91,25 +89,55 @@ const AdBrowse = () => {
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
 
+  const loadRoots = useCallback(async (m) => {
+    setLoadingRoots(true);
+    setRoots([]);
+    setSelected(null);
+    setDetail(null);
+    try {
+      if (m === 'live') {
+        const { data } = await axios.get(`${API}/ad/domains/${domainId}/ldap-browse`);
+        setRoots(data);
+      } else {
+        const { data } = await axios.get(`${API}/ad/domains/${domainId}/tree`);
+        setRoots(data);
+      }
+      setTreeKey((k) => k + 1);
+    } catch (e) {
+      const msg = e.response?.data?.detail || 'Erro ao carregar a árvore';
+      toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setLoadingRoots(false);
+    }
+  }, [domainId]);
+
   useEffect(() => {
     (async () => {
       try {
         const { data } = await axios.get(`${API}/ad/domains/${domainId}`);
         setDomain(data);
       } catch { /* ignore */ }
-      try {
-        const { data } = await axios.get(`${API}/ad/domains/${domainId}/tree`);
-        setRoots(data);
-      } catch {
-        toast.error('Erro ao carregar a árvore');
-      } finally {
-        setLoadingRoots(false);
-      }
     })();
   }, [domainId]);
 
+  useEffect(() => { loadRoots(mode); }, [mode, loadRoots]);
+
+  const fetchChildren = useCallback(async (node) => {
+    if (mode === 'live') {
+      const { data } = await axios.get(`${API}/ad/domains/${domainId}/ldap-browse`, { params: { dn: node.distinguished_name } });
+      return data;
+    }
+    const { data } = await axios.get(`${API}/ad/domains/${domainId}/tree`, { params: { parent: node.object_id } });
+    return data;
+  }, [mode, domainId]);
+
   const selectNode = useCallback(async (node) => {
     setSelected(node);
+    if (mode === 'live') {
+      // Nó ao vivo já traz as properties
+      setDetail(node);
+      return;
+    }
     setLoadingDetail(true);
     try {
       const { data } = await axios.get(`${API}/ad/objects/${node.id}`);
@@ -119,7 +147,7 @@ const AdBrowse = () => {
     } finally {
       setLoadingDetail(false);
     }
-  }, []);
+  }, [mode, domainId]);
 
   const runSearch = async (e) => {
     e?.preventDefault();
@@ -141,38 +169,54 @@ const AdBrowse = () => {
 
   return (
     <div className="space-y-4" data-testid="ad-browse-page">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Button variant="ghost" size="sm" onClick={() => navigate('/ad')}><ArrowLeft className="w-4 h-4 mr-1" />Domínios</Button>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Network className="w-6 h-6 text-indigo-400" />
-          {domain?.name || `Domínio ${domainId}`}
+        <h1 className="text-2xl font-bold flex items-center gap-2 min-w-0">
+          <Network className="w-6 h-6 text-indigo-400 shrink-0" />
+          <span className="truncate">{domain?.name || `Domínio ${domainId}`}</span>
         </h1>
         {domain?.object_count != null && <Badge variant="outline">{domain.object_count.toLocaleString()} objetos</Badge>}
+        {/* Alternador de modo */}
+        <div className="ml-auto flex items-center gap-1 rounded-lg border border-border p-0.5">
+          <button onClick={() => setMode('db')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'db' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-db">
+            <Database className="w-3.5 h-3.5" />Importado
+          </button>
+          <button onClick={() => setMode('live')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'live' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-live">
+            <Radio className="w-3.5 h-3.5" />LDAP ao vivo
+          </button>
+        </div>
       </div>
 
-      {/* Busca */}
-      <form onSubmit={runSearch} className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-xl">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Buscar por nome, samAccountName, DN, descrição ou SID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="ad-search-input" />
-        </div>
-        <Button type="submit" disabled={searching} data-testid="ad-search-btn">
-          {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-        </Button>
-        {searchResults !== null && <Button type="button" variant="ghost" onClick={clearSearch}>Limpar</Button>}
-      </form>
+      {/* Busca (apenas no modo importado) */}
+      {mode === 'db' && (
+        <form onSubmit={runSearch} className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-xl">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Buscar por nome, samAccountName, DN, descrição ou SID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="ad-search-input" />
+          </div>
+          <Button type="submit" disabled={searching} data-testid="ad-search-btn">
+            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          </Button>
+          {searchResults !== null && <Button type="button" variant="ghost" onClick={clearSearch}>Limpar</Button>}
+        </form>
+      )}
+      {mode === 'live' && (
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          <Radio className="w-4 h-4 text-indigo-400" />
+          Navegação ao vivo via LDAP — os filhos de cada OU/container são buscados sob demanda ao expandir. (A busca global usa os dados importados.)
+        </p>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Árvore ou resultados */}
         <Card className="min-h-[400px]">
           <CardContent className="p-2 max-h-[70vh] overflow-auto">
-            {searchResults !== null ? (
+            {mode === 'db' && searchResults !== null ? (
               <div>
                 <div className="px-2 py-1 text-xs text-muted-foreground">{searchResults.length} resultado(s)</div>
                 {searchResults.map((r) => {
                   const Icon = typeIcon(r.object_type);
                   return (
-                    <div key={r.id} className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer hover:bg-muted/50 ${selected?.id === r.id ? 'bg-primary/10' : ''}`} onClick={() => selectNode(r)} data-testid={`ad-result-${r.id}`}>
+                    <div key={r.id} className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer hover:bg-muted/50 ${selected?.id === r.id ? 'bg-primary/10' : ''}`} onClick={() => selectNode(r)}>
                       <Icon className={`w-4 h-4 shrink-0 ${typeColor(r.object_type)}`} />
                       <span className="truncate text-sm">{r.name || r.object_id}</span>
                       <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">{r.object_type}</Badge>
@@ -184,14 +228,17 @@ const AdBrowse = () => {
             ) : loadingRoots ? (
               <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
             ) : roots.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">Árvore vazia — importe os arquivos do BloodHound.</div>
+              <div className="p-4 text-center text-muted-foreground text-sm">
+                {mode === 'live' ? 'Nada retornado do LDAP — verifique a conexão do domínio.' : 'Árvore vazia — importe os arquivos do BloodHound ou use o modo "LDAP ao vivo".'}
+              </div>
             ) : (
-              roots.map((n) => <TreeNode key={n.id} domainId={domainId} node={n} depth={0} selectedId={selected?.id} onSelect={selectNode} />)
+              <div key={treeKey}>
+                {roots.map((n) => <TreeNode key={nodeKey(n)} node={n} depth={0} selectedKey={selected ? nodeKey(selected) : null} onSelect={selectNode} fetchChildren={fetchChildren} />)}
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Detalhe */}
         <Card className="min-h-[400px]">
           <CardContent className="p-4 max-h-[70vh] overflow-auto">
             {loadingDetail ? (
@@ -200,8 +247,8 @@ const AdBrowse = () => {
               <div className="p-4 text-center text-muted-foreground text-sm">Selecione um objeto para ver os detalhes.</div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  {(() => { const Icon = typeIcon(detail.object_type); return <Icon className={`w-5 h-5 ${typeColor(detail.object_type)}`} />; })()}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(() => { const Icon = typeIcon(detail.object_type); return <Icon className={`w-5 h-5 shrink-0 ${typeColor(detail.object_type)}`} />; })()}
                   <span className="text-lg font-semibold break-all">{detail.name || detail.object_id}</span>
                   <Badge variant="outline">{detail.object_type}</Badge>
                   {detail.highvalue && <Badge variant="destructive">High Value</Badge>}
