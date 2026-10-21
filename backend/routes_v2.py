@@ -4151,6 +4151,273 @@ async def import_servers_from_nmap(
     )
 
 
+class ListImportHost(BaseModel):
+    value: str  # IP ou hostname/DNS
+    plugin_instance_id: Optional[int] = None
+
+class ListImportRequest(BaseModel):
+    hosts: List[ListImportHost]
+
+
+def _is_ip_address(value: str) -> bool:
+    import ipaddress
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+@router.post("/servers/import/list", response_model=NmapImportResponse)
+async def import_servers_from_list(
+    request: ListImportRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Importa servidores a partir de uma lista simples (arquivo .txt ou colagem),
+    uma entrada por linha. Cada entrada pode ser um IP ou um nome DNS/hostname.
+
+    Para cada entrada:
+    - name e ip recebem o valor informado (um hostname fica navegável por nome,
+      o que também permite autenticação Kerberos usando o FQDN como SPN).
+    - Detecta duplicatas por IP OU por nome.
+    """
+    import uuid
+    from sqlalchemy import or_
+
+    results = {"imported": [], "failed": [], "skipped": []}
+
+    for host in request.hosts:
+        value = (host.value or "").strip()
+        if not value:
+            continue
+        try:
+            # Duplicata por IP ou por nome
+            existing = await db.execute(
+                select(Server).where(
+                    or_(Server.ip == value, Server.name == value)
+                )
+            )
+            existing_server = existing.scalar_one_or_none()
+            if existing_server:
+                results["skipped"].append({
+                    "ip": value,
+                    "name": value,
+                    "reason": f"Servidor já existe (ID: {existing_server.id})"
+                })
+                continue
+
+            # plugin_type a partir da instância
+            plugin_type = "direct_interaction"
+            if host.plugin_instance_id:
+                instance_result = await db.execute(
+                    select(PluginInstance).where(PluginInstance.id == host.plugin_instance_id)
+                )
+                instance = instance_result.scalar_one_or_none()
+                if instance:
+                    plugin_type = instance.plugin_type
+
+            is_ip = _is_ip_address(value)
+            new_server = Server(
+                guid=str(uuid.uuid4()),
+                name=value,
+                ip=value,
+                plugin_instance_id=host.plugin_instance_id,
+                plugin_type=plugin_type,
+                plugin_config={
+                    "imported_from": "list",
+                    "entry_type": "ip" if is_ip else "hostname"
+                }
+            )
+            db.add(new_server)
+            await db.flush()
+
+            results["imported"].append({
+                "id": new_server.id,
+                "ip": value,
+                "name": value
+            })
+        except Exception as e:
+            logger.error(f"Error importing server from list '{value}': {e}")
+            results["failed"].append({"ip": value, "name": value, "error": str(e)})
+
+    await db.commit()
+
+    return NmapImportResponse(
+        success=True,
+        imported=len(results["imported"]),
+        failed=len(results["failed"]),
+        skipped=len(results["skipped"]),
+        details=results["imported"] + results["failed"] + results["skipped"]
+    )
+
+
+def _server_cleanup_where(unreachable: bool, never_accessed: bool):
+    """Monta o filtro (cláusula WHERE) de limpeza de servidores.
+
+    - unreachable: servidores marcados como inacessíveis (is_unreachable == True)
+    - never_accessed: servidores sem acesso bem-sucedido (nunca verificados, sem
+      shares e não marcados como inacessíveis) — ou seja, sem tentativa produtiva.
+
+    Em qualquer caso, servidores que possuem arquivos baixados (downloads) NUNCA
+    são incluídos na limpeza.
+
+    Retorna None quando nenhum grupo foi selecionado.
+    """
+    from sqlalchemy import and_, or_
+    conds = []
+    if unreachable:
+        conds.append(Server.is_unreachable == True)  # noqa: E712
+    if never_accessed:
+        conds.append(and_(
+            Server.verified == False,          # noqa: E712
+            Server.is_unreachable == False,    # noqa: E712
+            (Server.shares_count == 0) | (Server.shares_count.is_(None)),
+        ))
+    if not conds:
+        return None
+
+    # Protege servidores que possuem downloads (por id ou guid)
+    dl_ids = select(DownloadedFile.server_id).where(DownloadedFile.server_id.isnot(None))
+    dl_guids = select(DownloadedFile.server_guid).where(DownloadedFile.server_guid.isnot(None))
+    no_downloads = and_(Server.id.notin_(dl_ids), Server.guid.notin_(dl_guids))
+
+    return and_(or_(*conds), no_downloads)
+
+
+@router.get("/servers/cleanup/preview")
+async def preview_cleanup_servers(
+    unreachable: bool = True,
+    never_accessed: bool = True,
+    db: AsyncSession = Depends(get_db_readonly)
+):
+    """Prévia da limpeza: quantos servidores seriam removidos e uma amostra."""
+    where = _server_cleanup_where(unreachable, never_accessed)
+    if where is None:
+        return {"total": 0, "unreachable": 0, "never_accessed": 0, "sample": []}
+
+    result = await db.execute(select(Server).where(where))
+    servers = result.scalars().all()
+
+    n_unreachable = sum(1 for s in servers if s.is_unreachable)
+    n_never = sum(
+        1 for s in servers
+        if (not s.is_unreachable and not s.verified and not (s.shares_count or 0))
+    )
+    return {
+        "total": len(servers),
+        "unreachable": n_unreachable,
+        "never_accessed": n_never,
+        "sample": [
+            {"id": s.id, "name": s.name, "ip": s.ip, "is_unreachable": s.is_unreachable}
+            for s in servers[:100]
+        ],
+    }
+
+
+class CleanupServersRequest(BaseModel):
+    unreachable: bool = True
+    never_accessed: bool = True
+
+
+@router.post("/servers/cleanup")
+async def cleanup_servers(
+    request: CleanupServersRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove em lote servidores inacessíveis e/ou sem tentativa de acesso.
+
+    Otimizado para grandes volumes: processa em lotes, apaga as linhas
+    relacionadas via SQL em massa e move para storage_deleted apenas os
+    diretórios de storage que realmente existem (a maioria dos servidores
+    nunca acessados não possui dados em disco).
+    """
+    import os
+    import re
+    import shutil
+    from sqlalchemy import or_
+    from storage_utils import get_server_storage_path, STORAGE_BASE_PATH
+
+    where = _server_cleanup_where(request.unreachable, request.never_accessed)
+    if where is None:
+        return {"deleted": 0, "total_matched": 0, "errors": []}
+
+    # Coleta (id, guid, name) dos servidores correspondentes
+    result = await db.execute(
+        select(Server.id, Server.guid, Server.name).where(where)
+    )
+    rows = result.fetchall()
+    total = len(rows)
+
+    storage_deleted_base = os.path.join(os.path.dirname(STORAGE_BASE_PATH), "storage_deleted")
+
+    deleted = 0
+    moved_storage = 0
+    errors = []
+    BATCH = 500
+
+    for start in range(0, total, BATCH):
+        batch = rows[start:start + BATCH]
+        ids = [r[0] for r in batch]
+        guids = [r[1] for r in batch]
+        try:
+            # Preserva em storage_deleted apenas os diretórios existentes
+            for sid, guid, name in batch:
+                try:
+                    src = None
+                    p_id = get_server_storage_path(sid)
+                    p_guid = get_server_storage_path(guid)
+                    if os.path.exists(p_id):
+                        src = p_id
+                    elif os.path.exists(p_guid):
+                        src = p_guid
+                    if src:
+                        os.makedirs(storage_deleted_base, exist_ok=True)
+                        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        safe = re.sub(r'[^\w\-]', '_', str(name or ''))[:50]
+                        shutil.move(str(src), os.path.join(storage_deleted_base, f"{ts}_{safe}_{sid}"))
+                        moved_storage += 1
+                except Exception as move_err:
+                    logger.warning(f"Could not move storage for server {sid}: {move_err}")
+
+            # Apaga linhas relacionadas em massa.
+            # Tabelas com FK para servers.id (server_shares, downloaded_files,
+            # share_scan_jobs) são apagadas por server_id para satisfazer a FK.
+            from database import ShareScanJob
+            await db.execute(delete(ShareScanJob).where(ShareScanJob.server_id.in_(ids)))
+            await db.execute(delete(ServerShare).where(
+                or_(ServerShare.server_id.in_(ids), ServerShare.server_guid.in_(guids))
+            ))
+            await db.execute(delete(ServerItem).where(ServerItem.server_guid.in_(guids)))
+            await db.execute(delete(DownloadedFile).where(
+                or_(DownloadedFile.server_id.in_(ids), DownloadedFile.server_guid.in_(guids))
+            ))
+            await db.execute(delete(FileVersion).where(FileVersion.server_guid.in_(guids)))
+            await db.execute(delete(DownloadJob).where(DownloadJob.server_id.in_(ids)))
+            await db.execute(
+                delete(GitleaksFinding).where(
+                    or_(
+                        GitleaksFinding.server_id.in_(ids),
+                        GitleaksFinding.extracted_server_id.in_(ids),
+                    )
+                )
+            )
+            await db.execute(delete(Server).where(Server.id.in_(ids)))
+            await db.commit()
+            deleted += len(ids)
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error deleting server batch during cleanup: {e}")
+            errors.append({"batch_start": start, "error": str(e)})
+
+    return {
+        "deleted": deleted,
+        "total_matched": total,
+        "moved_storage": moved_storage,
+        "errors": errors,
+    }
+
+
 @router.post("/servers/import/nmap-xml")
 async def import_servers_from_nmap_xml_file(
     file_content: str,
@@ -4180,7 +4447,11 @@ async def import_servers_from_nmap_xml_file(
         9200: 'Elasticsearch'
     }
     SMB_PORT = 445
-    
+    # Outras portas relevantes (não-DB), ex.: acesso remoto
+    OTHER_PORTS = {
+        3389: 'RDP'
+    }
+
     try:
         root = ET.fromstring(file_content)
     except ET.ParseError as e:
@@ -4209,24 +4480,28 @@ async def import_servers_from_nmap_xml_file(
         # Verificar portas abertas
         has_smb = False
         has_db = False
+        has_other = False
         db_types = []
-        
+
         for port_elem in host_elem.findall('.//ports/port'):
             state = port_elem.find('state')
             if state is None or state.get('state') != 'open':
                 continue
-            
+
             port_id = int(port_elem.get('portid', 0))
-            
+
             if port_id == SMB_PORT:
                 has_smb = True
-            
+
             if port_id in DB_PORTS:
                 has_db = True
                 db_types.append(DB_PORTS[port_id])
-        
-        # Apenas incluir hosts com SMB ou DB
-        if has_smb or has_db:
+
+            if port_id in OTHER_PORTS:
+                has_other = True
+
+        # Incluir hosts com SMB, banco de dados ou outras portas relevantes (ex.: RDP)
+        if has_smb or has_db or has_other:
             hosts_to_import.append({
                 "ip": ip,
                 "name": name,

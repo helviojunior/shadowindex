@@ -13,6 +13,7 @@ Configuration:
 """
 
 import asyncio
+import os
 import socket
 import struct
 import ipaddress
@@ -152,13 +153,18 @@ class DirectInteractionPlugin(BasePlugin):
             credential: Credential dict with domain, username, password/ntlm_hash
             credential_id: Optional ID of the credential for verification tracking
         """
-        if credential.get("credential_type") not in ("user_password", "anonymous"):
+        if credential.get("credential_type") not in ("user_password", "kerberos", "anonymous"):
             raise PluginException(
-                "Credencial inválida: apenas credenciais do tipo 'user_password' ou 'anonymous' são suportadas",
+                "Credencial inválida: apenas credenciais do tipo 'user_password', 'kerberos' ou 'anonymous' são suportadas",
                 {"credential_type": credential.get("credential_type")}
             )
         self._credential = credential
         self._credential_id_used = credential_id or credential.get("id")
+
+    def set_kerberos_spn_hint(self, hostname: str):
+        """Define o hostname/FQDN conhecido do servidor para montar o SPN Kerberos
+        (cifs/<hostname>), evitando depender de PTR reverso quando o alvo é um IP."""
+        self._kerberos_spn_hint = (hostname or "").strip() or None
     
     async def health_check(self) -> Dict[str, Any]:
         """Check plugin connectivity by testing DNS resolution"""
@@ -733,11 +739,22 @@ class DirectInteractionPlugin(BasePlugin):
         # Validate credential has required fields
         credential_type = self._credential.get("credential_type") or "user_password"
         is_anonymous = credential_type == "anonymous"
+        is_kerberos = credential_type == "kerberos"
         username = self._credential.get("username")
         password = self._credential.get("password")
         ntlm_hash = self._credential.get("ntlm_hash")
+        kerberos_ccache = self._credential.get("kerberos_ccache")
 
-        if not is_anonymous:
+        if is_kerberos:
+            # Autenticação Kerberos: exige apenas o ticket ccache.
+            # Usuário/domínio são opcionais (derivados do próprio ccache quando ausentes).
+            if not kerberos_ccache:
+                raise CredentialNotSetException(
+                    operation="SMB",
+                    plugin_name=self.PLUGIN_NAME,
+                    message="Credencial inválida: arquivo ccache do Kerberos não configurado."
+                )
+        elif not is_anonymous:
             if not username:
                 raise CredentialNotSetException(
                     operation="SMB",
@@ -760,10 +777,11 @@ class DirectInteractionPlugin(BasePlugin):
             raise PluginException("impacket não está instalado. Execute: pip install impacket")
         
         domain = self._credential.get("domain") or ""
+        kdc_host = self._credential.get("kdc_host") or None
         username = username or ""
         password = password or ""
         ntlm_hash = ntlm_hash or ""
-        
+
         # Parse NTLM hash (LM:NT or just NT)
         lmhash = ""
         nthash = ""
@@ -772,19 +790,60 @@ class DirectInteractionPlugin(BasePlugin):
                 lmhash, nthash = ntlm_hash.split(":", 1)
             else:
                 nthash = ntlm_hash
-        
+
+        # Para Kerberos, materializa o ccache em arquivo temporário e expõe via KRB5CCNAME.
+        # O impacket lê esse arquivo quando kerberosLogin(..., useCache=True) é chamado.
+        ccache_path = None
+        prev_krb5ccname = None
+        if is_kerberos:
+            # Verifica a validade do ticket ANTES de tentar autenticar
+            from kerberos_utils import is_ccache_expired, get_ccache_expiry
+            if is_ccache_expired(kerberos_ccache) is True:
+                exp = get_ccache_expiry(kerberos_ccache)
+                when = exp.strftime("%Y-%m-%d %H:%M:%S UTC") if exp else "desconhecido"
+                raise AuthenticationFailureException(
+                    username=username or "",
+                    domain=domain or "",
+                    reason=f"Ticket Kerberos (ccache) expirado em {when}. Gere um novo ticket e atualize a credencial."
+                )
+            ccache_path = self._write_ccache_tempfile(kerberos_ccache)
+            prev_krb5ccname = os.environ.get("KRB5CCNAME")
+            os.environ["KRB5CCNAME"] = ccache_path
+            # Deriva usuário/domínio do próprio ccache quando não informados
+            if not username or not domain:
+                cc_domain, cc_username = self._parse_ccache_principal(ccache_path)
+                domain = domain or cc_domain or ""
+                username = username or cc_username or ""
+
         try:
             logger.info(f"Connecting to SMB server: {server_ip}")
 
+            # Para Kerberos, o SPN é cifs/<remoteName>. Se o alvo for um IP, o KDC
+            # retorna KDC_ERR_S_PRINCIPAL_UNKNOWN, pois o SPN é registrado pelo
+            # hostname/FQDN. Resolvemos o nome e o usamos como remoteName, mantendo
+            # a conexão TCP no IP original (remoteHost).
+            remote_name = server_ip
+            if is_kerberos:
+                remote_name = self._resolve_kerberos_spn_name(server_ip, domain)
+                if remote_name != server_ip:
+                    logger.info(f"Kerberos SPN name resolved: {server_ip} -> {remote_name}")
+
             # Create SMB connection (tunneled through SOCKS when a proxy is configured)
             with self._smb_socket_factory():
-                smb_conn = SMBConnection(server_ip, server_ip, timeout=30)
+                smb_conn = SMBConnection(remote_name, server_ip, timeout=30)
 
-            # Authenticate - priority: anonymous > password > NTLM hash
+            # Authenticate - priority: anonymous > kerberos > password > NTLM hash
             if is_anonymous:
                 # Anonymous / null session: empty username and password
                 logger.info(f"Using anonymous (null session) authentication for {server_ip}")
                 smb_conn.login("", "", "")
+            elif is_kerberos:
+                # Autenticação Kerberos usando o ticket do ccache (KRB5CCNAME)
+                logger.info(f"Using Kerberos (ccache) authentication for {domain}\\{username or '<ccache>'} (SPN cifs/{remote_name})")
+                smb_conn.kerberosLogin(
+                    username, "", domain, "", "", "",
+                    kdcHost=kdc_host, useCache=True,
+                )
             elif password:
                 # Use password authentication (priority)
                 logger.info(f"Using password authentication for {domain}\\{username}")
@@ -820,6 +879,15 @@ class DirectInteractionPlugin(BasePlugin):
                     domain="",
                     reason="Servidor não permite autenticação anônima (null session)."
                 )
+            if is_kerberos and any(k in error_msg for k in [
+                "kerberos", "krb_ap_err", "kdc_err", "clock skew", "skew",
+                "ticket", "ccache", "krb5"
+            ]):
+                raise AuthenticationFailureException(
+                    username=username,
+                    domain=domain,
+                    reason=f"Falha na autenticação Kerberos (ticket ccache). Verifique a validade do ticket, o relógio (clock skew) e o KDC: {str(e)}"
+                )
             if "status_logon_failure" in error_msg or "logon failure" in error_msg:
                 raise AuthenticationFailureException(
                     username=username,
@@ -831,6 +899,16 @@ class DirectInteractionPlugin(BasePlugin):
                     username=username,
                     domain=domain,
                     reason="Conta desabilitada"
+                )
+            elif "status_logon_type_not_granted" in error_msg or "0xc000015b" in error_msg:
+                raise AuthenticationFailureException(
+                    username=username,
+                    domain=domain,
+                    reason=(
+                        "Autenticação válida, mas a conta não tem o direito de logon de rede neste "
+                        "servidor (STATUS_LOGON_TYPE_NOT_GRANTED). Verifique a política 'Acessar este "
+                        "computador pela rede' / 'Negar acesso a este computador pela rede' para esta conta."
+                    )
                 )
             elif "status_password_expired" in error_msg:
                 raise AuthenticationFailureException(
@@ -869,7 +947,157 @@ class DirectInteractionPlugin(BasePlugin):
                     message=f"Falha na conexão SMB: {str(e)}",
                     original_error=e
                 )
-    
+        finally:
+            # Limpa o ccache temporário e restaura KRB5CCNAME, se usados
+            if ccache_path:
+                try:
+                    os.unlink(ccache_path)
+                except OSError:
+                    pass
+                if prev_krb5ccname is None:
+                    os.environ.pop("KRB5CCNAME", None)
+                else:
+                    os.environ["KRB5CCNAME"] = prev_krb5ccname
+
+    def _write_ccache_tempfile(self, ccache_b64: str) -> str:
+        """Decodifica o ccache (base64) e grava em arquivo temporário. Retorna o caminho."""
+        import base64
+        import tempfile
+        try:
+            raw = base64.b64decode(ccache_b64, validate=False)
+        except Exception as e:
+            raise CredentialNotSetException(
+                operation="SMB",
+                plugin_name=self.PLUGIN_NAME,
+                message=f"Credencial Kerberos inválida: não foi possível decodificar o ccache ({e})."
+            )
+        fd, path = tempfile.mkstemp(prefix="shadowindex_", suffix=".ccache")
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(raw)
+        except Exception:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+            raise
+        return path
+
+    def _parse_ccache_principal(self, ccache_path: str):
+        """Extrai (domínio, usuário) do ccache. Retorna (None, None) em caso de falha."""
+        prev = os.environ.get("KRB5CCNAME")
+        os.environ["KRB5CCNAME"] = ccache_path
+        try:
+            from impacket.krb5.ccache import CCache
+            domain, username, _tgt, _tgs = CCache.parseFile()
+            return (domain or None), (username or None)
+        except Exception as e:
+            logger.warning(f"Não foi possível ler o principal do ccache: {e}")
+            return None, None
+        finally:
+            if prev is None:
+                os.environ.pop("KRB5CCNAME", None)
+            else:
+                os.environ["KRB5CCNAME"] = prev
+
+    def _resolve_kerberos_spn_name(self, server_ip: str, domain: str) -> str:
+        """Resolve o nome a usar como SPN Kerberos (cifs/<nome>).
+
+        - Se o alvo já for um hostname, usa-o (anexando o domínio quando não for FQDN).
+        - Se for um IP, tenta um PTR reverso para obter o FQDN.
+        - Em último caso, retorna o próprio alvo (provavelmente falhará no Kerberos).
+        """
+        def _normalize_hostname(name: str) -> str:
+            name = name.rstrip(".")
+            if "." not in name and domain:
+                return f"{name}.{domain}"
+            return name
+
+        # 1) Preferir o hostname/FQDN conhecido do servidor (ex.: campo "name" do
+        #    registro). Evita depender de PTR reverso quando o alvo é um IP.
+        hint = getattr(self, "_kerberos_spn_hint", None)
+        if hint:
+            hint = hint.strip()
+            try:
+                ipaddress.ip_address(hint)
+                hint_is_ip = True
+            except ValueError:
+                hint_is_ip = False
+            if hint and not hint_is_ip:
+                return _normalize_hostname(hint)
+
+        target = (server_ip or "").strip()
+        if not target:
+            return target
+
+        is_ip = True
+        try:
+            ipaddress.ip_address(target)
+        except ValueError:
+            is_ip = False
+
+        if not is_ip:
+            # Já é um hostname; completa o FQDN com o domínio se necessário
+            return _normalize_hostname(target)
+
+        # É um IP: tenta resolver o nome por PTR reverso
+        try:
+            host, _aliases, _addrs = socket.gethostbyaddr(target)
+            if host:
+                host = host.rstrip(".")
+                if "." not in host and domain:
+                    host = f"{host}.{domain}"
+                return host
+        except Exception as e:
+            logger.warning(
+                f"PTR reverso falhou para {target}; Kerberos tentará com o IP "
+                f"(pode resultar em KDC_ERR_S_PRINCIPAL_UNKNOWN): {e}"
+            )
+        return target
+
+    @staticmethod
+    def _is_access_denied_error(err: Exception) -> bool:
+        """Detecta STATUS_ACCESS_DENIED (0xc0000022) em erros do impacket."""
+        msg = str(err).lower()
+        return (
+            "access_denied" in msg
+            or "access denied" in msg
+            or "0xc0000022" in msg
+            or "status_access_denied" in msg
+        )
+
+    # Compartilhamentos comuns a sondar quando a enumeração é negada.
+    # Inclui shares administrativos (acessíveis quando a conta é admin, mesmo
+    # que o servidor bloqueie a enumeração remota) e nomes de uso frequente.
+    _COMMON_SHARES = [
+        ("C$", "hidden"), ("ADMIN$", "hidden"), ("D$", "hidden"), ("E$", "hidden"),
+        ("IPC$", "ipc"),
+        ("SYSVOL", "disk"), ("NETLOGON", "disk"),
+        ("Users", "disk"), ("Shares", "disk"), ("Dados", "disk"), ("Public", "disk"),
+        ("Profiles", "disk"), ("Home", "disk"), ("DFS", "disk"),
+    ]
+
+    def _probe_common_shares(self, smb_conn) -> List[ShareInfo]:
+        """Tenta um connectTree em uma lista de shares comuns e retorna os acessíveis.
+
+        Usado como fallback quando o servidor nega a enumeração (NetrShareEnum),
+        mas ainda permite acesso direto a compartilhamentos conhecidos.
+        """
+        found = []
+        for name, type_str in self._COMMON_SHARES:
+            try:
+                tid = smb_conn.connectTree(name)
+                try:
+                    smb_conn.disconnectTree(tid)
+                except Exception:
+                    pass
+                found.append(ShareInfo(name=name, share_type=type_str, remark=""))
+                logger.debug(f"Fallback: share acessível detectado: {name}")
+            except Exception:
+                # Share inexistente ou sem acesso - ignora silenciosamente
+                continue
+        return found
+
     async def list_shares(self, server_ip: str, ignore_cache: bool = False) -> List[ShareInfo]:
         """
         List all shares available on a server using SMB.
@@ -899,9 +1127,36 @@ class DirectInteractionPlugin(BasePlugin):
             smb_conn = None
             try:
                 smb_conn = self._get_smb_connection(server_ip)
-                
+
+                # Enumera os compartilhamentos via SRVSVC (NetrShareEnum).
+                # Servidores endurecidos podem negar a enumeração a contas não
+                # administrativas (STATUS_ACCESS_DENIED) mesmo com a autenticação
+                # bem-sucedida. Nesse caso, tentamos sondar shares comuns.
+                try:
+                    raw_shares = smb_conn.listShares()
+                except Exception as enum_err:
+                    if self._is_access_denied_error(enum_err):
+                        logger.warning(
+                            f"NetrShareEnum negado em {server_ip} (ACCESS_DENIED). "
+                            f"Autenticação OK; tentando sondar compartilhamentos comuns."
+                        )
+                        probed = self._probe_common_shares(smb_conn)
+                        if probed:
+                            logger.info(f"Fallback encontrou {len(probed)} share(s) em {server_ip}")
+                            return probed
+                        raise AccessDeniedException(
+                            path=server_ip,
+                            message=(
+                                "Autenticação bem-sucedida, mas a conta não tem permissão para "
+                                "enumerar os compartilhamentos (NetrShareEnum negado). O servidor está "
+                                "acessível; compartilhamentos podem existir e ser acessíveis diretamente "
+                                "se você souber o nome."
+                            )
+                        )
+                    raise
+
                 shares = []
-                for share in smb_conn.listShares():
+                for share in raw_shares:
                     # Handle both dict-like and object-like access
                     # impacket can return SHARE_INFO_1 objects or dicts depending on version
                     try:
@@ -978,7 +1233,7 @@ class DirectInteractionPlugin(BasePlugin):
             logger.info(f"Listed {len(shares)} shares on {server_ip}")
             return shares
             
-        except (AuthenticationFailureException, ConnectionException, ServerUnreachableException):
+        except (AuthenticationFailureException, ConnectionException, ServerUnreachableException, AccessDeniedException):
             raise
         except Exception as e:
             import traceback
@@ -1225,11 +1480,12 @@ class DirectInteractionPlugin(BasePlugin):
             )
     
     async def sql_request(
-        self, 
-        connection_string: str, 
+        self,
+        connection_string: str,
         query: str,
         timeout: int = 30,
-        ignore_cache: bool = False
+        ignore_cache: bool = False,
+        db_type: Optional[str] = None
     ) -> SqlResult:
         """
         Execute a SQL query on a database with SOCKS proxy support.
@@ -1257,8 +1513,13 @@ class DirectInteractionPlugin(BasePlugin):
         
         # Parse connection config
         config = self._parse_connection_config(connection_string)
+        # O tipo configurado na conexão (coluna "Tipo", ex.: MySQL) tem prioridade
+        # sobre a inferência feita a partir da connection string (que, no formato
+        # ADO/chave-valor, não carrega o tipo do banco).
+        if db_type:
+            config["db_type"] = db_type.strip().lower()
         db_type = config.get("db_type", "").lower()
-        
+
         if not db_type:
             raise PluginException("Tipo de banco de dados não especificado")
         
@@ -1328,8 +1589,59 @@ class DirectInteractionPlugin(BasePlugin):
             import traceback
             error_traceback = traceback.format_exc()
             logger.error(f"SQL execution failed on {db_type}: {e}\n{error_traceback}")
-            raise PluginException(f"Erro ao executar SQL: {str(e)}")
-    
+            raise PluginException(self._classify_sql_error(e, config, db_type))
+
+    @staticmethod
+    def _classify_sql_error(err: Exception, config: Dict[str, Any], db_type: str) -> str:
+        """Transforma erros crípticos dos drivers em mensagens claras."""
+        host = config.get("host") or "?"
+        port = config.get("port") or {
+            "mssql": 1433, "mysql": 3306, "mariadb": 3306,
+            "postgres": 5432, "oracle": 1521, "mongodb": 27017,
+        }.get(db_type, "?")
+        target = f"{host}:{port}"
+        msg = str(err)
+        low = msg.lower()
+
+        # Inacessível / timeout / serviço fora do ar
+        unreachable_markers = [
+            "20009", "adaptive server is unavailable", "unable to connect",
+            "can't connect", "cannot connect", "could not connect",
+            "connection refused", "timed out", "timeout expired", "etimedout",
+            "host unreachable", "network is unreachable", "no route to host",
+            "name or service not known", "getaddrinfo", "server selection timeout",
+            "serverselectiontimeout", "ora-12170", "ora-12541", "ora-12170",
+            "errno 2003", "errno 111", "errno 110", "connection timed out",
+        ]
+        if any(m in low for m in unreachable_markers):
+            return (
+                f"Banco de dados inacessível: {target} ({db_type}). "
+                f"Verifique a rede/VPN, o firewall e se o serviço está ativo na porta "
+                f"(instâncias nomeadas podem usar porta dinâmica). Detalhe: {msg}"
+            )
+
+        # Falha de autenticação
+        auth_markers = [
+            "login failed", "18456", "access denied", "authentication failed",
+            "password authentication failed", "ora-01017", "invalid credentials",
+            "auth failed", "permission denied", "1045",  # MySQL access denied
+        ]
+        if any(m in low for m in auth_markers):
+            user = config.get("user") or ""
+            return (
+                f"Falha de autenticação no banco {target} ({db_type}) para o usuário "
+                f"'{user}': usuário/senha inválidos ou sem permissão. Detalhe: {msg}"
+            )
+
+        # Banco/base inexistente
+        if any(m in low for m in ["unknown database", "does not exist", "ora-12514", "cannot open database", "4060"]):
+            return (
+                f"Não foi possível abrir o banco '{config.get('database') or '?'}' em {target} "
+                f"({db_type}). Verifique o nome do database. Detalhe: {msg}"
+            )
+
+        return f"Erro ao executar SQL em {target} ({db_type}): {msg}"
+
     def _parse_connection_config(self, connection_string: str) -> Dict[str, Any]:
         """Parse connection string or JSON config into a dict."""
         import json
@@ -1355,7 +1667,73 @@ class DirectInteractionPlugin(BasePlugin):
                 "port": int(match.group(5)) if match.group(5) else None,
                 "database": match.group(6) or ""
             }
-        
+
+        # Parse formato chave-valor ADO/.NET/ODBC:
+        #   Server=host,port;User ID=user;Password=pwd;Database=db;
+        if "=" in connection_string:
+            kv = {}
+            for part in connection_string.split(";"):
+                part = part.strip()
+                if not part or "=" not in part:
+                    continue
+                k, v = part.split("=", 1)
+                kv[k.strip().lower()] = v.strip()
+
+            if kv:
+                host_raw = (
+                    kv.get("server") or kv.get("data source") or kv.get("address")
+                    or kv.get("addr") or kv.get("network address") or kv.get("host")
+                )
+                host = host_raw
+                port = None
+                if host_raw:
+                    # SQL Server usa "host,port"; "host\instância" é mantido
+                    # intacto (o driver resolve a instância via SQL Browser).
+                    if "," in host_raw:
+                        host, port_s = host_raw.split(",", 1)
+                        host = host.strip()
+                        try:
+                            port = int(port_s.strip())
+                        except ValueError:
+                            port = None
+                if kv.get("port"):
+                    try:
+                        port = int(kv["port"])
+                    except ValueError:
+                        pass
+
+                user = (
+                    kv.get("user id") or kv.get("uid") or kv.get("user")
+                    or kv.get("username") or ""
+                )
+                password = kv.get("password") or kv.get("pwd") or ""
+                database = kv.get("database") or kv.get("initial catalog") or ""
+
+                # Inferência do tipo de banco: chave explícita > provider/driver > porta
+                db_type = (kv.get("db_type") or kv.get("dbtype") or kv.get("provider")
+                           or kv.get("driver") or "").lower()
+                if "sql server" in db_type or "sqlserver" in db_type or "mssql" in db_type:
+                    db_type = "mssql"
+                elif "mysql" in db_type or "mariadb" in db_type:
+                    db_type = "mysql"
+                elif "postgre" in db_type:
+                    db_type = "postgres"
+                elif "oracle" in db_type:
+                    db_type = "oracle"
+                elif not db_type:
+                    port_to_type = {3306: "mysql", 5432: "postgres", 1521: "oracle", 1433: "mssql"}
+                    db_type = port_to_type.get(port, "mssql")  # formato ADO: padrão SQL Server
+
+                if host:
+                    return {
+                        "db_type": db_type,
+                        "user": user,
+                        "password": password,
+                        "host": host,
+                        "port": port,
+                        "database": database,
+                    }
+
         raise PluginException(f"Formato de connection string inválido: {connection_string}")
     
     def _parse_proxy_url(self, proxy_url: str) -> Dict[str, Any]:

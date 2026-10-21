@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Plus, CheckCircle, XCircle, HardDrive, Download, Network, Pencil, X, Check, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Search, Plug, ShieldAlert, AlertTriangle, Loader2, AlertCircle, Unplug, FolderOpen, Star, CheckCheck } from 'lucide-react';
 import {
   AlertDialog,
@@ -75,6 +76,67 @@ const Servers = () => {
     open: false,
     existingServer: null
   });
+
+  // Limpeza em lote (inacessíveis / sem tentativa de acesso)
+  const [cleanupDialog, setCleanupDialog] = useState({
+    open: false,
+    loading: false,
+    deleting: false,
+    unreachable: true,
+    neverAccessed: true,
+    preview: null
+  });
+
+  const openCleanupDialog = async () => {
+    setCleanupDialog((d) => ({ ...d, open: true, loading: true, preview: null }));
+    try {
+      const { data } = await axios.get(`${API}/v2/servers/cleanup/preview`, {
+        params: { unreachable: true, never_accessed: true }
+      });
+      setCleanupDialog((d) => ({ ...d, loading: false, preview: data, unreachable: true, neverAccessed: true }));
+    } catch (error) {
+      console.error('Error loading cleanup preview:', error);
+      toast.error('Erro ao calcular a prévia da limpeza');
+      setCleanupDialog((d) => ({ ...d, open: false, loading: false }));
+    }
+  };
+
+  const refreshCleanupPreview = async (unreachable, neverAccessed) => {
+    setCleanupDialog((d) => ({ ...d, loading: true, unreachable, neverAccessed }));
+    try {
+      const { data } = await axios.get(`${API}/v2/servers/cleanup/preview`, {
+        params: { unreachable, never_accessed: neverAccessed }
+      });
+      setCleanupDialog((d) => ({ ...d, loading: false, preview: data }));
+    } catch (error) {
+      console.error('Error loading cleanup preview:', error);
+      setCleanupDialog((d) => ({ ...d, loading: false }));
+    }
+  };
+
+  const handleCleanupConfirm = async () => {
+    setCleanupDialog((d) => ({ ...d, deleting: true }));
+    try {
+      const { data } = await axios.post(`${API}/v2/servers/cleanup`, {
+        unreachable: cleanupDialog.unreachable,
+        never_accessed: cleanupDialog.neverAccessed
+      });
+      if (data.deleted > 0) {
+        toast.success(`${data.deleted} servidor(es) removido(s)`);
+      } else {
+        toast.info('Nenhum servidor correspondente para remover');
+      }
+      if (data.errors && data.errors.length > 0) {
+        toast.error(`${data.errors.length} falha(s) ao remover`);
+      }
+      setCleanupDialog((d) => ({ ...d, open: false, deleting: false, preview: null }));
+      loadServers();
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      toast.error('Erro ao remover servidores');
+      setCleanupDialog((d) => ({ ...d, deleting: false }));
+    }
+  };
 
   useEffect(() => {
     loadServers();
@@ -478,8 +540,18 @@ const Servers = () => {
           <h1 className="text-3xl font-bold tracking-tight">Servidores</h1>
           <p className="text-muted-foreground mt-2">Gerencie os servidores monitorados</p>
         </div>
-        <Button 
-          onClick={() => setShowAddForm(!showAddForm)} 
+        <div className="flex items-center gap-2">
+        <Button
+          onClick={openCleanupDialog}
+          variant="outline"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          data-testid="cleanup-servers-btn"
+        >
+          <Unplug className="w-4 h-4 mr-2" />
+          Remover inacessíveis / sem acesso
+        </Button>
+        <Button
+          onClick={() => setShowAddForm(!showAddForm)}
           data-testid="toggle-add-form-btn"
           variant={showAddForm ? "secondary" : "default"}
         >
@@ -495,6 +567,7 @@ const Servers = () => {
             </>
           )}
         </Button>
+        </div>
       </div>
 
       {/* Form Card - Collapsible */}
@@ -985,6 +1058,88 @@ const Servers = () => {
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDuplicate} className="bg-yellow-600 hover:bg-yellow-700">
               Sim, cadastrar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cleanup Dialog - remover inacessíveis / sem acesso */}
+      <AlertDialog
+        open={cleanupDialog.open}
+        onOpenChange={(open) => !open && !cleanupDialog.deleting && setCleanupDialog((d) => ({ ...d, open: false }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Remover servidores
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              Selecione quais grupos remover. Servidores que possuem <strong className="text-foreground">downloads</strong> nunca
+              são removidos. O storage existente é movido para <span className="font-mono">storage_deleted</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-3 py-2">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <Checkbox
+                checked={cleanupDialog.unreachable}
+                onCheckedChange={(v) => refreshCleanupPreview(!!v, cleanupDialog.neverAccessed)}
+              />
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium text-foreground">Inacessíveis</div>
+                <div className="text-xs text-muted-foreground">
+                  Servidores marcados como inacessíveis na rede
+                  {cleanupDialog.preview && ` (${cleanupDialog.preview.unreachable})`}
+                </div>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <Checkbox
+                checked={cleanupDialog.neverAccessed}
+                onCheckedChange={(v) => refreshCleanupPreview(cleanupDialog.unreachable, !!v)}
+              />
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium text-foreground">Sem tentativa de acesso</div>
+                <div className="text-xs text-muted-foreground">
+                  Nunca acessados com sucesso (sem shares e não verificados)
+                  {cleanupDialog.preview && ` (${cleanupDialog.preview.never_accessed})`}
+                </div>
+              </div>
+            </label>
+
+            <div className="flex items-center gap-2 text-sm bg-muted/50 p-3 rounded-lg">
+              {cleanupDialog.loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Calculando...</span>
+                </>
+              ) : (
+                <span>
+                  <strong className="text-foreground">{cleanupDialog.preview?.total ?? 0}</strong>{' '}
+                  servidor(es) serão removidos.
+                </span>
+              )}
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cleanupDialog.deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleCleanupConfirm(); }}
+              disabled={
+                cleanupDialog.deleting ||
+                cleanupDialog.loading ||
+                !(cleanupDialog.unreachable || cleanupDialog.neverAccessed) ||
+                !(cleanupDialog.preview?.total)
+              }
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {cleanupDialog.deleting ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Removendo...</>
+              ) : (
+                <><Trash2 className="w-4 h-4 mr-2" /> Remover {cleanupDialog.preview?.total ?? 0}</>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

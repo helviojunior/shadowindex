@@ -53,17 +53,18 @@ const PluginDirectConfig = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [pluginRes, instancesRes, credRes, anonCredRes, proxiesRes] = await Promise.all([
+      const [pluginRes, instancesRes, credRes, kerberosCredRes, anonCredRes, proxiesRes] = await Promise.all([
         axios.get(`${API}/plugins/direct_interaction`),
         axios.get(`${API}/plugin-instances?plugin_type=direct_interaction`),
         axios.get(`${API}/credentials/by-type/user_password`),
+        axios.get(`${API}/credentials/by-type/kerberos`),
         axios.get(`${API}/credentials/by-type/anonymous`),
         axios.get(`${API}/proxy-servers`)
       ]);
       setPluginInfo(pluginRes.data);
       setInstances(instancesRes.data);
-      // SMB aceita credenciais usuário/senha e anônimas (null session)
-      setCredentials([...credRes.data, ...anonCredRes.data]);
+      // SMB aceita credenciais usuário/senha, Kerberos (ccache) e anônimas (null session)
+      setCredentials([...credRes.data, ...kerberosCredRes.data, ...anonCredRes.data]);
       setProxies(proxiesRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -83,6 +84,10 @@ const PluginDirectConfig = () => {
   const getCredentialLabel = (cred) => {
     if (cred.name) return cred.name;
     if (cred.credential_type === 'anonymous') return 'Anônima (null session)';
+    if (cred.credential_type === 'kerberos') {
+      const who = `${cred.domain ? cred.domain + '\\' : ''}${cred.username || ''}`.trim();
+      return who ? `Kerberos: ${who}` : 'Kerberos (ccache)';
+    }
     return `${cred.domain ? cred.domain + '\\' : ''}${cred.username || ''}`;
   };
 

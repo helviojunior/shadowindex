@@ -222,16 +222,19 @@ api_router = APIRouter(prefix="/api")
 
 # Pydantic Models
 # Credential type enum
-CREDENTIAL_TYPES = ["user_password", "token", "ssh_key", "anonymous"]
+CREDENTIAL_TYPES = ["user_password", "kerberos", "token", "ssh_key", "anonymous"]
 
 class CredentialCreate(BaseModel):
     name: Optional[str] = None
-    credential_type: str = "user_password"  # user_password, token, ssh_key, anonymous
+    credential_type: str = "user_password"  # user_password, kerberos, token, ssh_key, anonymous
     # For user_password type
     domain: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
     ntlm_hash: Optional[str] = None
+    # For kerberos type (ccache ticket)
+    kerberos_ccache: Optional[str] = None  # Base64 do arquivo ccache
+    kdc_host: Optional[str] = None
     # For token type
     token: Optional[str] = None
     token_type: Optional[str] = None  # bearer, api_key, etc.
@@ -250,6 +253,9 @@ class CredentialCreate(BaseModel):
                 raise ValueError('Usuário é obrigatório para credencial tipo user_password')
             if not self.password and not self.ntlm_hash:
                 raise ValueError('É obrigatório informar uma senha OU um hash NTLM')
+        elif self.credential_type == "kerberos":
+            if not self.kerberos_ccache:
+                raise ValueError('É obrigatório informar o arquivo ccache para credencial tipo kerberos')
         elif self.credential_type == "token":
             if not self.token:
                 raise ValueError('Token é obrigatório para credencial tipo token')
@@ -268,6 +274,8 @@ class CredentialUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     ntlm_hash: Optional[str] = None
+    kerberos_ccache: Optional[str] = None
+    kdc_host: Optional[str] = None
     token: Optional[str] = None
     token_type: Optional[str] = None
     ssh_private_key: Optional[str] = None
@@ -282,6 +290,10 @@ class CredentialResponse(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     ntlm_hash: Optional[str] = None
+    kerberos_ccache: Optional[str] = None
+    kdc_host: Optional[str] = None
+    kerberos_expires_at: Optional[datetime] = None
+    kerberos_expired: Optional[bool] = None
     token: Optional[str] = None
     token_type: Optional[str] = None
     ssh_private_key: Optional[str] = None
@@ -581,9 +593,24 @@ async def root():
     return {"message": "ShadowIndex API", "version": "1.0.0"}
 
 # Credentials CRUD
+def _autofill_kerberos_principal(data: dict) -> dict:
+    """Para credenciais kerberos, preenche domínio/usuário a partir do ccache
+    quando não informados (executado no momento do save)."""
+    if data.get("credential_type") == "kerberos" and data.get("kerberos_ccache"):
+        if not data.get("domain") or not data.get("username"):
+            from kerberos_utils import get_ccache_principal
+            cc_domain, cc_username = get_ccache_principal(data["kerberos_ccache"])
+            if not data.get("domain") and cc_domain:
+                data["domain"] = cc_domain
+            if not data.get("username") and cc_username:
+                data["username"] = cc_username
+    return data
+
+
 @api_router.post("/credentials", response_model=CredentialResponse)
 async def create_credential(credential: CredentialCreate, db: AsyncSession = Depends(get_db)):
-    db_credential = Credential(**credential.model_dump())
+    data = _autofill_kerberos_principal(credential.model_dump())
+    db_credential = Credential(**data)
     db.add(db_credential)
     await db.commit()
     await db.refresh(db_credential)
@@ -617,8 +644,10 @@ async def update_credential(credential_id: int, credential: CredentialUpdate, db
         new_password = update_data.get('password', db_credential.password)
         new_ntlm = update_data.get('ntlm_hash', db_credential.ntlm_hash)
         
+        # Só validamos senha/NTLM para credenciais do tipo user_password
+        effective_type = update_data.get('credential_type', db_credential.credential_type)
         # Se ambos estiverem sendo removidos explicitamente
-        if 'password' in update_data and 'ntlm_hash' in update_data:
+        if effective_type == "user_password" and 'password' in update_data and 'ntlm_hash' in update_data:
             if not new_password and not new_ntlm:
                 raise HTTPException(
                     status_code=400, 
@@ -627,9 +656,19 @@ async def update_credential(credential_id: int, credential: CredentialUpdate, db
         
         for key, value in update_data.items():
             setattr(db_credential, key, value)
-        
+
+        # Kerberos: preenche domínio/usuário a partir do ccache quando ficarem vazios
+        if db_credential.credential_type == "kerberos" and db_credential.kerberos_ccache:
+            if not db_credential.domain or not db_credential.username:
+                from kerberos_utils import get_ccache_principal
+                cc_domain, cc_username = get_ccache_principal(db_credential.kerberos_ccache)
+                if not db_credential.domain and cc_domain:
+                    db_credential.domain = cc_domain
+                if not db_credential.username and cc_username:
+                    db_credential.username = cc_username
+
         db_credential.updated_at = datetime.now(timezone.utc)
-    
+
     await db.commit()
     await db.refresh(db_credential)
     return db_credential
@@ -909,8 +948,19 @@ async def execute_sql(request: SqlExecuteRequest, db: AsyncSession = Depends(get
                 }
             )
         
+        # Resolver o tipo de banco configurado na conexão (ex.: MySQL) para
+        # passar ao plugin — o formato ADO da connection string não carrega o tipo.
+        conn_db_type = None
+        if conn.db_type_id:
+            dt_res = await db.execute(select(DatabaseType).where(DatabaseType.id == conn.db_type_id))
+            dt = dt_res.scalar_one_or_none()
+            if dt and dt.code:
+                conn_db_type = dt.code
+
         # Executar a query SQL usando o plugin
-        sql_result = await plugin.sql_request(conn.connection_string, request.query, ignore_cache=True)
+        sql_result = await plugin.sql_request(
+            conn.connection_string, request.query, ignore_cache=True, db_type=conn_db_type
+        )
         
         execution_time = int((time.time() - start_time) * 1000)
         
@@ -4795,12 +4845,14 @@ async def update_setting(key: str, request: UpdateSettingRequest, db: AsyncSessi
     """Atualiza uma configuração"""
     result = await db.execute(select(AppSettings).where(AppSettings.key == key))
     setting = result.scalar_one_or_none()
-    
+
     if not setting:
-        raise HTTPException(status_code=404, detail="Setting not found")
-    
-    setting.value = request.value
-    setting.updated_at = datetime.now(timezone.utc)
+        # Upsert: cria a configuração se ainda não existir no banco
+        setting = AppSettings(key=key, value=request.value, updated_at=datetime.now(timezone.utc))
+        db.add(setting)
+    else:
+        setting.value = request.value
+        setting.updated_at = datetime.now(timezone.utc)
     await db.commit()
     
     # Se for configuração de downloads simultâneos, atualizar o worker
@@ -4819,15 +4871,22 @@ class UpdateMultipleSettingsRequest(BaseModel):
 
 @api_router.put("/settings")
 async def update_multiple_settings(request: UpdateMultipleSettingsRequest, db: AsyncSession = Depends(get_db)):
-    """Atualiza múltiplas configurações"""
+    """Atualiza múltiplas configurações (cria as que ainda não existem)"""
     for key, value in request.settings.items():
         result = await db.execute(select(AppSettings).where(AppSettings.key == key))
         setting = result.scalar_one_or_none()
-        
+
         if setting:
             setting.value = str(value)
             setting.updated_at = datetime.now(timezone.utc)
-    
+        else:
+            # Upsert: cria a configuração se ainda não existir no banco
+            db.add(AppSettings(
+                key=key,
+                value=str(value),
+                updated_at=datetime.now(timezone.utc)
+            ))
+
     await db.commit()
     
     # Atualizar worker se necessário
@@ -4952,14 +5011,33 @@ async def get_branding(kind: str):
 # ---------------------------------------------------------------------------
 class ChangeDomainPasswordRequest(BaseModel):
     domain: Optional[str] = None
-    username: str
-    current_password: str
+    username: Optional[str] = None  # opcional p/ kerberos (derivado do ccache)
+    # "Senha atual" pode ser informada de três formas (use apenas uma):
+    current_password: Optional[str] = None  # senha em texto
+    ntlm_hash: Optional[str] = None         # hash NTLM (LM:NT ou apenas NT)
+    ccache: Optional[str] = None            # ticket Kerberos (ccache) em base64
     new_password: str
     target: Optional[str] = None  # DC/host alvo; se vazio, usa o domínio
+    kdc_host: Optional[str] = None  # KDC/DC para Kerberos (default = target/domínio)
 
 
-def _do_change_domain_password(target: str, username: str, old_password: str, new_password: str):
-    """Executa a troca de senha via MS-SAMR (bloqueante). Deve rodar em thread."""
+def _split_ntlm_hash(ntlm_hash: str):
+    """Separa um hash NTLM 'LM:NT' (ou apenas 'NT') em (lmhash, nthash) hexadecimais."""
+    ntlm_hash = (ntlm_hash or "").strip()
+    if ":" in ntlm_hash:
+        lmhash, nthash = ntlm_hash.split(":", 1)
+    else:
+        lmhash, nthash = "", ntlm_hash
+    return lmhash.strip(), nthash.strip()
+
+
+def _do_change_domain_password(target: str, username: str, new_password: str,
+                               old_password: str = "", old_lmhash: str = "", old_nthash: str = ""):
+    """Executa a troca de senha via MS-SAMR (bloqueante). Deve rodar em thread.
+
+    Aceita a senha atual como texto (old_password) OU como hash NTLM
+    (old_lmhash/old_nthash em hexadecimal).
+    """
     from impacket.dcerpc.v5 import transport, samr
 
     stringbinding = r'ncacn_np:%s[\pipe\samr]' % target
@@ -4976,8 +5054,10 @@ def _do_change_domain_password(target: str, username: str, old_password: str, ne
     try:
         dce.bind(samr.MSRPC_UUID_SAMR)
         # serverName NULL, userName = sAMAccountName
+        # Quando old_lmhash/old_nthash são informados, o impacket usa os hashes
+        # em vez de derivá-los da senha em texto.
         samr.hSamrUnicodeChangePasswordUser2(
-            dce, '\x00', username, old_password, new_password, '', ''
+            dce, '\x00', username, old_password, new_password, old_lmhash, old_nthash
         )
     finally:
         try:
@@ -4986,9 +5066,91 @@ def _do_change_domain_password(target: str, username: str, old_password: str, ne
             pass
 
 
+def _do_change_domain_password_kerberos(target: str, domain: str, username: str,
+                                        new_password: str, ccache_b64: str, kdc_host: str = None):
+    """Troca a senha via protocolo Kerberos Change-Password (RFC 3244 / kpasswd),
+    usando um ticket ccache como autenticação. Bloqueante: rodar em thread.
+    """
+    import base64
+    import os as _os
+    import tempfile
+    from impacket.krb5 import kpasswd as kp
+    from impacket.krb5.ccache import CCache
+    from impacket.krb5.kerberosv5 import getKerberosTGS
+    from impacket.krb5.asn1 import TGS_REP
+    from kerberos_utils import assert_ccache_valid
+
+    # Verifica a validade do ticket ANTES de qualquer tentativa de rede
+    assert_ccache_valid(ccache_b64)
+
+    try:
+        raw = base64.b64decode(ccache_b64, validate=False)
+    except Exception as e:
+        raise ValueError(f"Não foi possível decodificar o ccache (base64): {e}")
+
+    fd, path = tempfile.mkstemp(prefix="shadowindex_", suffix=".ccache")
+    prev = _os.environ.get("KRB5CCNAME")
+    try:
+        with _os.fdopen(fd, "wb") as fh:
+            fh.write(raw)
+        _os.environ["KRB5CCNAME"] = path
+
+        # Extrai domínio/usuário e procura por um ticket para kadmin/changepw
+        cc_domain, cc_username, TGT, TGS = CCache.parseFile(
+            domain or "", username or "", target="kadmin/changepw"
+        )
+        realm = (domain or cc_domain or "").upper()
+        user = username or cc_username
+        if not realm:
+            raise ValueError("Não foi possível determinar o domínio (realm) a partir do ccache.")
+        if not user:
+            raise ValueError("Não foi possível determinar o usuário a partir do ccache.")
+
+        kdc = (kdc_host or target or realm)
+
+        if TGS is not None:
+            # ccache já continha um ST para kadmin/changepw
+            tgs_rep, cipher, session_key = TGS["KDC_REP"], TGS["cipher"], TGS["sessionKey"]
+        elif TGT is not None:
+            # Solicita um ST para kadmin/changepw a partir do TGT
+            tgt_rep, cipher, session_key = TGT["KDC_REP"], TGT["cipher"], TGT["sessionKey"]
+            server_name = kp.Principal("kadmin/changepw", type=kp.PrincipalNameType.NT_PRINCIPAL.value)
+            tgs_rep, cipher, _old_sk, session_key = getKerberosTGS(
+                server_name, realm, kdc, tgt_rep, cipher, session_key
+            )
+        else:
+            raise ValueError("O ccache informado não contém um TGT nem um TGS utilizável.")
+
+        decoded = kp.decoder.decode(tgs_rep, asn1Spec=TGS_REP())[0]
+        ticket = kp.Ticket()
+        ticket.from_asn1(decoded["ticket"])
+
+        sub_key = kp.Key(cipher.enctype, kp.get_random_bytes(cipher.keysize))
+        user_name = kp.Principal(user, type=kp.PrincipalNameType.NT_PRINCIPAL.value)
+        request = kp.createKPasswdRequest(
+            user_name, realm, new_password, ticket, cipher, session_key, sub_key
+        )
+        reply = kp.sendReceive(request, realm, kdc, kp.KRB5_KPASSWD_PORT)
+        success, _result_code, result_message, message = kp.decodeKPasswdReply(reply, cipher, sub_key)
+        if not success:
+            err = result_message + ((": " + message) if message else "")
+            raise kp.KPasswdError(err)
+    finally:
+        try:
+            _os.unlink(path)
+        except OSError:
+            pass
+        if prev is None:
+            _os.environ.pop("KRB5CCNAME", None)
+        else:
+            _os.environ["KRB5CCNAME"] = prev
+
+
 @api_router.post("/tools/change-domain-password")
 async def change_domain_password(request: ChangeDomainPasswordRequest):
-    """Troca a senha de uma conta de domínio conhecendo a senha atual."""
+    """Troca a senha de uma conta de domínio conhecendo a "senha atual",
+    que pode ser informada como senha em texto, hash NTLM ou ticket ccache (Kerberos).
+    """
     import asyncio as _asyncio
 
     username = (request.username or "").strip()
@@ -5001,13 +5163,30 @@ async def change_domain_password(request: ChangeDomainPasswordRequest):
         username, dpart = username.split("@", 1)
         domain = domain or dpart
 
-    if not username:
+    # Determina o método de autenticação ("senha atual")
+    ccache = (request.ccache or "").strip()
+    ntlm_hash = (request.ntlm_hash or "").strip()
+    current_password = request.current_password or ""
+    methods = [bool(ccache), bool(ntlm_hash), bool(current_password)]
+    if sum(methods) > 1:
+        raise HTTPException(
+            status_code=422,
+            detail="Informe apenas uma forma de senha atual: senha, hash NTLM ou ticket ccache.",
+        )
+    is_kerberos = bool(ccache)
+    is_ntlm = bool(ntlm_hash)
+
+    # Usuário é obrigatório, exceto no Kerberos (pode ser derivado do ccache)
+    if not username and not is_kerberos:
         raise HTTPException(status_code=422, detail="Usuário é obrigatório.")
-    if not request.current_password:
-        raise HTTPException(status_code=422, detail="Senha atual é obrigatória.")
+    if not any(methods):
+        raise HTTPException(
+            status_code=422,
+            detail="Informe a senha atual, um hash NTLM ou um ticket ccache.",
+        )
     if not request.new_password:
         raise HTTPException(status_code=422, detail="Nova senha é obrigatória.")
-    if request.new_password == request.current_password:
+    if current_password and request.new_password == current_password:
         raise HTTPException(status_code=422, detail="A nova senha deve ser diferente da atual.")
 
     # Alvo: DC informado ou o próprio domínio (que normalmente resolve para um DC)
@@ -5019,10 +5198,25 @@ async def change_domain_password(request: ChangeDomainPasswordRequest):
         )
 
     try:
-        await _asyncio.to_thread(
-            _do_change_domain_password,
-            target, username, request.current_password, request.new_password,
-        )
+        if is_kerberos:
+            await _asyncio.to_thread(
+                _do_change_domain_password_kerberos,
+                target, domain, username, request.new_password, ccache,
+                (request.kdc_host or "").strip() or None,
+            )
+        elif is_ntlm:
+            lmhash, nthash = _split_ntlm_hash(ntlm_hash)
+            await _asyncio.to_thread(
+                _do_change_domain_password,
+                target, username, request.new_password, "", lmhash, nthash,
+            )
+        else:
+            await _asyncio.to_thread(
+                _do_change_domain_password,
+                target, username, request.new_password, current_password, "", "",
+            )
+    except HTTPException:
+        raise
     except Exception as e:
         err = str(e)
         low = err.lower()
@@ -5034,7 +5228,15 @@ async def change_domain_password(request: ChangeDomainPasswordRequest):
         if "wrong_password" in low or "status_wrong_password" in low:
             raise HTTPException(status_code=401, detail={
                 "error": "wrong_password",
-                "message": "Senha atual incorreta.",
+                "message": "Senha atual incorreta." if not is_ntlm else "Hash NTLM atual incorreto.",
+            })
+        if is_kerberos and any(k in low for k in [
+            "kpasswd", "kerberos", "krb_ap_err", "kdc_err", "skew", "ticket",
+            "ccache", "krb5", "auth_error", "accessdenied", "access denied",
+        ]):
+            raise HTTPException(status_code=401, detail={
+                "error": "kerberos_error",
+                "message": f"Falha na troca via Kerberos (ccache). Verifique a validade do ticket, o relógio (clock skew), o KDC e as permissões: {err}",
             })
         if "no_such_user" in low or "status_no_such_user" in low:
             raise HTTPException(status_code=404, detail={
@@ -5053,10 +5255,11 @@ async def change_domain_password(request: ChangeDomainPasswordRequest):
             "message": f"Falha ao trocar a senha: {err}",
         })
 
+    account_label = username or "(conta do ccache)"
     return {
         "success": True,
-        "message": f"Senha alterada com sucesso para '{username}'.",
-        "username": username,
+        "message": f"Senha alterada com sucesso para '{account_label}'.",
+        "username": username or None,
         "domain": domain or None,
         "target": target,
     }

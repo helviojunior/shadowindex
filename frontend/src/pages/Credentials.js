@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Plus, ChevronUp, Pencil, X, Check, Hash, Ticket, KeyRound, CheckCircle, XCircle, Loader2, Key, Ghost } from 'lucide-react';
+import { Trash2, Plus, ChevronUp, Pencil, X, Check, Hash, Ticket, KeyRound, CheckCircle, XCircle, Loader2, Key, Ghost, Fingerprint, Server, Clock, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ShieldKeyIcon } from '@/components/icons';
@@ -17,6 +17,7 @@ const API = `${BACKEND_URL}/api`;
 
 const CREDENTIAL_TYPES = {
   user_password: { label: 'Usuário e Senha/NTLM', icon: ShieldKeyIcon, color: 'text-blue-500' },
+  kerberos: { label: 'Kerberos (ccache)', icon: Fingerprint, color: 'text-rose-500' },
   token: { label: 'Token', icon: Ticket, color: 'text-green-500' },
   ssh_key: { label: 'Chave SSH', icon: KeyRound, color: 'text-purple-500' },
   anonymous: { label: 'Anônima', icon: Ghost, color: 'text-amber-500' }
@@ -32,12 +33,15 @@ const Credentials = () => {
     username: '',
     password: '',
     ntlm_hash: '',
+    kerberos_ccache: '',
+    kdc_host: '',
     token: '',
     token_type: 'bearer',
     ssh_private_key: '',
     ssh_passphrase: '',
     ssh_public_key: ''
   });
+  const [ccacheFileName, setCcacheFileName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -65,12 +69,40 @@ const Credentials = () => {
       username: '',
       password: '',
       ntlm_hash: '',
+      kerberos_ccache: '',
+      kdc_host: '',
       token: '',
       token_type: 'bearer',
       ssh_private_key: '',
       ssh_passphrase: '',
       ssh_public_key: ''
     });
+    setCcacheFileName('');
+  };
+
+  // Lê um arquivo ccache e devolve o conteúdo em base64 (sem o prefixo data:)
+  const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result || '';
+      const base64 = String(result).split(',').pop();
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleCcacheFile = async (e, setter) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const base64 = await readFileAsBase64(file);
+      setter(base64);
+      setCcacheFileName(file.name);
+    } catch (err) {
+      console.error('Error reading ccache file:', err);
+      toast.error('Não foi possível ler o arquivo ccache');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -183,6 +215,68 @@ const Credentials = () => {
                 </Badge>
               )}
             </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Status</div>
+            {cred.verified ? (
+              <Badge variant="default" className="gap-1 bg-green-600">
+                <CheckCircle className="w-3 h-3" />
+                Verificada
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                <XCircle className="w-3 h-3" />
+                Não verificada
+              </Badge>
+            )}
+          </div>
+        </div>
+      );
+    } else if (type === 'kerberos') {
+      return (
+        <div className="flex-1 grid grid-cols-5 gap-4">
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Nome</div>
+            <div className="font-medium">{cred.name || '-'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Domínio</div>
+            <div className="font-medium">{cred.domain || '(do ccache)'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Usuário</div>
+            <div className="font-medium">{cred.username || '(do ccache)'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="gap-1">
+                <Fingerprint className="w-3 h-3" />
+                ccache
+              </Badge>
+              {cred.kdc_host && (
+                <Badge variant="secondary" className="gap-1">
+                  <Server className="w-3 h-3" />
+                  {cred.kdc_host}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Validade do ticket</div>
+            {cred.kerberos_expired === true ? (
+              <Badge variant="destructive" className="gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Expirado
+              </Badge>
+            ) : cred.kerberos_expires_at ? (
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                {new Date(cred.kerberos_expires_at).toLocaleString()}
+              </Badge>
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
           </div>
           <div>
             <div className="text-xs text-muted-foreground mb-1">Status</div>
@@ -330,10 +424,14 @@ const Credentials = () => {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsList className="grid w-full grid-cols-5 mb-6">
                 <TabsTrigger value="user_password" className="gap-2">
                   <Key className="w-4 h-4" />
                   Usuário/Senha
+                </TabsTrigger>
+                <TabsTrigger value="kerberos" className="gap-2">
+                  <Fingerprint className="w-4 h-4" />
+                  Kerberos
                 </TabsTrigger>
                 <TabsTrigger value="token" className="gap-2">
                   <Ticket className="w-4 h-4" />
@@ -421,6 +519,86 @@ const Credentials = () => {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                     <span className="text-yellow-500">⚠</span>
                     <span>É obrigatório informar pelo menos uma senha OU um hash NTLM</span>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="kerberos" className="space-y-4 mt-0">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="krb-domain">Domínio / Realm (opcional)</Label>
+                      <Input
+                        id="krb-domain"
+                        data-testid="credential-kerberos-domain-input"
+                        placeholder="exemplo.com (derivado do ccache se vazio)"
+                        value={formData.domain}
+                        onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="krb-username">Usuário (opcional)</Label>
+                      <Input
+                        id="krb-username"
+                        data-testid="credential-kerberos-username-input"
+                        placeholder="usuario (derivado do ccache se vazio)"
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="krb-kdc">KDC / Controlador de domínio (opcional)</Label>
+                    <Input
+                      id="krb-kdc"
+                      data-testid="credential-kerberos-kdc-input"
+                      placeholder="IP ou hostname do KDC/DC"
+                      value={formData.kdc_host}
+                      onChange={(e) => setFormData({ ...formData, kdc_host: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <Label htmlFor="krb-ccache-file" className="flex items-center gap-2">
+                      <Fingerprint className="w-4 h-4" />
+                      Ticket Kerberos (arquivo ccache) *
+                    </Label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        id="krb-ccache-file"
+                        data-testid="credential-kerberos-ccache-file"
+                        type="file"
+                        accept=".ccache,application/octet-stream,*/*"
+                        onChange={(e) => handleCcacheFile(e, (b64) => setFormData({ ...formData, kerberos_ccache: b64 }))}
+                        className="cursor-pointer"
+                      />
+                      {formData.kerberos_ccache && (
+                        <Badge variant="secondary" className="gap-1 shrink-0">
+                          <Check className="w-3 h-3" />
+                          {ccacheFileName || 'ccache carregado'}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Selecione o arquivo ccache (ex.: krb5cc_1000, saída de <span className="font-mono">KRB5CCNAME</span>, ou obtido via <span className="font-mono">getTGT.py</span>). O conteúdo é enviado em base64.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="krb-ccache-b64">… ou cole o ccache em base64</Label>
+                    <Textarea
+                      id="krb-ccache-b64"
+                      data-testid="credential-kerberos-ccache-input"
+                      placeholder="Conteúdo do ccache em base64"
+                      value={formData.kerberos_ccache}
+                      onChange={(e) => { setFormData({ ...formData, kerberos_ccache: e.target.value }); setCcacheFileName(''); }}
+                      className="font-mono text-xs"
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                    <span className="text-yellow-500">⚠</span>
+                    <span>O ticket precisa estar válido (não expirado). Usuário e domínio são derivados do ccache quando não informados.</span>
                   </div>
                 </TabsContent>
 
@@ -583,6 +761,44 @@ const Credentials = () => {
                                     onChange={(e) => setEditData({ ...editData, ntlm_hash: e.target.value })}
                                     placeholder="NTLM Hash (LM:NT ou apenas NT)"
                                     className="col-span-2 font-mono text-sm"
+                                  />
+                                </>
+                              )}
+                              {type === 'kerberos' && (
+                                <>
+                                  <Input
+                                    value={editData.domain || ''}
+                                    onChange={(e) => setEditData({ ...editData, domain: e.target.value })}
+                                    placeholder="Domínio (opcional)"
+                                  />
+                                  <Input
+                                    value={editData.username || ''}
+                                    onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                                    placeholder="Usuário (opcional)"
+                                  />
+                                  <Input
+                                    value={editData.kdc_host || ''}
+                                    onChange={(e) => setEditData({ ...editData, kdc_host: e.target.value })}
+                                    placeholder="KDC / DC (opcional)"
+                                    className="col-span-2"
+                                  />
+                                  <div className="col-span-2 space-y-1">
+                                    <Input
+                                      type="file"
+                                      accept=".ccache,application/octet-stream,*/*"
+                                      onChange={(e) => handleCcacheFile(e, (b64) => setEditData({ ...editData, kerberos_ccache: b64 }))}
+                                      className="cursor-pointer"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                      Selecione um novo arquivo ccache para substituir o atual, ou cole o base64 abaixo (deixe em branco para manter).
+                                    </p>
+                                  </div>
+                                  <Textarea
+                                    value={editData.kerberos_ccache || ''}
+                                    onChange={(e) => setEditData({ ...editData, kerberos_ccache: e.target.value })}
+                                    placeholder="… ou cole o ccache em base64"
+                                    className="col-span-2 font-mono text-xs"
+                                    rows={4}
                                   />
                                 </>
                               )}

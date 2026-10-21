@@ -236,11 +236,12 @@ class BasePlugin(ABC):
     
     @abstractmethod
     async def sql_request(
-        self, 
-        connection_string: str, 
+        self,
+        connection_string: str,
         query: str,
         timeout: int = 30,
-        ignore_cache: bool = False
+        ignore_cache: bool = False,
+        db_type: Optional[str] = None
     ) -> SqlResult:
         """
         Execute a SQL query on a database.

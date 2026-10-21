@@ -367,11 +367,11 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
             )
         
         # Check credential type
-        if credential.credential_type not in ("user_password", "anonymous"):
+        if credential.credential_type not in ("user_password", "kerberos", "anonymous"):
             raise CredentialNotSetException(
                 operation="SMB",
                 plugin_name="Interação Direta",
-                message="Apenas credenciais do tipo 'Usuário/Senha' ou 'Anônima' são suportadas para SMB."
+                message="Apenas credenciais do tipo 'Usuário/Senha', 'Kerberos' ou 'Anônima' são suportadas para SMB."
             )
 
         # Set credential on plugin with ID for verification tracking
@@ -381,8 +381,15 @@ async def get_plugin_for_server(db: AsyncSession, server_or_id) -> BasePlugin:
             "username": credential.username,
             "password": credential.password,
             "ntlm_hash": credential.ntlm_hash,
+            "kerberos_ccache": credential.kerberos_ccache,
+            "kdc_host": credential.kdc_host,
             "id": credential.id
         }, credential_id=credential.id)
+
+        # Para Kerberos, usa o nome do servidor (FQDN) como SPN (cifs/<nome>),
+        # evitando KDC_ERR_S_PRINCIPAL_UNKNOWN quando o alvo é um IP.
+        if credential.credential_type == "kerberos" and hasattr(plugin, "set_kerberos_spn_hint"):
+            plugin.set_kerberos_spn_hint(server.name)
         
         # Set callback for credential verification
         from credential_verification import mark_credential_verified
@@ -461,11 +468,11 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
             credential = cred_result.scalar_one_or_none()
 
             if credential:
-                if credential.credential_type not in ("user_password", "anonymous"):
+                if credential.credential_type not in ("user_password", "kerberos", "anonymous"):
                     raise CredentialNotSetException(
                         operation="SMB",
                         plugin_name=instance.name,
-                        message="Apenas credenciais do tipo 'Usuário/Senha' ou 'Anônima' são suportadas para SMB."
+                        message="Apenas credenciais do tipo 'Usuário/Senha', 'Kerberos' ou 'Anônima' são suportadas para SMB."
                     )
 
                 plugin.set_credential({
@@ -474,7 +481,9 @@ async def get_plugin_for_instance(db: AsyncSession, plugin_instance_id: int) -> 
                     "domain": credential.domain,
                     "username": credential.username,
                     "password": credential.get_password() if hasattr(credential, 'get_password') else credential.password,
-                    "ntlm_hash": credential.ntlm_hash if hasattr(credential, 'ntlm_hash') else None
+                    "ntlm_hash": credential.ntlm_hash if hasattr(credential, 'ntlm_hash') else None,
+                    "kerberos_ccache": credential.kerberos_ccache if hasattr(credential, 'kerberos_ccache') else None,
+                    "kdc_host": credential.kdc_host if hasattr(credential, 'kdc_host') else None
                 }, credential_id=credential.id)
 
                 # Set callback for credential verification

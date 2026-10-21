@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database, FileSearch, Eye, EyeOff, Ban, Image as ImageIcon, Palette, AlignLeft, AlignCenter, AlignRight, Upload } from 'lucide-react';
+import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database, FileSearch, Eye, EyeOff, Ban, Image as ImageIcon, Palette, AlignLeft, AlignCenter, AlignRight, Upload, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,11 @@ const DEFAULT_DB_PORTS = {
 
 const DEFAULT_SMB_PORT = 445;
 
+// Portas que não são SMB nem banco de dados (ex.: acesso remoto)
+const DEFAULT_OTHER_PORTS = {
+  3389: 'RDP'
+};
+
 const GeneralSettings = () => {
   const [settings, setSettings] = useState({
     max_simultaneous_downloads: '3',
@@ -38,7 +43,7 @@ const GeneralSettings = () => {
     default_depth_levels: '5',
     default_max_file_size_mb: '100',
     ignored_extensions: '.log,.tmp,.bak,.log.*',
-    import_ports: '445,1433,3306,5432,1521,27017,6379,5984,9200',
+    import_ports: '445,3389,1433,3306,5432,1521,27017,6379,5984,9200',
     auto_ocr_enabled: 'true',
     auto_ocr_extensions: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.odt,.ods,.odp',
     auto_ocr_mimetypes: 'application/pdf,image/,text/,application/msword,application/vnd.openxmlformats-officedocument,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.oasis.opendocument',
@@ -174,7 +179,7 @@ const GeneralSettings = () => {
   const getPortName = (port) => {
     const portNum = parseInt(port);
     if (portNum === DEFAULT_SMB_PORT) return 'SMB';
-    return DEFAULT_DB_PORTS[portNum] || `Porta ${port}`;
+    return DEFAULT_DB_PORTS[portNum] || DEFAULT_OTHER_PORTS[portNum] || `Porta ${port}`;
   };
 
   const addPort = () => {
@@ -647,17 +652,19 @@ const GeneralSettings = () => {
               const portNum = parseInt(port);
               const isSMB = portNum === DEFAULT_SMB_PORT;
               const isDB = DEFAULT_DB_PORTS[portNum];
-              
+              const isOther = DEFAULT_OTHER_PORTS[portNum];
+
               return (
-                <Badge 
-                  key={port} 
-                  variant="secondary" 
+                <Badge
+                  key={port}
+                  variant="secondary"
                   className={`px-3 py-1.5 text-sm flex items-center gap-2 ${
-                    isSMB ? 'bg-blue-600/20 border-blue-600/40' : 
-                    isDB ? 'bg-emerald-600/20 border-emerald-600/40' : ''
+                    isSMB ? 'bg-blue-600/20 border-blue-600/40' :
+                    isDB ? 'bg-emerald-600/20 border-emerald-600/40' :
+                    isOther ? 'bg-purple-600/20 border-purple-600/40' : ''
                   }`}
                 >
-                  {isSMB ? <Server className="w-3 h-3" /> : <Database className="w-3 h-3" />}
+                  {isSMB ? <Server className="w-3 h-3" /> : isOther ? <Network className="w-3 h-3" /> : <Database className="w-3 h-3" />}
                   {getPortName(port)}: {port}
                   <button
                     onClick={() => removePort(port)}
@@ -679,6 +686,7 @@ const GeneralSettings = () => {
             <h4 className="text-sm font-medium text-blue-400 mb-2">Sobre as Portas de Importação</h4>
             <ul className="text-xs text-blue-300/80 space-y-1">
               <li>• <strong>SMB (445):</strong> Compartilhamento de arquivos Windows</li>
+              <li>• <strong>RDP (3389):</strong> Área de Trabalho Remota (Windows)</li>
               <li>• <strong>Bancos de Dados:</strong> MSSQL (1433), MySQL (3306), PostgreSQL (5432), Oracle (1521), MongoDB (27017), Redis (6379)</li>
               <li>• Hosts sem nenhuma dessas portas abertas serão ignorados na importação</li>
               <li>• Você pode adicionar portas personalizadas conforme necessidade</li>

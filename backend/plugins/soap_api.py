@@ -668,11 +668,12 @@ class SoapApiPlugin(BasePlugin):
             raise ConnectionException(hostname, f"Failed to resolve address: {e}", e)
     
     async def sql_request(
-        self, 
-        connection_string: str, 
+        self,
+        connection_string: str,
         query: str,
         timeout: int = 30,
-        ignore_cache: bool = False
+        ignore_cache: bool = False,
+        db_type: Optional[str] = None
     ) -> SqlResult:
         """Execute SQL query via SOAP using ExecuteSQL operation"""
         import time

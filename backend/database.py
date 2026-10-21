@@ -134,6 +134,9 @@ class Credential(Base):
     username = Column(String, nullable=True)
     password = Column(String, nullable=True)  # Password or NTLM hash required for user_password
     ntlm_hash = Column(String, nullable=True)  # NTLM hash (format: LM:NT or just NT)
+    # For kerberos type (ccache ticket)
+    kerberos_ccache = Column(Text, nullable=True)  # Base64-encoded Kerberos credential cache (ccache) file
+    kdc_host = Column(String, nullable=True)  # Optional KDC/Domain Controller host for Kerberos
     # For token type
     token = Column(Text, nullable=True)
     token_type = Column(String, nullable=True)  # bearer, api_key, etc.
@@ -148,6 +151,28 @@ class Credential(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    @property
+    def kerberos_expires_at(self):
+        """Data/hora (UTC) de expiração do ticket ccache, quando aplicável."""
+        if self.credential_type != "kerberos" or not self.kerberos_ccache:
+            return None
+        try:
+            from kerberos_utils import get_ccache_expiry
+            return get_ccache_expiry(self.kerberos_ccache)
+        except Exception:
+            return None
+
+    @property
+    def kerberos_expired(self):
+        """True se o ticket ccache expirou, False se válido, None se desconhecido/não aplicável."""
+        if self.credential_type != "kerberos" or not self.kerberos_ccache:
+            return None
+        try:
+            from kerberos_utils import is_ccache_expired
+            return is_ccache_expired(self.kerberos_ccache)
+        except Exception:
+            return None
 
 class DatabaseType(Base):
     """Tipos de banco de dados suportados"""
@@ -594,6 +619,8 @@ DEFAULT_SETTINGS = {
     'auto_index_extensions': ('.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml', 'Extensões de arquivo para auto-indexação (suporta wildcards como .env*)'),
     'auto_index_mimetypes': ('text/', 'MIME types para auto-indexação (parcial match)'),
     'download_threads_per_file': ('3', 'Segmentos paralelos por arquivo grande (>100MB)'),
+    # Importação de servidores
+    'import_ports': ('445,3389,1433,3306,5432,1521,27017,6379,5984,9200', 'Portas consideradas na importação de servidores (hosts com alguma dessas portas abertas são importados). SMB 445, RDP 3389 e bancos de dados.'),
     # Aparência / UI
     'ui_logo_url': ('https://media.sec4us.com.br/logo/sec4us-dark-mode.svg', 'URL da logo exibida no cabeçalho do sistema'),
     'ui_logo_alignment': ('left', 'Alinhamento da logo no cabeçalho: left, center ou right'),
@@ -675,6 +702,30 @@ async def apply_pending_migrations():
                     "ALTER TABLE proxy_servers ADD COLUMN dns_servers VARCHAR"
                 ))
                 logger.info("Migration applied: dns_servers added to proxy_servers")
+
+            # Verificar se kerberos_ccache existe em credentials
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'credentials' AND column_name = 'kerberos_ccache'"
+            ))
+            if not result.fetchone():
+                logger.info("Applying migration: adding kerberos_ccache to credentials")
+                await conn.execute(text(
+                    "ALTER TABLE credentials ADD COLUMN kerberos_ccache TEXT"
+                ))
+                logger.info("Migration applied: kerberos_ccache added to credentials")
+
+            # Verificar se kdc_host existe em credentials
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'credentials' AND column_name = 'kdc_host'"
+            ))
+            if not result.fetchone():
+                logger.info("Applying migration: adding kdc_host to credentials")
+                await conn.execute(text(
+                    "ALTER TABLE credentials ADD COLUMN kdc_host VARCHAR"
+                ))
+                logger.info("Migration applied: kdc_host added to credentials")
         else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))
@@ -725,6 +776,22 @@ async def apply_pending_migrations():
                     "ALTER TABLE proxy_servers ADD COLUMN dns_servers VARCHAR"
                 ))
                 logger.info("Migration applied: dns_servers added to proxy_servers")
+
+            # SQLite: verificar colunas de Kerberos em credentials
+            result = await conn.execute(text("PRAGMA table_info(credentials)"))
+            columns = [row[1] for row in result.fetchall()]
+            if 'kerberos_ccache' not in columns:
+                logger.info("Applying migration: adding kerberos_ccache to credentials")
+                await conn.execute(text(
+                    "ALTER TABLE credentials ADD COLUMN kerberos_ccache TEXT"
+                ))
+                logger.info("Migration applied: kerberos_ccache added to credentials")
+            if 'kdc_host' not in columns:
+                logger.info("Applying migration: adding kdc_host to credentials")
+                await conn.execute(text(
+                    "ALTER TABLE credentials ADD COLUMN kdc_host VARCHAR"
+                ))
+                logger.info("Migration applied: kdc_host added to credentials")
 
 
 async def init_db():
