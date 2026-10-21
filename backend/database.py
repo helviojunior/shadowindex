@@ -601,6 +601,88 @@ class AppSettings(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+# ===========================================================================
+# AD Explorer - exploração da árvore do Active Directory (base = domínio)
+# ===========================================================================
+
+class AdDomain(Base):
+    """Domínio do Active Directory explorado (base do AD Explorer).
+
+    A árvore de objetos é armazenada em ad_objects e montada pelo mesmo
+    princípio das OUs (via ChildObjects de Domain/OU/Container).
+    """
+    __tablename__ = "ad_domains"
+
+    id = Column(Integer, primary_key=True, index=True)
+    guid = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String, nullable=False)              # FQDN do domínio (ex.: sbsp.corp)
+    domain_sid = Column(String, nullable=True, index=True)
+    netbios = Column(String, nullable=True)
+    # Configuração para scan LDAP ao vivo (fases futuras)
+    dc_hosts = Column(Text, nullable=True)             # DCs informados manualmente (CSV)
+    dc_discovery = Column(Boolean, default=True)       # descobrir DCs via DNS SRV
+    use_ldaps = Column(Boolean, default=True)
+    auth_method = Column(String, nullable=True)        # cert | user_password | kerberos
+    credential_id = Column(Integer, nullable=True)     # FK Credential (user/senha ou kerberos)
+    client_cert = Column(Text, nullable=True)          # PEM do certificado cliente (mTLS)
+    client_key = Column(Text, nullable=True)           # PEM da chave privada
+    selected_dc = Column(String, nullable=True)        # DC escolhido (menor latência)
+    # Estado
+    source = Column(String, default="bloodhound")      # bloodhound | ldap
+    object_count = Column(Integer, default=0)
+    last_scan_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class AdObject(Base):
+    """Objeto do AD (nó da árvore) com campos no padrão BloodHound v6."""
+    __tablename__ = "ad_objects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    domain_id = Column(Integer, ForeignKey("ad_domains.id"), nullable=False, index=True)
+    object_id = Column(String, nullable=False, index=True)       # ObjectIdentifier (SID/GUID)
+    object_type = Column(String, nullable=False, index=True)     # Domain/OU/Container/GPO/Group/User/Computer
+    name = Column(String, nullable=True, index=True)             # Properties.name
+    distinguished_name = Column(Text, nullable=True)
+    samaccountname = Column(String, nullable=True, index=True)
+    description = Column(Text, nullable=True)
+    parent_object_id = Column(String, nullable=True, index=True) # hierarquia (ChildObjects/ContainedBy)
+    enabled = Column(Boolean, nullable=True)
+    highvalue = Column(Boolean, nullable=True)
+    whencreated = Column(BigInteger, nullable=True)
+    has_children = Column(Boolean, default=False)
+    child_count = Column(Integer, default=0)
+    properties = Column(JSON, nullable=True)                     # Properties completos do BH v6
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index('idx_ad_objects_domain_objid', 'domain_id', 'object_id', unique=True),
+        Index('idx_ad_objects_domain_parent', 'domain_id', 'parent_object_id'),
+        Index('idx_ad_objects_domain_type', 'domain_id', 'object_type'),
+        Index('idx_ad_objects_name', 'name'),
+        Index('idx_ad_objects_sam', 'samaccountname'),
+    )
+
+
+class AdScanJob(Base):
+    """Job de importação/varredura do AD (BloodHound ou LDAP) em background."""
+    __tablename__ = "ad_scan_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    domain_id = Column(Integer, ForeignKey("ad_domains.id"), nullable=False, index=True)
+    job_type = Column(String, default="bloodhound")   # bloodhound | ldap
+    status = Column(String, default="pending")        # pending, running, completed, failed, cancelled
+    source_path = Column(Text, nullable=True)          # diretório/arquivo de origem (BH)
+    total_objects = Column(Integer, default=0)
+    processed_objects = Column(Integer, default=0)
+    current_step = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+
 # Configurações padrão
 DEFAULT_SETTINGS = {
     'max_simultaneous_downloads': ('3', 'Número máximo de downloads simultâneos'),

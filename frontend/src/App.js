@@ -11,6 +11,8 @@ import SoapOperations from "@/pages/SoapOperations";
 import Servers from "@/pages/Servers";
 import ServerBrowser from "@/pages/ServerBrowser";
 import ImportServers from "@/pages/ImportServers";
+import AdDomains from "@/pages/AdDomains";
+import AdBrowse from "@/pages/AdBrowse";
 import FileNavigation from "@/pages/FileNavigation";
 import Leaks from "@/pages/Leaks";
 import BeautifyTest from "@/pages/BeautifyTest";
@@ -61,6 +63,8 @@ function App() {
                     <Route path="/servers/share-scan" element={<ShareScan />} />
                     <Route path="/servers/:serverId" element={<ServerBrowser />} />
                     <Route path="/servers/:serverId/browse" element={<ServerBrowser />} />
+                    <Route path="/ad" element={<AdDomains />} />
+                    <Route path="/ad/:domainId/browse" element={<AdBrowse />} />
                     <Route path="/search" element={<AdvancedSearch />} />
                     <Route path="/files/browse" element={<FileNavigation />} />
                     <Route path="/downloads" element={<Downloads />} />

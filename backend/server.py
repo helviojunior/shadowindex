@@ -5272,6 +5272,10 @@ app.include_router(api_router)
 from routes_v2 import router as router_v2
 app.include_router(router_v2)
 
+# AD Explorer (exploração da árvore do Active Directory)
+from ad_routes import router as router_ad
+app.include_router(router_ad)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,

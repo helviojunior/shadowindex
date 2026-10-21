@@ -65,9 +65,17 @@ const menuStructure = [
       { id: 'share-scan', path: '/servers/share-scan', label: 'Share Scan' },
     ]
   },
-  { 
+  {
+    id: 'ad-explorer',
+    icon: Network,
+    label: 'AD Explorer',
+    children: [
+      { id: 'ad-domains', path: '/ad', label: 'Domínios' },
+    ]
+  },
+  {
     id: 'arquivos',
-    icon: FolderTree, 
+    icon: FolderTree,
     label: 'Arquivos',
     children: [
       { id: 'navigation', path: '/files/browse', label: 'Navegação' },
