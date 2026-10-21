@@ -14,7 +14,7 @@ from sqlalchemy import select, delete, func, or_, and_
 
 from database import (
     get_db, get_db_readonly, AsyncSessionLocal,
-    AdDomain, AdObject, AdScanJob, POSTGRES_URL,
+    AdDomain, AdObject, AdScanJob, Credential, POSTGRES_URL,
 )
 
 logger = logging.getLogger(__name__)
@@ -131,6 +131,110 @@ async def get_domain(domain_id: int, db=Depends(get_db_readonly)):
     return dom
 
 
+class AdDomainUpdate(BaseModel):
+    netbios: Optional[str] = None
+    dc_hosts: Optional[str] = None
+    dc_discovery: Optional[bool] = None
+    use_ldaps: Optional[bool] = None
+    auth_method: Optional[str] = None
+    credential_id: Optional[int] = None
+    client_cert: Optional[str] = None
+    client_key: Optional[str] = None
+    selected_dc: Optional[str] = None
+
+
+@router.put("/domains/{domain_id}", response_model=AdDomainResponse)
+async def update_domain(domain_id: int, payload: AdDomainUpdate, db=Depends(get_db)):
+    dom = (await db.execute(select(AdDomain).where(AdDomain.id == domain_id))).scalar_one_or_none()
+    if not dom:
+        raise HTTPException(status_code=404, detail="Domínio não encontrado")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(dom, field, value)
+    dom.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(dom)
+    return dom
+
+
+class DiscoverRequest(BaseModel):
+    nameservers: Optional[List[str]] = None
+
+
+@router.post("/domains/{domain_id}/discover-dcs")
+async def discover_dcs(domain_id: int, payload: DiscoverRequest, db=Depends(get_db_readonly)):
+    """Descobre controladores de domínio (DNS SRV) e mede a latência de cada um."""
+    from ad_ldap import discover_domain_controllers
+
+    dom = (await db.execute(select(AdDomain).where(AdDomain.id == domain_id))).scalar_one_or_none()
+    if not dom:
+        raise HTTPException(status_code=404, detail="Domínio não encontrado")
+
+    manual = None
+    if dom.dc_hosts and not dom.dc_discovery:
+        manual = [h.strip() for h in dom.dc_hosts.replace(";", ",").split(",") if h.strip()]
+
+    try:
+        dcs = await asyncio.to_thread(
+            discover_domain_controllers, dom.name,
+            payload.nameservers, bool(dom.use_ldaps), manual,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha na descoberta de DCs: {e}")
+
+    fastest = next((d for d in dcs if d["reachable"]), None)
+    return {"domain": dom.name, "use_ldaps": bool(dom.use_ldaps), "dcs": dcs,
+            "fastest": fastest["host"] if fastest else None}
+
+
+class TestConnectionRequest(BaseModel):
+    host: Optional[str] = None
+    kdc_host: Optional[str] = None
+
+
+@router.post("/domains/{domain_id}/test-connection")
+async def test_connection(domain_id: int, payload: TestConnectionRequest, db=Depends(get_db)):
+    """Testa o bind LDAP/LDAPS no DC informado (ou no selecionado) com a auth do domínio."""
+    from ad_ldap import test_ldap_connection
+
+    dom = (await db.execute(select(AdDomain).where(AdDomain.id == domain_id))).scalar_one_or_none()
+    if not dom:
+        raise HTTPException(status_code=404, detail="Domínio não encontrado")
+
+    host = (payload.host or dom.selected_dc or "").strip()
+    if not host and dom.dc_hosts:
+        host = dom.dc_hosts.replace(";", ",").split(",")[0].strip()
+    if not host:
+        raise HTTPException(status_code=422, detail="Informe um DC (host) ou rode a descoberta antes.")
+
+    auth = dom.auth_method or "user_password"
+    kwargs = dict(host=host, use_ldaps=bool(dom.use_ldaps), auth_method=auth,
+                  domain=dom.name, kdc_host=payload.kdc_host)
+
+    if auth == "cert":
+        kwargs["client_cert"] = dom.client_cert
+        kwargs["client_key"] = dom.client_key
+    elif auth in ("user_password", "kerberos"):
+        if not dom.credential_id:
+            raise HTTPException(status_code=422, detail="Selecione uma credencial para este domínio.")
+        cred = (await db.execute(select(Credential).where(Credential.id == dom.credential_id))).scalar_one_or_none()
+        if not cred:
+            raise HTTPException(status_code=404, detail="Credencial não encontrada.")
+        if auth == "user_password":
+            kwargs.update(username=cred.username, password=cred.password,
+                          nthash=cred.ntlm_hash, domain=cred.domain or dom.name)
+        else:  # kerberos
+            kwargs.update(ccache_b64=cred.kerberos_ccache, username=cred.username,
+                          kdc_host=payload.kdc_host or cred.kdc_host)
+
+    result = await asyncio.to_thread(test_ldap_connection, **kwargs)
+
+    if result.get("success"):
+        dom.selected_dc = host
+        dom.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+    return result
+
+
 @router.delete("/domains/{domain_id}")
 async def delete_domain(domain_id: int, db=Depends(get_db)):
     dom = (await db.execute(select(AdDomain).where(AdDomain.id == domain_id))).scalar_one_or_none()
@@ -230,6 +334,95 @@ async def import_bloodhound(domain_id: int, files: List[UploadFile] = File(...),
 
     # Dispara a importação em background
     asyncio.create_task(_run_bloodhound_import(job.id, domain_id, source_dir))
+    return job
+
+
+def _base_dn_from_domain(name):
+    return "dc=" + ",dc=".join((name or "").lower().split("."))
+
+
+async def _resolve_scan_kwargs(db, dom, host):
+    """Monta os kwargs de autenticação para a varredura LDAP a partir do domínio."""
+    auth = dom.auth_method or "user_password"
+    kwargs = dict(
+        host=host, use_ldaps=bool(dom.use_ldaps), base_dn=_base_dn_from_domain(dom.name),
+        auth_method=auth, domain=dom.name, kdc_host=None,
+    )
+    if auth == "cert":
+        raise HTTPException(status_code=400, detail="Varredura ao vivo por certificado ainda não suportada; use usuário/senha ou Kerberos.")
+    if not dom.credential_id:
+        raise HTTPException(status_code=422, detail="Selecione uma credencial para o domínio.")
+    cred = (await db.execute(select(Credential).where(Credential.id == dom.credential_id))).scalar_one_or_none()
+    if not cred:
+        raise HTTPException(status_code=404, detail="Credencial não encontrada.")
+    if auth == "user_password":
+        kwargs.update(username=cred.username, password=cred.password, nthash=cred.ntlm_hash,
+                      domain=cred.domain or dom.name)
+    else:  # kerberos
+        kwargs.update(username=cred.username, ccache_b64=cred.kerberos_ccache,
+                      kdc_host=cred.kdc_host, domain=cred.domain or dom.name)
+    return kwargs
+
+
+async def _run_ldap_scan(job_id: int, domain_id: int, scan_kwargs: dict):
+    from ad_scan import scan_ldap_tree
+    async with AsyncSessionLocal() as session:
+        job = (await session.execute(select(AdScanJob).where(AdScanJob.id == job_id))).scalar_one_or_none()
+        if job:
+            job.status = "running"
+            job.started_at = datetime.now(timezone.utc)
+            job.current_step = "Conectando ao DC"
+            await session.commit()
+    try:
+        stats = await asyncio.to_thread(scan_ldap_tree, POSTGRES_URL, domain_id, job_id=job_id, **scan_kwargs)
+        async with AsyncSessionLocal() as session:
+            job = (await session.execute(select(AdScanJob).where(AdScanJob.id == job_id))).scalar_one_or_none()
+            if job:
+                job.status = "completed"
+                job.total_objects = stats.get("total_objects", 0)
+                job.processed_objects = stats.get("total_objects", 0)
+                job.current_step = "Concluído"
+                job.finished_at = datetime.now(timezone.utc)
+                await session.commit()
+    except Exception as e:
+        logger.exception(f"AD LDAP scan job {job_id} falhou")
+        async with AsyncSessionLocal() as session:
+            job = (await session.execute(select(AdScanJob).where(AdScanJob.id == job_id))).scalar_one_or_none()
+            if job:
+                job.status = "failed"
+                job.error_message = str(e)
+                job.finished_at = datetime.now(timezone.utc)
+                await session.commit()
+
+
+class ScanRequest(BaseModel):
+    host: Optional[str] = None
+
+
+@router.post("/domains/{domain_id}/scan", response_model=AdJobResponse)
+async def start_ldap_scan(domain_id: int, payload: ScanRequest, db=Depends(get_db)):
+    """Inicia a varredura LDAP recursiva da árvore do domínio em background."""
+    if not POSTGRES_URL:
+        raise HTTPException(status_code=400, detail="A varredura requer PostgreSQL.")
+    dom = (await db.execute(select(AdDomain).where(AdDomain.id == domain_id))).scalar_one_or_none()
+    if not dom:
+        raise HTTPException(status_code=404, detail="Domínio não encontrado")
+
+    host = (payload.host or dom.selected_dc or "").strip()
+    if not host and dom.dc_hosts:
+        host = dom.dc_hosts.replace(";", ",").split(",")[0].strip()
+    if not host:
+        raise HTTPException(status_code=422, detail="Nenhum DC definido. Rode a descoberta ou informe um DC.")
+
+    scan_kwargs = await _resolve_scan_kwargs(db, dom, host)
+
+    job = AdScanJob(domain_id=domain_id, job_type="ldap", status="pending",
+                    current_step="Na fila", source_path=host)
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+
+    asyncio.create_task(_run_ldap_scan(job.id, domain_id, scan_kwargs))
     return job
 
 
