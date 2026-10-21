@@ -233,18 +233,19 @@ class _TreeWriter:
             """
             INSERT INTO ad_objects
               (domain_id, object_id, object_type, name, distinguished_name,
-               samaccountname, description, parent_object_id, enabled, highvalue,
+               samaccountname, description, parent_object_id, parent_dn, enabled, highvalue,
                whencreated, properties, created_at)
             VALUES %s
             ON CONFLICT (domain_id, object_id) DO UPDATE SET
               object_type=EXCLUDED.object_type, name=EXCLUDED.name,
               distinguished_name=EXCLUDED.distinguished_name,
               samaccountname=EXCLUDED.samaccountname, description=EXCLUDED.description,
+              parent_dn=EXCLUDED.parent_dn,
               enabled=EXCLUDED.enabled, whencreated=EXCLUDED.whencreated,
               properties=EXCLUDED.properties
             """,
             self.batch,
-            template="(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())",
+            template="(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())",
             page_size=self.batch_size,
         )
         self.conn.commit()
@@ -355,7 +356,7 @@ def _entry_to_row(writer, dn, attrs):
     return (
         writer.domain_id, oid, obj_type,
         attrs.get("name"), dn, attrs.get("sAMAccountName"),
-        attrs.get("description"), None, enabled, highvalue,
+        attrs.get("description"), None, _parent_dn(dn), enabled, highvalue,
         _gentime_to_epoch(attrs.get("whenCreated")), json.dumps(props),
     )
 

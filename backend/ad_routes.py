@@ -66,8 +66,8 @@ class AdObjectNode(BaseModel):
     description: Optional[str] = None
     enabled: Optional[bool] = None
     highvalue: Optional[bool] = None
-    has_children: bool = False
-    child_count: int = 0
+    has_children: Optional[bool] = False
+    child_count: Optional[int] = 0
 
     class Config:
         from_attributes = True
@@ -536,15 +536,35 @@ def _order_by_type_name():
 
 
 @router.get("/domains/{domain_id}/tree", response_model=List[AdObjectNode])
-async def get_tree(domain_id: int, parent: Optional[str] = None, db=Depends(get_db_readonly)):
-    """Retorna os filhos de um nó. Sem 'parent' retorna a raiz (parent_object_id IS NULL)."""
+async def get_tree(domain_id: int, parent_dn: Optional[str] = None,
+                   parent: Optional[str] = None, db=Depends(get_db_readonly)):
+    """Retorna os filhos de um nó pela hierarquia de DN (navegável mesmo durante
+    a varredura). Sem 'parent_dn' retorna a raiz (objeto Domain)."""
     q = select(AdObject).where(AdObject.domain_id == domain_id)
-    if parent:
+    if parent_dn:
+        q = q.where(AdObject.parent_dn == parent_dn)
+    elif parent:
+        # compat: navegação antiga por object_id
         q = q.where(AdObject.parent_object_id == parent)
     else:
-        q = q.where(AdObject.parent_object_id.is_(None))
-    result = await db.execute(q)
-    nodes = result.scalars().all()
+        q = q.where(AdObject.object_type == "Domain")
+    nodes = (await db.execute(q)).scalars().all()
+
+    # has_children calculado ao vivo (durante a varredura o child_count pode ser 0)
+    dns = [n.distinguished_name for n in nodes if n.distinguished_name]
+    have = set()
+    if dns:
+        res = await db.execute(
+            select(AdObject.parent_dn).where(
+                AdObject.domain_id == domain_id, AdObject.parent_dn.in_(dns)
+            ).distinct()
+        )
+        have = {r[0] for r in res.fetchall()}
+    for n in nodes:
+        n.has_children = n.distinguished_name in have
+        if n.child_count is None:
+            n.child_count = 0
+
     rank = _order_by_type_name()
     nodes.sort(key=lambda n: (rank.get(n.object_type, 9), (n.name or "").lower()))
     return nodes

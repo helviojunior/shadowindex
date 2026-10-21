@@ -292,7 +292,7 @@ const AdDomains = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                    <Button onClick={() => navigate(`/ad/${dom.id}/browse`)} disabled={!dom.object_count} data-testid={`explore-${dom.id}`}>
+                    <Button onClick={() => navigate(`/ad/${dom.id}/browse`)} disabled={!dom.object_count && domJobs.length === 0} data-testid={`explore-${dom.id}`}>
                       <FolderTree className="w-4 h-4 mr-2" />Explorar
                     </Button>
                     <input

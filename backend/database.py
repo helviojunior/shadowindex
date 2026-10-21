@@ -648,6 +648,7 @@ class AdObject(Base):
     samaccountname = Column(String, nullable=True, index=True)
     description = Column(Text, nullable=True)
     parent_object_id = Column(String, nullable=True, index=True) # hierarquia (ChildObjects/ContainedBy)
+    parent_dn = Column(String, nullable=True, index=True)        # DN do pai (navegação incremental durante a varredura)
     enabled = Column(Boolean, nullable=True)
     highvalue = Column(Boolean, nullable=True)
     whencreated = Column(BigInteger, nullable=True)
@@ -659,6 +660,7 @@ class AdObject(Base):
     __table_args__ = (
         Index('idx_ad_objects_domain_objid', 'domain_id', 'object_id', unique=True),
         Index('idx_ad_objects_domain_parent', 'domain_id', 'parent_object_id'),
+        Index('idx_ad_objects_domain_parentdn', 'domain_id', 'parent_dn'),
         Index('idx_ad_objects_domain_type', 'domain_id', 'object_type'),
         Index('idx_ad_objects_name', 'name'),
         Index('idx_ad_objects_sam', 'samaccountname'),
@@ -808,6 +810,24 @@ async def apply_pending_migrations():
                     "ALTER TABLE credentials ADD COLUMN kdc_host VARCHAR"
                 ))
                 logger.info("Migration applied: kdc_host added to credentials")
+
+            # AD Explorer: parent_dn em ad_objects (navegação incremental)
+            result = await conn.execute(text(
+                "SELECT to_regclass('public.ad_objects')"
+            ))
+            if result.scalar():
+                result = await conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'ad_objects' AND column_name = 'parent_dn'"
+                ))
+                if not result.fetchone():
+                    logger.info("Applying migration: adding parent_dn to ad_objects")
+                    await conn.execute(text("ALTER TABLE ad_objects ADD COLUMN parent_dn VARCHAR"))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS idx_ad_objects_domain_parentdn "
+                        "ON ad_objects (domain_id, parent_dn)"
+                    ))
+                    logger.info("Migration applied: parent_dn added to ad_objects")
         else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))

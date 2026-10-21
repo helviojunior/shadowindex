@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, Network, Search, ChevronRight, ChevronDown, Loader2,
-  Folder, FolderOpen, Users, User, Monitor, FileText, Box, Shield, Building2, Database, Radio
+  Folder, FolderOpen, Users, User, Monitor, FileText, Box, Shield, Building2, Database, Radio, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -127,7 +127,7 @@ const AdBrowse = () => {
       const { data } = await axios.get(`${API}/ad/domains/${domainId}/ldap-browse`, { params: { dn: node.distinguished_name } });
       return data;
     }
-    const { data } = await axios.get(`${API}/ad/domains/${domainId}/tree`, { params: { parent: node.object_id } });
+    const { data } = await axios.get(`${API}/ad/domains/${domainId}/tree`, { params: { parent_dn: node.distinguished_name } });
     return data;
   }, [mode, domainId]);
 
@@ -176,6 +176,9 @@ const AdBrowse = () => {
           <span className="truncate">{domain?.name || `Domínio ${domainId}`}</span>
         </h1>
         {domain?.object_count != null && <Badge variant="outline">{domain.object_count.toLocaleString()} objetos</Badge>}
+        <Button variant="ghost" size="sm" onClick={() => loadRoots(mode)} title="Atualizar árvore">
+          <RefreshCw className={`w-4 h-4 ${loadingRoots ? 'animate-spin' : ''}`} />
+        </Button>
         {/* Alternador de modo */}
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-border p-0.5">
           <button onClick={() => setMode('db')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'db' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-db">

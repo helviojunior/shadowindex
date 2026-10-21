@@ -137,18 +137,19 @@ def import_bloodhound_files(pg_dsn, domain_id, source_dir, job_id=None, batch_si
             """
             INSERT INTO ad_objects
               (domain_id, object_id, object_type, name, distinguished_name,
-               samaccountname, description, parent_object_id, enabled, highvalue,
+               samaccountname, description, parent_object_id, parent_dn, enabled, highvalue,
                whencreated, properties, created_at)
             VALUES %s
             ON CONFLICT (domain_id, object_id) DO UPDATE SET
               object_type=EXCLUDED.object_type, name=EXCLUDED.name,
               distinguished_name=EXCLUDED.distinguished_name,
               samaccountname=EXCLUDED.samaccountname, description=EXCLUDED.description,
+              parent_dn=EXCLUDED.parent_dn,
               enabled=EXCLUDED.enabled, highvalue=EXCLUDED.highvalue,
               whencreated=EXCLUDED.whencreated, properties=EXCLUDED.properties
             """,
             obj_batch,
-            template="(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())",
+            template="(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())",
             page_size=batch_size,
         )
         obj_batch = []
@@ -199,15 +200,18 @@ def import_bloodhound_files(pg_dsn, domain_id, source_dir, job_id=None, batch_si
                         root_oid = root_oid or oid
                         domain_sid = domain_sid or props.get("domainsid") or oid
 
+                    _dn = props.get("distinguishedname")
+                    _pdn = _dn.split(",", 1)[1].strip() if _dn and "," in _dn else None
                     obj_batch.append((
                         domain_id,
                         oid,
                         obj_type,
                         props.get("name"),
-                        props.get("distinguishedname"),
+                        _dn,
                         props.get("samaccountname"),
                         props.get("description"),
                         None,  # parent_object_id resolvido depois via staging
+                        _pdn,  # parent_dn (navegação incremental)
                         props.get("enabled"),
                         props.get("highvalue"),
                         _to_int(props.get("whencreated")),
