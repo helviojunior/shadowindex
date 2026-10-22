@@ -667,6 +667,25 @@ class AdObject(Base):
     )
 
 
+class AdGroupMember(Base):
+    """Associação de pertinência de grupo (grupo → membro direto).
+
+    Preenchida a partir de BloodHound (`Members`) ou do atributo LDAP `member`.
+    Permite expandir um grupo na árvore para ver seus membros, que não fazem
+    parte da hierarquia de DN (parent/child)."""
+    __tablename__ = "ad_group_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    domain_id = Column(Integer, ForeignKey("ad_domains.id"), nullable=False, index=True)
+    group_object_id = Column(String, nullable=False, index=True)   # object_id do grupo
+    member_object_id = Column(String, nullable=False, index=True)  # object_id do membro
+
+    __table_args__ = (
+        Index('idx_ad_group_members_domain_group', 'domain_id', 'group_object_id'),
+        Index('idx_ad_group_members_uniq', 'domain_id', 'group_object_id', 'member_object_id', unique=True),
+    )
+
+
 class AdScanJob(Base):
     """Job de importação/varredura do AD (BloodHound ou LDAP) em background."""
     __tablename__ = "ad_scan_jobs"

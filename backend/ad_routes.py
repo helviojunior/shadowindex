@@ -14,7 +14,7 @@ from sqlalchemy import select, delete, func, or_, and_
 
 from database import (
     get_db, get_db_readonly, AsyncSessionLocal,
-    AdDomain, AdObject, AdScanJob, Credential, POSTGRES_URL,
+    AdDomain, AdObject, AdScanJob, AdGroupMember, Credential, POSTGRES_URL,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,6 +66,7 @@ class AdObjectNode(BaseModel):
     description: Optional[str] = None
     enabled: Optional[bool] = None
     highvalue: Optional[bool] = None
+    whencreated: Optional[int] = None
     has_children: Optional[bool] = False
     child_count: Optional[int] = 0
 
@@ -505,6 +506,38 @@ async def ldap_browse_live(domain_id: int, dn: Optional[str] = None,
     return nodes
 
 
+@router.get("/domains/{domain_id}/ldap-members")
+async def ldap_members_live(domain_id: int, dn: str,
+                            host: Optional[str] = None, db=Depends(get_db)):
+    """Membros diretos de um grupo via LDAP ao vivo (filtro memberOf)."""
+    from ad_scan import ldap_browse
+
+    dom = (await db.execute(select(AdDomain).where(AdDomain.id == domain_id))).scalar_one_or_none()
+    if not dom:
+        raise HTTPException(status_code=404, detail="Domínio não encontrado")
+
+    target = (host or dom.selected_dc or "").strip()
+    if not target and dom.dc_hosts:
+        target = dom.dc_hosts.replace(";", ",").split(",")[0].strip()
+    if not target:
+        raise HTTPException(status_code=422, detail="Nenhum DC definido. Rode a descoberta ou informe um DC.")
+
+    k = await _resolve_scan_kwargs(db, dom, target)
+    try:
+        nodes = await asyncio.to_thread(
+            ldap_browse,
+            k["host"], k["use_ldaps"], None, k["auth_method"],
+            k.get("domain"), k.get("username"), k.get("password"), k.get("nthash"),
+            k.get("ccache_b64"), k.get("kdc_host"), False, k["base_dn"], dn,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao listar membros no LDAP: {e}")
+
+    for i, n in enumerate(nodes):
+        n["id"] = i
+    return nodes
+
+
 @router.get("/jobs", response_model=List[AdJobResponse])
 async def list_jobs(domain_id: Optional[int] = None, db=Depends(get_db_readonly)):
     q = select(AdScanJob).order_by(AdScanJob.created_at.desc())
@@ -595,29 +628,266 @@ async def get_object(obj_pk: int, db=Depends(get_db_readonly)):
     }
 
 
+@router.get("/objects/{obj_pk}/members", response_model=List[AdObjectNode])
+async def get_group_members(obj_pk: int, db=Depends(get_db_readonly)):
+    """Membros diretos de um grupo (dados importados)."""
+    grp = (await db.execute(select(AdObject).where(AdObject.id == obj_pk))).scalar_one_or_none()
+    if not grp:
+        raise HTTPException(status_code=404, detail="Objeto não encontrado")
+    query = (
+        select(AdObject)
+        .join(
+            AdGroupMember,
+            and_(
+                AdGroupMember.member_object_id == AdObject.object_id,
+                AdGroupMember.domain_id == AdObject.domain_id,
+            ),
+        )
+        .where(
+            AdGroupMember.domain_id == grp.domain_id,
+            AdGroupMember.group_object_id == grp.object_id,
+        )
+    )
+    nodes = (await db.execute(query)).scalars().all()
+    rank = _order_by_type_name()
+    nodes.sort(key=lambda n: (rank.get(n.object_type, 9), (n.name or "").lower()))
+    return nodes
+
+
+def _date_to_epoch(value: Optional[str], end_of_day: bool = False) -> Optional[int]:
+    """Converte 'YYYY-MM-DD' em epoch (segundos, UTC). Retorna None se vazio/inválido."""
+    if not value:
+        return None
+    try:
+        dt = datetime.strptime(value.strip(), "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        if end_of_day:
+            dt = dt.replace(hour=23, minute=59, second=59)
+        return int(dt.timestamp())
+    except (ValueError, TypeError):
+        return None
+
+
 @router.get("/domains/{domain_id}/search", response_model=List[AdObjectNode])
 async def search_objects(
     domain_id: int,
-    q: str,
+    q: Optional[str] = None,
     object_type: Optional[str] = None,
+    enabled: Optional[bool] = None,
+    highvalue: Optional[bool] = None,
+    created_from: Optional[str] = None,
+    created_to: Optional[str] = None,
+    pwd_from: Optional[str] = None,
+    pwd_to: Optional[str] = None,
     limit: int = 200,
     db=Depends(get_db_readonly),
 ):
-    """Busca por nome, samAccountName, DN, descrição ou SID/GUID."""
+    """Busca avançada: texto (nome/sam/DN/descrição/SID) + filtros opcionais
+    (tipo, habilitado, high value, data de criação e último pwdLastSet)."""
+    from sqlalchemy import cast, BigInteger
+
     term = (q or "").strip()
-    if len(term) < 2:
-        raise HTTPException(status_code=422, detail="Informe ao menos 2 caracteres.")
-    like = f"%{term}%"
-    conds = or_(
-        AdObject.name.ilike(like),
-        AdObject.samaccountname.ilike(like),
-        AdObject.distinguished_name.ilike(like),
-        AdObject.description.ilike(like),
-        AdObject.object_id.ilike(like),
-    )
-    query = select(AdObject).where(AdObject.domain_id == domain_id, conds)
+    has_filter = any([
+        object_type, enabled is not None, highvalue is not None,
+        created_from, created_to, pwd_from, pwd_to,
+    ])
+    if len(term) < 2 and not has_filter:
+        raise HTTPException(status_code=422, detail="Informe ao menos 2 caracteres ou um filtro.")
+
+    query = select(AdObject).where(AdObject.domain_id == domain_id)
+
+    if len(term) >= 2:
+        like = f"%{term}%"
+        query = query.where(or_(
+            AdObject.name.ilike(like),
+            AdObject.samaccountname.ilike(like),
+            AdObject.distinguished_name.ilike(like),
+            AdObject.description.ilike(like),
+            AdObject.object_id.ilike(like),
+        ))
     if object_type:
         query = query.where(AdObject.object_type == object_type)
+    if enabled is not None:
+        query = query.where(AdObject.enabled == enabled)
+    if highvalue is not None:
+        query = query.where(AdObject.highvalue == highvalue)
+
+    cf = _date_to_epoch(created_from)
+    ct = _date_to_epoch(created_to, end_of_day=True)
+    if cf is not None:
+        query = query.where(AdObject.whencreated >= cf)
+    if ct is not None:
+        query = query.where(AdObject.whencreated <= ct)
+
+    # pwdLastSet vive nas Properties (BH v6): filtro por epoch armazenado como texto
+    pf = _date_to_epoch(pwd_from)
+    pt = _date_to_epoch(pwd_to, end_of_day=True)
+    if pf is not None or pt is not None:
+        pwd_expr = cast(AdObject.properties['pwdlastset'].astext, BigInteger)
+        if pf is not None:
+            query = query.where(pwd_expr >= pf)
+        if pt is not None:
+            query = query.where(pwd_expr <= pt)
+
+    rank = _order_by_type_name()
     query = query.limit(min(max(limit, 1), 1000))
     result = await db.execute(query)
-    return result.scalars().all()
+    nodes = result.scalars().all()
+    nodes.sort(key=lambda n: (rank.get(n.object_type, 9), (n.name or "").lower()))
+    return nodes
+
+
+# --------------------------------------------------------------------------- #
+# Operações de escrita no AD (LDAP ao vivo) — exigem DC + credencial
+# --------------------------------------------------------------------------- #
+import ad_write  # noqa: E402
+
+
+class SetEnabledBody(BaseModel):
+    enabled: bool
+
+
+class PasswordBody(BaseModel):
+    password: str
+
+
+class MemberBody(BaseModel):
+    member_pk: Optional[int] = None
+    member_dn: Optional[str] = None
+
+
+class GroupRefBody(BaseModel):
+    group_pk: Optional[int] = None
+    group_dn: Optional[str] = None
+
+
+class CreateUserBody(BaseModel):
+    name: str
+    sam: str
+    password: Optional[str] = None
+
+
+class CreateGroupBody(BaseModel):
+    name: str
+    sam: str
+
+
+async def _get_domain_or_404(db, domain_id):
+    dom = (await db.execute(select(AdDomain).where(AdDomain.id == domain_id))).scalar_one_or_none()
+    if not dom:
+        raise HTTPException(status_code=404, detail="Domínio não encontrado")
+    return dom
+
+
+async def _get_obj_or_404(db, obj_pk):
+    obj = (await db.execute(select(AdObject).where(AdObject.id == obj_pk))).scalar_one_or_none()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Objeto não encontrado")
+    if not obj.distinguished_name:
+        raise HTTPException(status_code=422, detail="Objeto sem Distinguished Name (não navegável por LDAP).")
+    return obj
+
+
+async def _ldap_write_kwargs(db, dom):
+    """Monta os kwargs de conexão LDAP para escrita; valida DC + credencial."""
+    target = (dom.selected_dc or "").strip()
+    if not target and dom.dc_hosts:
+        target = dom.dc_hosts.replace(";", ",").split(",")[0].strip()
+    if not target:
+        raise HTTPException(status_code=422, detail="Nenhum DC definido. Configure o LDAP do domínio.")
+    if not dom.credential_id:
+        raise HTTPException(status_code=422, detail="Selecione uma credencial para o domínio (LDAP não configurado).")
+    return await _resolve_scan_kwargs(db, dom, target)
+
+
+async def _resolve_member_dn(db, member_pk, member_dn):
+    if member_dn:
+        return member_dn
+    if member_pk:
+        obj = await _get_obj_or_404(db, member_pk)
+        return obj.distinguished_name
+    raise HTTPException(status_code=422, detail="Informe o objeto (member_pk ou member_dn).")
+
+
+@router.post("/domains/{domain_id}/objects/{obj_pk}/set-enabled")
+async def ad_set_enabled(domain_id: int, obj_pk: int, body: SetEnabledBody, db=Depends(get_db)):
+    dom = await _get_domain_or_404(db, domain_id)
+    obj = await _get_obj_or_404(db, obj_pk)
+    k = await _ldap_write_kwargs(db, dom)
+    try:
+        res = await asyncio.to_thread(ad_write.set_account_enabled, k, obj.distinguished_name, body.enabled)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao {'desbloquear' if body.enabled else 'bloquear'}: {e}")
+    obj.enabled = body.enabled
+    await db.commit()
+    return res
+
+
+@router.post("/domains/{domain_id}/objects/{obj_pk}/reset-password")
+async def ad_reset_password(domain_id: int, obj_pk: int, body: PasswordBody, db=Depends(get_db)):
+    if not body.password or len(body.password) < 1:
+        raise HTTPException(status_code=422, detail="Informe a nova senha.")
+    dom = await _get_domain_or_404(db, domain_id)
+    obj = await _get_obj_or_404(db, obj_pk)
+    k = await _ldap_write_kwargs(db, dom)
+    try:
+        return await asyncio.to_thread(ad_write.reset_password, k, obj.distinguished_name, body.password)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao trocar senha: {e}")
+
+
+@router.post("/domains/{domain_id}/objects/{obj_pk}/add-to-group")
+async def ad_add_to_group(domain_id: int, obj_pk: int, body: GroupRefBody, db=Depends(get_db)):
+    dom = await _get_domain_or_404(db, domain_id)
+    obj = await _get_obj_or_404(db, obj_pk)
+    group_dn = body.group_dn
+    if not group_dn and body.group_pk:
+        g = await _get_obj_or_404(db, body.group_pk)
+        group_dn = g.distinguished_name
+    if not group_dn:
+        raise HTTPException(status_code=422, detail="Informe o grupo (group_pk ou group_dn).")
+    k = await _ldap_write_kwargs(db, dom)
+    try:
+        return await asyncio.to_thread(ad_write.add_group_member, k, group_dn, obj.distinguished_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao adicionar ao grupo: {e}")
+
+
+@router.post("/domains/{domain_id}/groups/{obj_pk}/add-member")
+async def ad_group_add_member(domain_id: int, obj_pk: int, body: MemberBody, db=Depends(get_db)):
+    dom = await _get_domain_or_404(db, domain_id)
+    grp = await _get_obj_or_404(db, obj_pk)
+    member_dn = await _resolve_member_dn(db, body.member_pk, body.member_dn)
+    k = await _ldap_write_kwargs(db, dom)
+    try:
+        return await asyncio.to_thread(ad_write.add_group_member, k, grp.distinguished_name, member_dn)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao inserir membro: {e}")
+
+
+@router.post("/domains/{domain_id}/containers/{obj_pk}/create-user")
+async def ad_create_user(domain_id: int, obj_pk: int, body: CreateUserBody, db=Depends(get_db)):
+    if not body.name or not body.sam:
+        raise HTTPException(status_code=422, detail="Informe Nome e samAccountName.")
+    dom = await _get_domain_or_404(db, domain_id)
+    parent = await _get_obj_or_404(db, obj_pk)
+    k = await _ldap_write_kwargs(db, dom)
+    upn = f"{body.sam}@{dom.name}"
+    try:
+        return await asyncio.to_thread(ad_write.create_user, k, parent.distinguished_name,
+                                       body.name, body.sam, body.password, upn)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao inserir usuário: {e}")
+
+
+@router.post("/domains/{domain_id}/containers/{obj_pk}/create-group")
+async def ad_create_group(domain_id: int, obj_pk: int, body: CreateGroupBody, db=Depends(get_db)):
+    if not body.name or not body.sam:
+        raise HTTPException(status_code=422, detail="Informe Nome e samAccountName.")
+    dom = await _get_domain_or_404(db, domain_id)
+    parent = await _get_obj_or_404(db, obj_pk)
+    k = await _ldap_write_kwargs(db, dom)
+    try:
+        return await asyncio.to_thread(ad_write.create_group, k, parent.distinguished_name,
+                                       body.name, body.sam)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao inserir grupo: {e}")

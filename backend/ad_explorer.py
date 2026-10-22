@@ -120,12 +120,21 @@ def import_bloodhound_files(pg_dsn, domain_id, source_dir, job_id=None, batch_si
         "(domain_id integer, child text, parent text)"
     )
     cur.execute("DELETE FROM ad_import_edges WHERE domain_id = %s", (domain_id,))
+    # Tabela de pertinência de grupos (grupo→membro); criada no startup pelo
+    # SQLAlchemy, garantida aqui para importações diretas/testes.
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS ad_group_members "
+        "(id serial PRIMARY KEY, domain_id integer, group_object_id text, member_object_id text)"
+    )
+    cur.execute("DELETE FROM ad_group_members WHERE domain_id = %s", (domain_id,))
     conn.commit()
 
     obj_batch = []
     edge_batch = []
+    member_batch = []
     total = 0
     domain_sid = None
+    domain_name = None
     root_oid = None
 
     def flush_objects():
@@ -141,7 +150,7 @@ def import_bloodhound_files(pg_dsn, domain_id, source_dir, job_id=None, batch_si
                whencreated, properties, created_at)
             VALUES %s
             ON CONFLICT (domain_id, object_id) DO UPDATE SET
-              object_type=EXCLUDED.object_type, name=EXCLUDED.name,
+              object_type=EXCLUDED.object_type,
               distinguished_name=EXCLUDED.distinguished_name,
               samaccountname=EXCLUDED.samaccountname, description=EXCLUDED.description,
               parent_dn=EXCLUDED.parent_dn,
@@ -165,6 +174,18 @@ def import_bloodhound_files(pg_dsn, domain_id, source_dir, job_id=None, batch_si
             page_size=batch_size,
         )
         edge_batch = []
+
+    def flush_members():
+        nonlocal member_batch
+        if not member_batch:
+            return
+        execute_values(
+            cur,
+            "INSERT INTO ad_group_members (domain_id, group_object_id, member_object_id) VALUES %s",
+            member_batch,
+            page_size=batch_size,
+        )
+        member_batch = []
 
     def update_progress(step=None):
         if job_id is None:
@@ -199,6 +220,7 @@ def import_bloodhound_files(pg_dsn, domain_id, source_dir, job_id=None, batch_si
                     if obj_type == "Domain":
                         root_oid = root_oid or oid
                         domain_sid = domain_sid or props.get("domainsid") or oid
+                        domain_name = domain_name or props.get("name")
 
                     _dn = props.get("distinguishedname")
                     _pdn = _dn.split(",", 1)[1].strip() if _dn and "," in _dn else None
@@ -225,20 +247,33 @@ def import_bloodhound_files(pg_dsn, domain_id, source_dir, job_id=None, batch_si
                             if child_oid:
                                 edge_batch.append((domain_id, child_oid, oid))
 
+                    # Pertinência de grupo a partir de Members (membros diretos)
+                    if obj_type == "Group":
+                        seen_members = set()
+                        for m in (obj.get("Members") or []):
+                            m_oid = m.get("ObjectIdentifier")
+                            if m_oid and m_oid not in seen_members:
+                                seen_members.add(m_oid)
+                                member_batch.append((domain_id, oid, m_oid))
+
                     total += 1
                     if len(obj_batch) >= batch_size:
                         flush_objects()
                     if len(edge_batch) >= batch_size:
                         flush_edges()
+                    if len(member_batch) >= batch_size:
+                        flush_members()
                     if total % 10000 == 0:
                         flush_objects()
                         flush_edges()
+                        flush_members()
                         conn.commit()
                         update_progress()
                         conn.commit()
 
         flush_objects()
         flush_edges()
+        flush_members()
         conn.commit()
 
         # Resolve a hierarquia (parent_object_id) a partir das arestas
@@ -286,6 +321,45 @@ def import_bloodhound_files(pg_dsn, domain_id, source_dir, job_id=None, batch_si
             (domain_id, domain_id),
         )
         conn.commit()
+
+        # Grupos com membros tornam-se expansíveis (membros não são filhos de DN)
+        cur.execute(
+            """
+            UPDATE ad_objects o
+            SET has_children = true, child_count = m.cnt
+            FROM (
+                SELECT group_object_id AS goid, count(*) AS cnt
+                FROM ad_group_members
+                WHERE domain_id = %s
+                GROUP BY group_object_id
+            ) m
+            WHERE o.domain_id = %s AND o.object_type = 'Group' AND o.object_id = m.goid
+            """,
+            (domain_id, domain_id),
+        )
+        conn.commit()
+
+        # Remove o sufixo "@DOMINIO" do nome quando igual ao do domínio
+        # (BloodHound nomeia como NOME@DOMINIO.CORP). O próprio objeto Domain fica intacto.
+        if not domain_name:
+            cur.execute("SELECT name FROM ad_domains WHERE id = %s", (domain_id,))
+            row = cur.fetchone()
+            domain_name = row[0] if row else None
+        if domain_name:
+            suffix = f"@{domain_name}"
+            cur.execute(
+                """
+                UPDATE ad_objects
+                SET name = left(name, length(name) - length(%s))
+                WHERE domain_id = %s
+                  AND object_type <> 'Domain'
+                  AND name IS NOT NULL
+                  AND length(name) > length(%s)
+                  AND right(lower(name), length(%s)) = lower(%s)
+                """,
+                (suffix, domain_id, suffix, suffix, suffix),
+            )
+            conn.commit()
 
         # Atualiza o domínio
         cur.execute(

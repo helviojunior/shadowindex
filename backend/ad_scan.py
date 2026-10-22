@@ -183,6 +183,9 @@ def _attrs_to_node(dn, attrs):
         "objectclass": classes,
     }
     props = {k: v for k, v in props.items() if v is not None}
+    members = attrs.get("member") or []
+    # Grupos são expansíveis quando possuem membros diretos (atributo `member`)
+    is_group = otype == "Group"
     return {
         "object_id": oid,
         "object_type": otype,
@@ -192,8 +195,9 @@ def _attrs_to_node(dn, attrs):
         "description": attrs.get("description"),
         "enabled": enabled,
         "highvalue": (str(admincount) == "1") or None,
-        "has_children": otype in CONTAINER_TYPES,
-        "child_count": 0,
+        "whencreated": _gentime_to_epoch(attrs.get("whenCreated")),
+        "has_children": (otype in CONTAINER_TYPES) or (is_group and len(members) > 0),
+        "child_count": len(members) if is_group else 0,
         "properties": props,
     }
 
@@ -435,14 +439,38 @@ def scan_ldap_tree(pg_dsn, domain_id, host, use_ldaps, base_dn,
             os.environ["KRB5CCNAME"] = prev
 
 
+def _ldap_filter_escape(value):
+    """Escapa um valor para uso seguro em filtro LDAP (RFC 4515)."""
+    out = []
+    for ch in (value or ""):
+        if ch == "\\":
+            out.append("\\5c")
+        elif ch == "(":
+            out.append("\\28")
+        elif ch == ")":
+            out.append("\\29")
+        elif ch == "*":
+            out.append("\\2a")
+        elif ch == "\x00":
+            out.append("\\00")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 def ldap_browse(host, use_ldaps, parent_dn, auth_method, domain=None, username=None,
                 password=None, nthash=None, ccache_b64=None, kdc_host=None,
-                root=False, base_dn=None):
+                root=False, base_dn=None, members_of=None):
     """Lista os filhos imediatos de um nó (scope singleLevel) ou o próprio nó raiz
-    (baseObject). Usado para navegação LDAP ao vivo, sem persistência."""
+    (baseObject). Com `members_of` (DN de um grupo), lista os membros diretos do
+    grupo (subtree + filtro memberOf). Usado para navegação LDAP ao vivo, sem
+    persistência."""
     from impacket.ldap import ldap as impkt_ldap, ldapasn1
 
-    search_base = base_dn if root else parent_dn
+    if members_of:
+        search_base = base_dn
+    else:
+        search_base = base_dn if root else parent_dn
     proto = "ldaps" if use_ldaps else "ldap"
     conn = impkt_ldap.LDAPConnection(f"{proto}://{host}", base_dn or parent_dn, kdc_host)
 
@@ -463,7 +491,15 @@ def ldap_browse(host, use_ldaps, parent_dn, auth_method, domain=None, username=N
                 lm, nt = (nthash.split(":", 1) if ":" in nthash else ("", nthash))
             conn.login(username or "", password or "", domain or "", lm, nt)
 
-        scope = ldapasn1.Scope("baseObject") if root else ldapasn1.Scope("singleLevel")
+        if members_of:
+            scope = ldapasn1.Scope("wholeSubtree")
+            search_filter = f"(memberOf={_ldap_filter_escape(members_of)})"
+        elif root:
+            scope = ldapasn1.Scope("baseObject")
+            search_filter = "(objectClass=*)"
+        else:
+            scope = ldapasn1.Scope("singleLevel")
+            search_filter = "(objectClass=*)"
         nodes = []
 
         def cb(item):
@@ -471,7 +507,7 @@ def ldap_browse(host, use_ldaps, parent_dn, auth_method, domain=None, username=N
             if dn is None:
                 return
             # Em singleLevel, ignora eventual retorno do próprio base
-            if not root and dn and dn.strip().lower() == (search_base or "").strip().lower():
+            if not root and not members_of and dn and dn.strip().lower() == (search_base or "").strip().lower():
                 return
             nodes.append(_attrs_to_node(dn, attrs))
 
@@ -480,7 +516,7 @@ def ldap_browse(host, use_ldaps, parent_dn, auth_method, domain=None, username=N
         except Exception:
             sc = None
 
-        conn.search(searchBase=search_base, scope=scope, searchFilter="(objectClass=*)",
+        conn.search(searchBase=search_base, scope=scope, searchFilter=search_filter,
                     attributes=LDAP_ATTRIBUTES, sizeLimit=0,
                     searchControls=[sc] if sc else None, perRecordCallback=cb)
         try:
