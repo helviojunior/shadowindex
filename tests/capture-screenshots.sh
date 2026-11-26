@@ -43,7 +43,7 @@ pip install --quiet -r "$SHOTS_DIR/requirements.txt"
 echo "==> Instalando Chromium para o Playwright ..."
 python -m playwright install chromium
 
-ARGS=(--base-url "$BASE_URL" --out "$OUT_DIR")
+ARGS=(--base-url "$BASE_URL" --out "$OUT_DIR" --lang "${LANG_UI:-pt}")
 if [ "${FULL_PAGE:-0}" = "1" ]; then
   ARGS+=(--full-page)
 fi

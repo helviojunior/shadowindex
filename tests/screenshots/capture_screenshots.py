@@ -176,7 +176,7 @@ def slugify(text: str) -> str:
 
 
 def capture(base_url: str, out_dir: Path, width: int, height: int,
-            full_page: bool, theme: str, wait_ms: int):
+            full_page: bool, theme: str, wait_ms: int, lang: str = "pt"):
     out_dir.mkdir(parents=True, exist_ok=True)
     results = []
     pages = resolve_pages(base_url)
@@ -187,7 +187,11 @@ def capture(base_url: str, out_dir: Path, width: int, height: int,
             viewport={"width": width, "height": height},
             device_scale_factor=2,  # retina — imagens nítidas
             color_scheme="dark" if theme == "dark" else "light",
-            locale="pt-BR",
+            locale="en-US" if lang == "en" else "pt-BR",
+        )
+        # Força o idioma da aplicação (persistido em localStorage pelo app).
+        context.add_init_script(
+            f"try {{ localStorage.setItem('shadowindex_lang', '{lang}'); }} catch (e) {{}}"
         )
         page = context.new_page()
 
@@ -226,12 +230,14 @@ def main():
     ap.add_argument("--full-page", action="store_true", help="Captura a página inteira (scroll).")
     ap.add_argument("--theme", choices=["dark", "light"], default="dark")
     ap.add_argument("--wait-ms", type=int, default=1800, help="Espera extra por página (ms).")
+    ap.add_argument("--lang", choices=["en", "pt"], default="pt",
+                    help="Idioma da interface nos screenshots (força via localStorage).")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
     t0 = time.time()
     results = capture(args.base_url, out_dir, args.width, args.height,
-                      args.full_page, args.theme, args.wait_ms)
+                      args.full_page, args.theme, args.wait_ms, args.lang)
     print(f"\n✅ {len(results)} screenshots em {out_dir} ({time.time()-t0:.1f}s)")
 
 
