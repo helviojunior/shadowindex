@@ -1,282 +1,101 @@
 # ShadowIndex
 
-Plataforma de análise de segurança de arquivos com varredura de leaks, OCR e gerenciamento de servidores.
+> **Enterprise Data Discovery & Credential Intelligence Platform**
 
-## 🚀 Funcionalidades
+[![License: BSD-2-Clause](https://img.shields.io/badge/License-BSD_2--Clause-blue.svg)](LICENSE)
 
-- **Dashboard**: Visão geral com estatísticas e monitoramento de jobs
-- **Gerenciamento de Servidores**: Cadastro e organização de servidores
-- **Navegação de Arquivos**: Explorador de arquivos com Tree View
-- **Sistema de Downloads**: Download em batch com fila de processamento
-- **OCR de Arquivos**: Extração de texto de PDFs, imagens e certificados
-- **Detecção de Leaks**: Integração com GitLeaks + Critical Search
-- **Certificados PFX**: Visualização e extração de chaves privadas
-- **Importação Nmap**: Importação de servidores a partir de XML do Nmap
+ShadowIndex helps security teams discover and analyze sensitive data across a
+network. It browses SMB shares, downloads and indexes files (with OCR), detects
+secrets and credential *leaks*, explores Active Directory, and runs queries
+against discovered databases — all from a single web interface.
 
-## 🛠️ Tecnologias
+Everything collected from a server — **downloaded files, their content and the
+extracted OCR text** — is **stored locally**, so you can view, search and browse
+it **offline**, even when the source server is no longer reachable.
 
-### Backend
-- FastAPI
-- PostgreSQL ou SQLite (via SQLAlchemy + asyncpg/aiosqlite)
-- Apache Tika (OCR)
-- GitLeaks (varredura de segredos)
-- Python 3.11
+## 📖 Documentation
 
-### Frontend
-- React 19
-- Tailwind CSS
-- Shadcn/UI
-- Axios
-- Lucide Icons
+Full usage guide (one page per feature, in **English** and **Português**) is on
+the **[Project Wiki »](https://github.com/helviojunior/shadowindex/wiki)**.
 
-## 📦 Instalação com Docker Compose
+## ✨ Main Features
 
-### Requisitos
-- Docker
-- Docker Compose
+- **Server inventory** — monitor servers with a per-host risk index, leaks,
+  shares and downloads; import from Nmap, IP/host lists or BloodHound.
+- **File browser** — navigate SMB shares, view file content (text, Base64, and a
+  built-in **PDF viewer**), read **OCR** text, and keep everything for **offline**
+  analysis.
+- **Credentials** — user/password, **NTLM (hash)**, **Kerberos (ccache)**, token
+  and SSH keys, with verification status.
+- **Proxy support** — reach the target network through **SOCKS5 (Proxychains)** or
+  **HTTP** proxies, with DNS over the tunnel.
+- **AD Explorer** — explore the Active Directory tree per domain (BloodHound v6
+  import or live LDAP), with full object properties.
+- **Leaks detection** — find secrets and credentials in downloaded files with
+  **GitLeaks** + Critical Search (SSH keys, PFX/private keys, passwords, tokens…).
+- **SQL** — connect to databases (MS-SQL, MySQL, PostgreSQL, Oracle, and more),
+  run enumeration queries and keep a history.
+- **Dashboard & OCR pipeline** — overview metrics plus automatic OCR/indexing via
+  Apache Tika.
 
-### Execução Básica
+## 📸 Screenshots
+
+![Server inventory](docs/wiki/images/servers.png)
+
+| Files & content (offline) | Credentials | AD Explorer | Leaks |
+|---|---|---|---|
+| ![Files](docs/wiki/images/files-view-txt.png) | ![Credentials](docs/wiki/images/credentials.png) | ![AD Explorer](docs/wiki/images/ad-tree.png) | ![Leaks](docs/wiki/images/leaks.png) |
+
+> More screenshots and feature walkthroughs are in the
+> [Wiki](https://github.com/helviojunior/shadowindex/wiki). Screens use
+> **fictitious** demo data (`tests.local`).
+
+## 🚀 Getting Started (Docker)
 
 ```bash
-# Clone o repositório
-git clone <repo-url>
+git clone https://github.com/helviojunior/shadowindex.git
 cd shadowindex
-
-# Iniciar os containers
 docker compose up -d --build
-
-# Acessar
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:9090
 ```
 
-### Configuração do Endereço do Backend
+- Web UI: `http://localhost:3000`
+- Backend API: `http://localhost:9090`
 
-Por padrão, o frontend se conecta ao backend em `http://localhost:9090`. Para alterar (ex: acessar de outra máquina na rede):
-
-#### Opção 1: Variável de ambiente na linha de comando
+To expose the backend on another host, set `REACT_APP_BACKEND_URL` at build time
+(it is injected into the React build):
 
 ```bash
-REACT_APP_BACKEND_URL=http://SEU_IP:9090 docker compose up -d --build --force-recreate
+REACT_APP_BACKEND_URL=http://YOUR_IP:9090 docker compose up -d --build --force-recreate
 ```
 
-Exemplo:
-```bash
-REACT_APP_BACKEND_URL=http://192.168.1.100:9090 docker compose up -d --build --force-recreate
-```
-
-#### Opção 2: Arquivo .env na raiz do projeto
-
-Crie um arquivo `.env` na raiz do projeto:
-
-```bash
-echo "REACT_APP_BACKEND_URL=http://192.168.1.100:9090" > .env
-docker compose up -d --build --force-recreate
-```
-
-#### Opção 3: Editar docker-compose.yml diretamente
-
-```yaml
-frontend:
-  build:
-    args:
-      REACT_APP_BACKEND_URL: "http://192.168.1.100:9090"
-  environment:
-    REACT_APP_BACKEND_URL: "http://192.168.1.100:9090"
-```
-
-> **Nota**: É necessário fazer `--build` após alterar a variável, pois ela é injetada em tempo de build do React.
-
-### Portas Utilizadas
-
-| Serviço | Porta | Descrição |
-|---------|-------|-----------|
-| Frontend | 3000 | Interface web React |
-| Backend | 9090 | API FastAPI |
-| Tika | 9998 | Servidor OCR (interno) |
-
-### Volumes
-
-- `./shadowindex_data:/app/data` - Dados persistentes (arquivos baixados)
-- `postgres_data:/var/lib/postgresql/data` - Dados do PostgreSQL
-
-## 🐘 Banco de Dados
-
-O ShadowIndex suporta dois bancos de dados:
-
-### PostgreSQL (Recomendado para produção)
-
-Por padrão, o docker-compose.yml está configurado para usar PostgreSQL. Credenciais padrão:
-- **Host**: postgres
-- **Porta**: 5432
-- **Usuário**: shadowindex
-- **Senha**: shadowindex
-- **Database**: shadowindex
-
-### SQLite (Desenvolvimento/Testes)
-
-Para usar SQLite, comente ou remova a variável `POSTGRES_URL` no docker-compose.yml:
-
-```yaml
-backend:
-  environment:
-    # POSTGRES_URL: "postgresql://..."  # Comentar esta linha
-```
-
-### Migração SQLite → PostgreSQL
-
-Se você já tem dados no SQLite e quer migrar para PostgreSQL:
-
-```bash
-# 1. Pare os containers
-docker compose down
-
-# 2. Inicie apenas o PostgreSQL
-docker compose up -d postgres
-
-# 3. Execute o script de migração
-cd backend
-python migrate_sqlite_to_postgres.py \
-  --sqlite-path ./data/shadowindex.db \
-  --postgres-url postgresql://shadowindex:shadowindex@localhost:5432/shadowindex
-
-# 4. Inicie todos os serviços
-docker compose up -d
-```
-
-Ou usando variáveis de ambiente:
-
-```bash
-export SQLITE_PATH=./data/shadowindex.db
-export POSTGRES_URL=postgresql://shadowindex:shadowindex@localhost:5432/shadowindex
-python backend/migrate_sqlite_to_postgres.py
-```
-
-## 🗂️ Estrutura do Projeto
-
-```
-/app
-├── backend/
-│   ├── server.py              # FastAPI principal
-│   ├── routes_v2.py           # Rotas API v2
-│   ├── database.py            # Models SQLAlchemy
-│   ├── leaks_service.py       # Serviço GitLeaks + Critical Search
-│   ├── ocr_worker.py          # Worker de OCR
-│   ├── download_worker.py     # Worker de downloads
-│   ├── storage_utils.py       # Utilitários de storage
-│   ├── directory_scanner.py   # Scanner de diretórios
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── pages/             # Páginas da aplicação
-│   │   └── components/        # Componentes React
-│   ├── package.json
-│   └── Dockerfile
-├── docker-compose.yml         # Produção
-├── docker-compose.dev.yml     # Desenvolvimento (com SOAP mock)
-└── tika-config.xml            # Configuração do Apache Tika
-```
-
-## 🔧 Ambiente de Desenvolvimento
-
-Para desenvolvimento com hot reload e servidor SOAP mock:
+For a development stack with hot reload and a SOAP mock server:
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-## 📝 Funcionalidades Principais
+See the [Wiki](https://github.com/helviojunior/shadowindex/wiki) for detailed
+configuration (database, ports, OCR, proxies, etc.).
 
-### Gerenciamento de Servidores
-- Cadastro de servidores com IP e nome
-- Validação de IP duplicado
-- Associação com plugins de comunicação
+## 🧰 Tech Stack
 
-### Sistema de Downloads
-- Fila de downloads em background
-- Download em batch
-- Suporte a arquivos grandes com chunks
-- Estatísticas em tempo real
+- **Backend:** FastAPI · PostgreSQL/SQLite (SQLAlchemy + asyncpg/aiosqlite) ·
+  Apache Tika (OCR) · GitLeaks · Python 3.11
+- **Frontend:** React · Tailwind CSS · shadcn/ui · Axios · Lucide Icons
+- **Infra:** Docker Compose · Nginx
 
-### OCR de Arquivos
-- Extração de texto de PDFs, DOCs, imagens
-- Processamento de certificados PFX/P12
-- Detecção automática de chaves privadas
-- Integração com Apache Tika
+## ⚠️ Disclaimer
 
-### Detecção de Leaks
-- Integração com GitLeaks
-- Critical Search (regras customizáveis)
-- Detecção automática de:
-  - Chaves privadas SSH (id_rsa, id_ed25519, etc.)
-  - Certificados PFX com chave privada
-  - Arquivos de configuração sensíveis
-  - Senhas e tokens em arquivos
+ShadowIndex is intended for **authorized security assessments only** (e.g.
+penetration tests, red/blue team exercises and internal audits you are
+explicitly permitted to perform). Using it to access systems, shares, Active
+Directory, databases or data **without the owner's explicit authorization may be
+illegal**. You are solely responsible for ensuring you have proper permission.
+The authors and contributors accept **no liability** for misuse or for any
+damage caused by this tool.
 
-### Critical Search
-Regras configuráveis para detectar arquivos sensíveis:
-- **Keywords**: senha, password, secret, config, backup...
-- **Extensões**: .pfx, .pem, .env, .yml, .kdbx...
-- **Nomes exatos**: .env, id_rsa, credentials.json...
+## 📄 License
 
-## 🔐 Segurança
+Licensed under the **BSD 2-Clause License**. See [LICENSE](LICENSE) for details.
 
-- Dados armazenados localmente em SQLite
-- Credenciais protegidas no banco
-- CORS configurável
-- Detecção automática de dados sensíveis
-
-## 📄 API Endpoints Principais
-
-### Servidores
-- `GET /api/v2/servers` - Listar servidores
-- `POST /api/v2/servers` - Criar servidor
-- `DELETE /api/v2/servers/{id}` - Deletar servidor
-
-### Downloads
-- `GET /api/downloads/stats` - Estatísticas
-- `POST /api/downloads/clear-finished` - Limpar concluídos
-
-### OCR
-- `GET /api/v2/ocr/stats` - Estatísticas OCR
-- `GET /api/v2/ocr/jobs` - Listar jobs
-- `POST /api/v2/ocr/jobs/{id}/retry` - Reexecutar job
-
-### Leaks (GitLeaks + Critical Search)
-- `GET /api/v2/gitleaks/findings` - Listar findings
-- `POST /api/v2/gitleaks/scan-all-servers` - Escanear todos
-- `POST /api/v2/gitleaks/scan-server/{id}` - Escanear servidor
-
-## 🐳 Docker Compose Services
-
-```yaml
-services:
-  tika:        # Apache Tika OCR Server
-  backend:     # FastAPI Backend
-  frontend:    # React Frontend
-```
-
-## 📞 Troubleshooting
-
-### Erro: "no such column: gitleaks_findings.extracted_server_guid"
-Execute a migração do banco:
-```bash
-docker compose exec shadowindex-backend alembic upgrade head
-```
-
-### Frontend não conecta ao backend
-Verifique se a variável `REACT_APP_BACKEND_URL` está correta e faça rebuild:
-```bash
-REACT_APP_BACKEND_URL=http://SEU_IP:9090 docker compose up -d --build --force-recreate
-```
-
-### OCR não funciona
-Verifique se o Tika está online:
-```bash
-docker compose logs shadowindex-tika
-```
-
----
-
-**Versão**: 2.0.0  
-**Desenvolvido com**: FastAPI + React + SQLite3 + Apache Tika + GitLeaks
+© 2022 Helvio Junior
