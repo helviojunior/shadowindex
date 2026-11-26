@@ -44,6 +44,7 @@ SOBRENOMES_URL = "https://raw.githubusercontent.com/helviojunior/BRWordList/mast
 BLOCKLIST = {
     "homem", "mulher", "menino", "menina", "crianca", "bebe", "pessoa",
     "gente", "povo", "cidadao", "ninguem", "alguem", "fulano", "beltrano",
+    "papanicolau",
 }
 
 # Fallback reduzido (usado apenas se o download/cache falhar).
