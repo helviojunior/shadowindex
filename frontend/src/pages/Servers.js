@@ -28,6 +28,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { dateLocale } from '@/lib/datetime';
 import { useApp } from '@/contexts/AppContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -532,7 +533,7 @@ const Servers = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return t('table.never');
-    return new Date(dateString).toLocaleString('pt-BR');
+    return new Date(dateString).toLocaleString(dateLocale());
   };
 
   return (

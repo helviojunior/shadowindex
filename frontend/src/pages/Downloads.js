@@ -40,6 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useWebSocket, useDownloadEvents, useScanEvents } from '@/hooks/useWebSocket';
 import { useTranslation } from 'react-i18next';
+import { dateLocale } from '@/lib/datetime';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -544,7 +545,7 @@ const Downloads = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleString('pt-BR');
+    return new Date(dateStr).toLocaleString(dateLocale());
   };
 
   // Calcula velocidade e ETA a partir do histórico de snapshots

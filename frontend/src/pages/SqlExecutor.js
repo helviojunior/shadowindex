@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { dateLocale } from '@/lib/datetime';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -606,7 +607,7 @@ const SqlExecutor = () => {
   const formatDate = (dateString) => {
     if (!dateString) return '---';
     try {
-      return new Date(dateString).toLocaleString('pt-BR');
+      return new Date(dateString).toLocaleString(dateLocale());
     } catch {
       return dateString;
     }

@@ -46,6 +46,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useTranslation } from 'react-i18next';
+import { dateLocale } from '@/lib/datetime';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api/v2`;
 
@@ -316,7 +317,7 @@ const OCRJobs = () => {
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleString('pt-BR', {
+    return date.toLocaleString(dateLocale(), {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',

@@ -74,6 +74,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { dateLocale } from '@/lib/datetime';
 import { useApp } from '@/contexts/AppContext';
 import { useFileStatusEvents, useDownloadEvents } from '@/hooks/useWebSocket';
 import { ShieldKeyIcon } from '@/components/icons';
@@ -3088,7 +3089,7 @@ const ServerBrowser = () => {
   const formatDate = (dateString) => {
     if (!dateString) return '---';
     try {
-      return new Date(dateString).toLocaleString('pt-BR');
+      return new Date(dateString).toLocaleString(dateLocale());
     } catch {
       return dateString;
     }
@@ -3719,7 +3720,7 @@ const ServerBrowser = () => {
                     <SelectContent>
                       {fileVersions.map((v) => (
                         <SelectItem key={v.id} value={v.id.toString()}>
-                          v{v.version_number} - {new Date(v.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} {v.is_current && '✓'}
+                          v{v.version_number} - {new Date(v.created_at).toLocaleString(dateLocale(), { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} {v.is_current && '✓'}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -4560,13 +4561,13 @@ const ServerBrowser = () => {
                                 <div>
                                   <h4 className="font-medium text-muted-foreground mb-2">{t('cert.validFrom')}</h4>
                                   <div className="bg-muted/30 p-3 rounded font-mono text-xs">
-                                    {cert.not_before ? new Date(cert.not_before).toLocaleString('pt-BR') : 'N/A'}
+                                    {cert.not_before ? new Date(cert.not_before).toLocaleString(dateLocale()) : 'N/A'}
                                   </div>
                                 </div>
                                 <div>
                                   <h4 className="font-medium text-muted-foreground mb-2">{t('cert.validUntil')}</h4>
                                   <div className={`p-3 rounded font-mono text-xs ${cert.is_expired ? 'bg-red-500/10 text-red-400' : 'bg-muted/30'}`}>
-                                    {cert.not_after ? new Date(cert.not_after).toLocaleString('pt-BR') : 'N/A'}
+                                    {cert.not_after ? new Date(cert.not_after).toLocaleString(dateLocale()) : 'N/A'}
                                   </div>
                                 </div>
                               </div>
@@ -5363,7 +5364,7 @@ const ServerBrowser = () => {
                 {/* OCR Processing Info */}
                 {ocrData?.ocr_processed_at && (
                   <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border">
-                    {t('ocr.processedAt', { date: new Date(ocrData.ocr_processed_at).toLocaleString('pt-BR') })}
+                    {t('ocr.processedAt', { date: new Date(ocrData.ocr_processed_at).toLocaleString(dateLocale()) })}
                   </div>
                 )}
               </div>

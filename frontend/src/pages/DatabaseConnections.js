@@ -25,6 +25,7 @@ import {
 import { Trash2, Plus, CheckCircle, XCircle, Play, Database, Loader2, Zap, Pencil, ChevronUp, Plug } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation, Trans } from 'react-i18next';
+import { dateLocale } from '@/lib/datetime';
 import { getDatabaseIcon } from '@/components/DatabaseIcons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -395,7 +396,7 @@ const DatabaseConnections = () => {
   const formatDate = (dateString) => {
     if (!dateString) return '---';
     try {
-      return new Date(dateString).toLocaleString('pt-BR');
+      return new Date(dateString).toLocaleString(dateLocale());
     } catch {
       return dateString;
     }

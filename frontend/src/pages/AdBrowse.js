@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { dateLocale } from '@/lib/datetime';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,7 +48,7 @@ const TYPE_OPTIONS = ['Domain', 'OU', 'Container', 'GPO', 'Group', 'User', 'Comp
 const fmtDateTime = (epoch) => {
   if (epoch === null || epoch === undefined || epoch === '' || Number(epoch) <= 0) return '—';
   try {
-    return new Date(Number(epoch) * 1000).toLocaleString('pt-BR');
+    return new Date(Number(epoch) * 1000).toLocaleString(dateLocale());
   } catch {
     return '—';
   }
