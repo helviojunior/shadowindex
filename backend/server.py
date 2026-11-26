@@ -323,6 +323,23 @@ class DatabaseConnectionCreate(BaseModel):
     plugin_type: Optional[str] = "soap_api"  # Deprecated
     plugin_config: Optional[dict] = None  # Deprecated
 
+class BuildConnectionStringRequest(BaseModel):
+    """Campos estruturados para montar a connection string (ADO/.NET)."""
+    db_type_id: Optional[int] = None
+    db_type_code: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    database: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    options: Optional[dict] = None  # extras por tipo (ex.: trust_server_certificate, extra)
+
+
+class BuildConnectionStringResponse(BaseModel):
+    connection_string: str
+    db_type_code: Optional[str] = None
+
+
 class DatabaseConnectionResponse(BaseModel):
     id: int
     name: str
@@ -721,6 +738,84 @@ async def mark_credential_verified(
 async def get_db_types(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(DatabaseType).order_by(DatabaseType.name))
     return result.scalars().all()
+
+
+# Default ports por tipo de banco (code -> porta)
+DB_DEFAULT_PORTS = {
+    "mssql": 1433, "mysql": 3306, "mariadb": 3306, "postgres": 5432,
+    "oracle": 1521, "mongodb": 27017,
+}
+
+
+def build_connection_string(code, host=None, port=None, database=None,
+                            username=None, password=None, options=None):
+    """Monta uma connection string no padrão ADO/.NET a partir de campos
+    estruturados, conforme o tipo de banco (code)."""
+    code = (code or "").lower().strip()
+    options = options or {}
+    host = (host or "").strip()
+    database = (database or "").strip()
+    username = (username or "").strip()
+    password = password or ""
+    if not port:
+        port = DB_DEFAULT_PORTS.get(code)
+
+    def join(pairs):
+        return "".join(f"{k}={v};" for k, v in pairs if v not in (None, "", 0) or k in ("Password", "Pwd"))
+
+    extra = (options.get("extra") or "").strip()
+
+    if code == "mssql":
+        server = f"{host},{port}" if port else host
+        pairs = [("Server", server), ("Database", database),
+                 ("User Id", username), ("Password", password)]
+        if options.get("trust_server_certificate"):
+            pairs.append(("TrustServerCertificate", "True"))
+        if options.get("encrypt") is not None:
+            pairs.append(("Encrypt", "True" if options.get("encrypt") else "False"))
+        s = join(pairs)
+    elif code in ("mysql", "mariadb"):
+        s = join([("Server", host), ("Port", port), ("Database", database),
+                  ("Uid", username), ("Pwd", password)])
+    elif code == "postgres":
+        s = join([("Host", host), ("Port", port), ("Database", database),
+                  ("Username", username), ("Password", password)])
+        if options.get("ssl_mode"):
+            s += f"SSL Mode={options['ssl_mode']};"
+    elif code == "oracle":
+        ds = f"{host}:{port}/{database}" if port else f"{host}/{database}"
+        s = join([("Data Source", ds), ("User Id", username), ("Password", password)])
+    elif code == "sqlite":
+        s = f"Data Source={database};"
+    elif code == "mongodb":
+        auth = f"{username}:{password}@" if username else ""
+        db_part = f"/{database}" if database else ""
+        s = f"mongodb://{auth}{host}:{port or 27017}{db_part}"
+    else:
+        # genérico (ADO comum)
+        s = join([("Server", host), ("Port", port), ("Database", database),
+                  ("User", username), ("Password", password)])
+
+    if extra:
+        if not s.endswith(";") and not s.startswith("mongodb://"):
+            s += ";"
+        s += extra if extra.endswith(";") or code == "mongodb" else extra + ";"
+    return s
+
+
+@api_router.post("/db-connections/build", response_model=BuildConnectionStringResponse)
+async def build_db_connection_string(req: BuildConnectionStringRequest, db: AsyncSession = Depends(get_db)):
+    """Monta a connection string (no backend) a partir de campos estruturados."""
+    code = req.db_type_code
+    if not code and req.db_type_id:
+        res = await db.execute(select(DatabaseType).where(DatabaseType.id == req.db_type_id))
+        dt = res.scalar_one_or_none()
+        code = dt.code if dt else None
+    cs = build_connection_string(
+        code, host=req.host, port=req.port, database=req.database,
+        username=req.username, password=req.password, options=req.options,
+    )
+    return {"connection_string": cs, "db_type_code": code}
 
 
 # Database Connections CRUD

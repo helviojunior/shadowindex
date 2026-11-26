@@ -29,6 +29,145 @@ import { getDatabaseIcon } from '@/components/DatabaseIcons';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+const DEFAULT_PORT_HINT = {
+  mssql: '1433', mysql: '3306', mariadb: '3306',
+  postgres: '5432', oracle: '1521', mongodb: '27017',
+};
+const DB_FIELD_LABELS = {
+  oracle: { database: 'Service Name / SID' },
+  sqlite: { database: 'Arquivo (caminho)' },
+};
+
+/**
+ * Wizard de conexão: coleta campos estruturados (host, porta, database,
+ * usuário, senha, extras) e pede ao BACKEND para montar a connection string.
+ * Também oferece um modo "Manual" para colar/editar a string diretamente.
+ */
+function ConnectionFields({ dbTypeId, dbTypes, value, onChange, defaultMode = 'wizard' }) {
+  const dbType = dbTypes.find((d) => d.id?.toString() === (dbTypeId || '').toString());
+  const code = dbType?.code || '';
+  const isSqlite = code === 'sqlite';
+
+  const [mode, setMode] = useState(defaultMode);
+  const [fields, setFields] = useState({
+    host: '', port: '', database: '', username: '', password: '',
+    trust_server_certificate: false, extra: '',
+  });
+  const set = (k, v) => setFields((f) => ({ ...f, [k]: v }));
+
+  // Monta a string no backend sempre que algum campo ou o tipo mudar (modo wizard).
+  useEffect(() => {
+    if (mode !== 'wizard') return;
+    if (!fields.host && !fields.database && !fields.username) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await axios.post(`${API}/db-connections/build`, {
+          db_type_id: dbTypeId ? parseInt(dbTypeId) : null,
+          db_type_code: code || null,
+          host: fields.host || null,
+          port: fields.port ? parseInt(fields.port) : null,
+          database: fields.database || null,
+          username: fields.username || null,
+          password: fields.password || null,
+          options: {
+            trust_server_certificate: fields.trust_server_certificate,
+            extra: fields.extra || null,
+          },
+        });
+        onChange(res.data.connection_string || '');
+      } catch (e) {
+        // silencioso: preview apenas
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, dbTypeId, code, mode]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Label>Connection String</Label>
+        <div className="ml-auto inline-flex rounded-md border border-border overflow-hidden text-xs">
+          <button type="button" data-testid="conn-mode-wizard"
+            className={`px-3 py-1 ${mode === 'wizard' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+            onClick={() => setMode('wizard')}>Assistente</button>
+          <button type="button" data-testid="conn-mode-manual"
+            className={`px-3 py-1 ${mode === 'manual' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+            onClick={() => setMode('manual')}>Manual</button>
+        </div>
+      </div>
+
+      {!dbTypeId && mode === 'wizard' && (
+        <p className="text-xs text-amber-500">Selecione o <strong>Tipo de Banco</strong> para montar a string automaticamente.</p>
+      )}
+
+      {mode === 'wizard' ? (
+        <div className="space-y-3">
+          {!isSqlite && (
+            <div className="grid grid-cols-4 gap-3">
+              <div className="col-span-3 space-y-1">
+                <Label className="text-xs">Host</Label>
+                <Input data-testid="wiz-host" placeholder="10.0.0.5 / db.local"
+                  value={fields.host} onChange={(e) => set('host', e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Porta</Label>
+                <Input data-testid="wiz-port" placeholder={DEFAULT_PORT_HINT[code] || 'porta'}
+                  value={fields.port} onChange={(e) => set('port', e.target.value)} />
+              </div>
+            </div>
+          )}
+          <div className="space-y-1">
+            <Label className="text-xs">{DB_FIELD_LABELS[code]?.database || 'Database'}</Label>
+            <Input data-testid="wiz-database" placeholder={isSqlite ? '/caminho/arquivo.db' : 'nome do banco'}
+              value={fields.database} onChange={(e) => set('database', e.target.value)} />
+          </div>
+          {!isSqlite && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Usuário</Label>
+                <Input data-testid="wiz-username" value={fields.username}
+                  onChange={(e) => set('username', e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Senha</Label>
+                <Input data-testid="wiz-password" type="password" value={fields.password}
+                  onChange={(e) => set('password', e.target.value)} />
+              </div>
+            </div>
+          )}
+          {code === 'mssql' && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" checked={fields.trust_server_certificate}
+                onChange={(e) => set('trust_server_certificate', e.target.checked)} />
+              Trust Server Certificate
+            </label>
+          )}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Parâmetros extras (opcional)</Label>
+            <Input data-testid="wiz-extra" placeholder="Ex.: Connection Timeout=5"
+              value={fields.extra} onChange={(e) => set('extra', e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">String gerada (montada no backend)</Label>
+            <code data-testid="wiz-preview" className="block text-xs bg-muted px-3 py-2 rounded break-all min-h-[2.25rem]">
+              {value || <span className="text-muted-foreground">preencha os campos acima…</span>}
+            </code>
+          </div>
+        </div>
+      ) : (
+        <Textarea
+          data-testid="conn-manual-input"
+          placeholder="Server=localhost;Database=mydb;User=admin;Password=pass;"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+        />
+      )}
+    </div>
+  );
+}
+
 const DatabaseConnections = () => {
   const navigate = useNavigate();
   const [connections, setConnections] = useState([]);
@@ -356,23 +495,17 @@ const DatabaseConnections = () => {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="connection_string">Connection String</Label>
-              <Textarea
-                id="connection_string"
-                data-testid="db-connection-string-input"
-                placeholder="Server=localhost;Database=mydb;User=admin;Password=pass;"
-                value={formData.connection_string}
-                onChange={(e) => {
-                  setFormData({ ...formData, connection_string: e.target.value });
-                  setNewConnectionTestResult(null);
-                }}
-                rows={2}
-                required
-              />
-            </div>
+            <ConnectionFields
+              dbTypeId={formData.db_type_id}
+              dbTypes={dbTypes}
+              value={formData.connection_string}
+              onChange={(cs) => {
+                setFormData((f) => ({ ...f, connection_string: cs }));
+                setNewConnectionTestResult(null);
+              }}
+            />
             <div className="flex items-center gap-3">
-              <Button type="submit" disabled={loading} data-testid="add-db-connection-btn">
+              <Button type="submit" disabled={loading || !formData.connection_string} data-testid="add-db-connection-btn">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Conexão
               </Button>
@@ -610,24 +743,20 @@ const DatabaseConnections = () => {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-connection-string">Connection String</Label>
-                <Textarea
-                  id="edit-connection-string"
-                  data-testid="edit-connection-string-input"
-                  placeholder="Server=localhost;Database=mydb;User=admin;Password=pass;"
-                  value={editFormData.connection_string}
-                  onChange={(e) => setEditFormData({ ...editFormData, connection_string: e.target.value })}
-                  rows={3}
-                  required
-                />
-              </div>
+              <ConnectionFields
+                key={editingConnection?.id}
+                dbTypeId={editFormData.db_type_id}
+                dbTypes={dbTypes}
+                value={editFormData.connection_string}
+                defaultMode="manual"
+                onChange={(cs) => setEditFormData((f) => ({ ...f, connection_string: cs }))}
+              />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={editLoading} data-testid="save-edit-connection-btn">
+              <Button type="submit" disabled={editLoading || !editFormData.connection_string} data-testid="save-edit-connection-btn">
                 {editLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Salvar Alterações
               </Button>
