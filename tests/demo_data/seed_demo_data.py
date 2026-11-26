@@ -264,7 +264,7 @@ async def seed_credentials(session):
 # Servidores + 1 servidor "featured" com árvore de arquivos navegável
 # ===========================================================================
 FEATURED_FOLDERS = [
-    "Dados-Botucatu", "Engenharia", "Financas", "Gente & Gestao", "Impressao",
+    "Dados-Curitiba", "Engenharia", "Financas", "Gente & Gestao", "Impressao",
     "Juridico", "Operacao E Manutencao", "Presidencia", "Regulacao",
     "Servicos Corporativos", "Users", "Usuarios",
 ]

@@ -39,6 +39,13 @@ CACHE_DIR = Path(__file__).resolve().parent / ".cache"
 NOMES_URL = "https://raw.githubusercontent.com/helviojunior/BRWordList/master/Nomes/nomes.txt"
 SOBRENOMES_URL = "https://raw.githubusercontent.com/helviojunior/BRWordList/master/Nomes/sobrenomes.txt"
 
+# Palavras a excluir das listas (termos que não soam como nome/sobrenome ou que
+# podem gerar combinações indesejadas nos dados de demonstração).
+BLOCKLIST = {
+    "homem", "mulher", "menino", "menina", "crianca", "bebe", "pessoa",
+    "gente", "povo", "cidadao", "ninguem", "alguem", "fulano", "beltrano",
+}
+
 # Fallback reduzido (usado apenas se o download/cache falhar).
 _FALLBACK_NOMES = [
     "adriano", "ana", "bruno", "carla", "daniel", "eduardo", "fabiana",
@@ -100,6 +107,7 @@ def _load_wordlist(url: str, filename: str, fallback: list[str]) -> list[str]:
                 w.strip().lower()
                 for w in cache_file.read_text(encoding="utf-8", errors="ignore").splitlines()
                 if w.strip() and w.strip().isascii() and w.strip().isalpha()
+                and w.strip().lower() not in BLOCKLIST
             ]
             # Dedup preservando ordem.
             seen = set()

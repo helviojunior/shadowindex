@@ -9,6 +9,15 @@ de queries em bancos de dados — tudo em uma interface única.
 > passo a passo de instalação com Docker, veja também o `README.md` e o
 > `DOCKER_COMPOSE_README.md` no repositório.
 
+## Armazenamento local e visualização offline
+
+Todos os dados coletados dos servidores — **arquivos baixados, seu conteúdo e o
+texto extraído por OCR** — ficam **armazenados localmente** (no volume de dados
+da aplicação, em `shadowindex_data/`). Isso permite **visualizar, pesquisar e
+navegar por tudo offline**, sem depender de acesso contínuo ao servidor de
+origem. Depois de indexado, um arquivo pode ser aberto, lido e ter seu OCR
+consultado mesmo que o servidor original esteja indisponível.
+
 ## Primeiros passos
 
 ```bash
