@@ -130,3 +130,8 @@ temp/
 *.db-shm
 *.db-wal
 *.db-journal
+
+# Demo seed / screenshots (saídas geradas)
+tests/screenshots/out/
+tests/screenshots/.venv/
+tests/demo_data/.cache/
