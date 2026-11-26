@@ -1,0 +1,70 @@
+name: Publish Wiki
+
+# Publica automaticamente o conteúdo de docs/wiki/ no repositório da Wiki do
+# GitHub (<owner>/<repo>.wiki.git) sempre que algo em docs/wiki/ mudar na main.
+#
+# Pré-requisito (uma única vez): a Wiki precisa estar habilitada em
+# Settings -> Features -> Wikis e ter ao menos UMA página criada pela interface
+# web (isso inicializa o repositório .wiki.git).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/wiki/**'
+      - '.github/workflows/publish-wiki.yml'
+  workflow_dispatch:   # permite rodar manualmente pela aba Actions
+
+# Necessário para o GITHUB_TOKEN conseguir escrever no repositório da Wiki.
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-wiki
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Sincronizar docs/wiki -> Wiki do GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          WIKI_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          TMP="$(mktemp -d)"
+
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          echo "==> Clonando a Wiki..."
+          if ! git clone --depth 1 "$WIKI_URL" "$TMP" 2>/dev/null; then
+            echo "::error::Não foi possível clonar a Wiki (${GITHUB_REPOSITORY}.wiki.git)."
+            echo "::error::Habilite a Wiki em Settings -> Features -> Wikis e crie a primeira página pela interface web para inicializar o repositório."
+            exit 1
+          fi
+
+          echo "==> Espelhando conteúdo de docs/wiki/ (exceto README.md)..."
+          # --delete remove da Wiki páginas que não existem mais em docs/wiki.
+          # .git é preservado; README.md é documentação interna e não vira página.
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='README.md' \
+            docs/wiki/ "$TMP"/
+
+          cd "$TMP"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "==> Nenhuma mudança na Wiki. Nada a publicar."
+            exit 0
+          fi
+
+          git commit -m "docs(wiki): sync de docs/wiki @ ${GITHUB_SHA::7}"
+          echo "==> Publicando..."
+          git push origin HEAD:master 2>/dev/null || git push origin HEAD:main
+          echo "==> Wiki atualizada com sucesso."

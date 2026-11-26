@@ -17,29 +17,26 @@ separado (`<repo>.wiki.git`); cada arquivo `.md` aqui vira uma página.
 > título da página, e os links usam o nome **sem** a extensão `.md`
 > (ex.: `[Dados de Demonstração](Dados-de-Demonstracao)`).
 
-## Publicando na Wiki do GitHub
+## Publicação automática (GitHub Actions)
 
-A Wiki precisa estar habilitada no repositório (Settings → Features → Wikis) e
-ter pelo menos uma página criada pela interface web (isso inicializa o repo da
-wiki).
+O workflow [`.github/workflows/publish-wiki.yml`](../../.github/workflows/publish-wiki.yml)
+publica esta pasta na Wiki **automaticamente** a cada push na `main` que altere
+`docs/wiki/**`. Ele espelha o conteúdo (exceto este `README.md`) para
+`<owner>/<repo>.wiki.git`, removendo páginas que não existem mais aqui.
 
-```bash
-# clone o repositório da wiki (separado do código)
-git clone https://github.com/helviojunior/shadowindex.wiki.git
-cd shadowindex.wiki
+**Pré-requisito (uma única vez):** a Wiki precisa estar **habilitada** em
+*Settings → Features → Wikis* e ter **ao menos uma página** criada pela interface
+web — isso inicializa o repositório `.wiki.git`. Sem isso, o workflow falha com
+uma mensagem explicando o passo. Também é possível rodar manualmente pela aba
+**Actions → Publish Wiki → Run workflow**.
 
-# copie as páginas desta pasta
-cp /caminho/para/shadowindex/docs/wiki/*.md .
+O push usa o `GITHUB_TOKEN` padrão (com `permissions: contents: write`), então
+não é preciso configurar segredos.
 
-git add .
-git commit -m "Atualiza Wiki: dados de demonstração e screenshots"
-git push
-```
-
-Alternativa com `gh` e um checkout temporário:
+## Publicação manual (alternativa)
 
 ```bash
 gh repo clone helviojunior/shadowindex.wiki /tmp/si-wiki
-cp docs/wiki/*.md /tmp/si-wiki/
-cd /tmp/si-wiki && git add . && git commit -m "Atualiza Wiki" && git push
+rsync -a --delete --exclude='.git/' --exclude='README.md' docs/wiki/ /tmp/si-wiki/
+cd /tmp/si-wiki && git add -A && git commit -m "Atualiza Wiki" && git push
 ```
