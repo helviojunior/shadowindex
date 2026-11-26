@@ -39,12 +39,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { useUiSettings } from '@/contexts/UiSettingsContext';
 import { useConnectionStatus } from '@/contexts/ConnectionStatusContext';
 import { useJobCompletionSFX } from '@/hooks/useJobCompletionSFX';
 import GlobalSearch from '@/components/GlobalSearch';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 // Menu structure with multi-level support
 const menuStructure = [
@@ -180,6 +182,9 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
   const hoverTimeoutRef = useRef(null);
   const menuRefs = useRef({});
   const location = useLocation();
+  const { t } = useTranslation();
+  // Rótulo do menu traduzido pelo id (fallback: label original em português).
+  const menuLabel = (it) => t('nav.' + it.id, { defaultValue: it.label });
   const { ignoreCache, setIgnoreCache, offlineMode, setOfflineMode } = useApp();
   const { isConnected, errorMessage, resetConnection } = useConnectionStatus();
   const { logoUrl, logoAlignment, sidebarActiveColor } = useUiSettings();
@@ -307,7 +312,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
           <Icon size={18} />
           {!effectiveCollapsed && (
             <span className="font-medium text-sm">
-              {item.label}
+              {menuLabel(item)}
             </span>
           )}
         </Link>
@@ -320,7 +325,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
               {linkContent}
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">
-              {item.label}
+              {menuLabel(item)}
             </TooltipContent>
           </Tooltip>
         );
@@ -355,7 +360,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
             <Icon size={18} />
             {!effectiveCollapsed && (
               <span className="font-medium text-sm">
-                {item.label}
+                {menuLabel(item)}
               </span>
             )}
           </div>
@@ -391,7 +396,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
             <div className="bg-popover border border-border rounded-lg shadow-2xl py-2 ml-1">
               {/* Header */}
               <div className="px-3 py-2 border-b border-border">
-                <span className="font-semibold text-sm">{item.label}</span>
+                <span className="font-semibold text-sm">{menuLabel(item)}</span>
               </div>
               
               {/* Submenu items */}
@@ -411,7 +416,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                     )}
                     onClick={() => setHoveredMenu(null)}
                   >
-                    {child.label}
+                    {menuLabel(child)}
                   </Link>
                 );
               })}
@@ -438,7 +443,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                       : "text-muted-foreground/70 hover:text-foreground hover:bg-white/5"
                   )}
                 >
-                  {child.label}
+                  {menuLabel(child)}
                 </Link>
               );
             })}
@@ -527,18 +532,18 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                   {offlineMode ? (
                     <>
                       <WifiOff className="w-4 h-4" />
-                      <span className="text-sm">Offline</span>
+                      <span className="text-sm">{t('header.offline')}</span>
                     </>
                   ) : (
                     <>
                       <Wifi className="w-4 h-4" />
-                      <span className="text-sm">Online</span>
+                      <span className="text-sm">{t('header.online')}</span>
                     </>
                   )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{offlineMode ? 'Modo offline ativo - usando apenas cache local' : 'Clique para ativar modo offline'}</p>
+                <p>{offlineMode ? t('header.offlineTooltipActive') : t('header.offlineTooltipInactive')}</p>
               </TooltipContent>
             </Tooltip>
 
@@ -559,15 +564,21 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                 htmlFor="global-ignore-cache" 
                 className={cn("text-sm cursor-pointer", offlineMode && "text-muted-foreground")}
               >
-                Ignorar Cache
+                {t('header.ignoreCache')}
               </Label>
               {ignoreCache && !offlineMode && (
                 <Badge variant="destructive" className="text-xs">
-                  Ativo
+                  {t('header.active')}
                 </Badge>
               )}
             </div>
-            
+
+            {/* Separador */}
+            <div className="h-6 w-px bg-border" />
+
+            {/* Seletor de idioma */}
+            <LanguageSwitcher />
+
             {/* Toggle Dark Mode */}
             <Button
               variant="ghost"
@@ -643,7 +654,7 @@ const Layout = ({ children, darkMode, setDarkMode }) => {
                  style={{ left: effectiveCollapsed ? '5rem' : '14rem' }}>
               <div className="bg-card/40 backdrop-blur-sm border border-border/30 rounded-lg px-3 py-1.5 shadow-sm">
                 <p className="text-[10px] text-muted-foreground/70 font-medium tracking-wide">
-                  Enterprise Data Discovery & Credential Intelligence Platform
+                  {t('header.tagline')}
                 </p>
               </div>
             </div>
