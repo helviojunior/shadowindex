@@ -1,37 +1,58 @@
 # Conteúdo da Wiki do projeto
 
-Esta pasta contém as páginas da **Wiki do GitHub** versionadas junto do código,
-para facilitar revisão em Pull Requests. No GitHub, a Wiki é um repositório git
-separado (`<repo>.wiki.git`); cada arquivo `.md` aqui vira uma página.
+Esta pasta contém as páginas da **Wiki do GitHub** versionadas junto do código.
+No GitHub, a Wiki é um repositório git separado (`<repo>.wiki.git`); cada arquivo
+`.md` aqui vira uma página e a pasta `images/` guarda as imagens.
 
-## Páginas
+A Wiki é um **guia de uso da ferramenta**, com uma página por funcionalidade, em
+**Português** e **Inglês**.
 
-| Arquivo | Página na Wiki |
-|---------|----------------|
-| `Home.md` | Página inicial |
-| `Dados-de-Demonstracao.md` | Dados de Demonstração |
-| `Gerando-Screenshots.md` | Gerando Screenshots |
-| `_Sidebar.md` | Barra lateral de navegação |
+## Estrutura
+
+| Arquivo | Página |
+|---------|--------|
+| `Home.md` | Página inicial (seletor de idioma) |
+| `_Sidebar.md` | Navegação lateral (PT + EN) |
+| `images/` | Screenshots usados nas páginas |
+| `Dashboard-PT.md` / `Dashboard-EN.md` | Dashboard |
+| `Servidores-PT.md` / `Servers-EN.md` | Servidores / Servers |
+| `Arquivos-PT.md` / `Files-EN.md` | Arquivos (browse, OCR, offline) |
+| `Credenciais-PT.md` / `Credentials-EN.md` | Credenciais |
+| `Proxy-Servers-PT.md` / `Proxy-Servers-EN.md` | Proxy Servers |
+| `AD-Explorer-PT.md` / `AD-Explorer-EN.md` | AD Explorer |
+| `Leaks-PT.md` / `Leaks-EN.md` | Leaks (GitLeaks) |
+| `SQL-PT.md` / `SQL-EN.md` | SQL |
+| `Configuracoes-PT.md` / `Settings-EN.md` | Configurações / Settings |
 
 > Convenção de nomes do GitHub Wiki: hífens no nome do arquivo viram espaços no
-> título da página, e os links usam o nome **sem** a extensão `.md`
-> (ex.: `[Dados de Demonstração](Dados-de-Demonstracao)`).
+> título, e os links usam o nome **sem** a extensão `.md`
+> (ex.: `[Servidores](Servidores-PT)`). As imagens são referenciadas como
+> `images/arquivo.png`.
 
 ## Publicação automática (GitHub Actions)
 
 O workflow [`.github/workflows/publish-wiki.yml`](../../.github/workflows/publish-wiki.yml)
 publica esta pasta na Wiki **automaticamente** a cada push na `main` que altere
-`docs/wiki/**`. Ele espelha o conteúdo (exceto este `README.md`) para
-`<owner>/<repo>.wiki.git`, removendo páginas que não existem mais aqui.
+`docs/wiki/**` (incluindo as imagens). Ele espelha o conteúdo (exceto este
+`README.md`) para `<owner>/<repo>.wiki.git`, removendo páginas que não existem
+mais aqui.
 
-**Pré-requisito (uma única vez):** a Wiki precisa estar **habilitada** em
-*Settings → Features → Wikis* e ter **ao menos uma página** criada pela interface
-web — isso inicializa o repositório `.wiki.git`. Sem isso, o workflow falha com
-uma mensagem explicando o passo. Também é possível rodar manualmente pela aba
-**Actions → Publish Wiki → Run workflow**.
+**Pré-requisito (uma única vez):** habilite a Wiki em *Settings → Features →
+Wikis* e crie **uma primeira página** pela interface web (isso inicializa o
+repositório `.wiki.git`). Também é possível rodar manualmente em **Actions →
+Publish Wiki → Run workflow**.
 
-O push usa o `GITHUB_TOKEN` padrão (com `permissions: contents: write`), então
-não é preciso configurar segredos.
+## Atualizando os screenshots
+
+As imagens em `images/` são geradas pelos scripts de demonstração do repositório
+(veja `tests/demo_data/` e `tests/screenshots/`). Para regenerá-las:
+
+```bash
+docker compose up -d
+./tests/seed-demo.sh
+./tests/capture-screenshots.sh
+# copie os PNGs de tests/screenshots/out/ para docs/wiki/images/
+```
 
 ## Publicação manual (alternativa)
 

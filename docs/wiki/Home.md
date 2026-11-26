@@ -1,55 +1,63 @@
-# ShadowIndex — Wiki
+# ShadowIndex
 
-**ShadowIndex** — *Enterprise Data Discovery & Credential Intelligence Platform.*
-Descoberta de dados, navegação de shares SMB, OCR/indexação, detecção de
-*leaks* (GitLeaks), exploração de Active Directory (BloodHound/LDAP) e execução
-de queries em bancos de dados — tudo em uma interface única.
+**Enterprise Data Discovery & Credential Intelligence Platform** — descoberta de
+dados em shares SMB, OCR/indexação, detecção de *leaks*, exploração de Active
+Directory e execução de queries em bancos de dados, com **armazenamento local
+para visualização offline**.
 
-> Esta wiki cobre **como subir, demonstrar e documentar** o projeto. Para o
-> passo a passo de instalação com Docker, veja também o `README.md` e o
-> `DOCKER_COMPOSE_README.md` no repositório.
+🌐 **Idioma / Language:** **Português** · [English](#english)
 
-## Armazenamento local e visualização offline
+---
 
-Todos os dados coletados dos servidores — **arquivos baixados, seu conteúdo e o
-texto extraído por OCR** — ficam **armazenados localmente** (no volume de dados
-da aplicação, em `shadowindex_data/`). Isso permite **visualizar, pesquisar e
-navegar por tudo offline**, sem depender de acesso contínuo ao servidor de
-origem. Depois de indexado, um arquivo pode ser aberto, lido e ter seu OCR
-consultado mesmo que o servidor original esteja indisponível.
+## Português
 
-## Primeiros passos
+Guia de uso, uma página por funcionalidade:
+
+| Funcionalidade | Descrição |
+|----------------|-----------|
+| [Dashboard](Dashboard-PT) | Visão geral e métricas |
+| [Servidores](Servidores-PT) | Inventário de servidores, risco, leaks, shares |
+| [Arquivos](Arquivos-PT) | Navegar shares, visualizar conteúdo, OCR e offline |
+| [Credenciais](Credenciais-PT) | Usuário/senha, NTLM, Kerberos, token, SSH |
+| [Proxy Servers](Proxy-Servers-PT) | SOCKS5 (Proxychains) e HTTP |
+| [AD Explorer](AD-Explorer-PT) | Domínios e árvore do Active Directory |
+| [Leaks](Leaks-PT) | Detecção de secrets/credenciais (GitLeaks) |
+| [SQL](SQL-PT) | Conexões e enumeração de bancos de dados |
+| [Configurações](Configuracoes-PT) | Aparência, downloads, OCR e mais |
+
+### Começando
 
 ```bash
 git clone https://github.com/helviojunior/shadowindex.git
 cd shadowindex
-docker compose up -d           # sobe backend, Postgres, Tika e nginx
-# Aplicação disponível em http://localhost:3000
+docker compose up -d        # http://localhost:3000
 ```
 
-## Índice
+---
 
-- **[Dados de Demonstração](Dados-de-Demonstracao)** — popular o banco com dados
-  fictícios (servidores, credenciais, AD, leaks, SQL) para testes e demonstração.
-- **[Gerando Screenshots](Gerando-Screenshots)** — capturar screenshots das telas
-  com Chromium headless para o README/Wiki.
+## English
 
-## Principais telas
+Usage guide, one page per feature:
 
-| Tela | Rota | O que mostra |
-|------|------|--------------|
-| Dashboard | `/` | Visão geral e métricas |
-| Servidores | `/servers` | Inventário com risco, leaks, shares e downloads |
-| Browse de servidor | `/servers/:id/browse` | Árvore de shares/arquivos, view e OCR |
-| Credenciais | `/credentials` | Usuário/senha, NTLM, Kerberos (ccache), token, SSH |
-| Proxy Servers | `/proxy-servers` | SOCKS5 (Proxychains) e HTTP |
-| AD Explorer | `/ad` | Domínios e árvore de objetos (BloodHound v6) |
-| Leaks | `/leaks` | Findings do GitLeaks |
-| SQL | `/sql` | Conexões e enumerações em bancos de dados |
+| Feature | Description |
+|---------|-------------|
+| [Dashboard](Dashboard-EN) | Overview and metrics |
+| [Servers](Servers-EN) | Server inventory, risk, leaks, shares |
+| [Files](Files-EN) | Browse shares, view content, OCR and offline |
+| [Credentials](Credentials-EN) | User/password, NTLM, Kerberos, token, SSH |
+| [Proxy Servers](Proxy-Servers-EN) | SOCKS5 (Proxychains) and HTTP |
+| [AD Explorer](AD-Explorer-EN) | Active Directory domains and tree |
+| [Leaks](Leaks-EN) | Secret/credential detection (GitLeaks) |
+| [SQL](SQL-EN) | Database connections and enumeration |
+| [Settings](Settings-EN) | Appearance, downloads, OCR and more |
 
-## Convenções
+### Getting started
 
-- Os dados de demonstração usam **exclusivamente** o domínio fictício
-  `tests.local` e nomes gerados a partir da
-  [BRWordList](https://github.com/helviojunior/BRWordList). Nenhum dado real de
-  cliente é versionado ou publicado.
+```bash
+git clone https://github.com/helviojunior/shadowindex.git
+cd shadowindex
+docker compose up -d        # http://localhost:3000
+```
+
+> As telas desta Wiki usam dados **fictícios** (domínio `tests.local`). /
+> The screens in this Wiki use **fictitious** data (`tests.local` domain).
