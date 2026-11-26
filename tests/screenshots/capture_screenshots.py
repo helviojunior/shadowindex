@@ -49,14 +49,30 @@ def _try_click(page, text, exact=False, timeout=2500):
         return False
 
 
-def act_server_browse(page):
-    """Expande o share VOL_1 e abre um arquivo para mostrar o conteúdo."""
+def _open_file_view(page, filename):
+    """Expande VOL_1, abre o arquivo e muda para a aba 'View' (conteúdo)."""
     _try_click(page, "VOL_1", exact=True)
     page.wait_for_timeout(600)
-    for fname in ("robocopy.txt", "conexao.php", "Senha Cluster.txt"):
-        if _try_click(page, fname):
+    if not _try_click(page, filename):
+        return False
+    page.wait_for_timeout(700)
+    # alterna para a aba de conteúdo (View) para exibir o arquivo
+    _try_click(page, "View", exact=True)
+    page.wait_for_timeout(1200)
+    return True
+
+
+def act_server_browse(page):
+    """Abre o arquivo de senhas em TEXTO mostrando o conteúdo (aba View)."""
+    for fname in ("Senhas Servidores.txt", "robocopy.txt", "conexao.php"):
+        if _open_file_view(page, fname):
             break
-    page.wait_for_timeout(800)
+
+
+def act_server_browse_pdf(page):
+    """Abre o arquivo de senhas em PDF no visualizador (aba View)."""
+    _open_file_view(page, "Credenciais VPN.pdf")
+    page.wait_for_timeout(1000)  # tempo extra p/ o pdf.js renderizar
 
 
 def act_ad_browse(page):
@@ -83,8 +99,10 @@ def resolve_pages(base_url: str):
         servers = _api(base_url, "/servers")
         favs = [s for s in servers if s.get("favorite") and s.get("shares_count", 0) >= 10]
         chosen = (favs or sorted(servers, key=lambda s: -s.get("shares_count", 0)) or servers)[0]
-        pages.append(("03-servidor-browse", f"/servers/{chosen['id']}/browse",
-                      f"Browse do servidor {chosen['name']}", act_server_browse))
+        pages.append(("03-servidor-browse-txt", f"/servers/{chosen['id']}/browse",
+                      f"Browse — arquivo de senhas .txt ({chosen['name']})", act_server_browse))
+        pages.append(("04-servidor-browse-pdf", f"/servers/{chosen['id']}/browse",
+                      f"Browse — arquivo de senhas .pdf ({chosen['name']})", act_server_browse_pdf))
     except Exception as exc:  # noqa: BLE001
         print(f"(aviso: não foi possível resolver servidor featured: {exc})")
 

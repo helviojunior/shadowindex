@@ -85,6 +85,42 @@ def new_guid() -> str:
     return str(uuid.uuid4())
 
 
+def make_pdf(title: str, lines: list[str]) -> bytes:
+    """Gera um PDF 1.4 válido (uma página, Helvetica) com as linhas de texto.
+    Suficiente para renderizar no visualizador (react-pdf/pdf.js) da aplicação."""
+    def esc(s: str) -> str:
+        return s.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
+
+    cmds = "BT\n/F1 13 Tf\n50 770 Td\n16 TL\n"
+    cmds += f"({esc(title)}) Tj\n/F1 10 Tf\nT*\nT*\n"
+    for ln in lines:
+        cmds += f"({esc(ln)}) Tj T*\n"
+    cmds += "ET"
+    stream = cmds.encode("latin-1", "replace")
+
+    parts: list[bytes] = [b"%PDF-1.4\n"]
+    offsets: dict[int, int] = {}
+
+    def add_obj(num: int, body: bytes):
+        offsets[num] = sum(len(p) for p in parts)
+        parts.append(f"{num} 0 obj\n".encode() + body + b"\nendobj\n")
+
+    add_obj(1, b"<< /Type /Catalog /Pages 2 0 R >>")
+    add_obj(2, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+    add_obj(3, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+               b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>")
+    add_obj(4, b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream")
+    add_obj(5, b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+
+    xref_off = sum(len(p) for p in parts)
+    xref = b"xref\n0 6\n0000000000 65535 f \n"
+    for n in range(1, 6):
+        xref += ("%010d 00000 n \n" % offsets[n]).encode()
+    trailer = (b"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n"
+               + str(xref_off).encode() + b"\n%%EOF\n")
+    return b"".join(parts) + xref + trailer
+
+
 # ===========================================================================
 # Kerberos ccache (MIT ccache v4) — gerado via impacket para o status renderizar
 # ===========================================================================
@@ -269,6 +305,37 @@ FEATURED_FOLDERS = [
     "Servicos Corporativos", "Users", "Usuarios",
 ]
 
+# Conteúdo FICTÍCIO que simula um "arquivo de senhas" (texto e PDF).
+_PASSWORDS_TXT = (
+    "=========================================================\n"
+    "   COFRE DE SENHAS - INFRAESTRUTURA (CONFIDENCIAL)\n"
+    "=========================================================\n"
+    "\n"
+    "Sistema            Host                      Usuario        Senha\n"
+    "-----------------  ------------------------  -------------  ------------------\n"
+    "VPN Corporativa    vpn.tests.local           svc_vpn        Dem0!Vpn#2026\n"
+    "Firewall           fw01.tests.local          admin          Fw@Adm1n-2026\n"
+    "Switch Core        sw-core01.tests.local     cisco          C1sco!Core26\n"
+    "Backup (Veeam)     bkp01.tests.local         veeamadmin     B@ckupDem0!26\n"
+    "SQL Server         sqlprod01.tests.local     sa             Sql$aDem02026\n"
+    "Webmail (admin)    mail.tests.local          postmaster     M@ilDem0-2026\n"
+    "\n"
+    "Observacao: credenciais ficticias, apenas para demonstracao do ShadowIndex.\n"
+)
+
+_PASSWORDS_PDF_LINES = [
+    "Documento interno - nao distribuir.",
+    "",
+    "Sistema          Host                     Usuario       Senha",
+    "---------------  -----------------------  ------------  ---------------",
+    "VPN SSL          vpn.tests.local          r.diretoria   Vpn!Diretor26",
+    "Portal RH        rh.tests.local           rh_admin      Rh@Dem0-2026",
+    "ERP (Oracle)     oracle-erp.tests.local   erp           Erp$Dem02026",
+    "AD - conta T0     dc01.tests.local        t0_breakglass BreakGl@ss!26",
+    "",
+    "Credenciais ficticias geradas para demonstracao (tests.local).",
+]
+
 
 async def seed_servers(session, plugins: dict):
     servers = []
@@ -368,18 +435,40 @@ async def seed_featured_tree(session, server):
             ),
             "ocr": None,
         },
+        # Arquivo de senhas em TEXTO (simulação) — abre na aba "View".
+        {
+            "name": "Senhas Servidores.txt", "parent": share_root, "folder": "",
+            "content": _PASSWORDS_TXT,
+            "ocr": None,
+        },
+        # Arquivo de senhas em PDF (simulação) — renderiza no visualizador PDF
+        # e também tem conteúdo de OCR.
+        {
+            "name": "Credenciais VPN.pdf", "parent": share_root, "folder": "",
+            "content": make_pdf("Credenciais de Acesso - VPN / Infraestrutura (CONFIDENCIAL)",
+                                 _PASSWORDS_PDF_LINES),
+            "mimetype": "application/pdf",
+            "ocr": "\n".join(_PASSWORDS_PDF_LINES),
+        },
     ]
 
     featured_files = []
     for spec in files_spec:
-        content = spec["content"].encode("utf-8")
+        raw = spec["content"]
+        content = raw if isinstance(raw, (bytes, bytearray)) else raw.encode("utf-8")
+        mimetype = spec.get("mimetype", "text/plain")
         sha1 = hashlib.sha1(content).hexdigest()
+
+        # IMPORTANTE: file_path precisa ser IGUAL ao full_path do item na árvore
+        # (UNC completo), senão o frontend não reconhece o arquivo como baixado
+        # e não exibe a aba "View"/"OCR".
+        unc_path = f"{spec['parent']}\\{spec['name']}"
 
         df = DownloadedFile(
             server_id=server.id, server_guid=server.guid, share_name="VOL_1",
-            file_path=f"VOL_1\\{spec['folder']}\\{spec['name']}".replace("\\\\", "\\"),
+            file_path=unc_path,
             file_name=spec["name"], sanitized_path="pending",
-            file_size=len(content), sha1_hash=sha1, mimetype="text/plain",
+            file_size=len(content), sha1_hash=sha1, mimetype=mimetype,
             downloaded_at=ago(days=5),
         )
         session.add(df)
@@ -388,7 +477,7 @@ async def seed_featured_tree(session, server):
         fv = FileVersion(
             server_guid=server.guid, share_name="VOL_1", file_path=df.file_path,
             version_number=1, sha1_hash=sha1, file_size=len(content),
-            mimetype="text/plain", local_path="pending", is_current=True,
+            mimetype=mimetype, local_path="pending", is_current=True,
             ocr_content=spec["ocr"], ocr_processed=bool(spec["ocr"]),
             ocr_processed_at=ago(days=5) if spec["ocr"] else None,
             created_at=ago(days=5),
