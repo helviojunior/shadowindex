@@ -12,7 +12,10 @@ services:
       POSTGRES_PASSWORD: shadowindex
       POSTGRES_DB: shadowindex
     volumes:
-      - ./shadowindex_data/postgres_db:/var/lib/postgresql/data
+      # Volume nomeado (gerenciado pelo Docker) evita problema de ownership
+      # do bind mount do host no Docker Desktop (macOS/Windows), que impedia
+      # a criação do banco durante o init do Postgres.
+      - postgres_db:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -103,3 +106,6 @@ services:
 networks:
   shadowindex-net:
     driver: bridge
+
+volumes:
+  postgres_db:
