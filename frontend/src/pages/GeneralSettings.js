@@ -54,7 +54,7 @@ const GeneralSettings = () => {
     auto_index_mimetypes: 'text/',
     // Aparência / UI
     ui_logo_url: 'https://media.sec4us.com.br/logo/sec4us-dark-mode.svg',
-    ui_logo_alignment: 'left',
+    ui_logo_alignment: 'center',
     ui_sidebar_active_color: '#34d399',
     ui_favicon_url: 'https://media.sec4us.com.br/icon/favicon.ico'
   });

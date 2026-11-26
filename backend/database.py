@@ -726,7 +726,7 @@ DEFAULT_SETTINGS = {
     'import_ports': ('445,3389,1433,3306,5432,1521,27017,6379,5984,9200', 'Portas consideradas na importação de servidores (hosts com alguma dessas portas abertas são importados). SMB 445, RDP 3389 e bancos de dados.'),
     # Aparência / UI
     'ui_logo_url': ('https://media.sec4us.com.br/logo/sec4us-dark-mode.svg', 'URL da logo exibida no cabeçalho do sistema'),
-    'ui_logo_alignment': ('left', 'Alinhamento da logo no cabeçalho: left, center ou right'),
+    'ui_logo_alignment': ('center', 'Alinhamento da logo no cabeçalho: left, center ou right'),
     'ui_sidebar_active_color': ('#34d399', 'Cor do item selecionado no menu lateral (sidebar)'),
     'ui_favicon_url': ('https://media.sec4us.com.br/icon/favicon.ico', 'URL do favicon (ícone da aba do navegador)'),
 }

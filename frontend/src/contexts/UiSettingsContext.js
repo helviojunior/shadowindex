@@ -16,7 +16,7 @@ export const resolveBrandingUrl = (value) => {
 // Valores padrão (devem espelhar DEFAULT_SETTINGS do backend)
 export const UI_DEFAULTS = {
   logoUrl: 'https://media.sec4us.com.br/logo/sec4us-dark-mode.svg',
-  logoAlignment: 'left', // left | center | right
+  logoAlignment: 'center', // left | center | right
   sidebarActiveColor: '#34d399', // emerald-400
   faviconUrl: 'https://media.sec4us.com.br/icon/favicon.ico',
 };
