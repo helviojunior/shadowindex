@@ -1,0 +1,87 @@
+{
+  "title": "OCR Jobs",
+  "description": "Management and monitoring of OCR processing",
+  "realtime": "Real time",
+  "offline": "Offline",
+  "total": "Total",
+  "filter": "Filter: {{label}}",
+  "status": {
+    "pending": "Pending",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "skipped": "Skipped",
+    "cancelled": "Cancelled"
+  },
+  "badge": {
+    "skipped": "Skipped"
+  },
+  "tika": {
+    "checking": "Checking...",
+    "online": "Online",
+    "offline": "Offline",
+    "label": "Tika Server",
+    "statusError": "Error checking status"
+  },
+  "search": {
+    "placeholder": "Search by file..."
+  },
+  "actions": {
+    "retryFailed": "Retry Failed ({{count}})",
+    "retryCancelled": "Retry Cancelled ({{count}})",
+    "cancelAll": "Cancel All",
+    "clearFinished": "Clear Finished"
+  },
+  "table": {
+    "heading": "Jobs ({{count}})",
+    "id": "ID",
+    "file": "File",
+    "server": "Server",
+    "status": "Status",
+    "chars": "Chars",
+    "created": "Created",
+    "actions": "Actions",
+    "error": "Error"
+  },
+  "empty": {
+    "title": "No OCR job found",
+    "hint": "Jobs are created automatically when downloading files"
+  },
+  "rowActions": {
+    "prioritize": "Run now (highest priority)",
+    "cancel": "Cancel job",
+    "retry": "Retry job",
+    "delete": "Remove job"
+  },
+  "dialog": {
+    "titles": {
+      "clear": "Clear Finished Jobs",
+      "retry": "Retry Failed Jobs",
+      "retryCancelled": "Retry Cancelled Jobs",
+      "cancelAll": "Cancel All Jobs",
+      "delete": "Remove Job",
+      "cancel": "Cancel Job"
+    },
+    "descriptions": {
+      "clear": "This will remove all completed, failed, skipped and cancelled jobs. This action cannot be undone.",
+      "retry": "This will requeue {{count}} failed jobs for processing again.",
+      "retryCancelled": "This will requeue {{count}} cancelled jobs for processing again.",
+      "cancelAll": "This will cancel {{count}} pending and running jobs.",
+      "delete": "Are you sure you want to remove this job? This action cannot be undone.",
+      "cancel": "Are you sure you want to cancel this job?"
+    }
+  },
+  "toast": {
+    "cancelSuccess": "Job cancelled successfully",
+    "cancelError": "Error cancelling job",
+    "cancelAllDefault": "All OCR jobs cancelled",
+    "cancelAllError": "Error cancelling all OCR jobs",
+    "clearSuccess": "{{count}} jobs removed",
+    "clearError": "Error clearing jobs",
+    "prioritizeError": "Error prioritizing job",
+    "retryFailedError": "Error retrying failed jobs",
+    "retryCancelledError": "Error retrying cancelled jobs",
+    "retryError": "Error retrying job",
+    "deleteError": "Error deleting job"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Overview of security and assets",
+  "updating": "Updating...",
+  "realTime": "Real-time",
+  "offline": "Offline",
+  "refresh": "Refresh",
+  "today": "Today",
+  "stats": {
+    "totalServers": "Total Servers",
+    "serversWithFiles": "Serv. with Files",
+    "leaksDetected": "Leaks Detected",
+    "filesProcessed": "Processed Files",
+    "downloads": "Downloads"
+  },
+  "riskScore": {
+    "title": "Overall Risk Score",
+    "label": "RISK"
+  },
+  "severity": {
+    "title": "Risk by Severity",
+    "noLeaks": "No leaks detected"
+  },
+  "extensions": {
+    "title": "Leaks by Extension",
+    "noData": "No extension data",
+    "noExtension": "no extension"
+  },
+  "leaksOverTime": {
+    "title": "Leaks vs. Time"
+  },
+  "scanStatus": {
+    "title": "Scan Status",
+    "progress": "Progress",
+    "totalScans": "Total Scans",
+    "running": "Running",
+    "completed": "Completed",
+    "scanAll": "Scan All"
+  },
+  "jobs": {
+    "title": "Jobs Monitoring",
+    "activeCount": "{{count}} active",
+    "noneActive": "None active",
+    "more": "+{{count}} more",
+    "file": "File",
+    "directory": "Directory",
+    "scansDir": "Dir Scans",
+    "level": "Level {{depth}}/{{max}}",
+    "server": "Server {{id}}",
+    "files": "{{count}} files",
+    "recent": "Recent Jobs",
+    "noRecent": "No recent jobs"
+  },
+  "summary": {
+    "title": "Summary",
+    "downloadedFiles": "Downloaded Files",
+    "filesWithLeaks": "Files with Leaks",
+    "sqlConnections": "SQL Connections",
+    "proxyServers": "Proxy Servers",
+    "soapApis": "SOAP APIs"
+  },
+  "offlineCard": {
+    "title": "Offline Mode",
+    "description": "When enabled, the system uses only the local cache",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  "cache": {
+    "title": "Cache",
+    "entries": "{{count}} cache entries",
+    "clear": "Clear Cache"
+  },
+  "toast": {
+    "offlineEnabled": "Offline mode enabled",
+    "onlineEnabled": "Online mode enabled",
+    "offlineError": "Error changing offline mode",
+    "cacheCleared": "Cache cleared successfully",
+    "cacheError": "Error clearing cache",
+    "scansStarted": "{{count}} scans started in background",
+    "noServersToScan": "No server with downloaded files to scan",
+    "scanError": "Error starting scan"
+  }
+}

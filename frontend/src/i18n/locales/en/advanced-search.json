@@ -1,0 +1,42 @@
+{
+  "title": "Advanced Search",
+  "resultsInTab": "({{total}} results in current tab)",
+  "searchPlaceholder": "Search servers, files, leaks...",
+  "searching": "Searching...",
+  "noResults": "No results found for \"{{query}}\"",
+  "minChars": "Type at least 3 characters to search",
+  "loadingMore": "Loading more...",
+  "allLoaded": "All {{total}} results loaded",
+  "foundViaOcr": "Found via OCR",
+  "tabs": {
+    "items": "Files",
+    "servers": "Servers",
+    "leaks": "Leaks"
+  },
+  "fields": {
+    "search": "Search",
+    "dateFrom": "Date from",
+    "dateTo": "Date to",
+    "extension": "Extension"
+  },
+  "options": {
+    "all": "All"
+  },
+  "columns": {
+    "ip": "IP",
+    "path": "Path",
+    "server": "Server",
+    "modified": "Modified",
+    "ocr": "OCR",
+    "dl": "DL",
+    "file": "File",
+    "rule": "Rule"
+  },
+  "badges": {
+    "dir": "Dir",
+    "file": "File"
+  },
+  "contextMenu": {
+    "openNewTab": "Open in new tab"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "title": "SQL Presets",
+  "subtitle": "Manage predefined SQL commands by database type",
+  "addPreset": "Add Preset",
+  "newPreset": "New Preset",
+  "newPresetDescription": "Add a new predefined SQL command",
+  "dbType": "Database Type",
+  "universalAll": "Universal (all)",
+  "namePlaceholder": "e.g. List Users",
+  "descriptionOptional": "Description (optional)",
+  "descriptionPlaceholder": "e.g. List all users",
+  "querySql": "SQL Query",
+  "registeredPresets": "Registered Presets",
+  "presetsCount": "{{count}} presets in the system",
+  "filter": "Filter:",
+  "allTypes": "All types",
+  "universal": "Universal",
+  "noPresets": "No preset found",
+  "toast": {
+    "loadError": "Error loading presets",
+    "createSuccess": "Preset created successfully",
+    "createError": "Error creating preset",
+    "deleteSuccess": "Preset removed successfully",
+    "deleteError": "Error removing preset",
+    "updateSuccess": "Preset updated successfully",
+    "updateError": "Error updating preset"
+  }
+}

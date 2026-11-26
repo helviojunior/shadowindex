@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '@/contexts/AppContext';
 import { useStatsEvents, useWebSocket, useDownloadEvents, useScanEvents } from '@/hooks/useWebSocket';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ const formatBytes = (bytes) => {
 };
 
 const Dashboard = () => {
+  const { t } = useTranslation('dashboard');
   const { offlineMode, setOfflineMode } = useApp();
   const { isConnected: wsConnected } = useWebSocket();
   const [stats, setStats] = useState({
@@ -245,9 +247,9 @@ const Dashboard = () => {
           }
           
           // Extrair extensão do nome do arquivo
-          const ext = fileToExtract.includes('.') 
-            ? fileToExtract.split('.').pop()?.toLowerCase() 
-            : 'sem extensão';
+          const ext = fileToExtract.includes('.')
+            ? fileToExtract.split('.').pop()?.toLowerCase()
+            : t('extensions.noExtension');
           const extension = ext && ext.length <= 10 ? `.${ext}` : (ext || 'other');
           extensionCounts[extension] = (extensionCounts[extension] || 0) + (file.findings?.length || 1);
         });
@@ -278,20 +280,20 @@ const Dashboard = () => {
   const toggleOfflineMode = async () => {
     const success = await setOfflineMode(!offlineMode);
     if (success) {
-      toast.success(`Modo ${!offlineMode ? 'offline' : 'online'} ativado`);
+      toast.success(t(!offlineMode ? 'toast.offlineEnabled' : 'toast.onlineEnabled'));
     } else {
-      toast.error('Erro ao alterar modo offline');
+      toast.error(t('toast.offlineError'));
     }
   };
 
   const clearCache = async () => {
     try {
       await axios.delete(`${API}/cache/clear`);
-      toast.success('Cache limpo com sucesso');
+      toast.success(t('toast.cacheCleared'));
       loadData();
     } catch (error) {
       console.error('Error clearing cache:', error);
-      toast.error('Erro ao limpar cache');
+      toast.error(t('toast.cacheError'));
     }
   };
 
@@ -300,13 +302,13 @@ const Dashboard = () => {
     try {
       const response = await axios.post(`${API_V2}/gitleaks/scan-all-servers`);
       if (response.data.scans_started > 0) {
-        toast.success(`${response.data.scans_started} scans iniciados em background`);
+        toast.success(t('toast.scansStarted', { count: response.data.scans_started }));
       } else {
-        toast.warning('Nenhum servidor com arquivos baixados para escanear');
+        toast.warning(t('toast.noServersToScan'));
       }
       setTimeout(loadData, 2000);
     } catch (error) {
-      toast.error('Erro ao iniciar scan');
+      toast.error(t('toast.scanError'));
     } finally {
       setScanningAll(false);
     }
@@ -324,7 +326,7 @@ const Dashboard = () => {
   // Dados para o gráfico de Risk vs Time (usando dados reais do backend)
   const riskOverTimeData = leaksOverTime.length > 0 
     ? leaksOverTime.map(item => ({ date: item.date, risk: item.count }))
-    : [{ date: 'Hoje', risk: gitleaksStats?.total_findings || 0 }];
+    : [{ date: t('today'), risk: gitleaksStats?.total_findings || 0 }];
 
   // Calcular Risk Score
   const calculateRiskScore = () => {
@@ -348,15 +350,15 @@ const Dashboard = () => {
     <div className="space-y-6" data-testid="dashboard-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-2">Visão geral de segurança e assets</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           {/* Loading Indicator */}
           {loading && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Atualizando...</span>
+              <span className="text-sm">{t('updating')}</span>
             </div>
           )}
           {/* WebSocket Status Indicator */}
@@ -365,11 +367,11 @@ const Dashboard = () => {
             className={`text-xs ${wsConnected ? 'border-green-600 text-green-600' : 'text-muted-foreground'}`}
           >
             <span className={`w-2 h-2 rounded-full mr-1.5 ${wsConnected ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-            {wsConnected ? 'Tempo real' : 'Offline'}
+            {wsConnected ? t('realTime') : t('offline')}
           </Badge>
           <Button variant="outline" onClick={loadData} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
+            {t('refresh')}
           </Button>
         </div>
       </div>
@@ -381,7 +383,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.servers}</p>
-                <p className="text-sm text-muted-foreground uppercase tracking-wider">Total Servidores</p>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('stats.totalServers')}</p>
               </div>
               <HardDrive className="w-8 h-8 text-cyan-500 opacity-60" />
             </div>
@@ -393,7 +395,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{gitleaksStats?.servers_with_files || 0}</p>
-                <p className="text-sm text-muted-foreground uppercase tracking-wider">Serv. com Arquivos</p>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('stats.serversWithFiles')}</p>
               </div>
               <Download className="w-8 h-8 text-green-500 opacity-60" />
             </div>
@@ -405,7 +407,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{gitleaksStats?.total_findings || 0}</p>
-                <p className="text-sm text-muted-foreground uppercase tracking-wider">Leaks Detectados</p>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('stats.leaksDetected')}</p>
               </div>
               <AlertTriangle className="w-8 h-8 text-orange-500 opacity-60" />
             </div>
@@ -417,7 +419,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.downloadedFiles}</p>
-                <p className="text-sm text-muted-foreground uppercase tracking-wider">Arquivos Tratados</p>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('stats.filesProcessed')}</p>
               </div>
               <FileText className="w-8 h-8 text-blue-500 opacity-60" />
             </div>
@@ -429,7 +431,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{formatBytes(stats.totalDownloadSize)}</p>
-                <p className="text-sm text-muted-foreground uppercase tracking-wider">Downloads</p>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('stats.downloads')}</p>
               </div>
               <Download className="w-8 h-8 text-purple-500 opacity-60" />
             </div>
@@ -444,13 +446,13 @@ const Dashboard = () => {
           <CardHeader className="pb-1">
             <CardTitle className="text-lg text-white/90 flex items-center gap-2">
               <Activity className="w-5 h-5" />
-              Índice de Risco Geral
+              {t('riskScore.title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-center">
               <p className="text-5xl font-bold">{riskScore}</p>
-              <p className="text-white/70 mt-1 text-sm">RISCO</p>
+              <p className="text-white/70 mt-1 text-sm">{t('riskScore.label')}</p>
             </div>
             
             {/* Mini sparkline */}
@@ -473,7 +475,7 @@ const Dashboard = () => {
         {/* Risk by Severity Donut Chart */}
         <Card>
           <CardHeader className="pb-1">
-            <CardTitle className="text-lg">Risco por Severidade</CardTitle>
+            <CardTitle className="text-lg">{t('severity.title')}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="h-[180px]">
@@ -514,7 +516,7 @@ const Dashboard = () => {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <Shield className="w-10 h-10 mb-2 opacity-30" />
-                  <p className="text-sm">Nenhum leak detectado</p>
+                  <p className="text-sm">{t('severity.noLeaks')}</p>
                 </div>
               )}
             </div>
@@ -526,7 +528,7 @@ const Dashboard = () => {
           <CardHeader className="pb-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <FileWarning className="w-5 h-5 text-red-500" />
-              Leaks por Extensão
+              {t('extensions.title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -565,7 +567,7 @@ const Dashboard = () => {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <FileWarning className="w-10 h-10 mb-2 opacity-30" />
-                  <p className="text-sm">Sem dados de extensões</p>
+                  <p className="text-sm">{t('extensions.noData')}</p>
                 </div>
               )}
             </div>
@@ -576,7 +578,7 @@ const Dashboard = () => {
       {/* Linha 3: Leaks vs. Tempo (linha inteira) */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Leaks vs. Tempo</CardTitle>
+          <CardTitle className="text-lg">{t('leaksOverTime.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[180px]">
@@ -615,13 +617,13 @@ const Dashboard = () => {
       {/* Linha 4: Status do Scan (linha inteira) */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Status do Scan</CardTitle>
+          <CardTitle className="text-lg">{t('scanStatus.title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-8">
             <div className="text-center flex-shrink-0">
               <p className="text-5xl font-bold text-green-500">{scanProgress}%</p>
-              <p className="text-xs text-muted-foreground mt-1">Progresso</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('scanStatus.progress')}</p>
             </div>
             <Progress value={scanProgress} className="flex-1 h-3" />
           </div>
@@ -629,17 +631,17 @@ const Dashboard = () => {
           <div className="grid grid-cols-4 gap-4 text-center pt-4 border-t">
             <div>
               <p className="text-2xl font-bold">{gitleaksStats?.jobs?.total || 0}</p>
-              <p className="text-xs text-muted-foreground">Total de Scans</p>
+              <p className="text-xs text-muted-foreground">{t('scanStatus.totalScans')}</p>
             </div>
             <div>
               <Badge variant="outline" className="text-lg px-4 py-1">
                 {gitleaksStats?.jobs?.running || 0}
               </Badge>
-              <p className="text-xs text-muted-foreground mt-1">Executando</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('scanStatus.running')}</p>
             </div>
             <div>
               <p className="text-2xl font-bold">{gitleaksStats?.jobs?.completed || 0}</p>
-              <p className="text-xs text-muted-foreground">Concluídos</p>
+              <p className="text-xs text-muted-foreground">{t('scanStatus.completed')}</p>
             </div>
             <div>
               <Button 
@@ -652,7 +654,7 @@ const Dashboard = () => {
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                Escanear Todos
+                {t('scanStatus.scanAll')}
               </Button>
             </div>
           </div>
@@ -665,15 +667,15 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Activity className="w-5 h-5 text-blue-500" />
-              Monitoramento de Jobs
+              {t('jobs.title')}
             </CardTitle>
             <div className="flex items-center gap-2">
               {jobsLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
               <Badge variant="outline" className="text-xs">
-                {downloadJobs.filter(j => j.status === 'downloading').length + 
+                {t('jobs.activeCount', { count: downloadJobs.filter(j => j.status === 'downloading').length +
                  scanJobs.filter(s => s.status === 'scanning').length +
                  ocrJobs.filter(o => o.status === 'running' || o.status === 'pending').length +
-                 gitleaksJobs.filter(g => g.status === 'running').length} ativos
+                 gitleaksJobs.filter(g => g.status === 'running').length })}
               </Badge>
             </div>
           </div>
@@ -694,7 +696,7 @@ const Dashboard = () => {
                 {downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground text-xs">
                     <Download className="w-6 h-6 mx-auto mb-1 opacity-30" />
-                    Nenhum ativo
+                    {t('jobs.noneActive')}
                   </div>
                 ) : (
                   downloadJobs
@@ -715,7 +717,7 @@ const Dashboard = () => {
                             <Clock className="w-3 h-3 text-yellow-500 flex-shrink-0" />
                           )}
                           <span className="truncate flex-1" title={job.file_name || job.file_path}>
-                            {job.file_name || job.file_path?.split('\\').pop() || 'Arquivo'}
+                            {job.file_name || job.file_path?.split('\\').pop() || t('jobs.file')}
                           </span>
                         </div>
                         {job.status === 'downloading' && (
@@ -726,7 +728,7 @@ const Dashboard = () => {
                 )}
                 {downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length > 3 && (
                   <p className="text-xs text-center text-muted-foreground">
-                    +{downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length - 3} mais
+                    {t('jobs.more', { count: downloadJobs.filter(j => ['downloading', 'pending'].includes(j.status)).length - 3 })}
                   </p>
                 )}
               </div>
@@ -736,7 +738,7 @@ const Dashboard = () => {
             <div className="space-y-3 px-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <FolderSearch className="w-4 h-4" />
-                Scans Dir
+                {t('jobs.scansDir')}
                 <Badge variant="secondary" className="ml-auto text-xs">
                   {scanJobs.filter(s => s.status === 'scanning' || s.status === 'pending').length}
                 </Badge>
@@ -746,7 +748,7 @@ const Dashboard = () => {
                 {scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground text-xs">
                     <FolderSearch className="w-6 h-6 mx-auto mb-1 opacity-30" />
-                    Nenhum ativo
+                    {t('jobs.noneActive')}
                   </div>
                 ) : (
                   scanJobs
@@ -767,18 +769,18 @@ const Dashboard = () => {
                             <Clock className="w-3 h-3 text-yellow-500 flex-shrink-0" />
                           )}
                           <span className="truncate flex-1" title={scan.path}>
-                            {scan.path?.split('\\').pop() || 'Diretório'}
+                            {scan.path?.split('\\').pop() || t('jobs.directory')}
                           </span>
                         </div>
                         <p className="text-muted-foreground mt-0.5">
-                          Nível {scan.depth || 0}/{scan.max_depth || 0}
+                          {t('jobs.level', { depth: scan.depth || 0, max: scan.max_depth || 0 })}
                         </p>
                       </div>
                     ))
                 )}
                 {scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length > 3 && (
                   <p className="text-xs text-center text-muted-foreground">
-                    +{scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length - 3} mais
+                    {t('jobs.more', { count: scanJobs.filter(s => ['scanning', 'pending'].includes(s.status)).length - 3 })}
                   </p>
                 )}
               </div>
@@ -798,7 +800,7 @@ const Dashboard = () => {
                 {ocrJobs.filter(o => ['running', 'pending'].includes(o.status)).length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground text-xs">
                     <Eye className="w-6 h-6 mx-auto mb-1 opacity-30" />
-                    Nenhum ativo
+                    {t('jobs.noneActive')}
                   </div>
                 ) : (
                   ocrJobs
@@ -819,7 +821,7 @@ const Dashboard = () => {
                             <Clock className="w-3 h-3 text-yellow-500 flex-shrink-0" />
                           )}
                           <span className="truncate flex-1" title={job.file_name || job.file_path}>
-                            {job.file_name || job.file_path?.split('/').pop() || 'Arquivo'}
+                            {job.file_name || job.file_path?.split('/').pop() || t('jobs.file')}
                           </span>
                         </div>
                       </div>
@@ -827,7 +829,7 @@ const Dashboard = () => {
                 )}
                 {ocrJobs.filter(o => ['running', 'pending'].includes(o.status)).length > 3 && (
                   <p className="text-xs text-center text-muted-foreground">
-                    +{ocrJobs.filter(o => ['running', 'pending'].includes(o.status)).length - 3} mais
+                    {t('jobs.more', { count: ocrJobs.filter(o => ['running', 'pending'].includes(o.status)).length - 3 })}
                   </p>
                 )}
               </div>
@@ -847,7 +849,7 @@ const Dashboard = () => {
                 {gitleaksJobs.filter(g => g.status === 'running').length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground text-xs">
                     <ScanSearch className="w-6 h-6 mx-auto mb-1 opacity-30" />
-                    Nenhum ativo
+                    {t('jobs.noneActive')}
                   </div>
                 ) : (
                   gitleaksJobs
@@ -861,18 +863,18 @@ const Dashboard = () => {
                         <div className="flex items-center gap-1.5">
                           <Loader2 className="w-3 h-3 animate-spin text-orange-500 flex-shrink-0" />
                           <span className="truncate flex-1">
-                            {job.server_name || `Servidor ${job.server_id}`}
+                            {job.server_name || t('jobs.server', { id: job.server_id })}
                           </span>
                         </div>
                         <p className="text-muted-foreground mt-0.5">
-                          {job.files_scanned || 0} arquivos
+                          {t('jobs.files', { count: job.files_scanned || 0 })}
                         </p>
                       </div>
                     ))
                 )}
                 {gitleaksJobs.filter(g => g.status === 'running').length > 3 && (
                   <p className="text-xs text-center text-muted-foreground">
-                    +{gitleaksJobs.filter(g => g.status === 'running').length - 3} mais
+                    {t('jobs.more', { count: gitleaksJobs.filter(g => g.status === 'running').length - 3 })}
                   </p>
                 )}
               </div>
@@ -881,7 +883,7 @@ const Dashboard = () => {
           
           {/* Jobs Recentes */}
           <div className="mt-4 pt-4 border-t">
-            <p className="text-sm font-medium text-muted-foreground mb-3">Jobs Recentes</p>
+            <p className="text-sm font-medium text-muted-foreground mb-3">{t('jobs.recent')}</p>
             <div className="flex flex-wrap gap-2">
               {[
                 ...downloadJobs.map(j => ({ ...j, _type: 'download' })),
@@ -938,7 +940,7 @@ const Dashboard = () => {
                   );
                 })}
               {[...downloadJobs, ...scanJobs, ...ocrJobs, ...gitleaksJobs].filter(j => ['completed', 'failed', 'finished'].includes(j.status)).length === 0 && (
-                <p className="text-xs text-muted-foreground">Nenhum job recente</p>
+                <p className="text-xs text-muted-foreground">{t('jobs.noRecent')}</p>
               )}
             </div>
           </div>
@@ -948,29 +950,29 @@ const Dashboard = () => {
       {/* Resumo / Quick Stats */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Resumo</CardTitle>
+          <CardTitle className="text-lg">{t('summary.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-2xl font-bold">{stats.downloadedFiles}</p>
-              <p className="text-xs text-muted-foreground">Arquivos Baixados</p>
+              <p className="text-xs text-muted-foreground">{t('summary.downloadedFiles')}</p>
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-2xl font-bold">{gitleaksStats?.total_files_affected || 0}</p>
-              <p className="text-xs text-muted-foreground">Arquivos com Leaks</p>
+              <p className="text-xs text-muted-foreground">{t('summary.filesWithLeaks')}</p>
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-2xl font-bold">{stats.dbConnections}</p>
-              <p className="text-xs text-muted-foreground">Conexões SQL</p>
+              <p className="text-xs text-muted-foreground">{t('summary.sqlConnections')}</p>
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-2xl font-bold">{stats.proxyServers}</p>
-              <p className="text-xs text-muted-foreground">Servidores Proxy</p>
+              <p className="text-xs text-muted-foreground">{t('summary.proxyServers')}</p>
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-2xl font-bold">{stats.soapApis}</p>
-              <p className="text-xs text-muted-foreground">SOAP APIs</p>
+              <p className="text-xs text-muted-foreground">{t('summary.soapApis')}</p>
             </div>
           </div>
         </CardContent>
@@ -982,10 +984,10 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               {offlineMode ? <WifiOff className="w-5 h-5" /> : <Wifi className="w-5 h-5" />}
-              Modo Offline
+              {t('offlineCard.title')}
             </CardTitle>
             <CardDescription>
-              Quando ativado, o sistema utiliza apenas o cache local
+              {t('offlineCard.description')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -997,7 +999,7 @@ const Dashboard = () => {
                 data-testid="offline-mode-switch"
               />
               <Label htmlFor="offline-mode">
-                {offlineMode ? 'Ativado' : 'Desativado'}
+                {offlineMode ? t('offlineCard.enabled') : t('offlineCard.disabled')}
               </Label>
             </div>
           </CardContent>
@@ -1007,10 +1009,10 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <FileText className="w-5 h-5" />
-              Cache
+              {t('cache.title')}
             </CardTitle>
             <CardDescription>
-              {stats.cacheEntries} entradas no cache
+              {t('cache.entries', { count: stats.cacheEntries })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1020,7 +1022,7 @@ const Dashboard = () => {
               data-testid="clear-cache-btn"
               size="sm"
             >
-              Limpar Cache
+              {t('cache.clear')}
             </Button>
           </CardContent>
         </Card>

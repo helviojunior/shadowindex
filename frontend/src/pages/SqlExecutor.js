@@ -40,6 +40,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -57,6 +58,7 @@ const SQL_KEYWORDS = [
 ];
 
 const SqlExecutor = () => {
+  const { t } = useTranslation('sql-executor');
   const { connectionId } = useParams();
   const navigate = useNavigate();
   
@@ -207,7 +209,7 @@ const SqlExecutor = () => {
       }
     } catch (error) {
       console.error('Error loading connection:', error);
-      toast.error('Erro ao carregar conexão');
+      toast.error(t('toast.loadConnectionError'));
       navigate('/sql');
     }
   };
@@ -258,7 +260,7 @@ const SqlExecutor = () => {
   const closeTab = (idx, e) => {
     e.stopPropagation();
     if (tabs.length === 1) {
-      toast.error('Não é possível fechar a última tab');
+      toast.error(t('toast.cannotCloseLastTab'));
       return;
     }
     
@@ -272,7 +274,7 @@ const SqlExecutor = () => {
   const executeQuery = async () => {
     const currentTab = getCurrentTab();
     if (!currentTab.query.trim()) {
-      toast.error('Digite uma query SQL');
+      toast.error(t('toast.enterQuery'));
       return;
     }
 
@@ -309,12 +311,12 @@ const SqlExecutor = () => {
       });
 
       if (response.data.success) {
-        toast.success(`Conexão OK! (${response.data.execution_time_ms}ms)`);
+        toast.success(t('toast.connectionOk', { ms: response.data.execution_time_ms }));
       } else {
-        toast.error(`Falha na conexão: ${response.data.error_message}`);
+        toast.error(t('toast.connectionFailed', { error: response.data.error_message }));
       }
     } catch (error) {
-      toast.error(`Erro ao testar: ${error.response?.data?.detail || error.message}`);
+      toast.error(t('toast.testError', { error: error.response?.data?.detail || error.message }));
     } finally {
       setTestingConnection(false);
     }
@@ -441,7 +443,7 @@ const SqlExecutor = () => {
   const selectPreset = (preset) => {
     updateCurrentTab({ query: preset.query });
     setShowPresets(false);
-    toast.success(`Preset "${preset.name}" selecionado`);
+    toast.success(t('toast.presetSelected', { name: preset.name }));
   };
 
   // Criar nova aba com query do histórico
@@ -478,7 +480,7 @@ const SqlExecutor = () => {
     
     addNewTab(historyItem.query, parsedResult, historyInfo);
     setShowHistoryModal(false);
-    toast.success('Nova aba criada com query e resultado do histórico');
+    toast.success(t('toast.historyTabCreated'));
   };
 
   const deleteHistoryItem = async (id, e) => {
@@ -486,9 +488,9 @@ const SqlExecutor = () => {
     try {
       await axios.delete(`${API}/sql/history/${id}`);
       loadHistory();
-      toast.success('Item removido do histórico');
+      toast.success(t('toast.historyItemRemoved'));
     } catch (error) {
-      toast.error('Erro ao remover item');
+      toast.error(t('toast.removeItemError'));
     }
   };
 
@@ -506,12 +508,12 @@ const SqlExecutor = () => {
   const exportToCSV = () => {
     const currentTab = getCurrentTab();
     if (!currentTab.result?.success || !currentTab.result?.columns) {
-      toast.error('Nenhum resultado para exportar');
+      toast.error(t('toast.noResultToExport'));
       return;
     }
 
     const { columns, rows } = currentTab.result;
-    
+
     const csvContent = [
       columns.join(','),
       ...rows.map(row => 
@@ -530,39 +532,39 @@ const SqlExecutor = () => {
     link.href = URL.createObjectURL(blob);
     link.download = getExportFileName('csv');
     link.click();
-    
-    toast.success('Exportado para CSV');
+
+    toast.success(t('toast.exportedCsv'));
   };
 
   // Exportar para Excel
   const exportToExcel = () => {
     const currentTab = getCurrentTab();
     if (!currentTab.result?.success || !currentTab.result?.columns) {
-      toast.error('Nenhum resultado para exportar');
+      toast.error(t('toast.noResultToExport'));
       return;
     }
 
     const { columns, rows } = currentTab.result;
-    
+
     const wsData = [columns, ...rows];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
+    XLSX.utils.book_append_sheet(wb, ws, t('export.sheetName'));
     XLSX.writeFile(wb, getExportFileName('xlsx'));
-    
-    toast.success('Exportado para Excel');
+
+    toast.success(t('toast.exportedExcel'));
   };
 
   // Exportar para JSON
   const exportToJSON = () => {
     const currentTab = getCurrentTab();
     if (!currentTab.result?.success || !currentTab.result?.columns) {
-      toast.error('Nenhum resultado para exportar');
+      toast.error(t('toast.noResultToExport'));
       return;
     }
 
     const { columns, rows } = currentTab.result;
-    
+
     // Converter rows para objetos com nomes de colunas
     const rowsData = rows.map(row => {
       const obj = {};
@@ -597,8 +599,8 @@ const SqlExecutor = () => {
     link.href = URL.createObjectURL(blob);
     link.download = getExportFileName('json');
     link.click();
-    
-    toast.success('Exportado para JSON');
+
+    toast.success(t('toast.exportedJson'));
   };
 
   const formatDate = (dateString) => {
@@ -635,7 +637,7 @@ const SqlExecutor = () => {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/sql')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+            {t('common:actions.back')}
           </Button>
           <div className="flex items-center gap-3">
             {connection.db_type_name && getDatabaseIcon(connection.db_type_name, "w-6 h-6")}
@@ -659,7 +661,7 @@ const SqlExecutor = () => {
           {connection.verified && (
             <Badge variant="outline" className="text-green-500 border-green-500">
               <CheckCircle className="w-3 h-3 mr-1" />
-              Verificado
+              {t('common:status.verified')}
             </Badge>
           )}
         </div>
@@ -718,7 +720,7 @@ const SqlExecutor = () => {
               ) : (
                 <Play className="w-4 h-4 mr-2" />
               )}
-              Executar
+              {t('execute')}
             </Button>
             
             <div className="relative">
@@ -728,7 +730,7 @@ const SqlExecutor = () => {
                 data-testid="show-presets-btn"
               >
                 <ListOrdered className="w-4 h-4 mr-2" />
-                Presets
+                {t('presets')}
                 <ChevronDown className="w-4 h-4 ml-2" />
               </Button>
               
@@ -736,21 +738,21 @@ const SqlExecutor = () => {
                 <Card className="absolute top-full left-0 mt-1 w-[420px] z-50 shadow-lg">
                   <CardHeader className="py-2 px-3 border-b border-border flex flex-row items-center justify-between">
                     <CardTitle className="text-sm">
-                      Comandos Pré-definidos
+                      {t('predefinedCommands')}
                       {connection.db_type_name && (
                         <span className="text-muted-foreground font-normal ml-2">
                           ({connection.db_type_name})
                         </span>
                       )}
                     </CardTitle>
-                    <span className="text-xs text-muted-foreground">{presets.length} presets</span>
+                    <span className="text-xs text-muted-foreground">{t('presetsCount', { count: presets.length })}</span>
                   </CardHeader>
                   <div 
                     className="max-h-[400px] overflow-y-scroll presets-dropdown-scroll"
                     style={{ overflowY: 'scroll' }}
                   >
                     {presets.length === 0 ? (
-                      <p className="text-sm text-muted-foreground p-3">Nenhum preset disponível</p>
+                      <p className="text-sm text-muted-foreground p-3">{t('noPresetsAvailable')}</p>
                     ) : (
                       presets.map((preset) => (
                         <div
@@ -762,7 +764,7 @@ const SqlExecutor = () => {
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{preset.name}</span>
                             <Badge variant="outline" className="text-xs">
-                              {preset.db_type_name || 'Universal'}
+                              {preset.db_type_name || t('universal')}
                             </Badge>
                           </div>
                           {preset.description && (
@@ -783,13 +785,13 @@ const SqlExecutor = () => {
               data-testid="show-history-btn"
             >
               <History className="w-4 h-4 mr-2" />
-              Histórico
+              {t('history')}
             </Button>
 
             <div className="flex-1" />
 
             <span className="text-xs text-muted-foreground">
-              Arraste a barra abaixo para redimensionar
+              {t('resizeHint')}
             </span>
           </div>
           
@@ -800,10 +802,7 @@ const SqlExecutor = () => {
               onValueChange={(code) => updateCurrentTab({ query: code })}
               highlight={highlightSQL}
               padding={16}
-              placeholder="Digite sua query SQL aqui...
-
-Exemplo:
-SELECT * FROM tabela WHERE coluna = 'valor'"
+              placeholder={t('editorPlaceholder')}
               style={{
                 fontFamily: '"Fira Code", "Fira Mono", Menlo, Consolas, monospace',
                 fontSize: 14,
@@ -840,24 +839,24 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
           {/* Result Header */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">Resultado</span>
+              <span className="text-sm font-medium">{t('result')}</span>
               {currentTab.result?.success && (
                 <>
                   <span className="flex items-center gap-1 text-sm text-green-500">
                     <CheckCircle className="w-4 h-4" />
-                    Sucesso
+                    {t('common:status.success')}
                   </span>
                   <span className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Clock className="w-4 h-4" />
                     {currentTab.result.execution_time_ms}ms
                   </span>
                   <Badge variant="outline" className="text-green-500 border-green-500">
-                    {currentTab.result.row_count} linha(s)
+                    {t('rowCount', { count: currentTab.result.row_count })}
                   </Badge>
                   {currentTab.historyInfo?.executed_at && (
                     <span className="flex items-center gap-1 text-sm text-muted-foreground border-l border-border pl-3">
                       <Calendar className="w-4 h-4" />
-                      Executado em: {formatDate(currentTab.historyInfo.executed_at)}
+                      {t('executedAt', { date: formatDate(currentTab.historyInfo.executed_at) })}
                     </span>
                   )}
                 </>
@@ -866,12 +865,12 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                 <>
                   <span className="flex items-center gap-1 text-sm text-red-500">
                     <XCircle className="w-4 h-4" />
-                    Erro
+                    {t('common:status.error')}
                   </span>
                   {currentTab.historyInfo?.executed_at && (
                     <span className="flex items-center gap-1 text-sm text-muted-foreground border-l border-border pl-3">
                       <Calendar className="w-4 h-4" />
-                      Executado em: {formatDate(currentTab.historyInfo.executed_at)}
+                      {t('executedAt', { date: formatDate(currentTab.historyInfo.executed_at) })}
                     </span>
                   )}
                 </>
@@ -918,7 +917,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
               {!currentTab.result ? (
                 <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
                   <Database className="w-10 h-10 mb-3 opacity-30" />
-                  <p>Execute uma query para ver os resultados</p>
+                  <p>{t('runQueryHint')}</p>
                 </div>
               ) : currentTab.result.success ? (
                 <div className="flex-1 min-h-0 flex flex-col">
@@ -956,7 +955,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                 <div className="flex flex-col gap-4 flex-1 min-h-0">
                   <div className="flex items-center gap-2 text-red-500 flex-shrink-0">
                     <XCircle className="w-5 h-5 flex-shrink-0" />
-                    <span className="font-medium">Erro na execução</span>
+                    <span className="font-medium">{t('executionError')}</span>
                   </div>
                   <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg overflow-auto flex-1 min-h-0">
                     <p className="text-sm text-red-400 font-mono whitespace-pre-wrap break-all">
@@ -976,7 +975,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <History className="w-5 h-5" />
-              Histórico de Queries
+              {t('queryHistory')}
             </DialogTitle>
           </DialogHeader>
           
@@ -984,7 +983,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
             {history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <History className="w-12 h-12 mb-4 opacity-30" />
-                <p>Nenhuma query no histórico</p>
+                <p>{t('noHistory')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -1002,12 +1001,12 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                             {item.success ? (
                               <Badge variant="outline" className="text-green-500 border-green-500">
                                 <CheckCircle className="w-3 h-3 mr-1" />
-                                Sucesso
+                                {t('common:status.success')}
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="text-red-500 border-red-500">
                                 <XCircle className="w-3 h-3 mr-1" />
-                                Erro
+                                {t('common:status.error')}
                               </Badge>
                             )}
                             <span className="text-xs text-muted-foreground">
@@ -1029,7 +1028,7 @@ SELECT * FROM tabela WHERE coluna = 'valor'"
                           )}
                           
                           <p className="mt-2 text-xs text-primary">
-                            Clique para abrir em nova aba
+                            {t('clickToOpenNewTab')}
                           </p>
                         </div>
                         

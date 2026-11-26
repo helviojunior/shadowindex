@@ -1,0 +1,87 @@
+{
+  "title": "Jobs de OCR",
+  "description": "Gerenciamento e monitoramento de processamento OCR",
+  "realtime": "Tempo real",
+  "offline": "Offline",
+  "total": "Total",
+  "filter": "Filtro: {{label}}",
+  "status": {
+    "pending": "Pendentes",
+    "running": "Executando",
+    "completed": "Concluídos",
+    "failed": "Falhados",
+    "skipped": "Ignorados",
+    "cancelled": "Cancelados"
+  },
+  "badge": {
+    "skipped": "Ignorado"
+  },
+  "tika": {
+    "checking": "Verificando...",
+    "online": "Online",
+    "offline": "Offline",
+    "label": "Tika Server",
+    "statusError": "Erro ao verificar status"
+  },
+  "search": {
+    "placeholder": "Buscar por arquivo..."
+  },
+  "actions": {
+    "retryFailed": "Reexecutar Falhados ({{count}})",
+    "retryCancelled": "Reexecutar Cancelados ({{count}})",
+    "cancelAll": "Cancelar Todos",
+    "clearFinished": "Limpar Finalizados"
+  },
+  "table": {
+    "heading": "Jobs ({{count}})",
+    "id": "ID",
+    "file": "Arquivo",
+    "server": "Server",
+    "status": "Status",
+    "chars": "Chars",
+    "created": "Criado",
+    "actions": "Ações",
+    "error": "Erro"
+  },
+  "empty": {
+    "title": "Nenhum job de OCR encontrado",
+    "hint": "Jobs serão criados automaticamente ao baixar arquivos"
+  },
+  "rowActions": {
+    "prioritize": "Executar agora (prioridade máxima)",
+    "cancel": "Cancelar job",
+    "retry": "Reexecutar job",
+    "delete": "Remover job"
+  },
+  "dialog": {
+    "titles": {
+      "clear": "Limpar Jobs Finalizados",
+      "retry": "Reexecutar Jobs Falhados",
+      "retryCancelled": "Reexecutar Jobs Cancelados",
+      "cancelAll": "Cancelar Todos os Jobs",
+      "delete": "Remover Job",
+      "cancel": "Cancelar Job"
+    },
+    "descriptions": {
+      "clear": "Isso removerá todos os jobs concluídos, falhados, ignorados e cancelados. Esta ação não pode ser desfeita.",
+      "retry": "Isso reenfileirará {{count}} jobs falhados para processamento novamente.",
+      "retryCancelled": "Isso reenfileirará {{count}} jobs cancelados para processamento novamente.",
+      "cancelAll": "Isso cancelará {{count}} jobs pendentes e em execução.",
+      "delete": "Tem certeza que deseja remover este job? Esta ação não pode ser desfeita.",
+      "cancel": "Tem certeza que deseja cancelar este job?"
+    }
+  },
+  "toast": {
+    "cancelSuccess": "Job cancelado com sucesso",
+    "cancelError": "Erro ao cancelar job",
+    "cancelAllDefault": "Todos os jobs OCR cancelados",
+    "cancelAllError": "Erro ao cancelar todos os jobs OCR",
+    "clearSuccess": "{{count}} jobs removidos",
+    "clearError": "Erro ao limpar jobs",
+    "prioritizeError": "Erro ao priorizar job",
+    "retryFailedError": "Erro ao reexecutar jobs falhados",
+    "retryCancelledError": "Erro ao reexecutar jobs cancelados",
+    "retryError": "Erro ao reexecutar job",
+    "deleteError": "Erro ao deletar job"
+  }
+}

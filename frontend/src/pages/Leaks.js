@@ -82,6 +82,7 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { ShieldKeyIcon } from '@/components/icons';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -90,6 +91,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api/v2`;
 
 const Leaks = () => {
+  const { t } = useTranslation('leaks');
   const location = useLocation();
 
   // State para findings
@@ -194,7 +196,7 @@ const Leaks = () => {
       errorCountRef.current += 1;
       // Só mostra toast de erro se for ação manual
       if (showRefreshIndicator) {
-        toast.error('Erro ao carregar findings');
+        toast.error(t('toast.loadError'));
       }
     } finally {
       setLoading(false);
@@ -244,12 +246,12 @@ const Leaks = () => {
   // Iniciar scan
   const handleStartScan = async () => {
     if (scanMode === 'server' && !selectedServer) {
-      toast.error('Selecione um servidor');
+      toast.error(t('toast.selectServer'));
       return;
     }
-    
+
     if (scanMode === 'custom' && !customPath) {
-      toast.error('Informe o caminho do diretório');
+      toast.error(t('toast.enterPath'));
       return;
     }
 
@@ -261,18 +263,18 @@ const Leaks = () => {
       if (scanMode === 'all') {
         response = await axios.post(`${API}/gitleaks/scan-all-servers`);
         if (response.data.scans_started > 0) {
-          toast.success(`${response.data.scans_started} scans iniciados em background`);
+          toast.success(t('toast.scansStarted', { count: response.data.scans_started }));
         } else {
-          toast.warning('Nenhum servidor com arquivos baixados para escanear');
+          toast.warning(t('toast.noServersToScan'));
         }
       } else if (scanMode === 'server') {
         response = await axios.post(`${API}/gitleaks/scan-server/${selectedServer}`);
-        toast.success(`Scan iniciado! Job ID: ${response.data.job_id}`);
+        toast.success(t('toast.scanStartedJob', { id: response.data.job_id }));
       } else {
         response = await axios.post(`${API}/gitleaks/scan`, {
           target_path: customPath
         });
-        toast.success(`Scan iniciado! Job ID: ${response.data.job_id}`);
+        toast.success(t('toast.scanStartedJob', { id: response.data.job_id }));
       }
       
       setPolling(true);
@@ -280,7 +282,7 @@ const Leaks = () => {
       
     } catch (error) {
       const errorMsg = error.response?.data?.detail || error.message;
-      toast.error(`Erro ao iniciar scan: ${errorMsg}`);
+      toast.error(t('toast.scanError', { error: errorMsg }));
     } finally {
       setScanning(false);
     }
@@ -292,7 +294,7 @@ const Leaks = () => {
       await axios.post(`${API}/gitleaks/jobs/${jobId}/cancel`);
       loadJobs();
     } catch (error) {
-      toast.error('Erro ao cancelar job');
+      toast.error(t('toast.cancelJobError'));
     }
   };
 
@@ -302,7 +304,7 @@ const Leaks = () => {
       await axios.delete(`${API}/gitleaks/jobs/clear-finished`);
       loadJobs();
     } catch (error) {
-      toast.error('Erro ao limpar jobs');
+      toast.error(t('toast.clearJobsError'));
     }
   };
 
@@ -311,9 +313,9 @@ const Leaks = () => {
     try {
       await axios.delete(`${API}/gitleaks/findings`);
       loadFindings();
-      toast.success('Todos os findings foram removidos');
+      toast.success(t('toast.allFindingsRemoved'));
     } catch (error) {
-      toast.error('Erro ao limpar findings');
+      toast.error(t('toast.clearFindingsError'));
     }
   };
 
@@ -322,10 +324,10 @@ const Leaks = () => {
     console.log('Tentando deletar finding:', fingerprint);
     
     if (!fingerprint) {
-      toast.error('Finding sem fingerprint');
+      toast.error(t('toast.noFingerprint'));
       return;
     }
-    
+
     try {
       const url = `${API}/gitleaks/findings/${encodeURIComponent(fingerprint)}`;
       console.log('URL de delete:', url);
@@ -336,21 +338,21 @@ const Leaks = () => {
       if (response.data.success) {
         // Recarregar findings para atualizar a estrutura de files
         loadFindings();
-        toast.success('Finding removido');
+        toast.success(t('toast.findingRemoved'));
       } else {
-        toast.error(response.data.message || 'Erro ao remover finding');
+        toast.error(response.data.message || t('toast.removeFindingError'));
       }
     } catch (error) {
       console.error('Erro ao deletar finding:', error);
       const errorMsg = error.response?.data?.detail || error.message;
-      toast.error(`Erro ao remover finding: ${errorMsg}`);
+      toast.error(t('toast.removeFindingErrorDetail', { error: errorMsg }));
     }
   };
 
   // Toggle falso positivo
   const handleToggleFalsePositive = async (fingerprint, currentValue) => {
     if (!fingerprint) {
-      toast.error('Finding sem fingerprint');
+      toast.error(t('toast.noFingerprint'));
       return;
     }
     
@@ -383,14 +385,14 @@ const Leaks = () => {
           )
         })));
         
-        toast.success(newValue ? 'Marcado como falso positivo' : 'Desmarcado como falso positivo');
+        toast.success(newValue ? t('toast.markedFP') : t('toast.unmarkedFP'));
       } else {
-        toast.error(response.data.message || 'Erro ao atualizar finding');
+        toast.error(response.data.message || t('toast.updateFindingError'));
       }
     } catch (error) {
       console.error('Erro ao atualizar finding:', error);
       const errorMsg = error.response?.data?.detail || error.message;
-      toast.error(`Erro ao atualizar finding: ${errorMsg}`);
+      toast.error(t('toast.updateFindingErrorDetail', { error: errorMsg }));
     }
   };
 
@@ -417,11 +419,11 @@ const Leaks = () => {
         setSelectedFingerprints(new Set());
         toast.success(response.data.message);
       } else {
-        toast.error(response.data.message || 'Erro ao atualizar findings');
+        toast.error(response.data.message || t('toast.updateFindingsError'));
       }
     } catch (error) {
       console.error('Erro bulk toggle FP:', error);
-      toast.error(`Erro: ${error.response?.data?.detail || error.message}`);
+      toast.error(t('toast.errorDetail', { error: error.response?.data?.detail || error.message }));
     }
   };
 
@@ -465,9 +467,9 @@ const Leaks = () => {
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast.success('Copiado!');
+      toast.success(t('toast.copied'));
     } catch (error) {
-      toast.error('Erro ao copiar');
+      toast.error(t('toast.copyError'));
     }
   };
 
@@ -572,15 +574,15 @@ const Leaks = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />Pendente</Badge>;
+        return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />{t('common:status.pending')}</Badge>;
       case 'running':
-        return <Badge className="gap-1 bg-blue-600"><Loader2 className="w-3 h-3 animate-spin" />Executando</Badge>;
+        return <Badge className="gap-1 bg-blue-600"><Loader2 className="w-3 h-3 animate-spin" />{t('common:status.running')}</Badge>;
       case 'completed':
-        return <Badge className="gap-1 bg-green-600"><CheckCircle className="w-3 h-3" />Concluído</Badge>;
+        return <Badge className="gap-1 bg-green-600"><CheckCircle className="w-3 h-3" />{t('common:status.completed')}</Badge>;
       case 'failed':
-        return <Badge className="gap-1 bg-red-600"><XCircle className="w-3 h-3" />Falhou</Badge>;
+        return <Badge className="gap-1 bg-red-600"><XCircle className="w-3 h-3" />{t('common:status.failed')}</Badge>;
       case 'cancelled':
-        return <Badge variant="outline" className="gap-1"><Square className="w-3 h-3" />Cancelado</Badge>;
+        return <Badge variant="outline" className="gap-1"><Square className="w-3 h-3" />{t('common:status.cancelled')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -593,9 +595,9 @@ const Leaks = () => {
     <div className="space-y-6" data-testid="leaks-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Leaks</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-2">
-            Detecção de secrets e credenciais em arquivos baixados
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -615,9 +617,9 @@ const Leaks = () => {
             <CollapsibleTrigger className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <FolderSearch className="w-5 h-5" />
-                <CardTitle className="text-lg">Iniciar Scan</CardTitle>
+                <CardTitle className="text-lg">{t('scanPanel.title')}</CardTitle>
                 {runningJobs.length > 0 && (
-                  <Badge className="bg-blue-600 ml-2">{runningJobs.length} em execução</Badge>
+                  <Badge className="bg-blue-600 ml-2">{t('scanPanel.running', { count: runningJobs.length })}</Badge>
                 )}
               </div>
               {showScanPanel ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
@@ -637,7 +639,7 @@ const Leaks = () => {
                   className="gap-2"
                 >
                   <Server className="w-4 h-4" />
-                  Todos os Servidores
+                  {t('scanMode.allServers')}
                 </Button>
                 <Button
                   variant={scanMode === 'server' ? 'default' : 'outline'}
@@ -646,7 +648,7 @@ const Leaks = () => {
                   className="gap-2"
                 >
                   <Server className="w-4 h-4" />
-                  Servidor Específico
+                  {t('scanMode.specificServer')}
                 </Button>
                 <Button
                   variant={scanMode === 'custom' ? 'default' : 'outline'}
@@ -658,7 +660,7 @@ const Leaks = () => {
                   className="gap-2"
                 >
                   <FolderSearch className="w-4 h-4" />
-                  Caminho Custom
+                  {t('scanMode.customPath')}
                 </Button>
               </div>
 
@@ -679,16 +681,16 @@ const Leaks = () => {
                               {selectedServerData.name} ({selectedServerData.ip})
                             </span>
                           ) : (
-                            <span className="text-muted-foreground">Buscar servidor por nome ou IP...</span>
+                            <span className="text-muted-foreground">{t('scanPanel.searchServerPrompt')}</span>
                           )}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[400px] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Digite nome ou IP do servidor..." />
+                          <CommandInput placeholder={t('scanPanel.serverInputPlaceholder')} />
                           <CommandList>
-                            <CommandEmpty>Nenhum servidor encontrado.</CommandEmpty>
+                            <CommandEmpty>{t('scanPanel.noServerFound')}</CommandEmpty>
                             <CommandGroup>
                               {servers.map((server) => (
                                 <CommandItem
@@ -722,7 +724,7 @@ const Leaks = () => {
                 {scanMode === 'custom' && (
                   <div className="flex-1 max-w-md">
                     <Input
-                      placeholder="/caminho/para/diretorio"
+                      placeholder={t('scanPanel.pathPlaceholder')}
                       value={customPath}
                       onChange={(e) => setCustomPath(e.target.value)}
                     />
@@ -738,7 +740,7 @@ const Leaks = () => {
                   ) : (
                     <Play className="w-4 h-4 mr-2" />
                   )}
-                  {scanMode === 'all' ? 'Escanear Todos' : 'Iniciar Scan'}
+                  {scanMode === 'all' ? t('scanMode.scanAll') : t('scanPanel.title')}
                 </Button>
               </div>
 
@@ -746,7 +748,7 @@ const Leaks = () => {
               {jobs.length > 0 && (
                 <div className="border-t pt-4 mt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Jobs Recentes</span>
+                    <span className="text-sm font-medium">{t('jobs.recent')}</span>
                     <div className="flex gap-2">
                       <Button variant="ghost" size="sm" onClick={loadJobs}>
                         <RefreshCw className="w-4 h-4" />
@@ -754,7 +756,7 @@ const Leaks = () => {
                       {finishedJobs.length > 0 && (
                         <Button variant="ghost" size="sm" onClick={handleClearFinished}>
                           <Trash2 className="w-4 h-4 mr-1" />
-                          Limpar
+                          {t('common:actions.clear')}
                         </Button>
                       )}
                     </div>
@@ -767,7 +769,7 @@ const Leaks = () => {
                           {getStatusBadge(job.status)}
                           {job.findings_count > 0 && (
                             <Badge variant="destructive" className="text-xs">
-                              {job.findings_count} leaks
+                              {t('jobs.leaksCount', { count: job.findings_count })}
                             </Badge>
                           )}
                         </div>
@@ -795,7 +797,7 @@ const Leaks = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total de Leaks</p>
+                <p className="text-sm text-muted-foreground">{t('stats.totalLeaks')}</p>
                 <p className="text-2xl font-bold">{totalFindings}</p>
               </div>
               <AlertTriangle className="w-8 h-8 text-red-500 opacity-50" />
@@ -807,7 +809,7 @@ const Leaks = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Arquivos Afetados</p>
+                <p className="text-sm text-muted-foreground">{t('stats.affectedFiles')}</p>
                 <p className="text-2xl font-bold">{files.length}</p>
               </div>
               <File className="w-8 h-8 text-orange-500 opacity-50" />
@@ -819,7 +821,7 @@ const Leaks = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Tipos de Secrets</p>
+                <p className="text-sm text-muted-foreground">{t('stats.secretTypes')}</p>
                 <p className="text-2xl font-bold">{new Set(findings.map(f => f.RuleID)).size}</p>
               </div>
               <ShieldKeyIcon className="w-8 h-8 text-blue-500 opacity-50" />
@@ -831,7 +833,7 @@ const Leaks = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Alta Severidade</p>
+                <p className="text-sm text-muted-foreground">{t('stats.highSeverity')}</p>
                 <p className="text-2xl font-bold text-red-500">
                   {findings.filter(f => 
                     ['aws', 'private-key', 'github', 'jwt', 'stripe'].some(s => 
@@ -853,7 +855,7 @@ const Leaks = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FileWarning className="w-5 h-5 text-orange-500" />
-                Findings
+                {t('findings.title')}
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => loadFindings(true)} disabled={refreshing}>
@@ -862,7 +864,7 @@ const Leaks = () => {
                 {totalFindings > 0 && (
                   <Button variant="destructive" size="sm" onClick={confirmClearAllFindings}>
                     <Trash2 className="w-4 h-4 mr-1" />
-                    Limpar
+                    {t('common:actions.clear')}
                   </Button>
                 )}
               </div>
@@ -874,7 +876,7 @@ const Leaks = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar..."
+                  placeholder={t('findings.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 w-64"
@@ -886,7 +888,7 @@ const Leaks = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-9 gap-1">
                     <Filter className="w-4 h-4" />
-                    Regra
+                    {t('findings.rule')}
                     {selectedRules.size > 0 && (
                       <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
                         {selectedRules.size}
@@ -897,9 +899,9 @@ const Leaks = () => {
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Buscar regra..." />
+                    <CommandInput placeholder={t('findings.searchRule')} />
                     <CommandList>
-                      <CommandEmpty>Nenhuma regra encontrada.</CommandEmpty>
+                      <CommandEmpty>{t('findings.noRuleFound')}</CommandEmpty>
                       <CommandGroup>
                         {availableRules.map(rule => (
                           <CommandItem
@@ -925,7 +927,7 @@ const Leaks = () => {
               {selectedRules.size > 0 && (
                 <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setSelectedRules(new Set())}>
                   <X className="w-3 h-3 mr-1" />
-                  Limpar regras
+                  {t('findings.clearRules')}
                 </Button>
               )}
 
@@ -940,7 +942,7 @@ const Leaks = () => {
                   className="h-8 text-xs"
                   onClick={() => setFpFilter('no_fp')}
                 >
-                  Reais
+                  {t('findings.real')}
                 </Button>
                 <Button
                   variant={fpFilter === 'all' ? 'default' : 'outline'}
@@ -948,7 +950,7 @@ const Leaks = () => {
                   className="h-8 text-xs"
                   onClick={() => setFpFilter('all')}
                 >
-                  Todos
+                  {t('findings.all')}
                 </Button>
                 <Button
                   variant={fpFilter === 'only_fp' ? 'default' : 'outline'}
@@ -956,14 +958,14 @@ const Leaks = () => {
                   className="h-8 text-xs"
                   onClick={() => setFpFilter('only_fp')}
                 >
-                  Falsos Positivos
+                  {t('findings.falsePositives')}
                 </Button>
               </div>
 
               {/* Filtered count */}
               {(searchTerm || selectedRules.size > 0 || fpFilter !== 'all') && (
                 <span className="text-xs text-muted-foreground ml-auto">
-                  {filteredFiles.reduce((acc, f) => acc + f.findings.length, 0)} de {totalFindings} findings
+                  {t('findings.filteredCount', { count: filteredFiles.reduce((acc, f) => acc + f.findings.length, 0), total: totalFindings })}
                 </span>
               )}
             </div>
@@ -977,8 +979,8 @@ const Leaks = () => {
           ) : totalFindings === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              <p className="text-lg font-medium">Nenhum Leak Detectado</p>
-              <p className="text-sm mt-2">Execute um scan para detectar secrets nos arquivos baixados</p>
+              <p className="text-lg font-medium">{t('findings.emptyTitle')}</p>
+              <p className="text-sm mt-2">{t('findings.emptyDesc')}</p>
             </div>
           ) : (
             <div className="border rounded-lg overflow-hidden">
@@ -991,13 +993,13 @@ const Leaks = () => {
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
-                    <TableHead className="font-semibold">SERVIDOR</TableHead>
-                    <TableHead className="font-semibold">ARQUIVO</TableHead>
-                    <TableHead className="font-semibold">LINHA</TableHead>
-                    <TableHead className="font-semibold">REGRA</TableHead>
-                    <TableHead className="font-semibold">TAGS</TableHead>
-                    <TableHead className="font-semibold">RISCO</TableHead>
-                    <TableHead className="font-semibold text-right">AÇÕES</TableHead>
+                    <TableHead className="font-semibold">{t('columns.server')}</TableHead>
+                    <TableHead className="font-semibold">{t('columns.file')}</TableHead>
+                    <TableHead className="font-semibold">{t('columns.line')}</TableHead>
+                    <TableHead className="font-semibold">{t('columns.rule')}</TableHead>
+                    <TableHead className="font-semibold">{t('columns.tags')}</TableHead>
+                    <TableHead className="font-semibold">{t('columns.risk')}</TableHead>
+                    <TableHead className="font-semibold text-right">{t('columns.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1015,7 +1017,7 @@ const Leaks = () => {
                       const fullPath = finding.server_path || finding.original_file || finding.File || '';
                       // Separar por \ ou / para pegar o nome do arquivo
                       const pathParts = fullPath.replace(/\//g, '\\').split('\\').filter(p => p); // filter remove strings vazias
-                      const extractedFileName = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Arquivo';
+                      const extractedFileName = pathParts.length > 0 ? pathParts[pathParts.length - 1] : t('fileFallback');
                       
                       // Diretório: remover \\IP do início e o nome do arquivo do final
                       // Path típico: \\172.31.255.5\E$\subdir\file.txt -> queremos: E$\subdir
@@ -1028,7 +1030,7 @@ const Leaks = () => {
                       }
                       
                       // Usar o nome do arquivo do banco ou extraído do path
-                      const fileName = finding.file_name || extractedFileName || 'Arquivo';
+                      const fileName = finding.file_name || extractedFileName || t('fileFallback');
                       
                       // Versão do arquivo (V1, V2, etc.)
                       const fileVersion = finding.extracted_version ? `V${finding.extracted_version}` : '';
@@ -1148,7 +1150,7 @@ const Leaks = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setSelectedFinding(finding)}
-                                title="Ver detalhes"
+                                title={t('actions.viewDetails')}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -1158,7 +1160,7 @@ const Leaks = () => {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleCopy(finding.Secret)}
-                                  title="Copiar secret"
+                                  title={t('actions.copySecret')}
                                 >
                                   <Copy className="w-4 h-4" />
                                 </Button>
@@ -1184,7 +1186,7 @@ const Leaks = () => {
                                       }
                                     }
                                   }}
-                                  title="Abrir arquivo no navegador"
+                                  title={t('actions.openFile')}
                                 >
                                   <ExternalLink className="w-4 h-4" />
                                 </Button>
@@ -1194,7 +1196,7 @@ const Leaks = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleToggleFalsePositive(finding.Fingerprint, finding.is_false_positive)}
-                                title={finding.is_false_positive ? "Desmarcar como falso positivo" : "Marcar como falso positivo"}
+                                title={finding.is_false_positive ? t('actions.unmarkFP') : t('actions.markFP')}
                                 className={finding.is_false_positive ? "text-green-500 hover:text-green-600" : "text-muted-foreground hover:text-green-500"}
                               >
                                 {finding.is_false_positive ? (
@@ -1208,7 +1210,7 @@ const Leaks = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => confirmDeleteFinding(finding.Fingerprint)}
-                                title="Remover finding"
+                                title={t('actions.removeFinding')}
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1229,20 +1231,20 @@ const Leaks = () => {
       {/* Bulk Actions Bar */}
       {selectedFingerprints.size > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3">
-          <span className="text-sm font-medium">{selectedFingerprints.size} selecionado{selectedFingerprints.size > 1 ? 's' : ''}</span>
+          <span className="text-sm font-medium">{t('bulk.selected', { count: selectedFingerprints.size })}</span>
           <div className="w-px h-5 bg-border" />
           <Button size="sm" variant="outline" className="gap-1" onClick={() => handleBulkToggleFP(true)}>
             <ShieldCheck className="w-4 h-4" />
-            Marcar como FP
+            {t('bulk.markFP')}
           </Button>
           <Button size="sm" variant="outline" className="gap-1" onClick={() => handleBulkToggleFP(false)}>
             <ShieldOff className="w-4 h-4" />
-            Desmarcar FP
+            {t('bulk.unmarkFP')}
           </Button>
           <div className="w-px h-5 bg-border" />
           <Button size="sm" variant="ghost" className="gap-1" onClick={() => setSelectedFingerprints(new Set())}>
             <X className="w-4 h-4" />
-            Limpar
+            {t('common:actions.clear')}
           </Button>
         </div>
       )}
@@ -1253,7 +1255,7 @@ const Leaks = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" />
-              Detalhes do Finding
+              {t('detail.title')}
             </DialogTitle>
           </DialogHeader>
           
@@ -1261,7 +1263,7 @@ const Leaks = () => {
             // Extrair informações do arquivo
             const fullPath = selectedFinding.server_path || selectedFinding.original_file || selectedFinding.File || '';
             const pathParts = fullPath.replace(/\//g, '\\').split('\\').filter(p => p);
-            const fileName = selectedFinding.file_name || (pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Arquivo');
+            const fileName = selectedFinding.file_name || (pathParts.length > 0 ? pathParts[pathParts.length - 1] : t('fileFallback'));
             const startIndex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(pathParts[0]) ? 1 : 0;
             const directoryPath = pathParts.length > 1 ? pathParts.slice(startIndex, -1).join('\\') : '';
             
@@ -1281,7 +1283,7 @@ const Leaks = () => {
                       )}
                     </div>
                     <div className="text-right">
-                      <span className="text-xs text-muted-foreground">Linha</span>
+                      <span className="text-xs text-muted-foreground">{t('detail.line')}</span>
                       <p className="font-mono text-lg font-bold text-orange-400">
                         {selectedFinding.StartLine || 'N/A'}
                         {selectedFinding.EndLine && selectedFinding.EndLine !== selectedFinding.StartLine 
@@ -1302,22 +1304,22 @@ const Leaks = () => {
                 <div className="border rounded-lg p-4 space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
                     <FileText className="w-4 h-4 text-cyan-400" />
-                    Localização
+                    {t('detail.location')}
                   </h4>
                   
                   <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm">
                     {selectedFinding.server_name && (
                       <>
-                        <span className="text-muted-foreground">Servidor:</span>
+                        <span className="text-muted-foreground">{t('detail.serverLabel')}</span>
                         <span className="font-medium text-emerald-400">{selectedFinding.server_name}</span>
                       </>
                     )}
-                    <span className="text-muted-foreground">Arquivo:</span>
+                    <span className="text-muted-foreground">{t('detail.fileLabel')}</span>
                     <span className="font-medium text-cyan-400">{fileName}</span>
-                    
+
                     {directoryPath && (
                       <>
-                        <span className="text-muted-foreground">Diretório:</span>
+                        <span className="text-muted-foreground">{t('detail.directoryLabel')}</span>
                         <span className="font-mono text-xs text-muted-foreground">{directoryPath}</span>
                       </>
                     )}
@@ -1342,7 +1344,7 @@ const Leaks = () => {
                       }}
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
-                      Abrir Arquivo no Navegador
+                      {t('detail.openFile')}
                     </Button>
                   )}
                 </div>
@@ -1353,7 +1355,7 @@ const Leaks = () => {
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-sm font-semibold text-red-400 flex items-center gap-2">
                         <Key className="w-4 h-4" />
-                        Secret Detectado
+                        {t('detail.secretDetected')}
                       </h4>
                       <Button
                         variant="outline"
@@ -1362,7 +1364,7 @@ const Leaks = () => {
                         onClick={() => handleCopy(selectedFinding.Secret)}
                       >
                         {copied ? <CheckCircle className="w-3 h-3 mr-1 text-green-500" /> : <Copy className="w-3 h-3 mr-1" />}
-                        {copied ? 'Copiado!' : 'Copiar'}
+                        {copied ? t('detail.copied') : t('detail.copy')}
                       </Button>
                     </div>
                     <code className="block text-sm bg-black/30 p-3 rounded font-mono break-all text-red-300 border border-red-500/20">
@@ -1374,7 +1376,7 @@ const Leaks = () => {
                 {/* Match - só mostrar se for diferente do Secret */}
                 {selectedFinding.Match && selectedFinding.Match !== selectedFinding.Secret && (
                   <div className="border rounded-lg p-4">
-                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground">Contexto (Match)</h4>
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground">{t('detail.matchContext')}</h4>
                     <code className="block text-xs bg-muted p-3 rounded font-mono break-all">
                       {selectedFinding.Match}
                     </code>
@@ -1384,7 +1386,7 @@ const Leaks = () => {
                 {/* Tags */}
                 {selectedFinding.Tags && selectedFinding.Tags.length > 0 && (
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">Tags:</span>
+                    <span className="text-xs text-muted-foreground">{t('detail.tagsLabel')}</span>
                     {selectedFinding.Tags.map((tag, idx) => (
                       <Badge key={idx} variant="secondary" className="text-xs">
                         {tag}
@@ -1403,22 +1405,22 @@ const Leaks = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog.action === 'clearAll' ? 'Limpar Todos os Findings' : 'Excluir Finding'}
+              {confirmDialog.action === 'clearAll' ? t('confirm.clearAllTitle') : t('confirm.deleteTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmDialog.action === 'clearAll' 
-                ? 'Tem certeza que deseja limpar todos os findings? Esta ação não pode ser desfeita.'
-                : 'Tem certeza que deseja excluir este finding? Esta ação não pode ser desfeita.'
+              {confirmDialog.action === 'clearAll'
+                ? t('confirm.clearAllDesc')
+                : t('confirm.deleteDesc')
               }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common:actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={executeConfirmedAction}
               className="bg-red-500 hover:bg-red-600"
             >
-              {confirmDialog.action === 'clearAll' ? 'Limpar Tudo' : 'Excluir'}
+              {confirmDialog.action === 'clearAll' ? t('confirm.clearAllAction') : t('confirm.deleteAction')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

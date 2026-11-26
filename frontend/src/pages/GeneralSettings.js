@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { useUiSettings, resolveBrandingUrl } from '@/contexts/UiSettingsContext';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -34,6 +35,7 @@ const DEFAULT_OTHER_PORTS = {
 };
 
 const GeneralSettings = () => {
+  const { t } = useTranslation('general-settings');
   const [settings, setSettings] = useState({
     max_simultaneous_downloads: '3',
     download_threads_per_file: '3',
@@ -98,12 +100,12 @@ const GeneralSettings = () => {
       await axios.put(`${API}/settings`, {
         settings: settings
       });
-      toast.success('Configurações salvas com sucesso');
+      toast.success(t('toast.saveSuccess'));
       // Atualiza logo/favicon/cor/alinhamento na interface imediatamente
       reloadUiSettings();
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('Erro ao salvar configurações');
+      toast.error(t('toast.saveError'));
     } finally {
       setSaving(false);
     }
@@ -124,10 +126,10 @@ const GeneralSettings = () => {
       // Backend já atualizou a setting; refletir no formulário e na UI
       handleChange(settingKey, data.url);
       reloadUiSettings();
-      toast.success(`${kind === 'logo' ? 'Logo' : 'Favicon'} enviado com sucesso`);
+      toast.success(kind === 'logo' ? t('toast.logoUploaded') : t('toast.faviconUploaded'));
     } catch (error) {
       console.error('Error uploading branding:', error);
-      const msg = error.response?.data?.detail || 'Erro ao enviar arquivo';
+      const msg = error.response?.data?.detail || t('toast.uploadError');
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setUploading(false);
@@ -155,7 +157,7 @@ const GeneralSettings = () => {
     
     const currentList = getExtensionsList();
     if (currentList.includes(ext)) {
-      toast.error('Extensão já existe na lista');
+      toast.error(t('toast.extensionExists'));
       return;
     }
     
@@ -179,19 +181,19 @@ const GeneralSettings = () => {
   const getPortName = (port) => {
     const portNum = parseInt(port);
     if (portNum === DEFAULT_SMB_PORT) return 'SMB';
-    return DEFAULT_DB_PORTS[portNum] || DEFAULT_OTHER_PORTS[portNum] || `Porta ${port}`;
+    return DEFAULT_DB_PORTS[portNum] || DEFAULT_OTHER_PORTS[portNum] || t('importPorts.portLabel', { port });
   };
 
   const addPort = () => {
     const portNum = parseInt(newPort);
     if (!portNum || portNum < 1 || portNum > 65535) {
-      toast.error('Porta inválida (1-65535)');
+      toast.error(t('toast.invalidPort'));
       return;
     }
-    
+
     const currentList = getPortsList();
     if (currentList.includes(String(portNum))) {
-      toast.error('Porta já existe na lista');
+      toast.error(t('toast.portExists'));
       return;
     }
     
@@ -211,20 +213,20 @@ const GeneralSettings = () => {
     <div className="space-y-6" data-testid="general-settings-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Configurações Gerais</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-2 flex items-center gap-2">
-            Configure os parâmetros gerais do sistema
+            {t('subtitle')}
             {loading && (
               <span className="flex items-center gap-1 text-xs">
                 <RefreshCw className="w-3 h-3 animate-spin" />
-                Carregando...
+                {t('common:actions.loading')}
               </span>
             )}
           </p>
         </div>
         <Button onClick={handleSave} disabled={saving || loading} data-testid="save-settings-btn">
           <Save className="w-4 h-4 mr-2" />
-          {saving ? 'Salvando...' : 'Salvar Configurações'}
+          {saving ? t('saving') : t('saveButton')}
         </Button>
       </div>
 
@@ -233,10 +235,10 @@ const GeneralSettings = () => {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-pink-500" />
-            <CardTitle>Aparência</CardTitle>
+            <CardTitle>{t('appearance.title')}</CardTitle>
           </div>
           <CardDescription>
-            Personalize a logo, o favicon, o alinhamento da logo e a cor do item selecionado no menu lateral
+            {t('appearance.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -244,18 +246,18 @@ const GeneralSettings = () => {
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-muted-foreground" />
-              Logo do sistema
+              {t('appearance.logoLabel')}
             </Label>
             <div className="flex items-center gap-4">
               <div className="h-12 w-40 flex items-center justify-center rounded border border-border bg-muted/30 overflow-hidden">
                 {settings.ui_logo_url ? (
                   <img
                     src={resolveBrandingUrl(settings.ui_logo_url)}
-                    alt="Prévia da logo"
+                    alt={t('appearance.logoPreviewAlt')}
                     className="max-h-10 max-w-full object-contain"
                   />
                 ) : (
-                  <span className="text-xs text-muted-foreground">Sem logo</span>
+                  <span className="text-xs text-muted-foreground">{t('appearance.logoEmpty')}</span>
                 )}
               </div>
               <div className="flex-1 space-y-2">
@@ -282,9 +284,9 @@ const GeneralSettings = () => {
                     data-testid="upload-logo-btn"
                   >
                     {uploadingLogo ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                    Enviar arquivo
+                    {t('appearance.uploadFile')}
                   </Button>
-                  <span className="text-xs text-muted-foreground">SVG, PNG, JPG, GIF ou WEBP. Salvo no servidor.</span>
+                  <span className="text-xs text-muted-foreground">{t('appearance.logoFormats')}</span>
                 </div>
               </div>
             </div>
@@ -294,7 +296,7 @@ const GeneralSettings = () => {
           <div className="space-y-2 max-w-xs">
             <Label className="flex items-center gap-2">
               <AlignCenter className="w-4 h-4 text-muted-foreground" />
-              Alinhamento da logo
+              {t('appearance.alignmentLabel')}
             </Label>
             <Select
               value={settings.ui_logo_alignment}
@@ -304,9 +306,9 @@ const GeneralSettings = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="left"><span className="flex items-center gap-2"><AlignLeft className="w-4 h-4" /> Esquerda</span></SelectItem>
-                <SelectItem value="center"><span className="flex items-center gap-2"><AlignCenter className="w-4 h-4" /> Centralizada</span></SelectItem>
-                <SelectItem value="right"><span className="flex items-center gap-2"><AlignRight className="w-4 h-4" /> Direita</span></SelectItem>
+                <SelectItem value="left"><span className="flex items-center gap-2"><AlignLeft className="w-4 h-4" /> {t('appearance.alignmentLeft')}</span></SelectItem>
+                <SelectItem value="center"><span className="flex items-center gap-2"><AlignCenter className="w-4 h-4" /> {t('appearance.alignmentCenter')}</span></SelectItem>
+                <SelectItem value="right"><span className="flex items-center gap-2"><AlignRight className="w-4 h-4" /> {t('appearance.alignmentRight')}</span></SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -315,7 +317,7 @@ const GeneralSettings = () => {
           <div className="space-y-2 max-w-xs">
             <Label className="flex items-center gap-2">
               <Palette className="w-4 h-4 text-muted-foreground" />
-              Cor do item selecionado (menu lateral)
+              {t('appearance.sidebarColorLabel')}
             </Label>
             <div className="flex items-center gap-3">
               <input
@@ -332,25 +334,25 @@ const GeneralSettings = () => {
                 className="font-mono w-32"
               />
             </div>
-            <p className="text-xs text-muted-foreground">Aplica-se somente ao item selecionado da barra lateral.</p>
+            <p className="text-xs text-muted-foreground">{t('appearance.sidebarColorHelp')}</p>
           </div>
 
           {/* Favicon */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-muted-foreground" />
-              Favicon (ícone da aba)
+              {t('appearance.faviconLabel')}
             </Label>
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 flex items-center justify-center rounded border border-border bg-muted/30 overflow-hidden">
                 {settings.ui_favicon_url ? (
                   <img
                     src={resolveBrandingUrl(settings.ui_favicon_url)}
-                    alt="Prévia do favicon"
+                    alt={t('appearance.faviconPreviewAlt')}
                     className="max-h-8 max-w-full object-contain"
                   />
                 ) : (
-                  <span className="text-[10px] text-muted-foreground">Sem</span>
+                  <span className="text-[10px] text-muted-foreground">{t('appearance.faviconEmpty')}</span>
                 )}
               </div>
               <div className="flex-1 space-y-2">
@@ -377,9 +379,9 @@ const GeneralSettings = () => {
                     data-testid="upload-favicon-btn"
                   >
                     {uploadingFavicon ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                    Enviar arquivo
+                    {t('appearance.uploadFile')}
                   </Button>
-                  <span className="text-xs text-muted-foreground">ICO, PNG, SVG ou GIF. Salvo no servidor.</span>
+                  <span className="text-xs text-muted-foreground">{t('appearance.faviconFormats')}</span>
                 </div>
               </div>
             </div>
@@ -387,9 +389,9 @@ const GeneralSettings = () => {
 
           <div className="rounded-lg bg-pink-500/10 border border-pink-500/30 p-4">
             <ul className="text-xs text-pink-300/80 space-y-1">
-              <li>• Arquivos enviados ficam em <code className="bg-pink-500/20 px-1 rounded">./shadowindex_data/branding</code> no servidor.</li>
-              <li>• Você pode informar uma URL externa ou enviar um arquivo — o upload tem precedência.</li>
-              <li>• As alterações de URL/cor/alinhamento são aplicadas ao clicar em <strong>Salvar Configurações</strong>; uploads são aplicados na hora.</li>
+              <li>• {t('appearance.info.filesLocationBefore')} <code className="bg-pink-500/20 px-1 rounded">./shadowindex_data/branding</code> {t('appearance.info.filesLocationAfter')}</li>
+              <li>• {t('appearance.info.urlOrUpload')}</li>
+              <li>• {t('appearance.info.appliedBefore')} <strong>{t('saveButton')}</strong>{t('appearance.info.appliedAfter')}</li>
             </ul>
           </div>
         </CardContent>
@@ -400,10 +402,10 @@ const GeneralSettings = () => {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Download className="w-5 h-5 text-emerald-500" />
-            <CardTitle>Configurações de Download</CardTitle>
+            <CardTitle>{t('download.title')}</CardTitle>
           </div>
           <CardDescription>
-            Configure os limites e comportamentos padrão do sistema de downloads
+            {t('download.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -412,7 +414,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="max_simultaneous_downloads" className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-muted-foreground" />
-                Downloads Simultâneos
+                {t('download.simultaneousDownloadsLabel')}
               </Label>
               <Input
                 id="max_simultaneous_downloads"
@@ -424,7 +426,7 @@ const GeneralSettings = () => {
                 data-testid="max-downloads-input"
               />
               <p className="text-xs text-muted-foreground">
-                Número máximo de downloads em paralelo (1-10). Afeta diretamente o processamento no servidor.
+                {t('download.simultaneousDownloadsHelp')}
               </p>
             </div>
 
@@ -432,7 +434,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="download_threads_per_file" className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-muted-foreground" />
-                Threads por Arquivo
+                {t('download.threadsPerFileLabel')}
               </Label>
               <Input
                 id="download_threads_per_file"
@@ -444,7 +446,7 @@ const GeneralSettings = () => {
                 data-testid="download-threads-input"
               />
               <p className="text-xs text-muted-foreground">
-                Segmentos paralelos para arquivos &gt;100MB (1 = sequencial).
+                {t('download.threadsPerFileHelp')}
               </p>
             </div>
 
@@ -452,7 +454,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="max_simultaneous_ocr_jobs" className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-muted-foreground" />
-                Jobs OCR Simultâneos
+                {t('download.ocrJobsLabel')}
               </Label>
               <Input
                 id="max_simultaneous_ocr_jobs"
@@ -464,7 +466,7 @@ const GeneralSettings = () => {
                 data-testid="max-ocr-jobs-input"
               />
               <p className="text-xs text-muted-foreground">
-                Número máximo de jobs OCR em paralelo (1-5).
+                {t('download.ocrJobsHelp')}
               </p>
             </div>
 
@@ -472,7 +474,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="max_simultaneous_scans" className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-muted-foreground" />
-                Scans Simultâneos
+                {t('download.scansLabel')}
               </Label>
               <Input
                 id="max_simultaneous_scans"
@@ -484,7 +486,7 @@ const GeneralSettings = () => {
                 data-testid="max-scans-input"
               />
               <p className="text-xs text-muted-foreground">
-                Número máximo de scans de diretório em paralelo (1-10).
+                {t('download.scansHelp')}
               </p>
             </div>
 
@@ -492,7 +494,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="ocr_auto_cleanup_minutes" className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-muted-foreground" />
-                Limpeza Auto OCR (min)
+                {t('download.ocrCleanupLabel')}
               </Label>
               <Input
                 id="ocr_auto_cleanup_minutes"
@@ -504,7 +506,7 @@ const GeneralSettings = () => {
                 data-testid="ocr-cleanup-input"
               />
               <p className="text-xs text-muted-foreground">
-                Minutos para excluir jobs OCR finalizados com sucesso. 0 = desabilitado.
+                {t('download.ocrCleanupHelp')}
               </p>
             </div>
 
@@ -512,7 +514,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="default_depth_levels" className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-muted-foreground" />
-                Níveis de Profundidade
+                {t('download.depthLevelsLabel')}
               </Label>
               <Input
                 id="default_depth_levels"
@@ -524,7 +526,7 @@ const GeneralSettings = () => {
                 data-testid="depth-levels-input"
               />
               <p className="text-xs text-muted-foreground">
-                Valor padrão do combo de níveis na tela de arquivos (1-20).
+                {t('download.depthLevelsHelp')}
               </p>
             </div>
 
@@ -532,7 +534,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="default_max_file_size_mb" className="flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-muted-foreground" />
-                Tamanho Máximo (MB)
+                {t('download.maxFileSizeLabel')}
               </Label>
               <Input
                 id="default_max_file_size_mb"
@@ -544,7 +546,7 @@ const GeneralSettings = () => {
                 data-testid="max-size-input"
               />
               <p className="text-xs text-muted-foreground">
-                Valor padrão do combo de tamanho máximo na tela de arquivos (1-1000 MB).
+                {t('download.maxFileSizeHelp')}
               </p>
             </div>
           </div>
@@ -556,17 +558,17 @@ const GeneralSettings = () => {
         <CardHeader>
           <div className="flex items-center gap-2">
             <FileX className="w-5 h-5 text-orange-500" />
-            <CardTitle>Extensões Ignoradas</CardTitle>
+            <CardTitle>{t('ignoredExtensions.title')}</CardTitle>
           </div>
           <CardDescription>
-            Extensões de arquivo que serão ignoradas no download em batch. Downloads manuais (botão Sync) não aplicam esses filtros.
+            {t('ignoredExtensions.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add new extension */}
           <div className="flex gap-2">
             <Input
-              placeholder="Ex: .log"
+              placeholder={t('ignoredExtensions.placeholder')}
               value={newExtension}
               onChange={(e) => setNewExtension(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addExtension()}
@@ -575,7 +577,7 @@ const GeneralSettings = () => {
             />
             <Button variant="outline" onClick={addExtension} data-testid="add-extension-btn">
               <Plus className="w-4 h-4 mr-2" />
-              Adicionar
+              {t('common:actions.add')}
             </Button>
           </div>
 
@@ -598,18 +600,18 @@ const GeneralSettings = () => {
               </Badge>
             ))}
             {getExtensionsList().length === 0 && (
-              <p className="text-sm text-muted-foreground">Nenhuma extensão configurada</p>
+              <p className="text-sm text-muted-foreground">{t('ignoredExtensions.empty')}</p>
             )}
           </div>
 
           {/* Info Box */}
           <div className="rounded-lg bg-orange-500/10 border border-orange-500/30 p-4 mt-4">
-            <h4 className="text-sm font-medium text-orange-400 mb-2">Sobre as Extensões Ignoradas</h4>
+            <h4 className="text-sm font-medium text-orange-400 mb-2">{t('ignoredExtensions.infoTitle')}</h4>
             <ul className="text-xs text-orange-300/80 space-y-1">
-              <li>• Arquivos com essas extensões serão automaticamente ignorados no download em batch (botão "Enviar para Fila")</li>
-              <li>• Downloads manuais pelo botão Sync baixam qualquer arquivo, sem aplicar filtros</li>
-              <li>• Use para evitar baixar arquivos de log, temporários ou backups</li>
-              <li>• <strong>Wildcards:</strong> Use <code className="bg-orange-500/20 px-1 rounded">.log.*</code> para ignorar .log.1, .log.2, etc.</li>
+              <li>• {t('ignoredExtensions.info.item1')}</li>
+              <li>• {t('ignoredExtensions.info.item2')}</li>
+              <li>• {t('ignoredExtensions.info.item3')}</li>
+              <li>• <strong>{t('ignoredExtensions.info.wildcardLabel')}</strong> {t('ignoredExtensions.info.wildcardBefore')} <code className="bg-orange-500/20 px-1 rounded">.log.*</code> {t('ignoredExtensions.info.wildcardAfter')}</li>
             </ul>
           </div>
         </CardContent>
@@ -620,17 +622,17 @@ const GeneralSettings = () => {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Server className="w-5 h-5 text-blue-500" />
-            <CardTitle>Portas de Importação</CardTitle>
+            <CardTitle>{t('importPorts.title')}</CardTitle>
           </div>
           <CardDescription>
-            Configure quais portas serão consideradas na importação de servidores via Nmap XML. Apenas hosts com essas portas abertas serão importados.
+            {t('importPorts.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add new port */}
           <div className="flex gap-2">
             <Input
-              placeholder="Porta (ex: 445)"
+              placeholder={t('importPorts.placeholder')}
               type="number"
               min="1"
               max="65535"
@@ -642,7 +644,7 @@ const GeneralSettings = () => {
             />
             <Button variant="outline" onClick={addPort} data-testid="add-port-btn">
               <Plus className="w-4 h-4 mr-2" />
-              Adicionar
+              {t('common:actions.add')}
             </Button>
           </div>
 
@@ -677,19 +679,19 @@ const GeneralSettings = () => {
               );
             })}
             {getPortsList().length === 0 && (
-              <p className="text-sm text-muted-foreground">Nenhuma porta configurada - todos os hosts serão importados</p>
+              <p className="text-sm text-muted-foreground">{t('importPorts.empty')}</p>
             )}
           </div>
 
           {/* Info Box */}
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-4 mt-4">
-            <h4 className="text-sm font-medium text-blue-400 mb-2">Sobre as Portas de Importação</h4>
+            <h4 className="text-sm font-medium text-blue-400 mb-2">{t('importPorts.infoTitle')}</h4>
             <ul className="text-xs text-blue-300/80 space-y-1">
-              <li>• <strong>SMB (445):</strong> Compartilhamento de arquivos Windows</li>
-              <li>• <strong>RDP (3389):</strong> Área de Trabalho Remota (Windows)</li>
-              <li>• <strong>Bancos de Dados:</strong> MSSQL (1433), MySQL (3306), PostgreSQL (5432), Oracle (1521), MongoDB (27017), Redis (6379)</li>
-              <li>• Hosts sem nenhuma dessas portas abertas serão ignorados na importação</li>
-              <li>• Você pode adicionar portas personalizadas conforme necessidade</li>
+              <li>• <strong>{t('importPorts.info.smbLabel')}</strong> {t('importPorts.info.smbText')}</li>
+              <li>• <strong>{t('importPorts.info.rdpLabel')}</strong> {t('importPorts.info.rdpText')}</li>
+              <li>• <strong>{t('importPorts.info.dbLabel')}</strong> {t('importPorts.info.dbText')}</li>
+              <li>• {t('importPorts.info.item4')}</li>
+              <li>• {t('importPorts.info.item5')}</li>
             </ul>
           </div>
         </CardContent>
@@ -700,10 +702,10 @@ const GeneralSettings = () => {
         <CardHeader>
           <div className="flex items-center gap-2">
             <FileSearch className="w-5 h-5 text-purple-500" />
-            <CardTitle>Auto OCR</CardTitle>
+            <CardTitle>{t('autoOcr.title')}</CardTitle>
           </div>
           <CardDescription>
-            Configure o OCR automático para extrair texto de arquivos após o download
+            {t('autoOcr.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -716,10 +718,10 @@ const GeneralSettings = () => {
                 ) : (
                   <EyeOff className="w-4 h-4 text-muted-foreground" />
                 )}
-                OCR Automático
+                {t('autoOcr.toggleLabel')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Quando habilitado, arquivos baixados serão automaticamente adicionados à fila de OCR
+                {t('autoOcr.toggleHelp')}
               </p>
             </div>
             <Switch
@@ -734,14 +736,14 @@ const GeneralSettings = () => {
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
               <FileX className="w-4 h-4 text-muted-foreground" />
-              Extensões para OCR Automático
+              {t('autoOcr.extensionsLabel')}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Arquivos com estas extensões serão processados pelo OCR após download
+              {t('autoOcr.extensionsHelp')}
             </p>
             <div className="flex gap-2">
               <Input
-                placeholder=".ext (ex: .pdf)"
+                placeholder={t('autoOcr.extensionsPlaceholder')}
                 value={newOcrExtension}
                 onChange={(e) => setNewOcrExtension(e.target.value)}
                 onKeyDown={(e) => {
@@ -796,14 +798,14 @@ const GeneralSettings = () => {
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
               <Database className="w-4 h-4 text-muted-foreground" />
-              MIME Types para OCR Automático
+              {t('autoOcr.mimetypesLabel')}
             </Label>
             <p className="text-xs text-muted-foreground">
-              MIME types (parcial) que ativam o OCR automático. Ex: "image/" captura todos os tipos de imagem.
+              {t('autoOcr.mimetypesHelp')}
             </p>
             <div className="flex gap-2">
               <Input
-                placeholder="MIME type (ex: image/)"
+                placeholder={t('autoOcr.mimetypesPlaceholder')}
                 value={newOcrMimetype}
                 onChange={(e) => setNewOcrMimetype(e.target.value)}
                 onKeyDown={(e) => {
@@ -856,14 +858,14 @@ const GeneralSettings = () => {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Ban className="w-4 h-4 text-red-400" />
-              <Label className="text-sm font-medium">Extensões Excluídas do OCR</Label>
+              <Label className="text-sm font-medium">{t('autoOcr.excludedLabel')}</Label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Arquivos com estas extensões serão <strong>sempre ignorados</strong> pelo OCR automático, mesmo que estejam na lista de inclusão.
+              {t('autoOcr.excludedHelpBefore')} <strong>{t('autoOcr.excludedHelpStrong')}</strong> {t('autoOcr.excludedHelpAfter')}
             </p>
             <div className="flex gap-2">
               <Input
-                placeholder=".ext (ex: .jpg)"
+                placeholder={t('autoOcr.excludedPlaceholder')}
                 value={newOcrExcludedExtension}
                 onChange={(e) => setNewOcrExcludedExtension(e.target.value)}
                 className="flex-1 h-9"
@@ -917,13 +919,13 @@ const GeneralSettings = () => {
 
           {/* Info Box */}
           <div className="rounded-lg bg-purple-500/10 border border-purple-500/30 p-4 mt-4">
-            <h4 className="text-sm font-medium text-purple-400 mb-2">Sobre o Auto OCR</h4>
+            <h4 className="text-sm font-medium text-purple-400 mb-2">{t('autoOcr.infoTitle')}</h4>
             <ul className="text-xs text-purple-300/80 space-y-1">
-              <li>• O OCR é executado em background após o download do arquivo</li>
-              <li>• O texto extraído fica disponível para busca e visualização</li>
-              <li>• Requer Apache Tika configurado e em execução</li>
-              <li>• MIME types são verificados com match parcial (ex: "image/" captura "image/png", "image/jpeg", etc.)</li>
-              <li>• <strong className="text-red-400">Extensões excluídas têm precedência</strong> sobre inclusões por extensão ou MIME type</li>
+              <li>• {t('autoOcr.info.item1')}</li>
+              <li>• {t('autoOcr.info.item2')}</li>
+              <li>• {t('autoOcr.info.item3')}</li>
+              <li>• {t('autoOcr.info.item4')}</li>
+              <li>• <strong className="text-red-400">{t('autoOcr.info.item5Strong')}</strong> {t('autoOcr.info.item5After')}</li>
             </ul>
           </div>
         </CardContent>
@@ -934,9 +936,9 @@ const GeneralSettings = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <Database className="w-5 h-5 text-cyan-500" />
-            Auto-Index
+            {t('autoIndex.title')}
           </CardTitle>
-          <CardDescription>Indexação automática do conteúdo bruto de arquivos de texto quando o OCR não é executado ou falha</CardDescription>
+          <CardDescription>{t('autoIndex.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Enable/Disable */}
@@ -948,9 +950,9 @@ const GeneralSettings = () => {
                 ) : (
                   <EyeOff className="w-4 h-4 text-muted-foreground" />
                 )}
-                Auto-Index habilitado
+                {t('autoIndex.toggleLabel')}
               </Label>
-              <p className="text-xs text-muted-foreground mt-1">Indexar automaticamente conteúdo de arquivos não tratados pelo OCR</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('autoIndex.toggleHelp')}</p>
             </div>
             <Switch
               id="auto_index_enabled"
@@ -961,7 +963,7 @@ const GeneralSettings = () => {
 
           {/* Max Size */}
           <div>
-            <Label htmlFor="auto_index_max_size_mb">Tamanho máximo do arquivo (MB)</Label>
+            <Label htmlFor="auto_index_max_size_mb">{t('autoIndex.maxSizeLabel')}</Label>
             <Input
               id="auto_index_max_size_mb"
               type="number"
@@ -971,15 +973,15 @@ const GeneralSettings = () => {
               onChange={(e) => handleChange('auto_index_max_size_mb', e.target.value)}
               className="w-32 mt-1"
             />
-            <p className="text-xs text-muted-foreground mt-1">Arquivos maiores que este limite não serão indexados</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('autoIndex.maxSizeHelp')}</p>
           </div>
 
           {/* Extensions */}
           <div>
-            <Label>Extensões para Auto-Index <span className="text-muted-foreground font-normal">(suporta wildcards: .env*)</span></Label>
+            <Label>{t('autoIndex.extensionsLabel')} <span className="text-muted-foreground font-normal">{t('autoIndex.extensionsHint')}</span></Label>
             <div className="flex gap-2 mt-1">
               <Input
-                placeholder=".txt ou .env*"
+                placeholder={t('autoIndex.extensionsPlaceholder')}
                 value={newAutoIndexExtension}
                 onChange={(e) => setNewAutoIndexExtension(e.target.value)}
                 onKeyDown={(e) => {
@@ -1031,10 +1033,10 @@ const GeneralSettings = () => {
 
           {/* MIME Types */}
           <div>
-            <Label>MIME Types para Auto-Index</Label>
+            <Label>{t('autoIndex.mimetypesLabel')}</Label>
             <div className="flex gap-2 mt-1">
               <Input
-                placeholder="text/"
+                placeholder={t('autoIndex.mimetypesPlaceholder')}
                 value={newAutoIndexMimetype}
                 onChange={(e) => setNewAutoIndexMimetype(e.target.value)}
                 onKeyDown={(e) => {
@@ -1084,13 +1086,13 @@ const GeneralSettings = () => {
 
           {/* Info Box */}
           <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/30 p-4 mt-4">
-            <h4 className="text-sm font-medium text-cyan-400 mb-2">Sobre o Auto-Index</h4>
+            <h4 className="text-sm font-medium text-cyan-400 mb-2">{t('autoIndex.infoTitle')}</h4>
             <ul className="text-xs text-cyan-300/80 space-y-1">
-              <li>• Quando o OCR é skipado ou falha, o Auto-Index tenta ler o conteúdo bruto do arquivo</li>
-              <li>• O conteúdo indexado fica disponível para busca, assim como o texto extraído pelo OCR</li>
-              <li>• Extensões suportam wildcards (ex: ".env*" captura ".env", ".env.local", ".env.production")</li>
-              <li>• MIME types são verificados com match parcial (ex: "text/" captura "text/plain", "text/csv", etc.)</li>
-              <li>• <strong className="text-cyan-300">Todos os arquivos que tiverem o OCR executado com sucesso terão o conteúdo do OCR automaticamente indexado, independente desta configuração</strong></li>
+              <li>• {t('autoIndex.info.item1')}</li>
+              <li>• {t('autoIndex.info.item2')}</li>
+              <li>• {t('autoIndex.info.item3')}</li>
+              <li>• {t('autoIndex.info.item4')}</li>
+              <li>• <strong className="text-cyan-300">{t('autoIndex.info.item5Strong')}</strong></li>
             </ul>
           </div>
         </CardContent>
@@ -1100,12 +1102,12 @@ const GeneralSettings = () => {
       <Card>
         <CardContent className="p-4 pt-4">
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-4">
-            <h4 className="text-sm font-medium text-blue-400 mb-2">Sobre as Configurações</h4>
+            <h4 className="text-sm font-medium text-blue-400 mb-2">{t('generalInfo.title')}</h4>
             <ul className="text-xs text-blue-300/80 space-y-1">
-              <li>• <strong>Downloads Simultâneos:</strong> Controla quantos arquivos são baixados ao mesmo tempo pelo servidor. Valores maiores podem sobrecarregar o sistema.</li>
-              <li>• <strong>Níveis de Profundidade:</strong> Define o valor padrão que aparece no combo da tela de arquivos. O usuário pode alterar na hora do download.</li>
-              <li>• <strong>Tamanho Máximo:</strong> Define o valor padrão para ignorar arquivos maiores que o limite. O usuário pode alterar na hora do download.</li>
-              <li>• <strong>Extensões Ignoradas:</strong> Arquivos com essas extensões são automaticamente pulados no batch download.</li>
+              <li>• <strong>{t('generalInfo.simultaneousDownloadsLabel')}</strong> {t('generalInfo.simultaneousDownloadsText')}</li>
+              <li>• <strong>{t('generalInfo.depthLevelsLabel')}</strong> {t('generalInfo.depthLevelsText')}</li>
+              <li>• <strong>{t('generalInfo.maxFileSizeLabel')}</strong> {t('generalInfo.maxFileSizeText')}</li>
+              <li>• <strong>{t('generalInfo.ignoredExtensionsLabel')}</strong> {t('generalInfo.ignoredExtensionsText')}</li>
             </ul>
           </div>
         </CardContent>

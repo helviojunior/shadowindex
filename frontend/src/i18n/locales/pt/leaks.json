@@ -1,0 +1,113 @@
+{
+  "title": "Leaks",
+  "subtitle": "Detecção de secrets e credenciais em arquivos baixados",
+  "scanPanel": {
+    "title": "Iniciar Scan",
+    "running": "{{count}} em execução",
+    "searchServerPrompt": "Buscar servidor por nome ou IP...",
+    "serverInputPlaceholder": "Digite nome ou IP do servidor...",
+    "noServerFound": "Nenhum servidor encontrado.",
+    "pathPlaceholder": "/caminho/para/diretorio"
+  },
+  "scanMode": {
+    "allServers": "Todos os Servidores",
+    "specificServer": "Servidor Específico",
+    "customPath": "Caminho Custom",
+    "scanAll": "Escanear Todos"
+  },
+  "jobs": {
+    "recent": "Jobs Recentes",
+    "leaksCount": "{{count}} leaks"
+  },
+  "stats": {
+    "totalLeaks": "Total de Leaks",
+    "affectedFiles": "Arquivos Afetados",
+    "secretTypes": "Tipos de Secrets",
+    "highSeverity": "Alta Severidade"
+  },
+  "findings": {
+    "title": "Findings",
+    "searchPlaceholder": "Buscar...",
+    "rule": "Regra",
+    "searchRule": "Buscar regra...",
+    "noRuleFound": "Nenhuma regra encontrada.",
+    "clearRules": "Limpar regras",
+    "real": "Reais",
+    "all": "Todos",
+    "falsePositives": "Falsos Positivos",
+    "filteredCount": "{{count}} de {{total}} findings",
+    "emptyTitle": "Nenhum Leak Detectado",
+    "emptyDesc": "Execute um scan para detectar secrets nos arquivos baixados"
+  },
+  "columns": {
+    "server": "SERVIDOR",
+    "file": "ARQUIVO",
+    "line": "LINHA",
+    "rule": "REGRA",
+    "tags": "TAGS",
+    "risk": "RISCO",
+    "actions": "AÇÕES"
+  },
+  "fileFallback": "Arquivo",
+  "actions": {
+    "viewDetails": "Ver detalhes",
+    "copySecret": "Copiar secret",
+    "openFile": "Abrir arquivo no navegador",
+    "markFP": "Marcar como falso positivo",
+    "unmarkFP": "Desmarcar como falso positivo",
+    "removeFinding": "Remover finding"
+  },
+  "bulk": {
+    "selected_one": "{{count}} selecionado",
+    "selected_other": "{{count}} selecionados",
+    "markFP": "Marcar como FP",
+    "unmarkFP": "Desmarcar FP"
+  },
+  "detail": {
+    "title": "Detalhes do Finding",
+    "line": "Linha",
+    "location": "Localização",
+    "serverLabel": "Servidor:",
+    "fileLabel": "Arquivo:",
+    "directoryLabel": "Diretório:",
+    "openFile": "Abrir Arquivo no Navegador",
+    "secretDetected": "Secret Detectado",
+    "copy": "Copiar",
+    "copied": "Copiado!",
+    "matchContext": "Contexto (Match)",
+    "tagsLabel": "Tags:"
+  },
+  "confirm": {
+    "clearAllTitle": "Limpar Todos os Findings",
+    "deleteTitle": "Excluir Finding",
+    "clearAllDesc": "Tem certeza que deseja limpar todos os findings? Esta ação não pode ser desfeita.",
+    "deleteDesc": "Tem certeza que deseja excluir este finding? Esta ação não pode ser desfeita.",
+    "clearAllAction": "Limpar Tudo",
+    "deleteAction": "Excluir"
+  },
+  "toast": {
+    "loadError": "Erro ao carregar findings",
+    "selectServer": "Selecione um servidor",
+    "enterPath": "Informe o caminho do diretório",
+    "scansStarted": "{{count}} scans iniciados em background",
+    "noServersToScan": "Nenhum servidor com arquivos baixados para escanear",
+    "scanStartedJob": "Scan iniciado! Job ID: {{id}}",
+    "scanError": "Erro ao iniciar scan: {{error}}",
+    "cancelJobError": "Erro ao cancelar job",
+    "clearJobsError": "Erro ao limpar jobs",
+    "allFindingsRemoved": "Todos os findings foram removidos",
+    "clearFindingsError": "Erro ao limpar findings",
+    "noFingerprint": "Finding sem fingerprint",
+    "findingRemoved": "Finding removido",
+    "removeFindingError": "Erro ao remover finding",
+    "removeFindingErrorDetail": "Erro ao remover finding: {{error}}",
+    "markedFP": "Marcado como falso positivo",
+    "unmarkedFP": "Desmarcado como falso positivo",
+    "updateFindingError": "Erro ao atualizar finding",
+    "updateFindingErrorDetail": "Erro ao atualizar finding: {{error}}",
+    "updateFindingsError": "Erro ao atualizar findings",
+    "errorDetail": "Erro: {{error}}",
+    "copied": "Copiado!",
+    "copyError": "Erro ao copiar"
+  }
+}

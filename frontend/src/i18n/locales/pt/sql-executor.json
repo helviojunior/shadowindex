@@ -1,0 +1,38 @@
+{
+  "execute": "Executar",
+  "presets": "Presets",
+  "history": "Histórico",
+  "result": "Resultado",
+  "universal": "Universal",
+  "predefinedCommands": "Comandos Pré-definidos",
+  "presetsCount": "{{count}} presets",
+  "noPresetsAvailable": "Nenhum preset disponível",
+  "resizeHint": "Arraste a barra abaixo para redimensionar",
+  "editorPlaceholder": "Digite sua query SQL aqui...\n\nExemplo:\nSELECT * FROM tabela WHERE coluna = 'valor'",
+  "rowCount": "{{count}} linha(s)",
+  "executedAt": "Executado em: {{date}}",
+  "runQueryHint": "Execute uma query para ver os resultados",
+  "executionError": "Erro na execução",
+  "queryHistory": "Histórico de Queries",
+  "noHistory": "Nenhuma query no histórico",
+  "clickToOpenNewTab": "Clique para abrir em nova aba",
+  "export": {
+    "sheetName": "Resultado"
+  },
+  "toast": {
+    "loadConnectionError": "Erro ao carregar conexão",
+    "cannotCloseLastTab": "Não é possível fechar a última tab",
+    "enterQuery": "Digite uma query SQL",
+    "connectionOk": "Conexão OK! ({{ms}}ms)",
+    "connectionFailed": "Falha na conexão: {{error}}",
+    "testError": "Erro ao testar: {{error}}",
+    "presetSelected": "Preset \"{{name}}\" selecionado",
+    "historyTabCreated": "Nova aba criada com query e resultado do histórico",
+    "historyItemRemoved": "Item removido do histórico",
+    "removeItemError": "Erro ao remover item",
+    "noResultToExport": "Nenhum resultado para exportar",
+    "exportedCsv": "Exportado para CSV",
+    "exportedExcel": "Exportado para Excel",
+    "exportedJson": "Exportado para JSON"
+  }
+}

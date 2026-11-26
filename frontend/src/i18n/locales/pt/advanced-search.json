@@ -1,0 +1,42 @@
+{
+  "title": "Busca Avançada",
+  "resultsInTab": "({{total}} resultados na aba atual)",
+  "searchPlaceholder": "Buscar servidores, arquivos, leaks...",
+  "searching": "Buscando...",
+  "noResults": "Nenhum resultado encontrado para \"{{query}}\"",
+  "minChars": "Digite ao menos 3 caracteres para buscar",
+  "loadingMore": "Carregando mais...",
+  "allLoaded": "Todos os {{total}} resultados carregados",
+  "foundViaOcr": "Encontrado via OCR",
+  "tabs": {
+    "items": "Arquivos",
+    "servers": "Servidores",
+    "leaks": "Leaks"
+  },
+  "fields": {
+    "search": "Busca",
+    "dateFrom": "Data de",
+    "dateTo": "Data até",
+    "extension": "Extensão"
+  },
+  "options": {
+    "all": "Todos"
+  },
+  "columns": {
+    "ip": "IP",
+    "path": "Caminho",
+    "server": "Servidor",
+    "modified": "Modificado",
+    "ocr": "OCR",
+    "dl": "DL",
+    "file": "Arquivo",
+    "rule": "Regra"
+  },
+  "badges": {
+    "dir": "Dir",
+    "file": "File"
+  },
+  "contextMenu": {
+    "openNewTab": "Abrir em nova aba"
+  }
+}

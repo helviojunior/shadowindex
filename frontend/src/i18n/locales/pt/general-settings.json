@@ -1,0 +1,151 @@
+{
+  "title": "Configurações Gerais",
+  "subtitle": "Configure os parâmetros gerais do sistema",
+  "saveButton": "Salvar Configurações",
+  "saving": "Salvando...",
+  "appearance": {
+    "title": "Aparência",
+    "description": "Personalize a logo, o favicon, o alinhamento da logo e a cor do item selecionado no menu lateral",
+    "logoLabel": "Logo do sistema",
+    "logoPreviewAlt": "Prévia da logo",
+    "logoEmpty": "Sem logo",
+    "uploadFile": "Enviar arquivo",
+    "logoFormats": "SVG, PNG, JPG, GIF ou WEBP. Salvo no servidor.",
+    "alignmentLabel": "Alinhamento da logo",
+    "alignmentLeft": "Esquerda",
+    "alignmentCenter": "Centralizada",
+    "alignmentRight": "Direita",
+    "sidebarColorLabel": "Cor do item selecionado (menu lateral)",
+    "sidebarColorHelp": "Aplica-se somente ao item selecionado da barra lateral.",
+    "faviconLabel": "Favicon (ícone da aba)",
+    "faviconPreviewAlt": "Prévia do favicon",
+    "faviconEmpty": "Sem",
+    "faviconFormats": "ICO, PNG, SVG ou GIF. Salvo no servidor.",
+    "info": {
+      "filesLocationBefore": "Arquivos enviados ficam em",
+      "filesLocationAfter": "no servidor.",
+      "urlOrUpload": "Você pode informar uma URL externa ou enviar um arquivo — o upload tem precedência.",
+      "appliedBefore": "As alterações de URL/cor/alinhamento são aplicadas ao clicar em",
+      "appliedAfter": "; uploads são aplicados na hora."
+    }
+  },
+  "download": {
+    "title": "Configurações de Download",
+    "description": "Configure os limites e comportamentos padrão do sistema de downloads",
+    "simultaneousDownloadsLabel": "Downloads Simultâneos",
+    "simultaneousDownloadsHelp": "Número máximo de downloads em paralelo (1-10). Afeta diretamente o processamento no servidor.",
+    "threadsPerFileLabel": "Threads por Arquivo",
+    "threadsPerFileHelp": "Segmentos paralelos para arquivos >100MB (1 = sequencial).",
+    "ocrJobsLabel": "Jobs OCR Simultâneos",
+    "ocrJobsHelp": "Número máximo de jobs OCR em paralelo (1-5).",
+    "scansLabel": "Scans Simultâneos",
+    "scansHelp": "Número máximo de scans de diretório em paralelo (1-10).",
+    "ocrCleanupLabel": "Limpeza Auto OCR (min)",
+    "ocrCleanupHelp": "Minutos para excluir jobs OCR finalizados com sucesso. 0 = desabilitado.",
+    "depthLevelsLabel": "Níveis de Profundidade",
+    "depthLevelsHelp": "Valor padrão do combo de níveis na tela de arquivos (1-20).",
+    "maxFileSizeLabel": "Tamanho Máximo (MB)",
+    "maxFileSizeHelp": "Valor padrão do combo de tamanho máximo na tela de arquivos (1-1000 MB)."
+  },
+  "ignoredExtensions": {
+    "title": "Extensões Ignoradas",
+    "description": "Extensões de arquivo que serão ignoradas no download em batch. Downloads manuais (botão Sync) não aplicam esses filtros.",
+    "placeholder": "Ex: .log",
+    "empty": "Nenhuma extensão configurada",
+    "infoTitle": "Sobre as Extensões Ignoradas",
+    "info": {
+      "item1": "Arquivos com essas extensões serão automaticamente ignorados no download em batch (botão \"Enviar para Fila\")",
+      "item2": "Downloads manuais pelo botão Sync baixam qualquer arquivo, sem aplicar filtros",
+      "item3": "Use para evitar baixar arquivos de log, temporários ou backups",
+      "wildcardLabel": "Wildcards:",
+      "wildcardBefore": "Use",
+      "wildcardAfter": "para ignorar .log.1, .log.2, etc."
+    }
+  },
+  "importPorts": {
+    "title": "Portas de Importação",
+    "description": "Configure quais portas serão consideradas na importação de servidores via Nmap XML. Apenas hosts com essas portas abertas serão importados.",
+    "placeholder": "Porta (ex: 445)",
+    "portLabel": "Porta {{port}}",
+    "empty": "Nenhuma porta configurada - todos os hosts serão importados",
+    "infoTitle": "Sobre as Portas de Importação",
+    "info": {
+      "smbLabel": "SMB (445):",
+      "smbText": "Compartilhamento de arquivos Windows",
+      "rdpLabel": "RDP (3389):",
+      "rdpText": "Área de Trabalho Remota (Windows)",
+      "dbLabel": "Bancos de Dados:",
+      "dbText": "MSSQL (1433), MySQL (3306), PostgreSQL (5432), Oracle (1521), MongoDB (27017), Redis (6379)",
+      "item4": "Hosts sem nenhuma dessas portas abertas serão ignorados na importação",
+      "item5": "Você pode adicionar portas personalizadas conforme necessidade"
+    }
+  },
+  "autoOcr": {
+    "title": "Auto OCR",
+    "description": "Configure o OCR automático para extrair texto de arquivos após o download",
+    "toggleLabel": "OCR Automático",
+    "toggleHelp": "Quando habilitado, arquivos baixados serão automaticamente adicionados à fila de OCR",
+    "extensionsLabel": "Extensões para OCR Automático",
+    "extensionsHelp": "Arquivos com estas extensões serão processados pelo OCR após download",
+    "extensionsPlaceholder": ".ext (ex: .pdf)",
+    "mimetypesLabel": "MIME Types para OCR Automático",
+    "mimetypesHelp": "MIME types (parcial) que ativam o OCR automático. Ex: \"image/\" captura todos os tipos de imagem.",
+    "mimetypesPlaceholder": "MIME type (ex: image/)",
+    "excludedLabel": "Extensões Excluídas do OCR",
+    "excludedHelpBefore": "Arquivos com estas extensões serão",
+    "excludedHelpStrong": "sempre ignorados",
+    "excludedHelpAfter": "pelo OCR automático, mesmo que estejam na lista de inclusão.",
+    "excludedPlaceholder": ".ext (ex: .jpg)",
+    "infoTitle": "Sobre o Auto OCR",
+    "info": {
+      "item1": "O OCR é executado em background após o download do arquivo",
+      "item2": "O texto extraído fica disponível para busca e visualização",
+      "item3": "Requer Apache Tika configurado e em execução",
+      "item4": "MIME types são verificados com match parcial (ex: \"image/\" captura \"image/png\", \"image/jpeg\", etc.)",
+      "item5Strong": "Extensões excluídas têm precedência",
+      "item5After": "sobre inclusões por extensão ou MIME type"
+    }
+  },
+  "autoIndex": {
+    "title": "Auto-Index",
+    "description": "Indexação automática do conteúdo bruto de arquivos de texto quando o OCR não é executado ou falha",
+    "toggleLabel": "Auto-Index habilitado",
+    "toggleHelp": "Indexar automaticamente conteúdo de arquivos não tratados pelo OCR",
+    "maxSizeLabel": "Tamanho máximo do arquivo (MB)",
+    "maxSizeHelp": "Arquivos maiores que este limite não serão indexados",
+    "extensionsLabel": "Extensões para Auto-Index",
+    "extensionsHint": "(suporta wildcards: .env*)",
+    "extensionsPlaceholder": ".txt ou .env*",
+    "mimetypesLabel": "MIME Types para Auto-Index",
+    "mimetypesPlaceholder": "text/",
+    "infoTitle": "Sobre o Auto-Index",
+    "info": {
+      "item1": "Quando o OCR é skipado ou falha, o Auto-Index tenta ler o conteúdo bruto do arquivo",
+      "item2": "O conteúdo indexado fica disponível para busca, assim como o texto extraído pelo OCR",
+      "item3": "Extensões suportam wildcards (ex: \".env*\" captura \".env\", \".env.local\", \".env.production\")",
+      "item4": "MIME types são verificados com match parcial (ex: \"text/\" captura \"text/plain\", \"text/csv\", etc.)",
+      "item5Strong": "Todos os arquivos que tiverem o OCR executado com sucesso terão o conteúdo do OCR automaticamente indexado, independente desta configuração"
+    }
+  },
+  "generalInfo": {
+    "title": "Sobre as Configurações",
+    "simultaneousDownloadsLabel": "Downloads Simultâneos:",
+    "simultaneousDownloadsText": "Controla quantos arquivos são baixados ao mesmo tempo pelo servidor. Valores maiores podem sobrecarregar o sistema.",
+    "depthLevelsLabel": "Níveis de Profundidade:",
+    "depthLevelsText": "Define o valor padrão que aparece no combo da tela de arquivos. O usuário pode alterar na hora do download.",
+    "maxFileSizeLabel": "Tamanho Máximo:",
+    "maxFileSizeText": "Define o valor padrão para ignorar arquivos maiores que o limite. O usuário pode alterar na hora do download.",
+    "ignoredExtensionsLabel": "Extensões Ignoradas:",
+    "ignoredExtensionsText": "Arquivos com essas extensões são automaticamente pulados no batch download."
+  },
+  "toast": {
+    "saveSuccess": "Configurações salvas com sucesso",
+    "saveError": "Erro ao salvar configurações",
+    "logoUploaded": "Logo enviado com sucesso",
+    "faviconUploaded": "Favicon enviado com sucesso",
+    "uploadError": "Erro ao enviar arquivo",
+    "extensionExists": "Extensão já existe na lista",
+    "invalidPort": "Porta inválida (1-65535)",
+    "portExists": "Porta já existe na lista"
+  }
+}

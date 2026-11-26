@@ -1,0 +1,90 @@
+{
+  "header": {
+    "title": "SOAP Plugin",
+    "subtitle": "Comunicação via WebService SOAP",
+    "newInstance": "Nova Instância"
+  },
+  "tabs": {
+    "instances": "Instâncias",
+    "info": "Info"
+  },
+  "form": {
+    "title": "Nova Instância SOAP",
+    "description": "Configure uma nova instância do plugin SOAP",
+    "nameLabel": "Nome da Instância",
+    "namePlaceholder": "Produção, Homologação, etc.",
+    "urlLabel": "URL do WebService (WSDL)",
+    "urlPlaceholder": "https://exemplo.com/api.asmx?WSDL",
+    "proxyLabel": "Proxy",
+    "selectProxy": "Selecione um proxy",
+    "noProxy": "Sem proxy",
+    "descriptionPlaceholder": "Descrição opcional da instância",
+    "createInstance": "Criar Instância"
+  },
+  "edit": {
+    "urlLabel": "URL do WebService"
+  },
+  "empty": {
+    "title": "Nenhuma instância configurada",
+    "hint": "Clique em \"Nova Instância\" para criar"
+  },
+  "badges": {
+    "default": "Padrão",
+    "inactive": "Inativo"
+  },
+  "instance": {
+    "url": "URL: {{url}}",
+    "urlNotConfigured": "URL não configurada",
+    "proxy": "Proxy: {{name}}",
+    "noProxy": "Sem proxy"
+  },
+  "health": {
+    "ok": "OK"
+  },
+  "titles": {
+    "checkHealth": "Verificar saúde",
+    "removeDefault": "Remover padrão",
+    "setDefault": "Definir como padrão",
+    "deactivate": "Desativar",
+    "activate": "Ativar"
+  },
+  "confirm": {
+    "delete": "Tem certeza que deseja excluir esta instância?"
+  },
+  "toast": {
+    "loadError": "Erro ao carregar dados",
+    "created": "Instância criada com sucesso",
+    "createError": "Erro ao criar instância",
+    "deleted": "Instância excluída com sucesso",
+    "deleteError": "Erro ao excluir instância",
+    "updated": "Instância atualizada com sucesso",
+    "updateError": "Erro ao atualizar instância",
+    "healthy": "Plugin saudável",
+    "unhealthy": "Plugin com problemas",
+    "healthCheckError": "Erro ao verificar saúde do plugin",
+    "verifyError": "Erro ao verificar",
+    "defaultRemoved": "Removido como padrão",
+    "defaultSet": "Definido como padrão",
+    "deactivated": "Instância desativada",
+    "activated": "Instância ativada",
+    "statusError": "Erro ao alterar status"
+  },
+  "info": {
+    "pluginInfo": "Informações do Plugin",
+    "version": "Versão",
+    "features": "Funcionalidades",
+    "featuresDesc": "Operações disponíveis via SOAP",
+    "implemented": "Implementado",
+    "configSchema": "Esquema de Configuração",
+    "configSchemaDesc": "Campos disponíveis para configuração de instâncias",
+    "required": "obrigatório",
+    "feature1Name": "Resolução de Nomes (Resolve)",
+    "feature1Desc": "Resolver hostname para endereço IP via WebService",
+    "feature2Name": "Listagem de Compartilhamentos",
+    "feature2Desc": "Listar shares de rede disponíveis no servidor",
+    "feature3Name": "Navegação de Diretórios",
+    "feature3Desc": "Listar arquivos e pastas em um caminho remoto",
+    "feature4Name": "Download de Arquivos",
+    "feature4Desc": "Baixar arquivos remotos via WebService"
+  }
+}

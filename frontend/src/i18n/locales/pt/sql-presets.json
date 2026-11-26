@@ -1,0 +1,28 @@
+{
+  "title": "SQL Presets",
+  "subtitle": "Gerencie comandos SQL pré-definidos por tipo de banco",
+  "addPreset": "Adicionar Preset",
+  "newPreset": "Novo Preset",
+  "newPresetDescription": "Adicione um novo comando SQL pré-definido",
+  "dbType": "Tipo de Banco",
+  "universalAll": "Universal (todos)",
+  "namePlaceholder": "Ex: List Users",
+  "descriptionOptional": "Descrição (opcional)",
+  "descriptionPlaceholder": "Ex: Lista todos os usuários",
+  "querySql": "Query SQL",
+  "registeredPresets": "Presets Cadastrados",
+  "presetsCount": "{{count}} presets no sistema",
+  "filter": "Filtrar:",
+  "allTypes": "Todos os tipos",
+  "universal": "Universal",
+  "noPresets": "Nenhum preset encontrado",
+  "toast": {
+    "loadError": "Erro ao carregar presets",
+    "createSuccess": "Preset cadastrado com sucesso",
+    "createError": "Erro ao cadastrar preset",
+    "deleteSuccess": "Preset removido com sucesso",
+    "deleteError": "Erro ao remover preset",
+    "updateSuccess": "Preset atualizado com sucesso",
+    "updateError": "Erro ao atualizar preset"
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "title": "Downloads",
+  "description": "Gerencie os downloads de arquivos dos servidores",
+  "updating": "Atualizando...",
+  "realtime": "Tempo real",
+  "offline": "Offline",
+  "total": "Total",
+  "clickHint": "(clique)",
+  "filter": "Filtro: {{label}}",
+  "status": {
+    "downloading": "Baixando",
+    "paused": "Pausado",
+    "skipped": "Ignorado"
+  },
+  "scanStatus": {
+    "pending": "Aguardando",
+    "scanning": "Escaneando"
+  },
+  "tabs": {
+    "downloads": "Downloads",
+    "scans": "Scans de Diretório",
+    "active": "{{count}} ativos"
+  },
+  "actions": {
+    "clearFinished": "Limpar Concluídos",
+    "retryFailed": "Refazer Falhados",
+    "cancelAll": "Cancelar Todos",
+    "clearFinishedScans": "Limpar Finalizados"
+  },
+  "titles": {
+    "cancel": "Cancelar",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "retry": "Tentar novamente",
+    "force": "Forçar download",
+    "cancelScan": "Cancelar scan"
+  },
+  "files": "{{count}} arquivos",
+  "unknownFile": "Desconhecido",
+  "progress": {
+    "remaining": "resta {{duration}}"
+  },
+  "empty": {
+    "withFilter": "Nenhum download com status \"{{label}}\"",
+    "noQueue": "Nenhum download na fila"
+  },
+  "search": {
+    "scanPlaceholder": "Buscar por servidor ou caminho...",
+    "hiddenItems": "+{{count}} itens ocultos — use a busca para filtrar",
+    "noResults": "Nenhum resultado para \"{{query}}\""
+  },
+  "scans": {
+    "empty": "Nenhum scan de diretório em andamento",
+    "emptyHint": "Os scans são iniciados automaticamente ao navegar em diretórios",
+    "scanning": "{{processed}} / {{total}} arquivos • {{queued}} para download",
+    "completed": "{{total}} arquivos encontrados • {{queued}} para download"
+  },
+  "dialog": {
+    "titles": {
+      "cancel": "Cancelar Download",
+      "pause": "Pausar Download",
+      "resume": "Retomar Download",
+      "retry": "Tentar Novamente",
+      "force": "Forçar Download",
+      "cancelAll": "Cancelar Todos os Downloads",
+      "clearFinished": "Limpar Concluídos",
+      "retryAllFailed": "Refazer Todos os Falhados",
+      "cancelScan": "Cancelar Scan",
+      "cancelAllScans": "Cancelar Todos os Scans",
+      "clearFinishedScans": "Limpar Scans Finalizados",
+      "default": "Confirmar Ação"
+    },
+    "descriptions": {
+      "cancel": "Tem certeza que deseja cancelar o download de \"{{name}}\"?",
+      "pause": "Tem certeza que deseja pausar o download de \"{{name}}\"?",
+      "resume": "Tem certeza que deseja retomar o download de \"{{name}}\"?",
+      "retry": "Tem certeza que deseja tentar novamente o download de \"{{name}}\"?",
+      "force": "Tem certeza que deseja forçar o download de \"{{name}}\"?",
+      "cancelAll": "Isso cancelará {{count}} downloads pendentes, em andamento e pausados.",
+      "clearFinished": "Isso removerá todos os downloads concluídos, falhados, cancelados e ignorados da lista.",
+      "retryAllFailed": "Isso reenfileirará {{count}} downloads falhados para tentar novamente.",
+      "cancelScan": "Tem certeza que deseja cancelar o scan de \"{{name}}\"?",
+      "cancelAllScans": "Isso cancelará todos os scans pendentes e em execução.",
+      "clearFinishedScans": "Isso removerá todos os scans concluídos, cancelados e falhados da lista.",
+      "default": "Tem certeza que deseja executar esta ação?"
+    }
+  },
+  "toast": {
+    "cancelScanError": "Erro ao cancelar scan",
+    "cancelScansError": "Erro ao cancelar scans",
+    "clearScansError": "Erro ao limpar scans",
+    "cancelError": "Erro ao cancelar download",
+    "cancelAllError": "Erro ao cancelar downloads",
+    "pauseError": "Erro ao pausar download",
+    "resumeError": "Erro ao retomar download",
+    "forceError": "Erro ao forçar download",
+    "retryError": "Erro ao reiniciar download",
+    "clearedSuccess": "Histórico limpo com sucesso",
+    "clearError": "Erro ao limpar histórico",
+    "retryAllError": "Erro ao recolocar downloads na fila"
+  }
+}

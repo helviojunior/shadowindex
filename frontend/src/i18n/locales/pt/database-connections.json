@@ -1,0 +1,60 @@
+{
+  "title": "Conexões SQL",
+  "subtitle": "Gerencie as conexões com bancos de dados",
+  "addConnection": "Adicionar Conexão",
+  "newConnection": "Nova Conexão",
+  "newConnectionDescription": "Adicione uma nova conexão de banco de dados",
+  "namePlaceholder": "Minha Conexão",
+  "dbType": "Tipo de Banco",
+  "selectTypePlaceholder": "Selecione o tipo...",
+  "pluginInstance": "Instância de Plugin",
+  "selectInstancePlaceholder": "Selecione a instância...",
+  "testConnection": "Testar Conexão",
+  "testResultOk": "Conexão OK",
+  "testResultFailed": "Falha",
+  "registeredConnections": "Conexões Cadastradas",
+  "connectionsCount": "{{count}} conexões no sistema",
+  "noConnections": "Nenhuma conexão cadastrada",
+  "executeSql": "Executar SQL",
+  "editConnection": "Editar Conexão",
+  "editConnectionDescription": "Atualize as informações da conexão de banco de dados",
+  "editNamePlaceholder": "Nome da conexão",
+  "table": {
+    "plugin": "Plugin",
+    "connectionString": "Connection String"
+  },
+  "pluginLabel": {
+    "notConfigured": "Não configurado",
+    "instance": "Instância #{{id}}"
+  },
+  "wizard": {
+    "connectionString": "Connection String",
+    "modeWizard": "Assistente",
+    "modeManual": "Manual",
+    "selectDbTypeHint": "Selecione o <strong>Tipo de Banco</strong> para montar a string automaticamente.",
+    "database": "Database",
+    "trustServerCertificate": "Trust Server Certificate",
+    "extraParams": "Parâmetros extras (opcional)",
+    "generatedString": "String gerada (montada no backend)",
+    "fillFieldsAbove": "preencha os campos acima…",
+    "serviceNameSid": "Service Name / SID",
+    "filePath": "Arquivo (caminho)",
+    "portPlaceholder": "porta",
+    "databasePlaceholder": "nome do banco",
+    "sqlitePathPlaceholder": "/caminho/arquivo.db",
+    "extraPlaceholder": "Ex.: Connection Timeout=5"
+  },
+  "toast": {
+    "loadError": "Erro ao carregar conexões",
+    "createSuccess": "Conexão cadastrada com sucesso",
+    "createError": "Erro ao cadastrar conexão",
+    "fillConnectionString": "Preencha a Connection String para testar",
+    "connectionOk": "Conexão OK! ({{ms}}ms)",
+    "connectionFailed": "Falha na conexão: {{error}}",
+    "testError": "Erro ao testar: {{error}}",
+    "deleteSuccess": "Conexão removida com sucesso",
+    "deleteError": "Erro ao remover conexão",
+    "updateSuccess": "Conexão atualizada com sucesso",
+    "updateError": "Erro ao atualizar conexão"
+  }
+}

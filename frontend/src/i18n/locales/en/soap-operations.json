@@ -1,0 +1,72 @@
+{
+  "header": {
+    "title": "SOAP Operations",
+    "subtitle": "Run operations on the SOAP WebService"
+  },
+  "selector": {
+    "title": "Select SOAP API",
+    "loading": "Loading APIs...",
+    "placeholder": "Select a SOAP API",
+    "noApi": "No SOAP API configured. Configure one under <0>Plugins → SOAP Plugin</0>."
+  },
+  "operations": {
+    "title": "Select the Operation",
+    "description": "Choose and run a SOAP operation"
+  },
+  "tabs": {
+    "resolve": "Resolve",
+    "shares": "Shares",
+    "exec": "SQL Query",
+    "exec4": "List Directory",
+    "exec5": "Download File"
+  },
+  "resolve": {
+    "title": "DNS Resolution",
+    "description": "Resolve domain names to IP addresses",
+    "label": "Host/Domain Name",
+    "placeholder": "example.com",
+    "execute": "Run Resolve"
+  },
+  "shares": {
+    "title": "List Shares",
+    "description": "Lists the network shares of a server",
+    "label": "Server Name/IP",
+    "placeholder": "server.local",
+    "execute": "Run Shares"
+  },
+  "exec": {
+    "title": "Run SQL Query",
+    "description": "Runs a query on a database",
+    "connectionLabel": "Database Connection",
+    "connectionPlaceholder": "Select a connection",
+    "noConnection": "No connection registered",
+    "queryLabel": "SQL Query",
+    "queryPlaceholder": "SELECT * FROM users",
+    "execute": "SQL Query"
+  },
+  "exec4": {
+    "title": "List Directory",
+    "description": "Lists files and folders of a directory",
+    "label": "Directory Path",
+    "placeholder": "C:\\Users\\Documents",
+    "execute": "List Path"
+  },
+  "exec5": {
+    "title": "File Download",
+    "description": "Downloads a file (returned as Base64)",
+    "label": "File Path",
+    "placeholder": "C:\\path\\to\\file.txt",
+    "execute": "Download File"
+  },
+  "result": {
+    "title": "Result",
+    "fromCache": "From Cache",
+    "errorLabel": "Error:"
+  },
+  "toast": {
+    "selectApiFirst": "Select a SOAP API first",
+    "operationError": "Error running SOAP operation",
+    "copied": "Result copied",
+    "copyError": "Error copying"
+  }
+}

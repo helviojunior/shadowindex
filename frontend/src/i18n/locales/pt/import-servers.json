@@ -1,0 +1,86 @@
+{
+  "title": "Importar Servidores",
+  "subtitle": "Importe servidores a partir de scans Nmap, BloodHound ou de uma lista (IP/DNS)",
+  "helper": {
+    "port": "Porta {{port}}"
+  },
+  "tabs": {
+    "list": "Lista (IP/DNS)"
+  },
+  "status": {
+    "uploading": "Enviando arquivo...",
+    "parsing": "Analisando arquivo...",
+    "ready": "Pronto para importar"
+  },
+  "results": {
+    "title": "Resultado da Importação",
+    "success": "{{count}} importados com sucesso",
+    "skipped": "{{count}} já existiam (ignorados)",
+    "failed": "{{count}} falharam"
+  },
+  "shared": {
+    "instanceLabel": "Instância:",
+    "instancePlaceholder": "Selecione uma instância...",
+    "selectAll": "Selecionar Todos",
+    "deselectAll": "Desmarcar Todos",
+    "importCount_one": "Importar {{count}} Servidor",
+    "importCount_other": "Importar {{count}} Servidores"
+  },
+  "nmap": {
+    "uploadTitle": "Upload XML do Nmap",
+    "uploadDescPrefix": "Faça upload de um arquivo XML gerado pelo nmap. Serão importados apenas hosts com as",
+    "configuredPorts": "portas configuradas",
+    "uploadDescSuffix": "abertas.",
+    "foundTitle": "Servidores Encontrados",
+    "foundDesc": "{{count}} servidores com portas relevantes • {{selected}} selecionados"
+  },
+  "bh": {
+    "uploadTitle": "Upload BloodHound",
+    "uploadDescPrefix": "Faça upload de um arquivo JSON de computers do BloodHound ou um ZIP completo (será extraído o JSON com \"computers\" no nome). Apenas computadores com",
+    "uploadDescSuffix": "serão importados.",
+    "foundTitle": "Computadores Encontrados",
+    "foundDesc": "{{count}} computadores enabled • {{selected}} selecionados",
+    "sourcePrefix": "Arquivo fonte:",
+    "sourceSuffix": "— {{total}} computadores no total"
+  },
+  "list": {
+    "title": "Lista de servidores (IP ou DNS)",
+    "descPrefix": "Envie um arquivo",
+    "descMiddle": "ou cole abaixo uma lista de servidores — um por linha (IP ou nome DNS/hostname). Linhas iniciadas com",
+    "descSuffix": "são ignoradas.",
+    "foundTitle": "Servidores da Lista",
+    "foundDesc": "{{count}} entradas válidas • {{selected}} selecionados",
+    "analyze": "Analisar lista",
+    "analyzeHint": "Valida as entradas e remove as que já existem no banco."
+  },
+  "toast": {
+    "selectNmapXml": "Por favor, selecione um arquivo XML do nmap",
+    "readError": "Erro ao ler o arquivo",
+    "noServersWithPorts": "Nenhum servidor com portas configuradas encontrado",
+    "allExist": "Todos os {{count}} servidores já existem no banco",
+    "newFound": "{{count}} servidores novos encontrados ({{skipped}} já existiam)",
+    "found": "{{count}} servidores encontrados",
+    "xmlParseError": "Erro ao processar arquivo XML",
+    "selectAtLeastOne": "Selecione pelo menos um servidor para importar",
+    "selectPluginInstance": "Selecione uma instância de plugin para os servidores",
+    "imported": "{{count}} servidores importados com sucesso",
+    "skipped": "{{count}} servidores já existiam e foram ignorados",
+    "failed": "{{count}} servidores falharam na importação",
+    "importError": "Erro na importação: {{error}}",
+    "selectBhFile": "Por favor, selecione um arquivo JSON ou ZIP do BloodHound",
+    "noEnabledZip": "Nenhum computador enabled encontrado no ZIP",
+    "zipError": "Erro ao processar ZIP: {{error}}",
+    "allComputersExist": "Todos os {{count}} computadores enabled já existem no banco",
+    "newComputers": "{{count}} computadores novos ({{skipped}} já existiam, de {{total}} total)",
+    "computersFound": "{{count}} computadores enabled encontrados (de {{total}} total)",
+    "noEnabled": "Nenhum computador enabled encontrado",
+    "bhJsonError": "Erro ao processar arquivo JSON do BloodHound",
+    "selectTxt": "Por favor, selecione um arquivo .txt",
+    "fileLoaded": "Arquivo {{name}} carregado",
+    "noValidEntries": "Nenhuma entrada válida (IP ou DNS) encontrada",
+    "invalidIgnored": "{{count}} entrada(s) inválida(s) ignorada(s)",
+    "allEntriesExist": "Todas as {{count}} entradas já existem no banco",
+    "newEntries": "{{count}} novos ({{skipped}} já existiam)",
+    "readyToImport": "{{count}} servidores prontos para importar"
+  }
+}

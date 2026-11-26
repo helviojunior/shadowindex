@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,9 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const ServerCard = ({ server, onServerClick }) => (
+const ServerCard = ({ server, onServerClick }) => {
+  const { t } = useTranslation('file-navigation');
+  return (
   <ContextMenu>
     <ContextMenuTrigger asChild>
       <div
@@ -63,16 +66,19 @@ const ServerCard = ({ server, onServerClick }) => (
     </ContextMenuTrigger>
     <ContextMenuContent>
       <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/files/browse`, '_blank')}>
-        Abrir em nova aba
+        {t('contextMenu.openNewTab')}
       </ContextMenuItem>
       <ContextMenuItem onClick={() => onServerClick(server.id)}>
-        Abrir
+        {t('common:actions.open')}
       </ContextMenuItem>
     </ContextMenuContent>
   </ContextMenu>
-);
+  );
+};
 
-const ServerCardCompact = ({ server, onServerClick, colorClass = 'text-gray-500', bgClass = 'from-gray-500/20 to-gray-500/5' }) => (
+const ServerCardCompact = ({ server, onServerClick, colorClass = 'text-gray-500', bgClass = 'from-gray-500/20 to-gray-500/5' }) => {
+  const { t } = useTranslation('file-navigation');
+  return (
   <ContextMenu>
     <ContextMenuTrigger asChild>
       <div
@@ -109,16 +115,18 @@ const ServerCardCompact = ({ server, onServerClick, colorClass = 'text-gray-500'
     </ContextMenuTrigger>
     <ContextMenuContent>
       <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/files/browse`, '_blank')}>
-        Abrir em nova aba
+        {t('contextMenu.openNewTab')}
       </ContextMenuItem>
       <ContextMenuItem onClick={() => onServerClick(server.id)}>
-        Abrir
+        {t('common:actions.open')}
       </ContextMenuItem>
     </ContextMenuContent>
   </ContextMenu>
-);
+  );
+};
 
 const FileNavigation = () => {
+  const { t } = useTranslation('file-navigation');
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -196,12 +204,12 @@ const FileNavigation = () => {
   return (
     <div className="space-y-4" data-testid="file-navigation-page">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Navegação de Arquivos</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
         <div className="flex items-center gap-3 mt-2">
-          <p className="text-muted-foreground">Selecione um servidor para navegar em seus arquivos</p>
+          <p className="text-muted-foreground">{t('subtitle')}</p>
           <Button variant="outline" size="sm" onClick={() => { setLoading(true); loadServers(); }} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('common:actions.refresh')}
           </Button>
         </div>
       </div>
@@ -213,7 +221,7 @@ const FileNavigation = () => {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou IP..."
+                placeholder={t('searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -233,11 +241,11 @@ const FileNavigation = () => {
                 htmlFor="filter-non-admin-shares"
                 className="text-sm cursor-pointer"
               >
-                Somente com Shares não administrativas
+                {t('filters.nonAdminShares')}
               </Label>
               {showOnlyNonAdminShares && (
                 <Badge className="bg-amber-600 text-xs">
-                  Ativo
+                  {t('common:header.active')}
                 </Badge>
               )}
             </div>
@@ -254,11 +262,11 @@ const FileNavigation = () => {
                 htmlFor="filter-no-files"
                 className="text-sm cursor-pointer"
               >
-                Somente sem arquivos listados
+                {t('filters.noFiles')}
               </Label>
               {showOnlyNoFiles && (
                 <Badge className="bg-amber-600 text-xs">
-                  Ativo
+                  {t('common:header.active')}
                 </Badge>
               )}
             </div>
@@ -275,18 +283,18 @@ const FileNavigation = () => {
                 htmlFor="filter-unchecked"
                 className="text-sm cursor-pointer"
               >
-                Somente os não analisados
+                {t('filters.unchecked')}
               </Label>
               {showOnlyUnchecked && (
                 <Badge className="bg-amber-600 text-xs">
-                  Ativo
+                  {t('common:header.active')}
                 </Badge>
               )}
             </div>
           </div>
           {servers.length > 0 && (searchTerm || showOnlyNonAdminShares || showOnlyNoFiles || showOnlyUnchecked) && (
             <p className="text-sm text-muted-foreground mt-3">
-              {filteredServers.length} encontrado{filteredServers.length !== 1 ? 's' : ''}
+              {t('found', { count: filteredServers.length })}
             </p>
           )}
         </CardContent>
@@ -305,7 +313,7 @@ const FileNavigation = () => {
             data-testid="tab-accessed"
           >
             <CheckCircle className="w-4 h-4" />
-            Acessados
+            {t('tabs.accessed')}
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{accessedServers.length}</span>
             {activeTab === 'accessed' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
@@ -322,7 +330,7 @@ const FileNavigation = () => {
             data-testid="tab-access-denied"
           >
             <ShieldX className="w-4 h-4" />
-            Acesso Negado
+            {t('tabs.accessDenied')}
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{accessDeniedServers.length}</span>
             {activeTab === 'access-denied' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
@@ -339,7 +347,7 @@ const FileNavigation = () => {
             data-testid="tab-unreachable"
           >
             <Unplug className="w-4 h-4" />
-            Inacessíveis
+            {t('tabs.unreachable')}
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{unreachableServers.length}</span>
             {activeTab === 'unreachable' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
@@ -356,7 +364,7 @@ const FileNavigation = () => {
             data-testid="tab-not-accessed"
           >
             <Clock className="w-4 h-4" />
-            Não Acessados
+            {t('tabs.notAccessed')}
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{notAccessedServers.length}</span>
             {activeTab === 'not-accessed' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
@@ -373,9 +381,9 @@ const FileNavigation = () => {
               <CardContent className="pt-[36px] pb-12 text-center">
                 <CheckCircle className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
-                  {searchTerm 
-                    ? 'Nenhum servidor acessado encontrado com esse filtro' 
-                    : 'Nenhum servidor foi acessado ainda'}
+                  {searchTerm
+                    ? t('empty.accessedFiltered')
+                    : t('empty.accessedNone')}
                 </p>
               </CardContent>
             </Card>
@@ -396,9 +404,9 @@ const FileNavigation = () => {
               <CardContent className="pt-[36px] pb-12 text-center">
                 <ShieldX className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
-                  {searchTerm 
-                    ? 'Nenhum servidor com acesso negado encontrado com esse filtro' 
-                    : 'Nenhum servidor com acesso negado'}
+                  {searchTerm
+                    ? t('empty.accessDeniedFiltered')
+                    : t('empty.accessDeniedNone')}
                 </p>
               </CardContent>
             </Card>
@@ -426,8 +434,8 @@ const FileNavigation = () => {
                 <Unplug className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
                   {searchTerm
-                    ? 'Nenhum servidor inacessível encontrado com esse filtro'
-                    : 'Nenhum servidor inacessível'}
+                    ? t('empty.unreachableFiltered')
+                    : t('empty.unreachableNone')}
                 </p>
               </CardContent>
             </Card>
@@ -454,9 +462,9 @@ const FileNavigation = () => {
               <CardContent className="pt-[36px] pb-12 text-center">
                 <Clock className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
-                  {searchTerm 
-                    ? 'Nenhum servidor pendente encontrado com esse filtro' 
-                    : 'Todos os servidores já foram acessados'}
+                  {searchTerm
+                    ? t('empty.notAccessedFiltered')
+                    : t('empty.notAccessedNone')}
                 </p>
               </CardContent>
             </Card>

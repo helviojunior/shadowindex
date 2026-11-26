@@ -39,8 +39,29 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useWebSocket, useDownloadEvents, useScanEvents } from '@/hooks/useWebSocket';
+import { useTranslation } from 'react-i18next';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
+
+// Mapeamento de status de download -> chave de tradução do rótulo
+const STATUS_LABEL_KEYS = {
+  pending: 'common:status.pending',
+  downloading: 'status.downloading',
+  paused: 'status.paused',
+  completed: 'common:status.completed',
+  failed: 'common:status.failed',
+  cancelled: 'common:status.cancelled',
+  skipped: 'status.skipped',
+};
+
+// Mapeamento de status de scan -> chave de tradução do rótulo
+const SCAN_STATUS_LABEL_KEYS = {
+  pending: 'scanStatus.pending',
+  scanning: 'scanStatus.scanning',
+  completed: 'common:status.completed',
+  cancelled: 'common:status.cancelled',
+  failed: 'common:status.failed',
+};
 
 // Status colors and icons
 const statusConfig = {
@@ -63,6 +84,9 @@ const scanStatusConfig = {
 };
 
 const Downloads = () => {
+  const { t } = useTranslation('downloads');
+  const statusLabel = (status) => t(STATUS_LABEL_KEYS[status] || `status.${status}`);
+  const scanStatusLabel = (status) => t(SCAN_STATUS_LABEL_KEYS[status] || status);
   const [downloadJobs, setDownloadJobs] = useState([]);
   const [scanJobs, setScanJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -318,7 +342,7 @@ const Downloads = () => {
       await axios.post(`${API}/scans/${scanId}/cancel`);
       loadScanJobs();
     } catch (error) {
-      toast.error('Erro ao cancelar scan');
+      toast.error(t('toast.cancelScanError'));
     }
   };
 
@@ -328,7 +352,7 @@ const Downloads = () => {
       await axios.post(`${API}/scans/cancel-all`);
       loadScanJobs();
     } catch (error) {
-      toast.error('Erro ao cancelar scans');
+      toast.error(t('toast.cancelScansError'));
     }
   };
 
@@ -338,7 +362,7 @@ const Downloads = () => {
       await axios.post(`${API}/scans/clear-finished`);
       loadScanJobs();
     } catch (error) {
-      toast.error('Erro ao limpar scans');
+      toast.error(t('toast.clearScansError'));
     }
   };
 
@@ -382,7 +406,7 @@ const Downloads = () => {
       loadActiveJobs();
     } catch (error) {
       console.error('Error cancelling job:', error);
-      toast.error('Erro ao cancelar download');
+      toast.error(t('toast.cancelError'));
     }
   };
 
@@ -394,7 +418,7 @@ const Downloads = () => {
       loadActiveJobs();
     } catch (error) {
       console.error('Error cancelling all jobs:', error);
-      toast.error('Erro ao cancelar downloads');
+      toast.error(t('toast.cancelAllError'));
     }
   };
 
@@ -406,7 +430,7 @@ const Downloads = () => {
       loadActiveJobs();
     } catch (error) {
       console.error('Error pausing job:', error);
-      toast.error('Erro ao pausar download');
+      toast.error(t('toast.pauseError'));
     }
   };
 
@@ -418,7 +442,7 @@ const Downloads = () => {
       loadActiveJobs();
     } catch (error) {
       console.error('Error resuming job:', error);
-      toast.error('Erro ao retomar download');
+      toast.error(t('toast.resumeError'));
     }
   };
 
@@ -430,7 +454,7 @@ const Downloads = () => {
       loadActiveJobs();
     } catch (error) {
       console.error('Error forcing download:', error);
-      toast.error('Erro ao forçar download');
+      toast.error(t('toast.forceError'));
     }
   };
 
@@ -448,7 +472,7 @@ const Downloads = () => {
       loadActiveJobs();
     } catch (error) {
       console.error('Error retrying download:', error);
-      toast.error('Erro ao reiniciar download');
+      toast.error(t('toast.retryError'));
     }
   };
 
@@ -462,10 +486,10 @@ const Downloads = () => {
       // Resetar cache de status finalizados
       setLoadedStatuses(new Set(['downloading', 'pending', 'paused']));
       setDownloadJobs(prev => prev.filter(j => ['downloading', 'pending'].includes(j.status)));
-      toast.success('Histórico limpo com sucesso');
+      toast.success(t('toast.clearedSuccess'));
     } catch (error) {
       console.error('Error clearing finished:', error);
-      toast.error('Erro ao limpar histórico');
+      toast.error(t('toast.clearError'));
     }
   };
 
@@ -477,7 +501,7 @@ const Downloads = () => {
       loadActiveJobs();
     } catch (error) {
       console.error('Error retrying all failed:', error);
-      toast.error('Erro ao recolocar downloads na fila');
+      toast.error(t('toast.retryAllError'));
     }
   };
 
@@ -558,16 +582,16 @@ const Downloads = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Downloads</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Gerencie os downloads de arquivos dos servidores
+            {t('description')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {loading && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Loader2 className="w-3 h-3 animate-spin" />
-              Atualizando...
+              {t('updating')}
             </span>
           )}
           <Badge 
@@ -575,7 +599,7 @@ const Downloads = () => {
             className={`text-xs ${isConnected ? 'border-green-600 text-green-600' : 'text-muted-foreground'}`}
           >
             <span className={`w-2 h-2 rounded-full mr-1.5 ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-            {isConnected ? 'Tempo real' : 'Offline'}
+            {isConnected ? t('realtime') : t('offline')}
           </Badge>
           <Button
             variant="outline"
@@ -585,7 +609,7 @@ const Downloads = () => {
             data-testid="refresh-downloads"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
+            {t('common:actions.refresh')}
           </Button>
         </div>
       </div>
@@ -617,9 +641,9 @@ const Downloads = () => {
                   <div>
                     <p className="text-2xl font-bold">{count}</p>
                     <p className={cn("text-xs uppercase", config.textColor)}>
-                      {config.label}
+                      {statusLabel(status)}
                       {!isLoaded && !['downloading', 'pending', 'paused'].includes(status) && count > 0 && (
-                        <span className="text-muted-foreground ml-1">(clique)</span>
+                        <span className="text-muted-foreground ml-1">{t('clickHint')}</span>
                       )}
                     </p>
                   </div>
@@ -649,7 +673,7 @@ const Downloads = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-xs text-muted-foreground uppercase">Total</p>
+                <p className="text-xs text-muted-foreground uppercase">{t('total')}</p>
               </div>
               <Download className="w-6 h-6 text-blue-500 opacity-60" />
             </div>
@@ -662,8 +686,8 @@ const Downloads = () => {
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="flex items-center gap-1">
             <Filter className="w-3 h-3" />
-            Filtro: {statusConfig[activeFilter]?.label}
-            <button 
+            {t('filter', { label: statusLabel(activeFilter) })}
+            <button
               onClick={() => setActiveFilter(null)}
               className="ml-1 hover:text-destructive"
             >
@@ -686,10 +710,10 @@ const Downloads = () => {
             data-testid="tab-downloads"
           >
             <Download className="w-4 h-4" />
-            Downloads
+            {t('tabs.downloads')}
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
               {stats.downloading + stats.pending + stats.paused > 0 ? (
-                <span className="text-blue-400">{stats.downloading + stats.pending + stats.paused} ativos</span>
+                <span className="text-blue-400">{t('tabs.active', { count: stats.downloading + stats.pending + stats.paused })}</span>
               ) : (
                 downloadJobs.length
               )}
@@ -709,11 +733,11 @@ const Downloads = () => {
             data-testid="tab-scans"
           >
             <FolderSearch className="w-4 h-4" />
-            Scans de Diretório
+            {t('tabs.scans')}
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
               {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 0 ? (
                 <span className="text-blue-400">
-                  {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length} ativos
+                  {t('tabs.active', { count: scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length })}
                 </span>
               ) : (
                 scanJobs.length
@@ -739,7 +763,7 @@ const Downloads = () => {
               data-testid="clear-finished"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Limpar Concluídos
+              {t('actions.clearFinished')}
             </Button>
             <Button
               variant="outline"
@@ -749,7 +773,7 @@ const Downloads = () => {
               data-testid="retry-all-failed"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              Refazer Falhados
+              {t('actions.retryFailed')}
             </Button>
             <Button
               variant="destructive"
@@ -759,7 +783,7 @@ const Downloads = () => {
               data-testid="cancel-all"
             >
               <X className="w-4 h-4 mr-2" />
-              Cancelar Todos
+              {t('actions.cancelAll')}
             </Button>
           </div>
 
@@ -769,9 +793,9 @@ const Downloads = () => {
               <CardContent className="p-8 pt-8 text-center">
                 <Download className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">
-                  {activeFilter 
-                    ? `Nenhum download com status "${statusConfig[activeFilter]?.label}"`
-                    : "Nenhum download na fila"
+                  {activeFilter
+                    ? t('empty.withFilter', { label: statusLabel(activeFilter) })
+                    : t('empty.noQueue')
                   }
                 </p>
               </CardContent>
@@ -799,7 +823,7 @@ const Downloads = () => {
                           )}
                         </div>
                       </div>
-                      <Badge variant="outline">{serverData.jobs.length} arquivos</Badge>
+                      <Badge variant="outline">{t('files', { count: serverData.jobs.length })}</Badge>
                     </div>
                   </CardHeader>
                   
@@ -829,7 +853,7 @@ const Downloads = () => {
                               {/* File info */}
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate" title={job.file_path}>
-                                  {job.file_name || job.file_path?.split('\\').pop() || 'Unknown'}
+                                  {job.file_name || job.file_path?.split('\\').pop() || t('unknownFile')}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate" title={job.file_path}>
                                   {job.file_path}
@@ -847,7 +871,7 @@ const Downloads = () => {
                                           <span className="ml-2">
                                             • {formatFileSize(Math.round(etaInfo.speed))}/s
                                             {etaInfo.eta != null && (
-                                              <span> • resta {formatDuration(etaInfo.eta)}</span>
+                                              <span> • {t('progress.remaining', { duration: formatDuration(etaInfo.eta) })}</span>
                                             )}
                                           </span>
                                         )}
@@ -876,7 +900,7 @@ const Downloads = () => {
                                     variant="ghost"
                                     onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id, jobName: job.file_name || job.file_path })}
                                     className="h-8 w-8 p-0"
-                                    title="Cancelar"
+                                    title={t('titles.cancel')}
                                   >
                                     <X className="w-4 h-4" />
                                   </Button>
@@ -888,7 +912,7 @@ const Downloads = () => {
                                       variant="ghost"
                                       onClick={() => setConfirmDialog({ open: true, action: 'pause', jobId: job.id, jobName: job.file_name || job.file_path })}
                                       className="h-8 w-8 p-0"
-                                      title="Pausar"
+                                      title={t('titles.pause')}
                                     >
                                       <Pause className="w-4 h-4" />
                                     </Button>
@@ -897,7 +921,7 @@ const Downloads = () => {
                                       variant="ghost"
                                       onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id, jobName: job.file_name || job.file_path })}
                                       className="h-8 w-8 p-0"
-                                      title="Cancelar"
+                                      title={t('titles.cancel')}
                                     >
                                       <X className="w-4 h-4" />
                                     </Button>
@@ -910,7 +934,7 @@ const Downloads = () => {
                                       variant="ghost"
                                       onClick={() => setConfirmDialog({ open: true, action: 'resume', jobId: job.id, jobName: job.file_name || job.file_path })}
                                       className="h-8 w-8 p-0"
-                                      title="Retomar"
+                                      title={t('titles.resume')}
                                     >
                                       <Play className="w-4 h-4" />
                                     </Button>
@@ -919,7 +943,7 @@ const Downloads = () => {
                                       variant="ghost"
                                       onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id, jobName: job.file_name || job.file_path })}
                                       className="h-8 w-8 p-0"
-                                      title="Cancelar"
+                                      title={t('titles.cancel')}
                                     >
                                       <X className="w-4 h-4" />
                                     </Button>
@@ -931,7 +955,7 @@ const Downloads = () => {
                                     variant="ghost"
                                     onClick={() => setConfirmDialog({ open: true, action: 'retry', jobId: job.id, jobName: job.file_name || job.file_path })}
                                     className="h-8 w-8 p-0"
-                                    title="Tentar novamente"
+                                    title={t('titles.retry')}
                                   >
                                     <RotateCcw className="w-4 h-4" />
                                   </Button>
@@ -942,7 +966,7 @@ const Downloads = () => {
                                     variant="ghost"
                                     onClick={() => setConfirmDialog({ open: true, action: 'force', jobId: job.id, jobName: job.file_name || job.file_path })}
                                     className="h-8 w-8 p-0"
-                                    title="Forçar download"
+                                    title={t('titles.force')}
                                   >
                                     <Play className="w-4 h-4" />
                                   </Button>
@@ -974,7 +998,7 @@ const Downloads = () => {
                 data-testid="clear-finished-scans"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Limpar Finalizados
+                {t('actions.clearFinishedScans')}
               </Button>
             )}
             {scanJobs.filter(s => s.status === 'pending' || s.status === 'scanning').length > 0 && (
@@ -984,13 +1008,13 @@ const Downloads = () => {
                 onClick={() => setConfirmDialog({ open: true, action: 'cancelAllScans', jobId: null, jobName: null })}
               >
                 <X className="w-4 h-4 mr-2" />
-                Cancelar Todos
+                {t('actions.cancelAll')}
               </Button>
             )}
             <div className="relative flex-1 min-w-[200px] max-w-sm ml-auto">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Buscar por servidor ou caminho..."
+                placeholder={t('search.scanPlaceholder')}
                 value={scanSearchQuery}
                 onChange={e => setScanSearchQuery(e.target.value)}
                 className="pl-8 h-8 text-sm"
@@ -1012,10 +1036,10 @@ const Downloads = () => {
               <CardContent className="p-8 pt-8 text-center">
                 <FolderSearch className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">
-                  Nenhum scan de diretório em andamento
+                  {t('scans.empty')}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Os scans são iniciados automaticamente ao navegar em diretórios
+                  {t('scans.emptyHint')}
                 </p>
               </CardContent>
             </Card>
@@ -1078,14 +1102,13 @@ const Downloads = () => {
                                     className="h-1.5"
                                   />
                                   <p className="text-xs text-muted-foreground mt-1">
-                                    {scan.processed_files || 0} / {scan.total_files || '?'} arquivos • 
-                                    {scan.queued_files || 0} para download
+                                    {t('scans.scanning', { processed: scan.processed_files || 0, total: scan.total_files || '?', queued: scan.queued_files || 0 })}
                                   </p>
                                 </div>
                               )}
                               {scan.status === 'completed' && (
                                 <p className="text-xs text-muted-foreground">
-                                  {scan.total_files || 0} arquivos encontrados • {scan.queued_files || 0} para download
+                                  {t('scans.completed', { total: scan.total_files || 0, queued: scan.queued_files || 0 })}
                                 </p>
                               )}
                             </div>
@@ -1095,7 +1118,7 @@ const Downloads = () => {
                               variant="outline"
                               className={cn("text-xs", scanStatusConfig[scan.status]?.color)}
                             >
-                              {scanStatusConfig[scan.status]?.label}
+                              {scanStatusLabel(scan.status)}
                             </Badge>
                             {isActive && (
                               <Button
@@ -1103,7 +1126,7 @@ const Downloads = () => {
                                 variant="ghost"
                                 onClick={() => setConfirmDialog({ open: true, action: 'cancelScan', jobId: scan.id, jobName: scan.server_name || scan.share_path })}
                                 className="h-8 w-8 p-0"
-                                title="Cancelar scan"
+                                title={t('titles.cancelScan')}
                               >
                                 <X className="w-4 h-4 text-muted-foreground hover:text-red-500" />
                               </Button>
@@ -1115,12 +1138,12 @@ const Downloads = () => {
                 </div>
                 {hiddenCount > 0 && (
                   <p className="text-xs text-muted-foreground text-center mt-3">
-                    +{hiddenCount} itens ocultos — use a busca para filtrar
+                    {t('search.hiddenItems', { count: hiddenCount })}
                   </p>
                 )}
                 {query && filtered.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4">
-                    Nenhum resultado para "{scanSearchQuery}"
+                    {t('search.noResults', { query: scanSearchQuery })}
                   </p>
                 )}
                 </>
@@ -1136,48 +1159,20 @@ const Downloads = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog.action === 'cancel' ? 'Cancelar Download' :
-               confirmDialog.action === 'pause' ? 'Pausar Download' :
-               confirmDialog.action === 'resume' ? 'Retomar Download' :
-               confirmDialog.action === 'retry' ? 'Tentar Novamente' :
-               confirmDialog.action === 'force' ? 'Forçar Download' :
-               confirmDialog.action === 'cancelAll' ? 'Cancelar Todos os Downloads' :
-               confirmDialog.action === 'clearFinished' ? 'Limpar Concluídos' :
-               confirmDialog.action === 'retryAllFailed' ? 'Refazer Todos os Falhados' :
-               confirmDialog.action === 'cancelScan' ? 'Cancelar Scan' :
-               confirmDialog.action === 'cancelAllScans' ? 'Cancelar Todos os Scans' :
-               confirmDialog.action === 'clearFinishedScans' ? 'Limpar Scans Finalizados' :
-               'Confirmar Ação'}
+              {t(`dialog.titles.${confirmDialog.action}`, { defaultValue: t('dialog.titles.default') })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmDialog.action === 'cancel'
-                ? `Tem certeza que deseja cancelar o download de "${confirmDialog.jobName}"?`
-                : confirmDialog.action === 'pause'
-                ? `Tem certeza que deseja pausar o download de "${confirmDialog.jobName}"?`
-                : confirmDialog.action === 'resume'
-                ? `Tem certeza que deseja retomar o download de "${confirmDialog.jobName}"?`
-                : confirmDialog.action === 'retry'
-                ? `Tem certeza que deseja tentar novamente o download de "${confirmDialog.jobName}"?`
-                : confirmDialog.action === 'force'
-                ? `Tem certeza que deseja forçar o download de "${confirmDialog.jobName}"?`
-                : confirmDialog.action === 'cancelAll'
-                ? `Isso cancelará ${stats.pending + stats.downloading + stats.paused} downloads pendentes, em andamento e pausados.`
-                : confirmDialog.action === 'clearFinished'
-                ? 'Isso removerá todos os downloads concluídos, falhados, cancelados e ignorados da lista.'
-                : confirmDialog.action === 'retryAllFailed'
-                ? `Isso reenfileirará ${stats.failed} downloads falhados para tentar novamente.`
-                : confirmDialog.action === 'cancelScan'
-                ? `Tem certeza que deseja cancelar o scan de "${confirmDialog.jobName}"?`
-                : confirmDialog.action === 'cancelAllScans'
-                ? 'Isso cancelará todos os scans pendentes e em execução.'
-                : confirmDialog.action === 'clearFinishedScans'
-                ? 'Isso removerá todos os scans concluídos, cancelados e falhados da lista.'
-                : 'Tem certeza que deseja executar esta ação?'
-              }
+              {t(`dialog.descriptions.${confirmDialog.action}`, {
+                defaultValue: t('dialog.descriptions.default'),
+                name: confirmDialog.jobName,
+                count: confirmDialog.action === 'retryAllFailed'
+                  ? stats.failed
+                  : stats.pending + stats.downloading + stats.paused
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common:actions.back')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 const { action, jobId } = confirmDialog;
@@ -1195,7 +1190,7 @@ const Downloads = () => {
                 setConfirmDialog({ open: false, action: null, jobId: null, jobName: null });
               }}
             >
-              Confirmar
+              {t('common:actions.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

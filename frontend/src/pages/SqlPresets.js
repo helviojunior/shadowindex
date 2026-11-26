@@ -15,12 +15,14 @@ import {
 } from '@/components/ui/select';
 import { Trash2, Plus, Pencil, Check, X, Code, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { getDatabaseIcon, GenericDbIcon } from '@/components/DatabaseIcons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const SqlPresets = () => {
+  const { t } = useTranslation('sql-presets');
   const [presets, setPresets] = useState([]);
   const [dbTypes, setDbTypes] = useState([]);
   const [formData, setFormData] = useState({ db_type_id: '', name: '', query: '', description: '' });
@@ -50,7 +52,7 @@ const SqlPresets = () => {
       setPresets(response.data);
     } catch (error) {
       console.error('Error loading presets:', error);
-      toast.error('Erro ao carregar presets');
+      toast.error(t('toast.loadError'));
     }
   };
 
@@ -67,12 +69,12 @@ const SqlPresets = () => {
       };
       
       await axios.post(`${API}/sql-presets`, payload);
-      toast.success('Preset cadastrado com sucesso');
+      toast.success(t('toast.createSuccess'));
       setFormData({ db_type_id: '', name: '', query: '', description: '' });
       loadPresets();
     } catch (error) {
       console.error('Error creating preset:', error);
-      toast.error('Erro ao cadastrar preset');
+      toast.error(t('toast.createError'));
     } finally {
       setLoading(false);
     }
@@ -81,11 +83,11 @@ const SqlPresets = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API}/sql-presets/${id}`);
-      toast.success('Preset removido com sucesso');
+      toast.success(t('toast.deleteSuccess'));
       loadPresets();
     } catch (error) {
       console.error('Error deleting preset:', error);
-      toast.error('Erro ao remover preset');
+      toast.error(t('toast.deleteError'));
     }
   };
 
@@ -114,12 +116,12 @@ const SqlPresets = () => {
       };
       
       await axios.put(`${API}/sql-presets/${editingId}`, payload);
-      toast.success('Preset atualizado com sucesso');
+      toast.success(t('toast.updateSuccess'));
       setEditingId(null);
       loadPresets();
     } catch (error) {
       console.error('Error updating preset:', error);
-      toast.error('Erro ao atualizar preset');
+      toast.error(t('toast.updateError'));
     }
   };
 
@@ -138,23 +140,23 @@ const SqlPresets = () => {
     <div className="space-y-6" data-testid="sql-presets-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">SQL Presets</h1>
-          <p className="text-muted-foreground mt-2">Gerencie comandos SQL pré-definidos por tipo de banco</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
         </div>
-        <Button 
-          onClick={() => setShowAddForm(!showAddForm)} 
+        <Button
+          onClick={() => setShowAddForm(!showAddForm)}
           data-testid="toggle-add-form-btn"
           variant={showAddForm ? "secondary" : "default"}
         >
           {showAddForm ? (
             <>
               <ChevronUp className="w-4 h-4 mr-2" />
-              Fechar
+              {t('common:actions.close')}
             </>
           ) : (
             <>
               <Plus className="w-4 h-4 mr-2" />
-              Adicionar Preset
+              {t('addPreset')}
             </>
           )}
         </Button>
@@ -164,26 +166,26 @@ const SqlPresets = () => {
       {showAddForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Novo Preset</CardTitle>
-            <CardDescription>Adicione um novo comando SQL pré-definido</CardDescription>
+            <CardTitle>{t('newPreset')}</CardTitle>
+            <CardDescription>{t('newPresetDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="db_type">Tipo de Banco</Label>
+                  <Label htmlFor="db_type">{t('dbType')}</Label>
                   <Select
                     value={formData.db_type_id}
                     onValueChange={(value) => setFormData({ ...formData, db_type_id: value })}
                   >
                     <SelectTrigger data-testid="preset-db-type-select">
-                      <SelectValue placeholder="Universal (todos)" />
+                      <SelectValue placeholder={t('universalAll')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="universal">
                         <div className="flex items-center gap-2">
                           <GenericDbIcon className="w-4 h-4" color="#888" />
-                          Universal (todos)
+                          {t('universalAll')}
                         </div>
                       </SelectItem>
                       {dbTypes.map((type) => (
@@ -198,29 +200,29 @@ const SqlPresets = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome</Label>
+                  <Label htmlFor="name">{t('common:fields.name')}</Label>
                   <Input
                     id="name"
                     data-testid="preset-name-input"
-                    placeholder="Ex: List Users"
+                    placeholder={t('namePlaceholder')}
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descrição (opcional)</Label>
+                  <Label htmlFor="description">{t('descriptionOptional')}</Label>
                   <Input
                     id="description"
                     data-testid="preset-description-input"
-                    placeholder="Ex: Lista todos os usuários"
+                    placeholder={t('descriptionPlaceholder')}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="query">Query SQL</Label>
+                <Label htmlFor="query">{t('querySql')}</Label>
                 <Textarea
                   id="query"
                   data-testid="preset-query-input"
@@ -234,7 +236,7 @@ const SqlPresets = () => {
               </div>
               <Button type="submit" disabled={loading} data-testid="add-preset-btn">
                 <Plus className="w-4 h-4 mr-2" />
-                Adicionar Preset
+                {t('addPreset')}
               </Button>
             </form>
           </CardContent>
@@ -246,11 +248,11 @@ const SqlPresets = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Presets Cadastrados</CardTitle>
-              <CardDescription>{presets.length} presets no sistema</CardDescription>
+              <CardTitle>{t('registeredPresets')}</CardTitle>
+              <CardDescription>{t('presetsCount', { count: presets.length })}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Label className="text-sm">Filtrar:</Label>
+              <Label className="text-sm">{t('filter')}</Label>
               <Select value={filterDbType} onValueChange={setFilterDbType}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue />
@@ -259,13 +261,13 @@ const SqlPresets = () => {
                   <SelectItem value="all">
                     <div className="flex items-center gap-2">
                       <GenericDbIcon className="w-4 h-4" color="#888" />
-                      Todos os tipos
+                      {t('allTypes')}
                     </div>
                   </SelectItem>
                   <SelectItem value="universal">
                     <div className="flex items-center gap-2">
                       <GenericDbIcon className="w-4 h-4" color="#666" />
-                      Universal
+                      {t('universal')}
                     </div>
                   </SelectItem>
                   {dbTypes.map((type) => (
@@ -283,7 +285,7 @@ const SqlPresets = () => {
         </CardHeader>
         <CardContent>
           {filteredPresets.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhum preset encontrado</p>
+            <p className="text-muted-foreground text-center py-8">{t('noPresets')}</p>
           ) : (
             <div className="flex flex-col gap-4">
               {filteredPresets.map((preset) => (
@@ -301,10 +303,10 @@ const SqlPresets = () => {
                           onValueChange={(value) => setEditData({ ...editData, db_type_id: value === 'universal' ? '' : value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Universal" />
+                            <SelectValue placeholder={t('universal')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="universal">Universal</SelectItem>
+                            <SelectItem value="universal">{t('universal')}</SelectItem>
                             {dbTypes.map((type) => (
                               <SelectItem key={type.id} value={type.id.toString()}>
                                 {type.name}
@@ -315,13 +317,13 @@ const SqlPresets = () => {
                         <Input
                           value={editData.name}
                           onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                          placeholder="Nome"
+                          placeholder={t('common:fields.name')}
                           data-testid={`edit-name-${preset.id}`}
                         />
                         <Input
                           value={editData.description}
                           onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                          placeholder="Descrição"
+                          placeholder={t('common:fields.description')}
                           data-testid={`edit-description-${preset.id}`}
                         />
                       </div>
@@ -335,11 +337,11 @@ const SqlPresets = () => {
                       <div className="flex items-center gap-2">
                         <Button size="sm" onClick={saveEditing} data-testid={`save-edit-${preset.id}`}>
                           <Check className="w-4 h-4 mr-1" />
-                          Salvar
+                          {t('common:actions.save')}
                         </Button>
                         <Button size="sm" variant="outline" onClick={cancelEditing}>
                           <X className="w-4 h-4 mr-1" />
-                          Cancelar
+                          {t('common:actions.cancel')}
                         </Button>
                       </div>
                     </div>
@@ -358,7 +360,7 @@ const SqlPresets = () => {
                               color: preset.db_type_id ? getDbTypeColor(preset.db_type_id) : '#666'
                             }}
                           >
-                            {preset.db_type_name || 'Universal'}
+                            {preset.db_type_name || t('universal')}
                           </Badge>
                         </div>
                         {preset.description && (

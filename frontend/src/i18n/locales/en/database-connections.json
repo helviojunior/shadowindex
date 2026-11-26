@@ -1,0 +1,60 @@
+{
+  "title": "SQL Connections",
+  "subtitle": "Manage your database connections",
+  "addConnection": "Add Connection",
+  "newConnection": "New Connection",
+  "newConnectionDescription": "Add a new database connection",
+  "namePlaceholder": "My Connection",
+  "dbType": "Database Type",
+  "selectTypePlaceholder": "Select the type...",
+  "pluginInstance": "Plugin Instance",
+  "selectInstancePlaceholder": "Select the instance...",
+  "testConnection": "Test Connection",
+  "testResultOk": "Connection OK",
+  "testResultFailed": "Failed",
+  "registeredConnections": "Registered Connections",
+  "connectionsCount": "{{count}} connections in the system",
+  "noConnections": "No connections registered",
+  "executeSql": "Execute SQL",
+  "editConnection": "Edit Connection",
+  "editConnectionDescription": "Update the database connection information",
+  "editNamePlaceholder": "Connection name",
+  "table": {
+    "plugin": "Plugin",
+    "connectionString": "Connection String"
+  },
+  "pluginLabel": {
+    "notConfigured": "Not configured",
+    "instance": "Instance #{{id}}"
+  },
+  "wizard": {
+    "connectionString": "Connection String",
+    "modeWizard": "Wizard",
+    "modeManual": "Manual",
+    "selectDbTypeHint": "Select the <strong>Database Type</strong> to build the string automatically.",
+    "database": "Database",
+    "trustServerCertificate": "Trust Server Certificate",
+    "extraParams": "Extra parameters (optional)",
+    "generatedString": "Generated string (built on the backend)",
+    "fillFieldsAbove": "fill in the fields above…",
+    "serviceNameSid": "Service Name / SID",
+    "filePath": "File (path)",
+    "portPlaceholder": "port",
+    "databasePlaceholder": "database name",
+    "sqlitePathPlaceholder": "/path/file.db",
+    "extraPlaceholder": "e.g. Connection Timeout=5"
+  },
+  "toast": {
+    "loadError": "Error loading connections",
+    "createSuccess": "Connection created successfully",
+    "createError": "Error creating connection",
+    "fillConnectionString": "Fill in the Connection String to test",
+    "connectionOk": "Connection OK! ({{ms}}ms)",
+    "connectionFailed": "Connection failed: {{error}}",
+    "testError": "Error testing: {{error}}",
+    "deleteSuccess": "Connection removed successfully",
+    "deleteError": "Error removing connection",
+    "updateSuccess": "Connection updated successfully",
+    "updateError": "Error updating connection"
+  }
+}

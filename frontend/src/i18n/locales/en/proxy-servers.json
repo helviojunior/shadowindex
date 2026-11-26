@@ -1,0 +1,54 @@
+{
+  "title": "Proxy Servers",
+  "subtitle": "Manage proxy servers (HTTP and SOCKS5)",
+  "addButton": "Add Proxy",
+  "form": {
+    "cardTitle": "New Proxy Server",
+    "cardDescription": "Add a new HTTP or SOCKS5 proxy server",
+    "nameLabel": "Name",
+    "namePlaceholder": "My Proxy",
+    "typeLabel": "Type",
+    "typePlaceholder": "Select the type",
+    "ipLabel": "IP",
+    "ipPlaceholder": "192.168.1.1",
+    "portLabel": "Port",
+    "portPlaceholder": "8080",
+    "authLabel": "Authentication",
+    "authPlaceholder": "Select",
+    "noAuth": "No authentication",
+    "dnsLabel": "DNS Servers (optional)",
+    "dnsPlaceholder": "10.0.0.10, 10.0.0.11",
+    "dnsHelp": "Comma-separated IPs reachable through this proxy. Used by Direct Interaction to resolve target network names through the tunnel.",
+    "submit": "Add Proxy"
+  },
+  "list": {
+    "cardTitle": "Registered Proxy Servers",
+    "count": "{{n}} proxies in the system",
+    "empty": "No proxy registered"
+  },
+  "display": {
+    "type": "Type",
+    "address": "Address",
+    "auth": "Authentication",
+    "dns": "DNS Servers",
+    "legacy": "{{username}} (legacy)",
+    "noAuth": "No authentication",
+    "noDns": "Not defined"
+  },
+  "edit": {
+    "namePlaceholder": "Name",
+    "ipPlaceholder": "IP",
+    "portPlaceholder": "Port",
+    "noAuth": "No authentication",
+    "dnsPlaceholder": "DNS Servers (comma-separated IPs)"
+  },
+  "toast": {
+    "loadError": "Error loading proxy servers",
+    "created": "Proxy server created successfully",
+    "createError": "Error creating proxy server",
+    "removed": "Proxy server removed successfully",
+    "removeError": "Error removing proxy server",
+    "updated": "Proxy server updated successfully",
+    "updateError": "Error updating proxy server"
+  }
+}

@@ -42,10 +42,12 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useTranslation } from 'react-i18next';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api/v2`;
 
 const ScanStatusBadge = ({ status }) => {
+  const { t } = useTranslation('common');
   const variants = {
     pending: { icon: Clock, className: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50' },
     running: { icon: Loader2, className: 'bg-blue-500/20 text-blue-500 border-blue-500/50', spin: true },
@@ -60,24 +62,25 @@ const ScanStatusBadge = ({ status }) => {
   return (
     <Badge variant="outline" className={cn("gap-1", variant.className)}>
       <Icon className={cn("w-3 h-3", variant.spin && "animate-spin")} />
-      {status}
+      {t(`status.${status}`, { defaultValue: status })}
     </Badge>
   );
 };
 
-const getErrorLabel = (errorMessage) => {
-  if (!errorMessage) return 'Erro';
+const getErrorLabel = (errorMessage, t) => {
+  if (!errorMessage) return t('errorLabels.generic');
   const msg = errorMessage.toLowerCase();
-  if (msg.startsWith('server unreachable') || msg.includes('erro de rede')) return 'Inacessível';
-  if (msg.startsWith('access denied') || msg.includes('access denied') || msg.includes('acesso negado')) return 'Acesso Negado';
-  if (msg.startsWith('credential not set') || msg.includes('credential')) return 'Sem Credencial';
-  if (msg.startsWith('connection error') || msg.includes('connection')) return 'Erro de Conexão';
-  if (msg.startsWith('plugin not configured')) return 'Plugin não configurado';
-  if (msg.includes('timeout') || msg.includes('timed out')) return 'Timeout';
-  return 'Erro';
+  if (msg.startsWith('server unreachable') || msg.includes('erro de rede')) return t('errorLabels.unreachable');
+  if (msg.startsWith('access denied') || msg.includes('access denied') || msg.includes('acesso negado')) return t('errorLabels.accessDenied');
+  if (msg.startsWith('credential not set') || msg.includes('credential')) return t('errorLabels.noCredential');
+  if (msg.startsWith('connection error') || msg.includes('connection')) return t('errorLabels.connectionError');
+  if (msg.startsWith('plugin not configured')) return t('errorLabels.pluginNotConfigured');
+  if (msg.includes('timeout') || msg.includes('timed out')) return t('errorLabels.timeout');
+  return t('errorLabels.generic');
 };
 
 const ShareScanJobs = () => {
+  const { t } = useTranslation('share-scan-jobs');
   const { isConnected } = useWebSocket();
   const [jobs, setJobs] = useState([]);
   const [stats, setStats] = useState({
@@ -96,11 +99,11 @@ const ShareScanJobs = () => {
   const isMounted = useRef(true);
 
   const statusConfig = {
-    pending: { label: 'Pendentes', icon: Clock, textColor: 'text-yellow-500', borderColor: 'border-l-yellow-500', ringColor: 'ring-yellow-500' },
-    running: { label: 'Executando', icon: Play, textColor: 'text-cyan-500', borderColor: 'border-l-cyan-500', ringColor: 'ring-cyan-500' },
-    completed: { label: 'Concluídos', icon: CheckCircle, textColor: 'text-green-500', borderColor: 'border-l-green-500', ringColor: 'ring-green-500' },
-    failed: { label: 'Falhados', icon: XCircle, textColor: 'text-red-500', borderColor: 'border-l-red-500', ringColor: 'ring-red-500' },
-    cancelled: { label: 'Cancelados', icon: StopCircle, textColor: 'text-orange-500', borderColor: 'border-l-orange-500', ringColor: 'ring-orange-500' },
+    pending: { label: t('statusLabels.pending'), icon: Clock, textColor: 'text-yellow-500', borderColor: 'border-l-yellow-500', ringColor: 'ring-yellow-500' },
+    running: { label: t('statusLabels.running'), icon: Play, textColor: 'text-cyan-500', borderColor: 'border-l-cyan-500', ringColor: 'ring-cyan-500' },
+    completed: { label: t('statusLabels.completed'), icon: CheckCircle, textColor: 'text-green-500', borderColor: 'border-l-green-500', ringColor: 'ring-green-500' },
+    failed: { label: t('statusLabels.failed'), icon: XCircle, textColor: 'text-red-500', borderColor: 'border-l-red-500', ringColor: 'ring-red-500' },
+    cancelled: { label: t('statusLabels.cancelled'), icon: StopCircle, textColor: 'text-orange-500', borderColor: 'border-l-orange-500', ringColor: 'ring-orange-500' },
   };
 
   const loadJobs = useCallback(async () => {
@@ -157,36 +160,36 @@ const ShareScanJobs = () => {
   const cancelJob = async (jobId) => {
     try {
       await axios.post(`${API}/share-scan/jobs/${jobId}/cancel`);
-      toast.success('Job cancelado com sucesso');
+      toast.success(t('toast.cancelSuccess'));
       loadJobs();
       loadStats();
     } catch (error) {
       console.error('Error cancelling job:', error);
-      toast.error('Erro ao cancelar job');
+      toast.error(t('toast.cancelError'));
     }
   };
 
   const cancelAllJobs = async () => {
     try {
       const response = await axios.post(`${API}/share-scan/cancel-all`);
-      toast.success(response.data.message || 'Todos os jobs cancelados');
+      toast.success(response.data.message || t('toast.cancelAllSuccess'));
       loadJobs();
       loadStats();
     } catch (error) {
       console.error('Error cancelling all jobs:', error);
-      toast.error('Erro ao cancelar todos os jobs');
+      toast.error(t('toast.cancelAllError'));
     }
   };
 
   const clearFinishedJobs = async () => {
     try {
       const response = await axios.delete(`${API}/share-scan/jobs/clear-finished`);
-      toast.success(`${response.data.deleted} jobs removidos`);
+      toast.success(t('toast.clearSuccess', { count: response.data.deleted }));
       loadJobs();
       loadStats();
     } catch (error) {
       console.error('Error clearing jobs:', error);
-      toast.error('Erro ao limpar jobs');
+      toast.error(t('toast.clearError'));
     }
   };
 
@@ -197,7 +200,7 @@ const ShareScanJobs = () => {
       loadJobs();
     } catch (error) {
       console.error('Error prioritizing job:', error);
-      toast.error(error.response?.data?.detail || 'Erro ao priorizar job');
+      toast.error(error.response?.data?.detail || t('toast.prioritizeError'));
     }
   };
 
@@ -210,7 +213,7 @@ const ShareScanJobs = () => {
       loadStats();
     } catch (error) {
       console.error('Error retrying failed jobs:', error);
-      toast.error('Erro ao reexecutar jobs falhados');
+      toast.error(t('toast.retryFailedError'));
     } finally {
       setRetrying(false);
     }
@@ -225,7 +228,7 @@ const ShareScanJobs = () => {
       loadStats();
     } catch (error) {
       console.error('Error retrying cancelled jobs:', error);
-      toast.error('Erro ao reexecutar jobs cancelados');
+      toast.error(t('toast.retryCancelledError'));
     } finally {
       setRetrying(false);
     }
@@ -239,7 +242,7 @@ const ShareScanJobs = () => {
       loadStats();
     } catch (error) {
       console.error('Error retrying job:', error);
-      toast.error(error.response?.data?.detail || 'Erro ao reexecutar job');
+      toast.error(error.response?.data?.detail || t('toast.retryError'));
     }
   };
 
@@ -251,7 +254,7 @@ const ShareScanJobs = () => {
       loadStats();
     } catch (error) {
       console.error('Error deleting job:', error);
-      toast.error(error.response?.data?.detail || 'Erro ao deletar job');
+      toast.error(error.response?.data?.detail || t('toast.deleteError'));
     }
   };
 
@@ -281,9 +284,9 @@ const ShareScanJobs = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Jobs de Share Scan</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Monitoramento de scans de shares nos servidores
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -292,11 +295,11 @@ const ShareScanJobs = () => {
             className={`text-xs ${isConnected ? 'border-green-600 text-green-600' : 'text-muted-foreground'}`}
           >
             <span className={`w-2 h-2 rounded-full mr-1.5 ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-            {isConnected ? 'Tempo real' : 'Offline'}
+            {isConnected ? t('realtime') : t('offline')}
           </Badge>
           <Button variant="outline" onClick={() => { loadJobs(); loadStats(); }} disabled={loading}>
             <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
-            Atualizar
+            {t('common:actions.refresh')}
           </Button>
         </div>
       </div>
@@ -347,7 +350,7 @@ const ShareScanJobs = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.total || 0}</p>
-                <p className="text-xs text-muted-foreground uppercase">Total</p>
+                <p className="text-xs text-muted-foreground uppercase">{t('total')}</p>
               </div>
               <Eye className="w-6 h-6 text-blue-500 opacity-60" />
             </div>
@@ -360,7 +363,7 @@ const ShareScanJobs = () => {
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="flex items-center gap-1">
             <Filter className="w-3 h-3" />
-            Filtro: {statusConfig[activeFilter]?.label}
+            {t('filter', { label: statusConfig[activeFilter]?.label })}
             <button
               onClick={() => setActiveFilter(null)}
               className="ml-1 hover:text-destructive"
@@ -378,7 +381,7 @@ const ShareScanJobs = () => {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por servidor..."
+                placeholder={t('searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -397,7 +400,7 @@ const ShareScanJobs = () => {
                 ) : (
                   <RotateCcw className="w-4 h-4 mr-2" />
                 )}
-                Reexecutar Falhados ({stats.failed || 0})
+                {t('actions.retryFailed')} ({stats.failed || 0})
               </Button>
               <Button
                 variant="outline"
@@ -411,7 +414,7 @@ const ShareScanJobs = () => {
                 ) : (
                   <RotateCcw className="w-4 h-4 mr-2" />
                 )}
-                Reexecutar Cancelados ({stats.cancelled || 0})
+                {t('actions.retryCancelled')} ({stats.cancelled || 0})
               </Button>
               <Button
                 variant="outline"
@@ -421,7 +424,7 @@ const ShareScanJobs = () => {
                 className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
               >
                 <StopCircle className="w-4 h-4 mr-2" />
-                Cancelar Todos
+                {t('actions.cancelAll')}
               </Button>
               <Button
                 variant="destructive"
@@ -430,7 +433,7 @@ const ShareScanJobs = () => {
                 disabled={stats.completed === 0 && stats.failed === 0 && stats.cancelled === 0}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Limpar Finalizados
+                {t('actions.clearFinished')}
               </Button>
             </div>
           </div>
@@ -442,7 +445,7 @@ const ShareScanJobs = () => {
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <HardDrive className="w-5 h-5" />
-            Jobs ({filteredJobs.length})
+            {t('table.jobs')} ({filteredJobs.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -453,21 +456,21 @@ const ShareScanJobs = () => {
           ) : filteredJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Eye className="w-12 h-12 mb-4 opacity-30" />
-              <p className="text-lg">Nenhum job de share scan encontrado</p>
-              <p className="text-sm">Inicie um scan em Servidores &rarr; Share Scan</p>
+              <p className="text-lg">{t('table.empty')}</p>
+              <p className="text-sm">{t('table.emptyHint')}</p>
             </div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[60px]">ID</TableHead>
-                    <TableHead>Servidor</TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="w-[100px]">Shares</TableHead>
-                    <TableHead className="w-[120px]">Não $ shares</TableHead>
-                    <TableHead className="w-[140px]">Criado</TableHead>
-                    <TableHead className="w-[80px]">Ações</TableHead>
+                    <TableHead className="w-[60px]">{t('table.id')}</TableHead>
+                    <TableHead>{t('table.server')}</TableHead>
+                    <TableHead className="w-[100px]">{t('table.status')}</TableHead>
+                    <TableHead className="w-[100px]">{t('table.shares')}</TableHead>
+                    <TableHead className="w-[120px]">{t('table.nonAdminShares')}</TableHead>
+                    <TableHead className="w-[140px]">{t('table.created')}</TableHead>
+                    <TableHead className="w-[80px]">{t('table.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -495,7 +498,7 @@ const ShareScanJobs = () => {
                           <span className="text-green-500 font-medium">{job.shares_found}</span>
                         ) : job.status === 'failed' && job.error_message ? (
                           <span className="text-red-500 truncate max-w-[150px] cursor-help" title={job.error_message}>
-                            {getErrorLabel(job.error_message)}
+                            {getErrorLabel(job.error_message, t)}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -505,11 +508,11 @@ const ShareScanJobs = () => {
                         {job.status === 'completed' ? (
                           job.has_non_admin_shares ? (
                             <Badge variant="outline" className="bg-emerald-500/20 text-emerald-500 border-emerald-500/50 text-[10px]">
-                              Sim
+                              {t('table.hasNonAdmin')}
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="bg-zinc-500/20 text-zinc-400 border-zinc-500/50 text-[10px]">
-                              Apenas admin
+                              {t('table.onlyAdmin')}
                             </Badge>
                           )
                         ) : (
@@ -527,7 +530,7 @@ const ShareScanJobs = () => {
                               size="sm"
                               onClick={() => prioritizeJob(job.id)}
                               className="h-7 w-7 p-0 text-green-500 hover:text-green-600"
-                              title="Executar agora (prioridade máxima)"
+                              title={t('rowActions.prioritize')}
                             >
                               <Play className="w-4 h-4" />
                             </Button>
@@ -538,7 +541,7 @@ const ShareScanJobs = () => {
                               size="sm"
                               onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id })}
                               className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-                              title="Cancelar job"
+                              title={t('rowActions.cancel')}
                             >
                               <StopCircle className="w-4 h-4" />
                             </Button>
@@ -550,7 +553,7 @@ const ShareScanJobs = () => {
                                 size="sm"
                                 onClick={() => retryJob(job.id)}
                                 className="h-7 w-7 p-0 text-blue-500 hover:text-blue-600"
-                                title="Reexecutar job"
+                                title={t('rowActions.retry')}
                               >
                                 <RotateCcw className="w-4 h-4" />
                               </Button>
@@ -559,7 +562,7 @@ const ShareScanJobs = () => {
                                 size="sm"
                                 onClick={() => setConfirmDialog({ open: true, action: 'delete', jobId: job.id })}
                                 className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-                                title="Remover job"
+                                title={t('rowActions.remove')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -581,30 +584,30 @@ const ShareScanJobs = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog.action === 'clear' ? 'Limpar Jobs Finalizados' :
-               confirmDialog.action === 'retry' ? 'Reexecutar Jobs Falhados' :
-               confirmDialog.action === 'retryCancelled' ? 'Reexecutar Jobs Cancelados' :
-               confirmDialog.action === 'cancelAll' ? 'Cancelar Todos os Jobs' :
-               confirmDialog.action === 'delete' ? 'Remover Job' :
-               'Cancelar Job'}
+              {confirmDialog.action === 'clear' ? t('dialog.clearTitle') :
+               confirmDialog.action === 'retry' ? t('dialog.retryTitle') :
+               confirmDialog.action === 'retryCancelled' ? t('dialog.retryCancelledTitle') :
+               confirmDialog.action === 'cancelAll' ? t('dialog.cancelAllTitle') :
+               confirmDialog.action === 'delete' ? t('dialog.deleteTitle') :
+               t('dialog.cancelTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDialog.action === 'clear'
-                ? 'Isso removerá todos os jobs concluídos, falhados e cancelados. Esta ação não pode ser desfeita.'
+                ? t('dialog.clearDesc')
                 : confirmDialog.action === 'retry'
-                ? `Isso reenfileirará ${stats.failed} jobs falhados para processamento novamente.`
+                ? t('dialog.retryDesc', { count: stats.failed })
                 : confirmDialog.action === 'retryCancelled'
-                ? `Isso reenfileirará ${stats.cancelled} jobs cancelados para processamento novamente.`
+                ? t('dialog.retryCancelledDesc', { count: stats.cancelled })
                 : confirmDialog.action === 'cancelAll'
-                ? `Isso cancelará ${(stats.pending || 0) + (stats.running || 0)} jobs pendentes e em execução.`
+                ? t('dialog.cancelAllDesc', { count: (stats.pending || 0) + (stats.running || 0) })
                 : confirmDialog.action === 'delete'
-                ? 'Tem certeza que deseja remover este job? Esta ação não pode ser desfeita.'
-                : 'Tem certeza que deseja cancelar este job?'
+                ? t('dialog.deleteDesc')
+                : t('dialog.cancelDesc')
               }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common:actions.back')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (confirmDialog.action === 'clear') {
@@ -628,7 +631,7 @@ const ShareScanJobs = () => {
                   : "bg-red-500 hover:bg-red-600"
               }
             >
-              Confirmar
+              {t('common:actions.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,7 @@ const getSortValue = (row, key) => {
 };
 
 export default function AdvancedSearch() {
+  const { t } = useTranslation('advanced-search');
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -252,7 +254,7 @@ export default function AdvancedSearch() {
       return (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Buscando...</span>
+          <span className="ml-2 text-sm text-muted-foreground">{t('searching')}</span>
         </div>
       );
     }
@@ -261,7 +263,7 @@ export default function AdvancedSearch() {
       return (
         <div className="text-center py-20 text-muted-foreground">
           <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <p className="text-sm">Nenhum resultado encontrado para "{query}"</p>
+          <p className="text-sm">{t('noResults', { query })}</p>
         </div>
       );
     }
@@ -270,7 +272,7 @@ export default function AdvancedSearch() {
       return (
         <div className="text-center py-20 text-muted-foreground">
           <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <p className="text-sm">Digite ao menos 3 caracteres para buscar</p>
+          <p className="text-sm">{t('minChars')}</p>
         </div>
       );
     }
@@ -283,48 +285,48 @@ export default function AdvancedSearch() {
               {activeTab === 'servers' && (
                 <>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('title')}>
-                    <span className="flex items-center gap-1">Nome <SortIcon columnKey="title" /></span>
+                    <span className="flex items-center gap-1">{t('common:fields.name')} <SortIcon columnKey="title" /></span>
                   </th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('ip')}>
-                    <span className="flex items-center gap-1">IP <SortIcon columnKey="ip" /></span>
+                    <span className="flex items-center gap-1">{t('columns.ip')} <SortIcon columnKey="ip" /></span>
                   </th>
                 </>
               )}
               {activeTab === 'items' && (
                 <>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('title')}>
-                    <span className="flex items-center gap-1">Nome <SortIcon columnKey="title" /></span>
+                    <span className="flex items-center gap-1">{t('common:fields.name')} <SortIcon columnKey="title" /></span>
                   </th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('subtitle')}>
-                    <span className="flex items-center gap-1">Caminho <SortIcon columnKey="subtitle" /></span>
+                    <span className="flex items-center gap-1">{t('columns.path')} <SortIcon columnKey="subtitle" /></span>
                   </th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('server_name')}>
-                    <span className="flex items-center gap-1">Servidor <SortIcon columnKey="server_name" /></span>
+                    <span className="flex items-center gap-1">{t('columns.server')} <SortIcon columnKey="server_name" /></span>
                   </th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('modified_at')}>
-                    <span className="flex items-center gap-1">Modificado <SortIcon columnKey="modified_at" /></span>
+                    <span className="flex items-center gap-1">{t('columns.modified')} <SortIcon columnKey="modified_at" /></span>
                   </th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('type')}>
-                    <span className="flex items-center gap-1">Tipo <SortIcon columnKey="type" /></span>
+                    <span className="flex items-center gap-1">{t('common:fields.type')} <SortIcon columnKey="type" /></span>
                   </th>
                   <th className="px-4 py-3 text-center cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('ocr_match')}>
-                    <span className="flex items-center justify-center gap-1">OCR <SortIcon columnKey="ocr_match" /></span>
+                    <span className="flex items-center justify-center gap-1">{t('columns.ocr')} <SortIcon columnKey="ocr_match" /></span>
                   </th>
                   <th className="px-4 py-3 text-center cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('downloaded')}>
-                    <span className="flex items-center justify-center gap-1">DL <SortIcon columnKey="downloaded" /></span>
+                    <span className="flex items-center justify-center gap-1">{t('columns.dl')} <SortIcon columnKey="downloaded" /></span>
                   </th>
                 </>
               )}
               {activeTab === 'leaks' && (
                 <>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('title')}>
-                    <span className="flex items-center gap-1">Arquivo <SortIcon columnKey="title" /></span>
+                    <span className="flex items-center gap-1">{t('columns.file')} <SortIcon columnKey="title" /></span>
                   </th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('rule_id')}>
-                    <span className="flex items-center gap-1">Regra <SortIcon columnKey="rule_id" /></span>
+                    <span className="flex items-center gap-1">{t('columns.rule')} <SortIcon columnKey="rule_id" /></span>
                   </th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('server_full')}>
-                    <span className="flex items-center gap-1">Servidor <SortIcon columnKey="server_full" /></span>
+                    <span className="flex items-center gap-1">{t('columns.server')} <SortIcon columnKey="server_full" /></span>
                   </th>
                 </>
               )}
@@ -376,11 +378,11 @@ export default function AdvancedSearch() {
                           <span className={`text-xs px-1.5 py-0.5 rounded ${
                             r.type === 'directory' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400'
                           }`}>
-                            {r.type === 'directory' ? 'Dir' : 'File'}
+                            {r.type === 'directory' ? t('badges.dir') : t('badges.file')}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {r.ocr_match && <Eye size={14} className="text-orange-400 mx-auto" title="Encontrado via OCR" />}
+                          {r.ocr_match && <Eye size={14} className="text-orange-400 mx-auto" title={t('foundViaOcr')} />}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {r.downloaded && <Download size={14} className="text-emerald-400 mx-auto" />}
@@ -407,10 +409,10 @@ export default function AdvancedSearch() {
                 </ContextMenuTrigger>
                 <ContextMenuContent>
                   <ContextMenuItem onClick={() => handleOpenNewTab(r)}>
-                    Abrir em nova aba
+                    {t('contextMenu.openNewTab')}
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => handleNavigate(r)}>
-                    Abrir
+                    {t('common:actions.open')}
                   </ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
@@ -428,23 +430,23 @@ export default function AdvancedSearch() {
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8">
           <ArrowLeft size={16} />
         </Button>
-        <h1 className="text-lg font-semibold">Busca Avançada</h1>
+        <h1 className="text-lg font-semibold">{t('title')}</h1>
         {total > 0 && !loading && (
-          <span className="text-xs text-muted-foreground">({total} resultados na aba atual)</span>
+          <span className="text-xs text-muted-foreground">{t('resultsInTab', { total })}</span>
         )}
       </div>
 
       {/* Search + Filters */}
       <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[250px]">
-          <label className="text-xs text-muted-foreground mb-1 block">Busca</label>
+          <label className="text-xs text-muted-foreground mb-1 block">{t('fields.search')}</label>
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchInputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar servidores, arquivos, leaks..."
+              placeholder={t('searchPlaceholder')}
               className="pl-9 h-9"
             />
           </div>
@@ -453,7 +455,7 @@ export default function AdvancedSearch() {
         {activeTab === 'items' && (
           <>
             <div className="w-[150px]">
-              <label className="text-xs text-muted-foreground mb-1 block">Data de</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('fields.dateFrom')}</label>
               <Input
                 type="date"
                 value={dateFrom}
@@ -462,7 +464,7 @@ export default function AdvancedSearch() {
               />
             </div>
             <div className="w-[150px]">
-              <label className="text-xs text-muted-foreground mb-1 block">Data até</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('fields.dateTo')}</label>
               <Input
                 type="date"
                 value={dateTo}
@@ -471,7 +473,7 @@ export default function AdvancedSearch() {
               />
             </div>
             <div className="w-[120px]">
-              <label className="text-xs text-muted-foreground mb-1 block">Extensão</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('fields.extension')}</label>
               <Input
                 value={extension}
                 onChange={(e) => setExtension(e.target.value)}
@@ -480,13 +482,13 @@ export default function AdvancedSearch() {
               />
             </div>
             <div className="w-[130px]">
-              <label className="text-xs text-muted-foreground mb-1 block">Tipo</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('common:fields.type')}</label>
               <select
                 value={itemType}
                 onChange={(e) => setItemType(e.target.value)}
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
-                <option value="">Todos</option>
+                <option value="">{t('options.all')}</option>
                 <option value="File">File</option>
                 <option value="Directory">Directory</option>
               </select>
@@ -496,7 +498,7 @@ export default function AdvancedSearch() {
 
         <Button type="submit" size="sm" className="h-9">
           <Search size={14} className="mr-1" />
-          Buscar
+          {t('common:actions.search')}
         </Button>
       </form>
 
@@ -514,7 +516,7 @@ export default function AdvancedSearch() {
               }`}
             >
               <tab.icon className="w-4 h-4" />
-              {tab.label}
+              {t('tabs.' + tab.key)}
               <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
                 {counts[tab.key] ?? '—'}
               </span>
@@ -535,12 +537,12 @@ export default function AdvancedSearch() {
         {loadingMore && (
           <div className="flex items-center justify-center py-4">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-xs text-muted-foreground">Carregando mais...</span>
+            <span className="ml-2 text-xs text-muted-foreground">{t('loadingMore')}</span>
           </div>
         )}
         {!hasMore && results.length > 0 && !loading && (
           <div className="text-center py-3 text-xs text-muted-foreground/50">
-            Todos os {total} resultados carregados
+            {t('allLoaded', { total })}
           </div>
         )}
       </div>

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, FileCode, Server, Database, Loader2, CheckCircle, AlertCircle, Trash2, FileUp, Search, CloudUpload, Plug, Settings, Shield, List, Globe } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -44,6 +45,7 @@ const UPLOAD_STEPS = {
 };
 
 const ImportServers = () => {
+  const { t } = useTranslation('import-servers');
   const [activeTab, setActiveTab] = useState('nmap');
 
   // Nmap state
@@ -111,7 +113,7 @@ const ImportServers = () => {
 
   const getPortName = (portNum) => {
     if (portNum === DEFAULT_SMB_PORT) return 'SMB';
-    return DEFAULT_DB_PORTS[portNum] || DEFAULT_OTHER_PORTS[portNum] || `Porta ${portNum}`;
+    return DEFAULT_DB_PORTS[portNum] || DEFAULT_OTHER_PORTS[portNum] || t('helper.port', { port: portNum });
   };
 
   // ========================
@@ -123,7 +125,7 @@ const ImportServers = () => {
     if (!file) return;
 
     if (!file.name.endsWith('.xml')) {
-      toast.error('Por favor, selecione um arquivo XML do nmap');
+      toast.error(t('toast.selectNmapXml'));
       return;
     }
 
@@ -152,7 +154,7 @@ const ImportServers = () => {
     };
 
     reader.onerror = () => {
-      toast.error('Erro ao ler o arquivo');
+      toast.error(t('toast.readError'));
       setUploadStatus(UPLOAD_STEPS.IDLE);
       setUploadProgress(0);
     };
@@ -211,7 +213,7 @@ const ImportServers = () => {
         setParsedHosts([]);
         setSelectedHosts(new Set());
         setUploadStatus(UPLOAD_STEPS.READY);
-        toast.warning('Nenhum servidor com portas configuradas encontrado');
+        toast.warning(t('toast.noServersWithPorts'));
         return;
       }
 
@@ -229,22 +231,22 @@ const ImportServers = () => {
         setUploadStatus(UPLOAD_STEPS.READY);
 
         if (filtered.length === 0 && skippedCount > 0) {
-          toast.warning(`Todos os ${skippedCount} servidores já existem no banco`);
+          toast.warning(t('toast.allExist', { count: skippedCount }));
         } else if (skippedCount > 0) {
-          toast.success(`${filtered.length} servidores novos encontrados (${skippedCount} já existiam)`);
+          toast.success(t('toast.newFound', { count: filtered.length, skipped: skippedCount }));
         } else {
-          toast.success(`${filtered.length} servidores encontrados`);
+          toast.success(t('toast.found', { count: filtered.length }));
         }
       } catch {
         // Se falhar o check, exibir todos
         setParsedHosts(hosts);
         setSelectedHosts(new Set(hosts.map(h => h.ip)));
         setUploadStatus(UPLOAD_STEPS.READY);
-        toast.success(`${hosts.length} servidores encontrados`);
+        toast.success(t('toast.found', { count: hosts.length }));
       }
     } catch (error) {
       console.error('Error parsing XML:', error);
-      toast.error('Erro ao processar arquivo XML');
+      toast.error(t('toast.xmlParseError'));
       setUploadStatus(UPLOAD_STEPS.IDLE);
     }
   };
@@ -269,12 +271,12 @@ const ImportServers = () => {
 
   const handleImport = async () => {
     if (selectedHosts.size === 0) {
-      toast.error('Selecione pelo menos um servidor para importar');
+      toast.error(t('toast.selectAtLeastOne'));
       return;
     }
 
     if (!selectedPluginInstance) {
-      toast.error('Selecione uma instância de plugin para os servidores');
+      toast.error(t('toast.selectPluginInstance'));
       return;
     }
 
@@ -303,19 +305,19 @@ const ImportServers = () => {
       setImportResults(results);
 
       if (data.imported > 0) {
-        toast.success(`${data.imported} servidores importados com sucesso`);
+        toast.success(t('toast.imported', { count: data.imported }));
       }
       if (data.skipped > 0) {
-        toast.warning(`${data.skipped} servidores já existiam e foram ignorados`);
+        toast.warning(t('toast.skipped', { count: data.skipped }));
       }
       if (data.failed > 0) {
-        toast.error(`${data.failed} servidores falharam na importação`);
+        toast.error(t('toast.failed', { count: data.failed }));
       }
 
     } catch (error) {
       console.error('Import error:', error);
       const errorMsg = error.response?.data?.detail || error.message;
-      toast.error(`Erro na importação: ${errorMsg}`);
+      toast.error(t('toast.importError', { error: errorMsg }));
 
       setImportResults({
         success: [],
@@ -352,7 +354,7 @@ const ImportServers = () => {
     const isZip = file.name.endsWith('.zip');
 
     if (!isJson && !isZip) {
-      toast.error('Por favor, selecione um arquivo JSON ou ZIP do BloodHound');
+      toast.error(t('toast.selectBhFile'));
       return;
     }
 
@@ -381,7 +383,7 @@ const ImportServers = () => {
       };
 
       reader.onerror = () => {
-        toast.error('Erro ao ler o arquivo');
+        toast.error(t('toast.readError'));
         setBhUploadStatus(UPLOAD_STEPS.IDLE);
         setBhUploadProgress(0);
       };
@@ -409,7 +411,7 @@ const ImportServers = () => {
           setBhParsedHosts([]);
           setBhSelectedHosts(new Set());
           setBhUploadStatus(UPLOAD_STEPS.READY);
-          toast.warning('Nenhum computador enabled encontrado no ZIP');
+          toast.warning(t('toast.noEnabledZip'));
         } else {
           // Filtrar os que já existem
           await filterExistingBhHosts(hosts, data.total_in_file);
@@ -417,7 +419,7 @@ const ImportServers = () => {
       } catch (error) {
         console.error('Error parsing BloodHound ZIP:', error);
         const errorMsg = error.response?.data?.detail || error.message;
-        toast.error(`Erro ao processar ZIP: ${errorMsg}`);
+        toast.error(t('toast.zipError', { error: errorMsg }));
         setBhUploadStatus(UPLOAD_STEPS.IDLE);
         setBhUploadProgress(0);
       }
@@ -438,18 +440,18 @@ const ImportServers = () => {
       setBhUploadStatus(UPLOAD_STEPS.READY);
 
       if (filtered.length === 0 && skippedCount > 0) {
-        toast.warning(`Todos os ${skippedCount} computadores enabled já existem no banco`);
+        toast.warning(t('toast.allComputersExist', { count: skippedCount }));
       } else if (skippedCount > 0) {
-        toast.success(`${filtered.length} computadores novos (${skippedCount} já existiam, de ${totalInFile} total)`);
+        toast.success(t('toast.newComputers', { count: filtered.length, skipped: skippedCount, total: totalInFile }));
       } else {
-        toast.success(`${filtered.length} computadores enabled encontrados (de ${totalInFile} total)`);
+        toast.success(t('toast.computersFound', { count: filtered.length, total: totalInFile }));
       }
     } catch {
       // Se falhar o check, exibir todos
       setBhParsedHosts(hosts);
       setBhSelectedHosts(new Set(hosts.map(h => h.name)));
       setBhUploadStatus(UPLOAD_STEPS.READY);
-      toast.success(`${hosts.length} computadores enabled encontrados (de ${totalInFile} total)`);
+      toast.success(t('toast.computersFound', { count: hosts.length, total: totalInFile }));
     }
   };
 
@@ -486,14 +488,14 @@ const ImportServers = () => {
         setBhParsedHosts([]);
         setBhSelectedHosts(new Set());
         setBhUploadStatus(UPLOAD_STEPS.READY);
-        toast.warning('Nenhum computador enabled encontrado');
+        toast.warning(t('toast.noEnabled'));
       } else {
         // Filtrar os que já existem
         await filterExistingBhHosts(hosts, totalInFile);
       }
     } catch (error) {
       console.error('Error parsing BloodHound JSON:', error);
-      toast.error('Erro ao processar arquivo JSON do BloodHound');
+      toast.error(t('toast.bhJsonError'));
       setBhUploadStatus(UPLOAD_STEPS.IDLE);
     }
   };
@@ -518,12 +520,12 @@ const ImportServers = () => {
 
   const handleBhImport = async () => {
     if (bhSelectedHosts.size === 0) {
-      toast.error('Selecione pelo menos um servidor para importar');
+      toast.error(t('toast.selectAtLeastOne'));
       return;
     }
 
     if (!selectedPluginInstance) {
-      toast.error('Selecione uma instância de plugin para os servidores');
+      toast.error(t('toast.selectPluginInstance'));
       return;
     }
 
@@ -553,19 +555,19 @@ const ImportServers = () => {
       setBhImportResults(results);
 
       if (data.imported > 0) {
-        toast.success(`${data.imported} servidores importados com sucesso`);
+        toast.success(t('toast.imported', { count: data.imported }));
       }
       if (data.skipped > 0) {
-        toast.warning(`${data.skipped} servidores já existiam e foram ignorados`);
+        toast.warning(t('toast.skipped', { count: data.skipped }));
       }
       if (data.failed > 0) {
-        toast.error(`${data.failed} servidores falharam na importação`);
+        toast.error(t('toast.failed', { count: data.failed }));
       }
 
     } catch (error) {
       console.error('BloodHound import error:', error);
       const errorMsg = error.response?.data?.detail || error.message;
-      toast.error(`Erro na importação: ${errorMsg}`);
+      toast.error(t('toast.importError', { error: errorMsg }));
 
       setBhImportResults({
         success: [],
@@ -636,15 +638,15 @@ const ImportServers = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.endsWith('.txt') && file.type !== 'text/plain') {
-      toast.error('Por favor, selecione um arquivo .txt');
+      toast.error(t('toast.selectTxt'));
       return;
     }
     const reader = new FileReader();
     reader.onload = (event) => {
       setListText(String(event.target?.result || ''));
-      toast.success(`Arquivo ${file.name} carregado`);
+      toast.success(t('toast.fileLoaded', { name: file.name }));
     };
-    reader.onerror = () => toast.error('Erro ao ler o arquivo');
+    reader.onerror = () => toast.error(t('toast.readError'));
     reader.readAsText(file);
   };
 
@@ -653,11 +655,11 @@ const ImportServers = () => {
     if (valid.length === 0) {
       setListParsedHosts([]);
       setListSelectedHosts(new Set());
-      toast.warning('Nenhuma entrada válida (IP ou DNS) encontrada');
+      toast.warning(t('toast.noValidEntries'));
       return;
     }
     if (invalid.length > 0) {
-      toast.warning(`${invalid.length} entrada(s) inválida(s) ignorada(s)`);
+      toast.warning(t('toast.invalidIgnored', { count: invalid.length }));
     }
 
     setListChecking(true);
@@ -679,17 +681,17 @@ const ImportServers = () => {
       setListSelectedHosts(new Set(filtered.map((h) => h.value)));
 
       if (filtered.length === 0 && skippedCount > 0) {
-        toast.warning(`Todas as ${skippedCount} entradas já existem no banco`);
+        toast.warning(t('toast.allEntriesExist', { count: skippedCount }));
       } else if (skippedCount > 0) {
-        toast.success(`${filtered.length} novos (${skippedCount} já existiam)`);
+        toast.success(t('toast.newEntries', { count: filtered.length, skipped: skippedCount }));
       } else {
-        toast.success(`${filtered.length} servidores prontos para importar`);
+        toast.success(t('toast.readyToImport', { count: filtered.length }));
       }
     } catch {
       // Se o check falhar, exibe todos
       setListParsedHosts(valid);
       setListSelectedHosts(new Set(valid.map((h) => h.value)));
-      toast.success(`${valid.length} servidores prontos para importar`);
+      toast.success(t('toast.readyToImport', { count: valid.length }));
     } finally {
       setListChecking(false);
     }
@@ -707,11 +709,11 @@ const ImportServers = () => {
 
   const handleListImport = async () => {
     if (listSelectedHosts.size === 0) {
-      toast.error('Selecione pelo menos um servidor para importar');
+      toast.error(t('toast.selectAtLeastOne'));
       return;
     }
     if (!selectedPluginInstance) {
-      toast.error('Selecione uma instância de plugin para os servidores');
+      toast.error(t('toast.selectPluginInstance'));
       return;
     }
 
@@ -736,9 +738,9 @@ const ImportServers = () => {
       };
       setListImportResults(results);
 
-      if (data.imported > 0) toast.success(`${data.imported} servidores importados com sucesso`);
-      if (data.skipped > 0) toast.warning(`${data.skipped} servidores já existiam e foram ignorados`);
-      if (data.failed > 0) toast.error(`${data.failed} servidores falharam na importação`);
+      if (data.imported > 0) toast.success(t('toast.imported', { count: data.imported }));
+      if (data.skipped > 0) toast.warning(t('toast.skipped', { count: data.skipped }));
+      if (data.failed > 0) toast.error(t('toast.failed', { count: data.failed }));
 
       // Remove da lista os que foram importados/ignorados
       const done = new Set([
@@ -750,7 +752,7 @@ const ImportServers = () => {
     } catch (error) {
       console.error('List import error:', error);
       const errorMsg = error.response?.data?.detail || error.message;
-      toast.error(`Erro na importação: ${errorMsg}`);
+      toast.error(t('toast.importError', { error: errorMsg }));
       setListImportResults({
         success: [],
         failed: hostsToImport.map((h) => ({ name: h.value, ip: h.value, error: errorMsg })),
@@ -776,11 +778,11 @@ const ImportServers = () => {
   const getStatusMessage = (status, fName) => {
     switch (status) {
       case UPLOAD_STEPS.UPLOADING:
-        return { icon: <FileUp className="w-4 h-4 animate-bounce" />, text: 'Enviando arquivo...' };
+        return { icon: <FileUp className="w-4 h-4 animate-bounce" />, text: t('status.uploading') };
       case UPLOAD_STEPS.PARSING:
-        return { icon: <Search className="w-4 h-4 animate-pulse" />, text: 'Analisando arquivo...' };
+        return { icon: <Search className="w-4 h-4 animate-pulse" />, text: t('status.parsing') };
       case UPLOAD_STEPS.READY:
-        return { icon: <CheckCircle className="w-4 h-4 text-green-500" />, text: 'Pronto para importar' };
+        return { icon: <CheckCircle className="w-4 h-4 text-green-500" />, text: t('status.ready') };
       default:
         return null;
     }
@@ -791,14 +793,14 @@ const ImportServers = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Resultado da Importação</CardTitle>
+          <CardTitle>{t('results.title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {results.success.length > 0 && (
             <div>
               <div className="flex items-center gap-2 text-green-500 mb-2">
                 <CheckCircle className="w-4 h-4" />
-                <span className="font-medium">{results.success.length} importados com sucesso</span>
+                <span className="font-medium">{t('results.success', { count: results.success.length })}</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {results.success.map((host) => (
@@ -817,7 +819,7 @@ const ImportServers = () => {
             <div>
               <div className="flex items-center gap-2 text-yellow-500 mb-2">
                 <AlertCircle className="w-4 h-4" />
-                <span className="font-medium">{results.skipped.length} já existiam (ignorados)</span>
+                <span className="font-medium">{t('results.skipped', { count: results.skipped.length })}</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {results.skipped.map((host) => (
@@ -834,7 +836,7 @@ const ImportServers = () => {
             <div>
               <div className="flex items-center gap-2 text-red-500 mb-2">
                 <AlertCircle className="w-4 h-4" />
-                <span className="font-medium">{results.failed.length} falharam</span>
+                <span className="font-medium">{t('results.failed', { count: results.failed.length })}</span>
               </div>
               <div className="space-y-2">
                 {results.failed.map((host) => (
@@ -865,8 +867,8 @@ const ImportServers = () => {
   return (
     <div className="space-y-6" data-testid="import-servers-page">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Importar Servidores</h1>
-        <p className="text-muted-foreground mt-2">Importe servidores a partir de scans Nmap, BloodHound ou de uma lista (IP/DNS)</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -881,7 +883,7 @@ const ImportServers = () => {
           </TabsTrigger>
           <TabsTrigger value="list" className="flex items-center gap-2">
             <List className="w-4 h-4" />
-            Lista (IP/DNS)
+            {t('tabs.list')}
           </TabsTrigger>
         </TabsList>
 
@@ -894,15 +896,15 @@ const ImportServers = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="w-5 h-5" />
-                Upload XML do Nmap
+                {t('nmap.uploadTitle')}
               </CardTitle>
               <CardDescription>
-                Faça upload de um arquivo XML gerado pelo nmap. Serão importados apenas hosts com as{' '}
+                {t('nmap.uploadDescPrefix')}{' '}
                 <Link to="/settings" className="text-primary hover:underline inline-flex items-center gap-1">
                   <Settings className="w-3 h-3" />
-                  portas configuradas
+                  {t('nmap.configuredPorts')}
                 </Link>
-                {' '}abertas.
+                {' '}{t('nmap.uploadDescSuffix')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -919,7 +921,7 @@ const ImportServers = () => {
                   {parsedHosts.length > 0 && (
                     <Button variant="outline" onClick={clearAll}>
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Limpar
+                      {t('common:actions.clear')}
                     </Button>
                   )}
                 </div>
@@ -946,21 +948,21 @@ const ImportServers = () => {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <FileCode className="w-5 h-5" />
-                      Servidores Encontrados
+                      {t('nmap.foundTitle')}
                     </CardTitle>
                     <CardDescription>
-                      {parsedHosts.length} servidores com portas relevantes • {selectedHosts.size} selecionados
+                      {t('nmap.foundDesc', { count: parsedHosts.length, selected: selectedHosts.size })}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
                       <Label className="text-sm text-muted-foreground whitespace-nowrap">
                         <Plug className="w-4 h-4 inline mr-1" />
-                        Instância:
+                        {t('shared.instanceLabel')}
                       </Label>
                       <Select value={selectedPluginInstance} onValueChange={setSelectedPluginInstance}>
                         <SelectTrigger className="w-56" data-testid="plugin-instance-select">
-                          <SelectValue placeholder="Selecione uma instância..." />
+                          <SelectValue placeholder={t('shared.instancePlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           {pluginInstances.map((instance) => (
@@ -976,10 +978,10 @@ const ImportServers = () => {
                     </div>
                     <div className="w-px h-6 bg-border mx-2" />
                     <Button variant="outline" size="sm" onClick={selectAll}>
-                      Selecionar Todos
+                      {t('shared.selectAll')}
                     </Button>
                     <Button variant="outline" size="sm" onClick={deselectAll}>
-                      Desmarcar Todos
+                      {t('shared.deselectAll')}
                     </Button>
                     <Button
                       onClick={handleImport}
@@ -991,7 +993,7 @@ const ImportServers = () => {
                       ) : (
                         <CloudUpload className="w-4 h-4 mr-2" />
                       )}
-                      Importar {selectedHosts.size} Servidor{selectedHosts.size !== 1 ? 'es' : ''}
+                      {t('shared.importCount', { count: selectedHosts.size })}
                     </Button>
                   </div>
                 </div>
@@ -1035,11 +1037,10 @@ const ImportServers = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="w-5 h-5" />
-                Upload BloodHound
+                {t('bh.uploadTitle')}
               </CardTitle>
               <CardDescription>
-                Faça upload de um arquivo JSON de computers do BloodHound ou um ZIP completo (será extraído o JSON com "computers" no nome).
-                Apenas computadores com <Badge variant="outline" className="mx-1 text-xs">enabled: true</Badge> serão importados.
+                {t('bh.uploadDescPrefix')} <Badge variant="outline" className="mx-1 text-xs">enabled: true</Badge> {t('bh.uploadDescSuffix')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1056,7 +1057,7 @@ const ImportServers = () => {
                   {bhParsedHosts.length > 0 && (
                     <Button variant="outline" onClick={clearBh}>
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Limpar
+                      {t('common:actions.clear')}
                     </Button>
                   )}
                 </div>
@@ -1074,7 +1075,7 @@ const ImportServers = () => {
 
                 {bhSourceInfo && (
                   <div className="text-sm text-muted-foreground">
-                    Arquivo fonte: <span className="font-mono">{bhSourceInfo.file}</span> — {bhSourceInfo.total} computadores no total
+                    {t('bh.sourcePrefix')} <span className="font-mono">{bhSourceInfo.file}</span> {t('bh.sourceSuffix', { total: bhSourceInfo.total })}
                   </div>
                 )}
               </div>
@@ -1089,21 +1090,21 @@ const ImportServers = () => {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Shield className="w-5 h-5" />
-                      Computadores Encontrados
+                      {t('bh.foundTitle')}
                     </CardTitle>
                     <CardDescription>
-                      {bhParsedHosts.length} computadores enabled • {bhSelectedHosts.size} selecionados
+                      {t('bh.foundDesc', { count: bhParsedHosts.length, selected: bhSelectedHosts.size })}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
                       <Label className="text-sm text-muted-foreground whitespace-nowrap">
                         <Plug className="w-4 h-4 inline mr-1" />
-                        Instância:
+                        {t('shared.instanceLabel')}
                       </Label>
                       <Select value={selectedPluginInstance} onValueChange={setSelectedPluginInstance}>
                         <SelectTrigger className="w-56" data-testid="bh-plugin-instance-select">
-                          <SelectValue placeholder="Selecione uma instância..." />
+                          <SelectValue placeholder={t('shared.instancePlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           {pluginInstances.map((instance) => (
@@ -1119,10 +1120,10 @@ const ImportServers = () => {
                     </div>
                     <div className="w-px h-6 bg-border mx-2" />
                     <Button variant="outline" size="sm" onClick={bhSelectAll}>
-                      Selecionar Todos
+                      {t('shared.selectAll')}
                     </Button>
                     <Button variant="outline" size="sm" onClick={bhDeselectAll}>
-                      Desmarcar Todos
+                      {t('shared.deselectAll')}
                     </Button>
                     <Button
                       onClick={handleBhImport}
@@ -1134,7 +1135,7 @@ const ImportServers = () => {
                       ) : (
                         <CloudUpload className="w-4 h-4 mr-2" />
                       )}
-                      Importar {bhSelectedHosts.size} Servidor{bhSelectedHosts.size !== 1 ? 'es' : ''}
+                      {t('shared.importCount', { count: bhSelectedHosts.size })}
                     </Button>
                   </div>
                 </div>
@@ -1184,12 +1185,11 @@ const ImportServers = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <List className="w-5 h-5" />
-                Lista de servidores (IP ou DNS)
+                {t('list.title')}
               </CardTitle>
               <CardDescription>
-                Envie um arquivo <span className="font-mono">.txt</span> ou cole abaixo uma lista de
-                servidores — um por linha (IP ou nome DNS/hostname). Linhas iniciadas com{' '}
-                <span className="font-mono">#</span> são ignoradas.
+                {t('list.descPrefix')} <span className="font-mono">.txt</span> {t('list.descMiddle')}{' '}
+                <span className="font-mono">#</span> {t('list.descSuffix')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1206,7 +1206,7 @@ const ImportServers = () => {
                   {(listText || listParsedHosts.length > 0) && (
                     <Button variant="outline" onClick={clearList}>
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Limpar
+                      {t('common:actions.clear')}
                     </Button>
                   )}
                 </div>
@@ -1230,10 +1230,10 @@ const ImportServers = () => {
                     ) : (
                       <Search className="w-4 h-4 mr-2" />
                     )}
-                    Analisar lista
+                    {t('list.analyze')}
                   </Button>
                   <span className="text-xs text-muted-foreground">
-                    Valida as entradas e remove as que já existem no banco.
+                    {t('list.analyzeHint')}
                   </span>
                 </div>
               </div>
@@ -1248,21 +1248,21 @@ const ImportServers = () => {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Server className="w-5 h-5" />
-                      Servidores da Lista
+                      {t('list.foundTitle')}
                     </CardTitle>
                     <CardDescription>
-                      {listParsedHosts.length} entradas válidas • {listSelectedHosts.size} selecionados
+                      {t('list.foundDesc', { count: listParsedHosts.length, selected: listSelectedHosts.size })}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
                       <Label className="text-sm text-muted-foreground whitespace-nowrap">
                         <Plug className="w-4 h-4 inline mr-1" />
-                        Instância:
+                        {t('shared.instanceLabel')}
                       </Label>
                       <Select value={selectedPluginInstance} onValueChange={setSelectedPluginInstance}>
                         <SelectTrigger className="w-56" data-testid="list-plugin-instance-select">
-                          <SelectValue placeholder="Selecione uma instância..." />
+                          <SelectValue placeholder={t('shared.instancePlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           {pluginInstances.map((instance) => (
@@ -1278,10 +1278,10 @@ const ImportServers = () => {
                     </div>
                     <div className="w-px h-6 bg-border mx-2" />
                     <Button variant="outline" size="sm" onClick={listSelectAll}>
-                      Selecionar Todos
+                      {t('shared.selectAll')}
                     </Button>
                     <Button variant="outline" size="sm" onClick={listDeselectAll}>
-                      Desmarcar Todos
+                      {t('shared.deselectAll')}
                     </Button>
                     <Button
                       onClick={handleListImport}
@@ -1293,7 +1293,7 @@ const ImportServers = () => {
                       ) : (
                         <CloudUpload className="w-4 h-4 mr-2" />
                       )}
-                      Importar {listSelectedHosts.size} Servidor{listSelectedHosts.size !== 1 ? 'es' : ''}
+                      {t('shared.importCount', { count: listSelectedHosts.size })}
                     </Button>
                   </div>
                 </div>

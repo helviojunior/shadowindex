@@ -1,0 +1,83 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Visão geral de segurança e assets",
+  "updating": "Atualizando...",
+  "realTime": "Tempo real",
+  "offline": "Offline",
+  "refresh": "Atualizar",
+  "today": "Hoje",
+  "stats": {
+    "totalServers": "Total Servidores",
+    "serversWithFiles": "Serv. com Arquivos",
+    "leaksDetected": "Leaks Detectados",
+    "filesProcessed": "Arquivos Tratados",
+    "downloads": "Downloads"
+  },
+  "riskScore": {
+    "title": "Índice de Risco Geral",
+    "label": "RISCO"
+  },
+  "severity": {
+    "title": "Risco por Severidade",
+    "noLeaks": "Nenhum leak detectado"
+  },
+  "extensions": {
+    "title": "Leaks por Extensão",
+    "noData": "Sem dados de extensões",
+    "noExtension": "sem extensão"
+  },
+  "leaksOverTime": {
+    "title": "Leaks vs. Tempo"
+  },
+  "scanStatus": {
+    "title": "Status do Scan",
+    "progress": "Progresso",
+    "totalScans": "Total de Scans",
+    "running": "Executando",
+    "completed": "Concluídos",
+    "scanAll": "Escanear Todos"
+  },
+  "jobs": {
+    "title": "Monitoramento de Jobs",
+    "activeCount": "{{count}} ativos",
+    "noneActive": "Nenhum ativo",
+    "more": "+{{count}} mais",
+    "file": "Arquivo",
+    "directory": "Diretório",
+    "scansDir": "Scans Dir",
+    "level": "Nível {{depth}}/{{max}}",
+    "server": "Servidor {{id}}",
+    "files": "{{count}} arquivos",
+    "recent": "Jobs Recentes",
+    "noRecent": "Nenhum job recente"
+  },
+  "summary": {
+    "title": "Resumo",
+    "downloadedFiles": "Arquivos Baixados",
+    "filesWithLeaks": "Arquivos com Leaks",
+    "sqlConnections": "Conexões SQL",
+    "proxyServers": "Servidores Proxy",
+    "soapApis": "SOAP APIs"
+  },
+  "offlineCard": {
+    "title": "Modo Offline",
+    "description": "Quando ativado, o sistema utiliza apenas o cache local",
+    "enabled": "Ativado",
+    "disabled": "Desativado"
+  },
+  "cache": {
+    "title": "Cache",
+    "entries": "{{count}} entradas no cache",
+    "clear": "Limpar Cache"
+  },
+  "toast": {
+    "offlineEnabled": "Modo offline ativado",
+    "onlineEnabled": "Modo online ativado",
+    "offlineError": "Erro ao alterar modo offline",
+    "cacheCleared": "Cache limpo com sucesso",
+    "cacheError": "Erro ao limpar cache",
+    "scansStarted": "{{count}} scans iniciados em background",
+    "noServersToScan": "Nenhum servidor com arquivos baixados para escanear",
+    "scanError": "Erro ao iniciar scan"
+  }
+}

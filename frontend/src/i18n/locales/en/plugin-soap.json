@@ -1,0 +1,90 @@
+{
+  "header": {
+    "title": "SOAP Plugin",
+    "subtitle": "Communication via SOAP WebService",
+    "newInstance": "New Instance"
+  },
+  "tabs": {
+    "instances": "Instances",
+    "info": "Info"
+  },
+  "form": {
+    "title": "New SOAP Instance",
+    "description": "Configure a new instance of the SOAP plugin",
+    "nameLabel": "Instance Name",
+    "namePlaceholder": "Production, Staging, etc.",
+    "urlLabel": "WebService URL (WSDL)",
+    "urlPlaceholder": "https://example.com/api.asmx?WSDL",
+    "proxyLabel": "Proxy",
+    "selectProxy": "Select a proxy",
+    "noProxy": "No proxy",
+    "descriptionPlaceholder": "Optional instance description",
+    "createInstance": "Create Instance"
+  },
+  "edit": {
+    "urlLabel": "WebService URL"
+  },
+  "empty": {
+    "title": "No instance configured",
+    "hint": "Click \"New Instance\" to create one"
+  },
+  "badges": {
+    "default": "Default",
+    "inactive": "Inactive"
+  },
+  "instance": {
+    "url": "URL: {{url}}",
+    "urlNotConfigured": "URL not configured",
+    "proxy": "Proxy: {{name}}",
+    "noProxy": "No proxy"
+  },
+  "health": {
+    "ok": "OK"
+  },
+  "titles": {
+    "checkHealth": "Check health",
+    "removeDefault": "Remove default",
+    "setDefault": "Set as default",
+    "deactivate": "Deactivate",
+    "activate": "Activate"
+  },
+  "confirm": {
+    "delete": "Are you sure you want to delete this instance?"
+  },
+  "toast": {
+    "loadError": "Error loading data",
+    "created": "Instance created successfully",
+    "createError": "Error creating instance",
+    "deleted": "Instance deleted successfully",
+    "deleteError": "Error deleting instance",
+    "updated": "Instance updated successfully",
+    "updateError": "Error updating instance",
+    "healthy": "Plugin healthy",
+    "unhealthy": "Plugin has problems",
+    "healthCheckError": "Error checking plugin health",
+    "verifyError": "Error checking",
+    "defaultRemoved": "Removed as default",
+    "defaultSet": "Set as default",
+    "deactivated": "Instance deactivated",
+    "activated": "Instance activated",
+    "statusError": "Error changing status"
+  },
+  "info": {
+    "pluginInfo": "Plugin Information",
+    "version": "Version",
+    "features": "Features",
+    "featuresDesc": "Operations available via SOAP",
+    "implemented": "Implemented",
+    "configSchema": "Configuration Schema",
+    "configSchemaDesc": "Fields available for instance configuration",
+    "required": "required",
+    "feature1Name": "Name Resolution (Resolve)",
+    "feature1Desc": "Resolve hostname to IP address via WebService",
+    "feature2Name": "Share Listing",
+    "feature2Desc": "List network shares available on the server",
+    "feature3Name": "Directory Browsing",
+    "feature3Desc": "List files and folders in a remote path",
+    "feature4Name": "File Download",
+    "feature4Desc": "Download remote files via WebService"
+  }
+}

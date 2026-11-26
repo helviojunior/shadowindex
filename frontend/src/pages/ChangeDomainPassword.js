@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck, Server, Hash, Fingerprint, Key, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,12 +13,13 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Métodos para informar a "senha atual"
 const AUTH_METHODS = [
-  { key: 'password', label: 'Senha', icon: Key },
-  { key: 'ntlm', label: 'Hash NTLM', icon: Hash },
-  { key: 'ccache', label: 'Ticket Kerberos (ccache)', icon: Fingerprint },
+  { key: 'password', icon: Key },
+  { key: 'ntlm', icon: Hash },
+  { key: 'ccache', icon: Fingerprint },
 ];
 
 const ChangeDomainPassword = () => {
+  const { t } = useTranslation('change-domain-password');
   const [form, setForm] = useState({
     domain: '',
     username: '',
@@ -53,7 +55,7 @@ const ChangeDomainPassword = () => {
       setCcacheFileName(file.name);
     } catch (err) {
       console.error('Error reading ccache file:', err);
-      toast.error('Não foi possível ler o arquivo ccache');
+      toast.error(t('toast.ccacheReadError'));
     }
   };
 
@@ -61,16 +63,16 @@ const ChangeDomainPassword = () => {
     e.preventDefault();
 
     // Kerberos pode derivar o usuário do próprio ccache
-    if (!form.username.trim() && authMethod !== 'ccache') return toast.error('Informe o usuário');
-    if (authMethod === 'password' && !form.current_password) return toast.error('Informe a senha atual');
-    if (authMethod === 'ntlm' && !form.ntlm_hash.trim()) return toast.error('Informe o hash NTLM atual');
-    if (authMethod === 'ccache' && !form.ccache) return toast.error('Selecione o arquivo ccache');
-    if (!form.new_password) return toast.error('Informe a nova senha');
+    if (!form.username.trim() && authMethod !== 'ccache') return toast.error(t('validation.username'));
+    if (authMethod === 'password' && !form.current_password) return toast.error(t('validation.currentPassword'));
+    if (authMethod === 'ntlm' && !form.ntlm_hash.trim()) return toast.error(t('validation.ntlmHash'));
+    if (authMethod === 'ccache' && !form.ccache) return toast.error(t('validation.ccacheFile'));
+    if (!form.new_password) return toast.error(t('validation.newPassword'));
     if (form.new_password !== form.confirm_password) {
-      return toast.error('A confirmação da nova senha não confere');
+      return toast.error(t('validation.confirmMismatch'));
     }
     if (authMethod === 'password' && form.new_password === form.current_password) {
-      return toast.error('A nova senha deve ser diferente da atual');
+      return toast.error(t('validation.sameAsCurrent'));
     }
 
     setLoading(true);
@@ -86,17 +88,17 @@ const ChangeDomainPassword = () => {
         kdc_host: authMethod === 'ccache' ? (form.kdc_host || null) : null,
       };
       const { data } = await axios.post(`${API}/tools/change-domain-password`, payload);
-      toast.success(data.message || 'Senha alterada com sucesso', { duration: 6000 });
+      toast.success(data.message || t('toast.success'), { duration: 6000 });
       setForm({ domain: '', username: '', current_password: '', ntlm_hash: '', ccache: '', kdc_host: '', new_password: '', confirm_password: '', target: '' });
       setCcacheFileName('');
     } catch (error) {
       console.error('Error changing domain password:', error);
       const detail = error.response?.data?.detail;
       const msg = typeof detail === 'object' ? detail?.message : detail;
-      toast.error(msg || 'Falha ao trocar a senha', {
+      toast.error(msg || t('toast.error'), {
         duration: 7000,
         description: error.response?.status === 503
-          ? 'Verifique se o domínio/DC informado está acessível na rede.'
+          ? t('toast.errorDescription503')
           : undefined
       });
     } finally {
@@ -136,11 +138,10 @@ const ChangeDomainPassword = () => {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <KeyRound className="w-7 h-7 text-emerald-500" />
-          Trocar senha de domínio
+          {t('title')}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Altera a senha de uma conta do Active Directory usando a senha atual, um hash NTLM ou um
-          ticket Kerberos (ccache). Funciona inclusive quando a conta exige troca de senha no próximo logon.
+          {t('description')}
         </p>
       </div>
 
@@ -148,21 +149,20 @@ const ChangeDomainPassword = () => {
         <CardHeader>
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-500" />
-            <CardTitle>Dados da conta</CardTitle>
+            <CardTitle>{t('card.title')}</CardTitle>
           </div>
           <CardDescription>
-            Informe o domínio, o usuário e as senhas. O alvo pode ser o próprio domínio (que normalmente
-            resolve para um controlador de domínio) ou um DC específico.
+            {t('card.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="domain">Domínio</Label>
+                <Label htmlFor="domain">{t('common:fields.domain')}</Label>
                 <Input
                   id="domain"
-                  placeholder="EMPRESA ou empresa.local"
+                  placeholder={t('placeholders.domain')}
                   value={form.domain}
                   onChange={(e) => handleChange('domain', e.target.value)}
                   data-testid="domain-input"
@@ -170,11 +170,11 @@ const ChangeDomainPassword = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="username">
-                  Usuário {authMethod === 'ccache' ? '(opcional)' : '*'}
+                  {t('common:fields.username')} {authMethod === 'ccache' ? t('optional') : '*'}
                 </Label>
                 <Input
                   id="username"
-                  placeholder={authMethod === 'ccache' ? 'derivado do ccache se vazio' : 'usuario (ou DOMINIO\\usuario)'}
+                  placeholder={authMethod === 'ccache' ? t('placeholders.usernameCcache') : t('placeholders.username')}
                   value={form.username}
                   onChange={(e) => handleChange('username', e.target.value)}
                   required={authMethod !== 'ccache'}
@@ -185,9 +185,9 @@ const ChangeDomainPassword = () => {
 
             {/* Seletor do método de "senha atual" */}
             <div className="space-y-2">
-              <Label>Senha atual (forma de autenticação)</Label>
+              <Label>{t('authLabel')}</Label>
               <div className="grid grid-cols-3 gap-2" data-testid="auth-method-selector">
-                {AUTH_METHODS.map(({ key, label, icon: Icon }) => (
+                {AUTH_METHODS.map(({ key, icon: Icon }) => (
                   <button
                     key={key}
                     type="button"
@@ -200,30 +200,30 @@ const ChangeDomainPassword = () => {
                     }`}
                   >
                     <Icon className="w-4 h-4" />
-                    {label}
+                    {t('authMethods.' + key)}
                   </button>
                 ))}
               </div>
             </div>
 
             {authMethod === 'password' &&
-              renderPwd('current-password', 'Senha atual *', 'current_password', 'current', 'Senha atual da conta')}
+              renderPwd('current-password', t('fields.currentPassword'), 'current_password', 'current', t('placeholders.currentPassword'))}
 
             {authMethod === 'ntlm' && (
               <div className="space-y-2">
                 <Label htmlFor="ntlm-hash" className="flex items-center gap-2">
                   <Hash className="w-4 h-4" />
-                  Hash NTLM atual *
+                  {t('fields.ntlmHash')}
                 </Label>
                 <Input
                   id="ntlm-hash"
-                  placeholder="aad3b435b51404eeaad3b435b51404ee:... (LM:NT ou apenas NT)"
+                  placeholder={t('placeholders.ntlmHash')}
                   value={form.ntlm_hash}
                   onChange={(e) => handleChange('ntlm_hash', e.target.value)}
                   className="font-mono text-sm"
                   data-testid="ntlm-hash-input"
                 />
-                <p className="text-xs text-muted-foreground">Formato: LM:NT ou apenas o hash NT.</p>
+                <p className="text-xs text-muted-foreground">{t('help.ntlm')}</p>
               </div>
             )}
 
@@ -232,7 +232,7 @@ const ChangeDomainPassword = () => {
                 <div className="space-y-2">
                   <Label htmlFor="ccache-file" className="flex items-center gap-2">
                     <Fingerprint className="w-4 h-4" />
-                    Ticket Kerberos (arquivo ccache) *
+                    {t('fields.ccacheFile')}
                   </Label>
                   <div className="flex items-center gap-3">
                     <Input
@@ -246,22 +246,22 @@ const ChangeDomainPassword = () => {
                     {form.ccache && (
                       <Badge variant="secondary" className="gap-1 shrink-0">
                         <Check className="w-3 h-3" />
-                        {ccacheFileName || 'ccache carregado'}
+                        {ccacheFileName || t('ccacheLoaded')}
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    A troca usa o protocolo kpasswd (RFC 3244). O ticket precisa estar válido e o usuário/domínio podem ser derivados do ccache.
+                    {t('help.ccache')}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="kdc-host" className="flex items-center gap-2">
                     <Server className="w-4 h-4 text-muted-foreground" />
-                    KDC / Controlador de domínio (opcional)
+                    {t('fields.kdcHost')}
                   </Label>
                   <Input
                     id="kdc-host"
-                    placeholder="IP ou hostname do KDC (vazio = usar o alvo/domínio)"
+                    placeholder={t('placeholders.kdcHost')}
                     value={form.kdc_host}
                     onChange={(e) => handleChange('kdc_host', e.target.value)}
                     data-testid="kdc-host-input"
@@ -271,35 +271,35 @@ const ChangeDomainPassword = () => {
             )}
 
             <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-border">
-              {renderPwd('new-password', 'Nova senha *', 'new_password', 'next', 'Nova senha')}
-              {renderPwd('confirm-password', 'Confirmar nova senha *', 'confirm_password', 'confirm', 'Repita a nova senha')}
+              {renderPwd('new-password', t('fields.newPassword'), 'new_password', 'next', t('placeholders.newPassword'))}
+              {renderPwd('confirm-password', t('fields.confirmPassword'), 'confirm_password', 'confirm', t('placeholders.confirmPassword'))}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="target" className="flex items-center gap-2">
                 <Server className="w-4 h-4 text-muted-foreground" />
-                Controlador de domínio / alvo (opcional)
+                {t('fields.target')}
               </Label>
               <Input
                 id="target"
-                placeholder="IP ou hostname do DC (vazio = usar o domínio)"
+                placeholder={t('placeholders.target')}
                 value={form.target}
                 onChange={(e) => handleChange('target', e.target.value)}
                 data-testid="target-input"
               />
               <p className="text-xs text-muted-foreground">
-                Se deixar vazio, o domínio informado será usado como alvo.
+                {t('help.target')}
               </p>
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
               <span className="text-yellow-500">⚠</span>
-              <span>A nova senha deve atender à política do domínio (tamanho, complexidade e histórico).</span>
+              <span>{t('warning')}</span>
             </div>
 
             <Button type="submit" disabled={loading} data-testid="change-password-btn">
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <KeyRound className="w-4 h-4 mr-2" />}
-              {loading ? 'Alterando...' : 'Alterar senha'}
+              {loading ? t('button.submitting') : t('button.submit')}
             </Button>
           </form>
         </CardContent>

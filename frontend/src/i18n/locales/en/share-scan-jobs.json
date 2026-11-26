@@ -1,0 +1,78 @@
+{
+  "title": "Share Scan Jobs",
+  "subtitle": "Monitoring of share scans across servers",
+  "realtime": "Real time",
+  "offline": "Offline",
+  "total": "Total",
+  "filter": "Filter: {{label}}",
+  "searchPlaceholder": "Search by server...",
+  "statusLabels": {
+    "pending": "Pending",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "errorLabels": {
+    "generic": "Error",
+    "unreachable": "Unreachable",
+    "accessDenied": "Access Denied",
+    "noCredential": "No Credential",
+    "connectionError": "Connection Error",
+    "pluginNotConfigured": "Plugin not configured",
+    "timeout": "Timeout"
+  },
+  "actions": {
+    "retryFailed": "Retry Failed",
+    "retryCancelled": "Retry Cancelled",
+    "cancelAll": "Cancel All",
+    "clearFinished": "Clear Finished"
+  },
+  "table": {
+    "jobs": "Jobs",
+    "empty": "No share scan job found",
+    "emptyHint": "Start a scan in Servers → Share Scan",
+    "id": "ID",
+    "server": "Server",
+    "status": "Status",
+    "shares": "Shares",
+    "nonAdminShares": "Non-$ shares",
+    "created": "Created",
+    "actions": "Actions",
+    "hasNonAdmin": "Yes",
+    "onlyAdmin": "Admin only"
+  },
+  "rowActions": {
+    "prioritize": "Run now (maximum priority)",
+    "cancel": "Cancel job",
+    "retry": "Retry job",
+    "remove": "Remove job"
+  },
+  "dialog": {
+    "clearTitle": "Clear Finished Jobs",
+    "retryTitle": "Retry Failed Jobs",
+    "retryCancelledTitle": "Retry Cancelled Jobs",
+    "cancelAllTitle": "Cancel All Jobs",
+    "deleteTitle": "Remove Job",
+    "cancelTitle": "Cancel Job",
+    "clearDesc": "This will remove all completed, failed and cancelled jobs. This action cannot be undone.",
+    "retryDesc": "This will requeue {{count}} failed jobs for processing again.",
+    "retryCancelledDesc": "This will requeue {{count}} cancelled jobs for processing again.",
+    "cancelAllDesc": "This will cancel {{count}} pending and running jobs.",
+    "deleteDesc": "Are you sure you want to remove this job? This action cannot be undone.",
+    "cancelDesc": "Are you sure you want to cancel this job?"
+  },
+  "toast": {
+    "cancelSuccess": "Job cancelled successfully",
+    "cancelError": "Error cancelling job",
+    "cancelAllSuccess": "All jobs cancelled",
+    "cancelAllError": "Error cancelling all jobs",
+    "clearSuccess": "{{count}} jobs removed",
+    "clearError": "Error clearing jobs",
+    "prioritizeError": "Error prioritizing job",
+    "retryFailedError": "Error retrying failed jobs",
+    "retryCancelledError": "Error retrying cancelled jobs",
+    "retryError": "Error retrying job",
+    "deleteError": "Error deleting job"
+  }
+}

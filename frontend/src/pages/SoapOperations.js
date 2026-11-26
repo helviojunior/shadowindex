@@ -12,11 +12,13 @@ import { PlayCircle, Loader2, Copy, Check, Plug, AlertCircle } from 'lucide-reac
 import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTranslation, Trans } from 'react-i18next';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const SoapOperations = () => {
+  const { t } = useTranslation('soap-operations');
   const [activeTab, setActiveTab] = useState('resolve');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -70,7 +72,7 @@ const SoapOperations = () => {
 
   const handleOperation = async (operation, data) => {
     if (!selectedSoapApi) {
-      toast.error('Selecione uma SOAP API primeiro');
+      toast.error(t('toast.selectApiFirst'));
       return;
     }
 
@@ -94,7 +96,7 @@ const SoapOperations = () => {
       // Operação executada (sem toast de sucesso)
     } catch (error) {
       console.error('Error executing SOAP operation:', error);
-      const errorMsg = error.response?.data?.detail || 'Erro ao executar operação SOAP';
+      const errorMsg = error.response?.data?.detail || t('toast.operationError');
       setResult({
         success: false,
         error: errorMsg
@@ -123,9 +125,9 @@ const SoapOperations = () => {
         }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        toast.success('Resultado copiado');
+        toast.success(t('toast.copied'));
       } catch (error) {
-        toast.error('Erro ao copiar');
+        toast.error(t('toast.copyError'));
       }
     }
   };
@@ -148,8 +150,8 @@ const SoapOperations = () => {
   return (
     <div className="space-y-6" data-testid="soap-operations-page">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Operações SOAP</h1>
-        <p className="text-muted-foreground mt-2">Execute operações no WebService SOAP</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('header.title')}</h1>
+        <p className="text-muted-foreground mt-2">{t('header.subtitle')}</p>
       </div>
 
       {/* SOAP API Selector */}
@@ -157,20 +159,22 @@ const SoapOperations = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Plug className="w-5 h-5" />
-            Selecionar SOAP API
+            {t('selector.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loadingApis ? (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Carregando APIs...
+              {t('selector.loading')}
             </div>
           ) : soapApis.length === 0 ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Nenhuma SOAP API configurada. Configure uma em <a href="/plugins/soap" className="underline font-medium">Plugins → SOAP Plugin</a>.
+                <Trans t={t} i18nKey="selector.noApi">
+                  No SOAP API configured. Configure one under <a href="/plugins/soap" className="underline font-medium">Plugins → SOAP Plugin</a>.
+                </Trans>
               </AlertDescription>
             </Alert>
           ) : (
@@ -180,7 +184,7 @@ const SoapOperations = () => {
                 onValueChange={setSelectedSoapApi}
               >
                 <SelectTrigger className="w-[350px]" data-testid="soap-api-selector">
-                  <SelectValue placeholder="Selecione uma SOAP API" />
+                  <SelectValue placeholder={t('selector.placeholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {soapApis.map((api) => (
@@ -206,34 +210,34 @@ const SoapOperations = () => {
       {/* Operations Tabs */}
       <Card>
         <CardHeader>
-          <CardTitle>Selecione a Operação</CardTitle>
-          <CardDescription>Escolha e execute uma operação SOAP</CardDescription>
+          <CardTitle>{t('operations.title')}</CardTitle>
+          <CardDescription>{t('operations.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-5 mb-4">
-              <TabsTrigger value="resolve" data-testid="tab-resolve">Resolve</TabsTrigger>
-              <TabsTrigger value="shares" data-testid="tab-shares">Shares</TabsTrigger>
-              <TabsTrigger value="exec" data-testid="tab-exec">Consulta SQL</TabsTrigger>
-              <TabsTrigger value="exec4" data-testid="tab-exec4">Lista Diretório</TabsTrigger>
-              <TabsTrigger value="exec5" data-testid="tab-exec5">Download File</TabsTrigger>
+              <TabsTrigger value="resolve" data-testid="tab-resolve">{t('tabs.resolve')}</TabsTrigger>
+              <TabsTrigger value="shares" data-testid="tab-shares">{t('tabs.shares')}</TabsTrigger>
+              <TabsTrigger value="exec" data-testid="tab-exec">{t('tabs.exec')}</TabsTrigger>
+              <TabsTrigger value="exec4" data-testid="tab-exec4">{t('tabs.exec4')}</TabsTrigger>
+              <TabsTrigger value="exec5" data-testid="tab-exec5">{t('tabs.exec5')}</TabsTrigger>
             </TabsList>
 
             {/* Resolve Tab */}
             <TabsContent value="resolve" className="space-y-4 mt-4">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Resolução DNS</h3>
+                  <h3 className="font-semibold mb-2">{t('resolve.title')}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Resolve nomes de domínio para endereços IP
+                    {t('resolve.description')}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="resolve-s1">Nome do Host/Domínio</Label>
+                  <Label htmlFor="resolve-s1">{t('resolve.label')}</Label>
                   <Input
                     id="resolve-s1"
                     data-testid="resolve-s1-input"
-                    placeholder="exemplo.com"
+                    placeholder={t('resolve.placeholder')}
                     value={resolveForm.s1}
                     onChange={(e) => setResolveForm({ s1: e.target.value })}
                   />
@@ -244,7 +248,7 @@ const SoapOperations = () => {
                   data-testid="execute-resolve-btn"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <PlayCircle className="w-4 h-4 mr-2" />}
-                  Executar Resolve
+                  {t('resolve.execute')}
                 </Button>
               </div>
             </TabsContent>
@@ -253,17 +257,17 @@ const SoapOperations = () => {
             <TabsContent value="shares" className="space-y-4 mt-4">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Listar Compartilhamentos</h3>
+                  <h3 className="font-semibold mb-2">{t('shares.title')}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Lista os compartilhamentos de rede de um servidor
+                    {t('shares.description')}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="shares-s1">Nome do Servidor/IP</Label>
+                  <Label htmlFor="shares-s1">{t('shares.label')}</Label>
                   <Input
                     id="shares-s1"
                     data-testid="shares-s1-input"
-                    placeholder="servidor.local"
+                    placeholder={t('shares.placeholder')}
                     value={sharesForm.s1}
                     onChange={(e) => setSharesForm({ s1: e.target.value })}
                   />
@@ -274,7 +278,7 @@ const SoapOperations = () => {
                   data-testid="execute-shares-btn"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <PlayCircle className="w-4 h-4 mr-2" />}
-                  Executar Shares
+                  {t('shares.execute')}
                 </Button>
               </div>
             </TabsContent>
@@ -283,24 +287,24 @@ const SoapOperations = () => {
             <TabsContent value="exec" className="space-y-4 mt-4">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Executar Query SQL</h3>
+                  <h3 className="font-semibold mb-2">{t('exec.title')}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Executa uma query em um banco de dados
+                    {t('exec.description')}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="exec-connStr">Conexão de Banco de Dados</Label>
+                  <Label htmlFor="exec-connStr">{t('exec.connectionLabel')}</Label>
                   <Select
                     value={execForm.connStr}
                     onValueChange={(value) => setExecForm({ ...execForm, connStr: value })}
                   >
                     <SelectTrigger data-testid="exec-connection-select">
-                      <SelectValue placeholder="Selecione uma conexão" />
+                      <SelectValue placeholder={t('exec.connectionPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {dbConnections.length === 0 ? (
                         <SelectItem value="_none" disabled>
-                          Nenhuma conexão cadastrada
+                          {t('exec.noConnection')}
                         </SelectItem>
                       ) : (
                         dbConnections.map((conn) => (
@@ -313,11 +317,11 @@ const SoapOperations = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="exec-query">Query SQL</Label>
+                  <Label htmlFor="exec-query">{t('exec.queryLabel')}</Label>
                   <Textarea
                     id="exec-query"
                     data-testid="exec-query-input"
-                    placeholder="SELECT * FROM users"
+                    placeholder={t('exec.queryPlaceholder')}
                     value={execForm.query}
                     onChange={(e) => setExecForm({ ...execForm, query: e.target.value })}
                     rows={4}
@@ -329,7 +333,7 @@ const SoapOperations = () => {
                   data-testid="execute-exec-btn"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <PlayCircle className="w-4 h-4 mr-2" />}
-                  Consulta SQL
+                  {t('exec.execute')}
                 </Button>
               </div>
             </TabsContent>
@@ -338,17 +342,17 @@ const SoapOperations = () => {
             <TabsContent value="exec4" className="space-y-4 mt-4">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Listar Diretório</h3>
+                  <h3 className="font-semibold mb-2">{t('exec4.title')}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Lista arquivos e pastas de um diretório
+                    {t('exec4.description')}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="exec4-s1">Caminho do Diretório</Label>
+                  <Label htmlFor="exec4-s1">{t('exec4.label')}</Label>
                   <Input
                     id="exec4-s1"
                     data-testid="exec4-s1-input"
-                    placeholder="C:\\Users\\Documents"
+                    placeholder={t('exec4.placeholder')}
                     value={exec4Form.s1}
                     onChange={(e) => setExec4Form({ s1: e.target.value })}
                   />
@@ -359,7 +363,7 @@ const SoapOperations = () => {
                   data-testid="execute-exec4-btn"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <PlayCircle className="w-4 h-4 mr-2" />}
-                  List Path
+                  {t('exec4.execute')}
                 </Button>
               </div>
             </TabsContent>
@@ -368,17 +372,17 @@ const SoapOperations = () => {
             <TabsContent value="exec5" className="space-y-4 mt-4">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Download de Arquivo</h3>
+                  <h3 className="font-semibold mb-2">{t('exec5.title')}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Faz download de um arquivo (retorna em Base64)
+                    {t('exec5.description')}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="exec5-s1">Caminho do Arquivo</Label>
+                  <Label htmlFor="exec5-s1">{t('exec5.label')}</Label>
                   <Input
                     id="exec5-s1"
                     data-testid="exec5-s1-input"
-                    placeholder="C:\\path\\to\\file.txt"
+                    placeholder={t('exec5.placeholder')}
                     value={exec5Form.s1}
                     onChange={(e) => setExec5Form({ s1: e.target.value })}
                   />
@@ -389,7 +393,7 @@ const SoapOperations = () => {
                   data-testid="execute-exec5-btn"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <PlayCircle className="w-4 h-4 mr-2" />}
-                  Download File
+                  {t('exec5.execute')}
                 </Button>
               </div>
             </TabsContent>
@@ -402,11 +406,11 @@ const SoapOperations = () => {
         <Card data-testid="soap-result-card">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Resultado</span>
+              <span>{t('result.title')}</span>
               <div className="flex items-center gap-2">
                 {result.success && result.fromCache && (
                   <span className="text-sm font-normal text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                    Do Cache
+                    {t('result.fromCache')}
                   </span>
                 )}
                 {result.success && (
@@ -430,7 +434,7 @@ const SoapOperations = () => {
               </ScrollArea>
             ) : (
               <div className="p-4 bg-destructive/10 text-destructive rounded-lg" data-testid="soap-error-output">
-                <strong>Erro:</strong> {result.error}
+                <strong>{t('result.errorLabel')}</strong> {result.error}
               </div>
             )}
           </CardContent>

@@ -1,0 +1,78 @@
+{
+  "title": "Jobs de Share Scan",
+  "subtitle": "Monitoramento de scans de shares nos servidores",
+  "realtime": "Tempo real",
+  "offline": "Offline",
+  "total": "Total",
+  "filter": "Filtro: {{label}}",
+  "searchPlaceholder": "Buscar por servidor...",
+  "statusLabels": {
+    "pending": "Pendentes",
+    "running": "Executando",
+    "completed": "Concluídos",
+    "failed": "Falhados",
+    "cancelled": "Cancelados"
+  },
+  "errorLabels": {
+    "generic": "Erro",
+    "unreachable": "Inacessível",
+    "accessDenied": "Acesso Negado",
+    "noCredential": "Sem Credencial",
+    "connectionError": "Erro de Conexão",
+    "pluginNotConfigured": "Plugin não configurado",
+    "timeout": "Timeout"
+  },
+  "actions": {
+    "retryFailed": "Reexecutar Falhados",
+    "retryCancelled": "Reexecutar Cancelados",
+    "cancelAll": "Cancelar Todos",
+    "clearFinished": "Limpar Finalizados"
+  },
+  "table": {
+    "jobs": "Jobs",
+    "empty": "Nenhum job de share scan encontrado",
+    "emptyHint": "Inicie um scan em Servidores → Share Scan",
+    "id": "ID",
+    "server": "Servidor",
+    "status": "Status",
+    "shares": "Shares",
+    "nonAdminShares": "Não $ shares",
+    "created": "Criado",
+    "actions": "Ações",
+    "hasNonAdmin": "Sim",
+    "onlyAdmin": "Apenas admin"
+  },
+  "rowActions": {
+    "prioritize": "Executar agora (prioridade máxima)",
+    "cancel": "Cancelar job",
+    "retry": "Reexecutar job",
+    "remove": "Remover job"
+  },
+  "dialog": {
+    "clearTitle": "Limpar Jobs Finalizados",
+    "retryTitle": "Reexecutar Jobs Falhados",
+    "retryCancelledTitle": "Reexecutar Jobs Cancelados",
+    "cancelAllTitle": "Cancelar Todos os Jobs",
+    "deleteTitle": "Remover Job",
+    "cancelTitle": "Cancelar Job",
+    "clearDesc": "Isso removerá todos os jobs concluídos, falhados e cancelados. Esta ação não pode ser desfeita.",
+    "retryDesc": "Isso reenfileirará {{count}} jobs falhados para processamento novamente.",
+    "retryCancelledDesc": "Isso reenfileirará {{count}} jobs cancelados para processamento novamente.",
+    "cancelAllDesc": "Isso cancelará {{count}} jobs pendentes e em execução.",
+    "deleteDesc": "Tem certeza que deseja remover este job? Esta ação não pode ser desfeita.",
+    "cancelDesc": "Tem certeza que deseja cancelar este job?"
+  },
+  "toast": {
+    "cancelSuccess": "Job cancelado com sucesso",
+    "cancelError": "Erro ao cancelar job",
+    "cancelAllSuccess": "Todos os jobs cancelados",
+    "cancelAllError": "Erro ao cancelar todos os jobs",
+    "clearSuccess": "{{count}} jobs removidos",
+    "clearError": "Erro ao limpar jobs",
+    "prioritizeError": "Erro ao priorizar job",
+    "retryFailedError": "Erro ao reexecutar jobs falhados",
+    "retryCancelledError": "Erro ao reexecutar jobs cancelados",
+    "retryError": "Erro ao reexecutar job",
+    "deleteError": "Erro ao deletar job"
+  }
+}

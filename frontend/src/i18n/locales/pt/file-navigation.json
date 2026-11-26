@@ -1,0 +1,31 @@
+{
+  "title": "Navegação de Arquivos",
+  "subtitle": "Selecione um servidor para navegar em seus arquivos",
+  "searchPlaceholder": "Buscar por nome ou IP...",
+  "found_one": "{{count}} encontrado",
+  "found_other": "{{count}} encontrados",
+  "contextMenu": {
+    "openNewTab": "Abrir em nova aba"
+  },
+  "filters": {
+    "nonAdminShares": "Somente com Shares não administrativas",
+    "noFiles": "Somente sem arquivos listados",
+    "unchecked": "Somente os não analisados"
+  },
+  "tabs": {
+    "accessed": "Acessados",
+    "accessDenied": "Acesso Negado",
+    "unreachable": "Inacessíveis",
+    "notAccessed": "Não Acessados"
+  },
+  "empty": {
+    "accessedFiltered": "Nenhum servidor acessado encontrado com esse filtro",
+    "accessedNone": "Nenhum servidor foi acessado ainda",
+    "accessDeniedFiltered": "Nenhum servidor com acesso negado encontrado com esse filtro",
+    "accessDeniedNone": "Nenhum servidor com acesso negado",
+    "unreachableFiltered": "Nenhum servidor inacessível encontrado com esse filtro",
+    "unreachableNone": "Nenhum servidor inacessível",
+    "notAccessedFiltered": "Nenhum servidor pendente encontrado com esse filtro",
+    "notAccessedNone": "Todos os servidores já foram acessados"
+  }
+}

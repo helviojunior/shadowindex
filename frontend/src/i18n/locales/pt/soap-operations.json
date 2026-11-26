@@ -1,0 +1,72 @@
+{
+  "header": {
+    "title": "Operações SOAP",
+    "subtitle": "Execute operações no WebService SOAP"
+  },
+  "selector": {
+    "title": "Selecionar SOAP API",
+    "loading": "Carregando APIs...",
+    "placeholder": "Selecione uma SOAP API",
+    "noApi": "Nenhuma SOAP API configurada. Configure uma em <0>Plugins → SOAP Plugin</0>."
+  },
+  "operations": {
+    "title": "Selecione a Operação",
+    "description": "Escolha e execute uma operação SOAP"
+  },
+  "tabs": {
+    "resolve": "Resolve",
+    "shares": "Shares",
+    "exec": "Consulta SQL",
+    "exec4": "Lista Diretório",
+    "exec5": "Download File"
+  },
+  "resolve": {
+    "title": "Resolução DNS",
+    "description": "Resolve nomes de domínio para endereços IP",
+    "label": "Nome do Host/Domínio",
+    "placeholder": "exemplo.com",
+    "execute": "Executar Resolve"
+  },
+  "shares": {
+    "title": "Listar Compartilhamentos",
+    "description": "Lista os compartilhamentos de rede de um servidor",
+    "label": "Nome do Servidor/IP",
+    "placeholder": "servidor.local",
+    "execute": "Executar Shares"
+  },
+  "exec": {
+    "title": "Executar Query SQL",
+    "description": "Executa uma query em um banco de dados",
+    "connectionLabel": "Conexão de Banco de Dados",
+    "connectionPlaceholder": "Selecione uma conexão",
+    "noConnection": "Nenhuma conexão cadastrada",
+    "queryLabel": "Query SQL",
+    "queryPlaceholder": "SELECT * FROM users",
+    "execute": "Consulta SQL"
+  },
+  "exec4": {
+    "title": "Listar Diretório",
+    "description": "Lista arquivos e pastas de um diretório",
+    "label": "Caminho do Diretório",
+    "placeholder": "C:\\Users\\Documents",
+    "execute": "List Path"
+  },
+  "exec5": {
+    "title": "Download de Arquivo",
+    "description": "Faz download de um arquivo (retorna em Base64)",
+    "label": "Caminho do Arquivo",
+    "placeholder": "C:\\path\\to\\file.txt",
+    "execute": "Download File"
+  },
+  "result": {
+    "title": "Resultado",
+    "fromCache": "Do Cache",
+    "errorLabel": "Erro:"
+  },
+  "toast": {
+    "selectApiFirst": "Selecione uma SOAP API primeiro",
+    "operationError": "Erro ao executar operação SOAP",
+    "copied": "Resultado copiado",
+    "copyError": "Erro ao copiar"
+  }
+}

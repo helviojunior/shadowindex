@@ -1,0 +1,151 @@
+{
+  "title": "General Settings",
+  "subtitle": "Configure the system's general parameters",
+  "saveButton": "Save Settings",
+  "saving": "Saving...",
+  "appearance": {
+    "title": "Appearance",
+    "description": "Customize the logo, favicon, logo alignment and the selected item color in the sidebar menu",
+    "logoLabel": "System logo",
+    "logoPreviewAlt": "Logo preview",
+    "logoEmpty": "No logo",
+    "uploadFile": "Upload file",
+    "logoFormats": "SVG, PNG, JPG, GIF or WEBP. Saved on the server.",
+    "alignmentLabel": "Logo alignment",
+    "alignmentLeft": "Left",
+    "alignmentCenter": "Centered",
+    "alignmentRight": "Right",
+    "sidebarColorLabel": "Selected item color (sidebar menu)",
+    "sidebarColorHelp": "Applies only to the selected item in the sidebar.",
+    "faviconLabel": "Favicon (tab icon)",
+    "faviconPreviewAlt": "Favicon preview",
+    "faviconEmpty": "None",
+    "faviconFormats": "ICO, PNG, SVG or GIF. Saved on the server.",
+    "info": {
+      "filesLocationBefore": "Uploaded files are stored in",
+      "filesLocationAfter": "on the server.",
+      "urlOrUpload": "You can provide an external URL or upload a file — the upload takes precedence.",
+      "appliedBefore": "URL/color/alignment changes are applied when you click",
+      "appliedAfter": "; uploads are applied immediately."
+    }
+  },
+  "download": {
+    "title": "Download Settings",
+    "description": "Configure the default limits and behaviors of the download system",
+    "simultaneousDownloadsLabel": "Simultaneous Downloads",
+    "simultaneousDownloadsHelp": "Maximum number of parallel downloads (1-10). Directly affects server processing.",
+    "threadsPerFileLabel": "Threads per File",
+    "threadsPerFileHelp": "Parallel segments for files >100MB (1 = sequential).",
+    "ocrJobsLabel": "Simultaneous OCR Jobs",
+    "ocrJobsHelp": "Maximum number of parallel OCR jobs (1-5).",
+    "scansLabel": "Simultaneous Scans",
+    "scansHelp": "Maximum number of parallel directory scans (1-10).",
+    "ocrCleanupLabel": "Auto OCR Cleanup (min)",
+    "ocrCleanupHelp": "Minutes before deleting successfully finished OCR jobs. 0 = disabled.",
+    "depthLevelsLabel": "Depth Levels",
+    "depthLevelsHelp": "Default value of the levels selector on the files screen (1-20).",
+    "maxFileSizeLabel": "Maximum Size (MB)",
+    "maxFileSizeHelp": "Default value of the maximum size selector on the files screen (1-1000 MB)."
+  },
+  "ignoredExtensions": {
+    "title": "Ignored Extensions",
+    "description": "File extensions that will be ignored in batch downloads. Manual downloads (Sync button) do not apply these filters.",
+    "placeholder": "e.g. .log",
+    "empty": "No extension configured",
+    "infoTitle": "About Ignored Extensions",
+    "info": {
+      "item1": "Files with these extensions will be automatically ignored in batch downloads (\"Send to Queue\" button)",
+      "item2": "Manual downloads via the Sync button download any file, without applying filters",
+      "item3": "Use it to avoid downloading log, temporary or backup files",
+      "wildcardLabel": "Wildcards:",
+      "wildcardBefore": "Use",
+      "wildcardAfter": "to ignore .log.1, .log.2, etc."
+    }
+  },
+  "importPorts": {
+    "title": "Import Ports",
+    "description": "Configure which ports are considered when importing servers via Nmap XML. Only hosts with these ports open will be imported.",
+    "placeholder": "Port (e.g. 445)",
+    "portLabel": "Port {{port}}",
+    "empty": "No port configured - all hosts will be imported",
+    "infoTitle": "About Import Ports",
+    "info": {
+      "smbLabel": "SMB (445):",
+      "smbText": "Windows file sharing",
+      "rdpLabel": "RDP (3389):",
+      "rdpText": "Remote Desktop (Windows)",
+      "dbLabel": "Databases:",
+      "dbText": "MSSQL (1433), MySQL (3306), PostgreSQL (5432), Oracle (1521), MongoDB (27017), Redis (6379)",
+      "item4": "Hosts without any of these ports open will be ignored during import",
+      "item5": "You can add custom ports as needed"
+    }
+  },
+  "autoOcr": {
+    "title": "Auto OCR",
+    "description": "Configure automatic OCR to extract text from files after download",
+    "toggleLabel": "Automatic OCR",
+    "toggleHelp": "When enabled, downloaded files are automatically added to the OCR queue",
+    "extensionsLabel": "Extensions for Automatic OCR",
+    "extensionsHelp": "Files with these extensions will be processed by OCR after download",
+    "extensionsPlaceholder": ".ext (e.g. .pdf)",
+    "mimetypesLabel": "MIME Types for Automatic OCR",
+    "mimetypesHelp": "MIME types (partial) that trigger automatic OCR. E.g. \"image/\" captures all image types.",
+    "mimetypesPlaceholder": "MIME type (e.g. image/)",
+    "excludedLabel": "Extensions Excluded from OCR",
+    "excludedHelpBefore": "Files with these extensions will be",
+    "excludedHelpStrong": "always ignored",
+    "excludedHelpAfter": "by automatic OCR, even if they are in the inclusion list.",
+    "excludedPlaceholder": ".ext (e.g. .jpg)",
+    "infoTitle": "About Auto OCR",
+    "info": {
+      "item1": "OCR runs in the background after the file is downloaded",
+      "item2": "The extracted text becomes available for search and viewing",
+      "item3": "Requires Apache Tika configured and running",
+      "item4": "MIME types are checked with a partial match (e.g. \"image/\" captures \"image/png\", \"image/jpeg\", etc.)",
+      "item5Strong": "Excluded extensions take precedence",
+      "item5After": "over inclusions by extension or MIME type"
+    }
+  },
+  "autoIndex": {
+    "title": "Auto-Index",
+    "description": "Automatic indexing of the raw content of text files when OCR does not run or fails",
+    "toggleLabel": "Auto-Index enabled",
+    "toggleHelp": "Automatically index content of files not handled by OCR",
+    "maxSizeLabel": "Maximum file size (MB)",
+    "maxSizeHelp": "Files larger than this limit will not be indexed",
+    "extensionsLabel": "Extensions for Auto-Index",
+    "extensionsHint": "(supports wildcards: .env*)",
+    "extensionsPlaceholder": ".txt or .env*",
+    "mimetypesLabel": "MIME Types for Auto-Index",
+    "mimetypesPlaceholder": "text/",
+    "infoTitle": "About Auto-Index",
+    "info": {
+      "item1": "When OCR is skipped or fails, Auto-Index tries to read the raw content of the file",
+      "item2": "The indexed content becomes available for search, just like the text extracted by OCR",
+      "item3": "Extensions support wildcards (e.g. \".env*\" captures \".env\", \".env.local\", \".env.production\")",
+      "item4": "MIME types are checked with a partial match (e.g. \"text/\" captures \"text/plain\", \"text/csv\", etc.)",
+      "item5Strong": "All files that are successfully processed by OCR will have their OCR content automatically indexed, regardless of this setting"
+    }
+  },
+  "generalInfo": {
+    "title": "About the Settings",
+    "simultaneousDownloadsLabel": "Simultaneous Downloads:",
+    "simultaneousDownloadsText": "Controls how many files are downloaded at the same time by the server. Higher values may overload the system.",
+    "depthLevelsLabel": "Depth Levels:",
+    "depthLevelsText": "Sets the default value shown in the selector on the files screen. The user can change it at download time.",
+    "maxFileSizeLabel": "Maximum Size:",
+    "maxFileSizeText": "Sets the default value to ignore files larger than the limit. The user can change it at download time.",
+    "ignoredExtensionsLabel": "Ignored Extensions:",
+    "ignoredExtensionsText": "Files with these extensions are automatically skipped in batch downloads."
+  },
+  "toast": {
+    "saveSuccess": "Settings saved successfully",
+    "saveError": "Error saving settings",
+    "logoUploaded": "Logo uploaded successfully",
+    "faviconUploaded": "Favicon uploaded successfully",
+    "uploadError": "Error uploading file",
+    "extensionExists": "Extension already exists in the list",
+    "invalidPort": "Invalid port (1-65535)",
+    "portExists": "Port already exists in the list"
+  }
+}

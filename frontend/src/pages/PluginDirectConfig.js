@@ -15,11 +15,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShieldKeyIcon } from '@/components/icons';
+import { useTranslation } from 'react-i18next';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const PluginDirectConfig = () => {
+  const { t } = useTranslation('plugin-direct');
   const [pluginInfo, setPluginInfo] = useState(null);
   const [instances, setInstances] = useState([]);
   const [credentials, setCredentials] = useState([]);
@@ -68,14 +70,14 @@ const PluginDirectConfig = () => {
       setProxies(proxiesRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('Erro ao carregar dados');
+      toast.error(t('toast.loadError'));
     } finally {
       setLoading(false);
     }
   };
 
   const getProxyName = (proxyId) => {
-    if (!proxyId) return 'Sem proxy';
+    if (!proxyId) return t('instance.noProxy');
     const proxy = proxies.find(p => p.id === proxyId);
     if (!proxy) return `ID: ${proxyId}`;
     return `${proxy.name} (${proxy.ip}:${proxy.port})`;
@@ -83,16 +85,16 @@ const PluginDirectConfig = () => {
 
   const getCredentialLabel = (cred) => {
     if (cred.name) return cred.name;
-    if (cred.credential_type === 'anonymous') return 'Anônima (null session)';
+    if (cred.credential_type === 'anonymous') return t('credential.anonymous');
     if (cred.credential_type === 'kerberos') {
       const who = `${cred.domain ? cred.domain + '\\' : ''}${cred.username || ''}`.trim();
-      return who ? `Kerberos: ${who}` : 'Kerberos (ccache)';
+      return who ? t('credential.kerberos', { who }) : t('credential.kerberosCcache');
     }
     return `${cred.domain ? cred.domain + '\\' : ''}${cred.username || ''}`;
   };
 
   const getCredentialName = (credId) => {
-    if (!credId) return 'Sem autenticação';
+    if (!credId) return t('instance.noCredential');
     const cred = credentials.find(c => c.id === credId);
     if (!cred) return `ID: ${credId}`;
     return getCredentialLabel(cred);
@@ -112,28 +114,28 @@ const PluginDirectConfig = () => {
       };
 
       await axios.post(`${API}/plugin-instances`, payload);
-      toast.success('Instância criada com sucesso');
+      toast.success(t('toast.created'));
       setFormData({ name: '', description: '', config: { credential_id: null }, is_default: false, proxy_id: null });
       setShowAddForm(false);
       loadData();
     } catch (error) {
       console.error('Error creating instance:', error);
-      toast.error(error.response?.data?.detail || 'Erro ao criar instância');
+      toast.error(error.response?.data?.detail || t('toast.createError'));
     } finally {
       setFormLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir esta instância?')) return;
+    if (!confirm(t('confirm.delete'))) return;
     
     try {
       await axios.delete(`${API}/plugin-instances/${id}`);
-      toast.success('Instância excluída com sucesso');
+      toast.success(t('toast.deleted'));
       loadData();
     } catch (error) {
       console.error('Error deleting instance:', error);
-      toast.error(error.response?.data?.detail || 'Erro ao excluir instância');
+      toast.error(error.response?.data?.detail || t('toast.deleteError'));
     }
   };
 
@@ -157,13 +159,13 @@ const PluginDirectConfig = () => {
   const saveEdit = async (id) => {
     try {
       await axios.put(`${API}/plugin-instances/${id}`, editData);
-      toast.success('Instância atualizada com sucesso');
+      toast.success(t('toast.updated'));
       setEditingId(null);
       setEditData({});
       loadData();
     } catch (error) {
       console.error('Error updating instance:', error);
-      toast.error('Erro ao atualizar instância');
+      toast.error(t('toast.updateError'));
     }
   };
 
@@ -173,14 +175,14 @@ const PluginDirectConfig = () => {
       const response = await axios.post(`${API}/plugin-instances/${id}/health`);
       setHealthStatus(prev => ({ ...prev, [id]: response.data }));
       if (response.data.healthy) {
-        toast.success('Plugin saudável');
+        toast.success(t('toast.healthy'));
       } else {
-        toast.error(response.data.message || 'Plugin com problemas');
+        toast.error(response.data.message || t('toast.unhealthy'));
       }
     } catch (error) {
       console.error('Error checking health:', error);
-      setHealthStatus(prev => ({ ...prev, [id]: { healthy: false, message: 'Erro ao verificar' } }));
-      toast.error('Erro ao verificar saúde do plugin');
+      setHealthStatus(prev => ({ ...prev, [id]: { healthy: false, message: t('toast.verifyError') } }));
+      toast.error(t('toast.healthCheckError'));
     } finally {
       setCheckingHealth(prev => ({ ...prev, [id]: false }));
     }
@@ -189,22 +191,22 @@ const PluginDirectConfig = () => {
   const toggleDefault = async (instance) => {
     try {
       await axios.put(`${API}/plugin-instances/${instance.id}`, { is_default: !instance.is_default });
-      toast.success(instance.is_default ? 'Removido como padrão' : 'Definido como padrão');
+      toast.success(instance.is_default ? t('toast.defaultRemoved') : t('toast.defaultSet'));
       loadData();
     } catch (error) {
       console.error('Error toggling default:', error);
-      toast.error('Erro ao alterar status');
+      toast.error(t('toast.statusError'));
     }
   };
 
   const toggleActive = async (instance) => {
     try {
       await axios.put(`${API}/plugin-instances/${instance.id}`, { is_active: !instance.is_active });
-      toast.success(instance.is_active ? 'Instância desativada' : 'Instância ativada');
+      toast.success(instance.is_active ? t('toast.deactivated') : t('toast.activated'));
       loadData();
     } catch (error) {
       console.error('Error toggling active:', error);
-      toast.error('Erro ao alterar status');
+      toast.error(t('toast.statusError'));
     }
   };
 
@@ -224,9 +226,9 @@ const PluginDirectConfig = () => {
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
               <Server className="w-6 h-6" />
-              Interação Direta
+              {t('header.title')}
             </h1>
-            <p className="text-muted-foreground text-sm mt-1">Comunicação direta via SMB/Impacket</p>
+            <p className="text-muted-foreground text-sm mt-1">{t('header.subtitle')}</p>
           </div>
           {activeTab === 'instances' && (
             <Button 
@@ -238,12 +240,12 @@ const PluginDirectConfig = () => {
               {showAddForm ? (
                 <>
                   <ChevronUp className="w-4 h-4 mr-2" />
-                  Fechar
+                  {t('common:actions.close')}
                 </>
               ) : (
                 <>
                   <Plus className="w-4 h-4 mr-2" />
-                  Nova Instância
+                  {t('header.newInstance')}
                 </>
               )}
             </Button>
@@ -264,7 +266,7 @@ const PluginDirectConfig = () => {
             data-testid="tab-instances"
           >
             <Plug className="w-4 h-4" />
-            Instâncias
+            {t('tabs.instances')}
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{instances.length}</span>
             {activeTab === 'instances' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
@@ -281,7 +283,7 @@ const PluginDirectConfig = () => {
             data-testid="tab-info"
           >
             <Settings className="w-4 h-4" />
-            Info
+            {t('tabs.info')}
             {activeTab === 'info' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
             )}
@@ -299,18 +301,18 @@ const PluginDirectConfig = () => {
               {showAddForm && (
                 <Card>
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-base">Nova Instância de Interação Direta</CardTitle>
-                    <CardDescription>Configure uma nova instância do plugin SMB/Impacket</CardDescription>
+                    <CardTitle className="text-base">{t('form.title')}</CardTitle>
+                    <CardDescription>{t('form.description')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div className="grid gap-4 md:grid-cols-3">
                         <div className="space-y-2">
-                          <Label htmlFor="name">Nome da Instância</Label>
+                          <Label htmlFor="name">{t('form.nameLabel')}</Label>
                           <Input
                             id="name"
                             data-testid="instance-name-input"
-                            placeholder="Produção, Homologação, etc."
+                            placeholder={t('form.namePlaceholder')}
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             required
@@ -319,7 +321,7 @@ const PluginDirectConfig = () => {
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2">
                             <ShieldKeyIcon className="w-4 h-4" />
-                            Credencial
+                            {t('form.credentialLabel')}
                           </Label>
                           <Select
                             value={formData.config?.credential_id?.toString() || 'none'}
@@ -332,10 +334,10 @@ const PluginDirectConfig = () => {
                             })}
                           >
                             <SelectTrigger data-testid="instance-credential-select">
-                              <SelectValue placeholder="Selecione uma credencial" />
+                              <SelectValue placeholder={t('form.selectCredential')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">Sem autenticação</SelectItem>
+                              <SelectItem value="none">{t('form.noAuth')}</SelectItem>
                               {credentials.map((cred) => (
                                 <SelectItem key={cred.id} value={cred.id.toString()}>
                                   {getCredentialLabel(cred)}
@@ -348,7 +350,7 @@ const PluginDirectConfig = () => {
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2">
                             <Wifi className="w-4 h-4" />
-                            Proxy
+                            {t('form.proxyLabel')}
                           </Label>
                           <Select
                             value={formData.proxy_id?.toString() || 'none'}
@@ -358,13 +360,13 @@ const PluginDirectConfig = () => {
                             })}
                           >
                             <SelectTrigger data-testid="instance-proxy-select">
-                              <SelectValue placeholder="Selecione um proxy" />
+                              <SelectValue placeholder={t('form.selectProxy')} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">
                                 <span className="flex items-center gap-2">
                                   <WifiOff className="w-3 h-3" />
-                                  Sem proxy
+                                  {t('form.noProxy')}
                                 </span>
                               </SelectItem>
                               {proxies.filter(p => p.proxy_type === 'socks5' || p.proxy_type === 'socks4').length > 0 && (
@@ -381,7 +383,7 @@ const PluginDirectConfig = () => {
                                 <SelectItem key={proxy.id} value={proxy.id.toString()} disabled>
                                   <span className="flex items-center gap-2 opacity-50">
                                     <Wifi className="w-3 h-3" />
-                                    {proxy.name} ({proxy.proxy_type?.toUpperCase()}) - Requer SOCKS
+                                    {proxy.name} ({proxy.proxy_type?.toUpperCase()}) - {t('form.requiresSocks')}
                                   </span>
                                 </SelectItem>
                               ))}
@@ -390,11 +392,11 @@ const PluginDirectConfig = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="description">Descrição</Label>
+                        <Label htmlFor="description">{t('common:fields.description')}</Label>
                         <Textarea
                           id="description"
                           data-testid="instance-description-input"
-                          placeholder="Descrição opcional da instância"
+                          placeholder={t('form.descriptionPlaceholder')}
                           value={formData.description}
                           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                           rows={2}
@@ -402,7 +404,7 @@ const PluginDirectConfig = () => {
                       </div>
                       <Button type="submit" disabled={formLoading} data-testid="create-instance-btn" size="sm">
                         {formLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                        Criar Instância
+                        {t('form.createInstance')}
                       </Button>
                     </form>
                   </CardContent>
@@ -413,8 +415,8 @@ const PluginDirectConfig = () => {
               {instances.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Plug className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhuma instância configurada</p>
-                  <p className="text-sm mt-1">Clique em "Nova Instância" para criar</p>
+                  <p>{t('empty.title')}</p>
+                  <p className="text-sm mt-1">{t('empty.hint')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -435,14 +437,14 @@ const PluginDirectConfig = () => {
                           <div className="space-y-4">
                             <div className="grid gap-4 md:grid-cols-3">
                               <div className="space-y-2">
-                                <Label>Nome</Label>
+                                <Label>{t('common:fields.name')}</Label>
                                 <Input
                                   value={editData.name}
                                   onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label>Credencial</Label>
+                                <Label>{t('form.credentialLabel')}</Label>
                                 <Select
                                   value={editData.config?.credential_id?.toString() || 'none'}
                                   onValueChange={(value) => setEditData({
@@ -454,10 +456,10 @@ const PluginDirectConfig = () => {
                                   })}
                                 >
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Selecione uma credencial" />
+                                    <SelectValue placeholder={t('form.selectCredential')} />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="none">Sem autenticação</SelectItem>
+                                    <SelectItem value="none">{t('form.noAuth')}</SelectItem>
                                     {credentials.map((cred) => (
                                       <SelectItem key={cred.id} value={cred.id.toString()}>
                                         {getCredentialLabel(cred)}
@@ -468,7 +470,7 @@ const PluginDirectConfig = () => {
                                 </Select>
                               </div>
                               <div className="space-y-2">
-                                <Label>Proxy</Label>
+                                <Label>{t('form.proxyLabel')}</Label>
                                 <Select
                                   value={editData.proxy_id?.toString() || 'none'}
                                   onValueChange={(value) => setEditData({
@@ -480,7 +482,7 @@ const PluginDirectConfig = () => {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="none">Sem proxy</SelectItem>
+                                    <SelectItem value="none">{t('form.noProxy')}</SelectItem>
                                     {proxies.filter(p => p.proxy_type === 'socks5' || p.proxy_type === 'socks4').map((proxy) => (
                                       <SelectItem key={proxy.id} value={proxy.id.toString()}>
                                         {proxy.name} ({proxy.proxy_type?.toUpperCase()})
@@ -488,7 +490,7 @@ const PluginDirectConfig = () => {
                                     ))}
                                     {proxies.filter(p => p.proxy_type !== 'socks5' && p.proxy_type !== 'socks4').map((proxy) => (
                                       <SelectItem key={proxy.id} value={proxy.id.toString()} disabled>
-                                        {proxy.name} ({proxy.proxy_type?.toUpperCase()}) - Requer SOCKS
+                                        {proxy.name} ({proxy.proxy_type?.toUpperCase()}) - {t('form.requiresSocks')}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -496,7 +498,7 @@ const PluginDirectConfig = () => {
                               </div>
                             </div>
                             <div className="space-y-2">
-                              <Label>Descrição</Label>
+                              <Label>{t('common:fields.description')}</Label>
                               <Textarea
                                 value={editData.description}
                                 onChange={(e) => setEditData({ ...editData, description: e.target.value })}
@@ -505,10 +507,10 @@ const PluginDirectConfig = () => {
                             </div>
                             <div className="flex gap-2">
                               <Button type="button" size="sm" onClick={() => saveEdit(instance.id)}>
-                                <Check className="w-4 h-4 mr-1" /> Salvar
+                                <Check className="w-4 h-4 mr-1" /> {t('common:actions.save')}
                               </Button>
                               <Button type="button" size="sm" variant="outline" onClick={cancelEdit}>
-                                <X className="w-4 h-4 mr-1" /> Cancelar
+                                <X className="w-4 h-4 mr-1" /> {t('common:actions.cancel')}
                               </Button>
                             </div>
                           </div>
@@ -520,11 +522,11 @@ const PluginDirectConfig = () => {
                                 <span className="font-medium">{instance.name}</span>
                                 {instance.is_default && (
                                   <Badge variant="secondary" className="gap-1 text-xs">
-                                    <Star className="w-3 h-3" /> Padrão
+                                    <Star className="w-3 h-3" /> {t('badges.default')}
                                   </Badge>
                                 )}
                                 {!instance.is_active && (
-                                  <Badge variant="outline" className="text-muted-foreground text-xs">Inativo</Badge>
+                                  <Badge variant="outline" className="text-muted-foreground text-xs">{t('badges.inactive')}</Badge>
                                 )}
                               </div>
                               {instance.description && (
@@ -532,13 +534,13 @@ const PluginDirectConfig = () => {
                               )}
                               <div className="text-xs text-muted-foreground flex items-center gap-1">
                                 <ShieldKeyIcon className="w-3 h-3" />
-                                Credencial: {getCredentialName(instance.config?.credential_id)}
+                                {t('instance.credential', { name: getCredentialName(instance.config?.credential_id) })}
                               </div>
                               <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                                 {instance.proxy_id ? (
-                                  <><Wifi className="w-3 h-3" /> Proxy: {getProxyName(instance.proxy_id)}</>
+                                  <><Wifi className="w-3 h-3" /> {t('instance.proxy', { name: getProxyName(instance.proxy_id) })}</>
                                 ) : (
-                                  <><WifiOff className="w-3 h-3" /> Sem proxy</>
+                                  <><WifiOff className="w-3 h-3" /> {t('instance.noProxy')}</>
                                 )}
                               </div>
                             </div>
@@ -547,7 +549,7 @@ const PluginDirectConfig = () => {
                               {health && (
                                 <Badge variant={health.healthy ? "default" : "destructive"} className="mr-2 text-xs">
                                   {health.healthy ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                                  {health.healthy ? 'OK' : 'Erro'}
+                                  {health.healthy ? t('health.ok') : t('common:status.error')}
                                 </Badge>
                               )}
                               
@@ -558,7 +560,7 @@ const PluginDirectConfig = () => {
                                 className="h-8 w-8"
                                 onClick={() => checkHealth(instance.id)}
                                 disabled={checkingHealth[instance.id]}
-                                title="Verificar saúde"
+                                title={t('titles.checkHealth')}
                               >
                                 {checkingHealth[instance.id] ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -573,7 +575,7 @@ const PluginDirectConfig = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => toggleDefault(instance)}
-                                title={instance.is_default ? "Remover padrão" : "Definir como padrão"}
+                                title={instance.is_default ? t('titles.removeDefault') : t('titles.setDefault')}
                               >
                                 {instance.is_default ? (
                                   <Star className="w-4 h-4 text-yellow-500" />
@@ -588,7 +590,7 @@ const PluginDirectConfig = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => toggleActive(instance)}
-                                title={instance.is_active ? "Desativar" : "Ativar"}
+                                title={instance.is_active ? t('titles.deactivate') : t('titles.activate')}
                               >
                                 {instance.is_active ? (
                                   <Power className="w-4 h-4 text-green-500" />
@@ -603,7 +605,7 @@ const PluginDirectConfig = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => startEdit(instance)}
-                                title="Editar"
+                                title={t('common:actions.edit')}
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
@@ -614,7 +616,7 @@ const PluginDirectConfig = () => {
                                 size="icon"
                                 className="h-8 w-8 text-destructive hover:text-destructive"
                                 onClick={() => handleDelete(instance.id)}
-                                title="Excluir"
+                                title={t('common:actions.delete')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -638,25 +640,25 @@ const PluginDirectConfig = () => {
                   <CardHeader className="pb-4">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Plug className="w-4 h-4" />
-                      Informações do Plugin
+                      {t('info.pluginInfo')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Nome</div>
+                        <div className="text-xs text-muted-foreground mb-1">{t('common:fields.name')}</div>
                         <div className="font-medium text-sm">{pluginInfo.name}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Tipo</div>
+                        <div className="text-xs text-muted-foreground mb-1">{t('common:fields.type')}</div>
                         <Badge variant="outline" className="text-xs">{pluginInfo.type}</Badge>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Versão</div>
+                        <div className="text-xs text-muted-foreground mb-1">{t('info.version')}</div>
                         <div className="font-medium text-sm">{pluginInfo.version}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Descrição</div>
+                        <div className="text-xs text-muted-foreground mb-1">{t('common:fields.description')}</div>
                         <div className="text-sm text-muted-foreground">{pluginInfo.description}</div>
                       </div>
                     </div>
@@ -667,17 +669,17 @@ const PluginDirectConfig = () => {
               {/* Funcionalidades */}
               <Card>
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-base">Funcionalidades</CardTitle>
-                  <CardDescription>Status das funcionalidades do plugin</CardDescription>
+                  <CardTitle className="text-base">{t('info.features')}</CardTitle>
+                  <CardDescription>{t('info.featuresDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {[
-                      { name: 'Resolução DNS', desc: 'Resolver nomes de domínio para IP com suporte a DNS personalizado', implemented: true },
-                      { name: 'Listagem de Compartilhamentos (SMB)', desc: 'Listar compartilhamentos de rede via protocolo SMB', implemented: true },
-                      { name: 'Navegação de Diretórios (SMB)', desc: 'Navegar diretórios em compartilhamentos de rede', implemented: true },
-                      { name: 'Download de Arquivos (SMB)', desc: 'Baixar arquivos diretamente via protocolo SMB', implemented: true },
-                      { name: 'Execução SQL Direta', desc: 'Execução de queries SQL via conexão direta', implemented: false },
+                      { name: t('info.feature1Name'), desc: t('info.feature1Desc'), implemented: true },
+                      { name: t('info.feature2Name'), desc: t('info.feature2Desc'), implemented: true },
+                      { name: t('info.feature3Name'), desc: t('info.feature3Desc'), implemented: true },
+                      { name: t('info.feature4Name'), desc: t('info.feature4Desc'), implemented: true },
+                      { name: t('info.feature5Name'), desc: t('info.feature5Desc'), implemented: false },
                     ].map((feat, idx) => (
                       <div key={idx} className={`flex items-center justify-between p-3 border border-border rounded-lg ${!feat.implemented ? 'opacity-60' : ''}`}>
                         <div className="flex items-center gap-3">
@@ -695,7 +697,7 @@ const PluginDirectConfig = () => {
                           variant={feat.implemented ? "default" : "outline"} 
                           className={`text-xs ${feat.implemented ? 'bg-green-500' : ''}`}
                         >
-                          {feat.implemented ? 'Implementado' : 'Não Implementado'}
+                          {feat.implemented ? t('info.implemented') : t('info.notImplemented')}
                         </Badge>
                       </div>
                     ))}
@@ -707,8 +709,8 @@ const PluginDirectConfig = () => {
               {pluginInfo?.config_schema && (
                 <Card>
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-base">Esquema de Configuração</CardTitle>
-                    <CardDescription>Campos disponíveis para configuração de instâncias</CardDescription>
+                    <CardTitle className="text-base">{t('info.configSchema')}</CardTitle>
+                    <CardDescription>{t('info.configSchemaDesc')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
@@ -718,7 +720,7 @@ const PluginDirectConfig = () => {
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-sm font-medium">{key}</span>
                               {pluginInfo.config_schema.required?.includes(key) && (
-                                <Badge variant="destructive" className="text-[10px]">obrigatório</Badge>
+                                <Badge variant="destructive" className="text-[10px]">{t('info.required')}</Badge>
                               )}
                               <Badge variant="outline" className="text-[10px]">{prop.type}</Badge>
                             </div>
@@ -727,7 +729,7 @@ const PluginDirectConfig = () => {
                             )}
                             {prop.enum && (
                               <div className="text-xs text-muted-foreground mt-1">
-                                Valores: {prop.enum.join(', ')}
+                                {t('info.values', { values: prop.enum.join(', ') })}
                               </div>
                             )}
                           </div>

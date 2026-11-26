@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,34 +86,35 @@ const CREATE_CONTAINER_TYPES = new Set(['OU', 'Container']);
 // Menu de contexto por objeto. Ações que dependem de LDAP ficam desabilitadas
 // (muted) quando o domínio não tem LDAP configurado (só BloodHound).
 const ObjectMenu = ({ node, ldapConfigured, onAction, children }) => {
-  const t = node.object_type;
+  const { t } = useTranslation('ad-browse');
+  const objType = node.object_type;
   const Item = ({ label, kind, icon, ldap }) => (
     <ContextMenuItem
       disabled={ldap && !ldapConfigured}
       onClick={() => onAction(kind, node)}
-      title={ldap && !ldapConfigured ? 'Requer LDAP configurado no domínio' : undefined}
+      title={ldap && !ldapConfigured ? t('menu.requiresLdap') : undefined}
     >
       {icon}
       {label}
     </ContextMenuItem>
   );
-  const showCreate = CREATE_CONTAINER_TYPES.has(t);
-  const showGroup = t === 'Group';
-  const showUser = t === 'User';
+  const showCreate = CREATE_CONTAINER_TYPES.has(objType);
+  const showGroup = objType === 'Group';
+  const showUser = objType === 'User';
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-60">
-        <Item label="Abrir em uma nova aba" kind="open-tab" icon={<ExternalLink className="w-4 h-4 mr-2" />} />
-        <Item label="Copiar link" kind="copy-link" icon={<Link2 className="w-4 h-4 mr-2" />} />
+        <Item label={t('menu.openTab')} kind="open-tab" icon={<ExternalLink className="w-4 h-4 mr-2" />} />
+        <Item label={t('menu.copyLink')} kind="copy-link" icon={<Link2 className="w-4 h-4 mr-2" />} />
         {(showCreate || showGroup || showUser) && <ContextMenuSeparator />}
-        {showCreate && <Item label="Inserir Usuário" kind="create-user" icon={<UserPlus className="w-4 h-4 mr-2" />} ldap />}
-        {showCreate && <Item label="Inserir Grupo" kind="create-group" icon={<FolderPlus className="w-4 h-4 mr-2" />} ldap />}
-        {showGroup && <Item label="Inserir usuário" kind="add-member" icon={<UserPlus className="w-4 h-4 mr-2" />} ldap />}
-        {showUser && <Item label="Bloquear" kind="block" icon={<Lock className="w-4 h-4 mr-2" />} ldap />}
-        {showUser && <Item label="Desbloquear" kind="unblock" icon={<Unlock className="w-4 h-4 mr-2" />} ldap />}
-        {showUser && <Item label="Trocar senha" kind="reset-password" icon={<KeyRound className="w-4 h-4 mr-2" />} ldap />}
-        {showUser && <Item label="Adicionar a um grupo" kind="add-to-group" icon={<Users className="w-4 h-4 mr-2" />} ldap />}
+        {showCreate && <Item label={t('menu.createUser')} kind="create-user" icon={<UserPlus className="w-4 h-4 mr-2" />} ldap />}
+        {showCreate && <Item label={t('menu.createGroup')} kind="create-group" icon={<FolderPlus className="w-4 h-4 mr-2" />} ldap />}
+        {showGroup && <Item label={t('menu.addMember')} kind="add-member" icon={<UserPlus className="w-4 h-4 mr-2" />} ldap />}
+        {showUser && <Item label={t('menu.block')} kind="block" icon={<Lock className="w-4 h-4 mr-2" />} ldap />}
+        {showUser && <Item label={t('menu.unblock')} kind="unblock" icon={<Unlock className="w-4 h-4 mr-2" />} ldap />}
+        {showUser && <Item label={t('menu.resetPassword')} kind="reset-password" icon={<KeyRound className="w-4 h-4 mr-2" />} ldap />}
+        {showUser && <Item label={t('menu.addToGroup')} kind="add-to-group" icon={<Users className="w-4 h-4 mr-2" />} ldap />}
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -167,6 +169,7 @@ const TreeNode = ({ node, depth, selectedKey, onSelect, expanded, nodeChildren, 
 };
 
 const AdBrowse = () => {
+  const { t } = useTranslation('ad-browse');
   const { domainId } = useParams();
   const navigate = useNavigate();
   const [domain, setDomain] = useState(null);
@@ -246,12 +249,12 @@ const AdBrowse = () => {
       setRoots(display);
       setTreeKey((k) => k + 1);
     } catch (e) {
-      const msg = e.response?.data?.detail || 'Erro ao carregar a árvore';
+      const msg = e.response?.data?.detail || t('toast.loadTreeError');
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setLoadingRoots(false);
     }
-  }, [domainId]);
+  }, [domainId, t]);
 
   useEffect(() => {
     (async () => {
@@ -315,12 +318,12 @@ const AdBrowse = () => {
     } catch {
       nodeChildrenRef.current = { ...nodeChildrenRef.current, [dn]: [] };
       setNodeChildren(nodeChildrenRef.current);
-      toast.error('Erro ao carregar filhos');
+      toast.error(t('toast.loadChildrenError'));
       return [];
     } finally {
       setNodeLoading((p) => { const n = { ...p }; delete n[dn]; return n; });
     }
-  }, [fetchChildren]);
+  }, [fetchChildren, t]);
 
   const toggleNode = useCallback(async (node) => {
     const dn = node.distinguished_name;
@@ -412,28 +415,28 @@ const AdBrowse = () => {
   const setEnabled = useCallback(async (node, enabled) => {
     try {
       await axios.post(`${API}/ad/domains/${domainId}/objects/${node.id}/set-enabled`, { enabled });
-      toast.success(enabled ? 'Conta desbloqueada' : 'Conta bloqueada');
+      toast.success(enabled ? t('toast.accountUnblocked') : t('toast.accountBlocked'));
       if (detail && detail.id === node.id) setDetail({ ...detail, enabled });
     } catch (e) {
-      toast.error(apiErr(e, 'Falha ao alterar a conta'));
+      toast.error(apiErr(e, t('toast.accountChangeFailed')));
     }
-  }, [domainId, detail]);
+  }, [domainId, detail, t]);
 
   // Despacha as ações do menu de contexto
   const onMenuAction = useCallback((kind, node) => {
     if (kind === 'open-tab') { window.open(objLink(node), '_blank'); return; }
     if (kind === 'copy-link') {
       navigator.clipboard?.writeText(objLink(node)).then(
-        () => toast.success('Link copiado'),
-        () => toast.error('Não foi possível copiar'),
+        () => toast.success(t('toast.linkCopied')),
+        () => toast.error(t('toast.copyFailed')),
       );
       return;
     }
-    if (!ldapConfigured) { toast.error('LDAP não configurado para este domínio'); return; }
+    if (!ldapConfigured) { toast.error(t('toast.ldapNotConfigured')); return; }
     if (kind === 'unblock') { setEnabled(node, true); return; }
     // demais ações abrem diálogo (bloquear pede confirmação; criar/senha/grupo pedem dados)
     setMenuAction({ kind, node });
-  }, [objLink, ldapConfigured, setEnabled]);
+  }, [objLink, ldapConfigured, setEnabled, t]);
 
   // Confirmação/submit dos diálogos
   const onMenuConfirm = useCallback(async (kind, node, values) => {
@@ -441,32 +444,32 @@ const AdBrowse = () => {
     try {
       if (kind === 'block') {
         await axios.post(`${dom}/objects/${node.id}/set-enabled`, { enabled: false });
-        toast.success('Conta bloqueada');
+        toast.success(t('toast.accountBlocked'));
         if (detail && detail.id === node.id) setDetail({ ...detail, enabled: false });
       } else if (kind === 'reset-password') {
         await axios.post(`${dom}/objects/${node.id}/reset-password`, { password: values.password });
-        toast.success('Senha alterada');
+        toast.success(t('toast.passwordChanged'));
       } else if (kind === 'create-user') {
         const r = await axios.post(`${dom}/containers/${node.id}/create-user`, { name: values.name, sam: values.sam, password: values.password || null });
-        toast.success(r.data?.note || 'Usuário criado');
+        toast.success(r.data?.note || t('toast.userCreated'));
         refreshContainer(node);
       } else if (kind === 'create-group') {
         await axios.post(`${dom}/containers/${node.id}/create-group`, { name: values.name, sam: values.sam });
-        toast.success('Grupo criado');
+        toast.success(t('toast.groupCreated'));
         refreshContainer(node);
       } else if (kind === 'add-member') {
         await axios.post(`${dom}/groups/${node.id}/add-member`, { member_pk: values.picked?.id });
-        toast.success('Membro adicionado ao grupo');
+        toast.success(t('toast.memberAdded'));
         refreshContainer(node);
       } else if (kind === 'add-to-group') {
         await axios.post(`${dom}/objects/${node.id}/add-to-group`, { group_pk: values.picked?.id });
-        toast.success('Usuário adicionado ao grupo');
+        toast.success(t('toast.userAddedToGroup'));
       }
     } catch (e) {
-      toast.error(apiErr(e, 'Falha na operação'));
+      toast.error(apiErr(e, t('toast.operationFailed')));
       throw e; // mantém o diálogo aberto em caso de erro
     }
-  }, [domainId, detail, refreshContainer]);
+  }, [domainId, detail, refreshContainer, t]);
 
   const loadObjChildren = useCallback(async (node) => {
     if (!node) return;
@@ -474,12 +477,12 @@ const AdBrowse = () => {
     try {
       setObjChildren(await fetchChildren(node));
     } catch {
-      toast.error('Erro ao carregar objetos filhos');
+      toast.error(t('toast.loadObjChildrenError'));
       setObjChildren([]);
     } finally {
       setLoadingObj(false);
     }
-  }, [fetchChildren]);
+  }, [fetchChildren, t]);
 
   // Deep-link: ?obj=<pk> abre e revela o objeto assim que a árvore carrega
   useEffect(() => {
@@ -506,7 +509,7 @@ const AdBrowse = () => {
     const term = searchTerm.trim();
     const hasFilter = filters.object_type || filters.enabled || filters.highvalue ||
       filters.created_from || filters.created_to || filters.pwd_from || filters.pwd_to;
-    if (term.length < 2 && !hasFilter) return toast.error('Informe ao menos 2 caracteres ou um filtro');
+    if (term.length < 2 && !hasFilter) return toast.error(t('toast.searchMinChars'));
     setSearching(true);
     try {
       const params = {};
@@ -521,7 +524,7 @@ const AdBrowse = () => {
       const { data } = await axios.get(`${API}/ad/domains/${domainId}/search`, { params });
       setSearchResults(data);
     } catch (error) {
-      const msg = error.response?.data?.detail || 'Erro na busca';
+      const msg = error.response?.data?.detail || t('toast.searchError');
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setSearching(false);
@@ -558,10 +561,10 @@ const AdBrowse = () => {
   const ModeToggle = () => (
     <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
       <button onClick={() => setMode('db')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'db' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-db">
-        <Database className="w-3.5 h-3.5" />Importado
+        <Database className="w-3.5 h-3.5" />{t('mode.imported')}
       </button>
       <button onClick={() => setMode('live')} className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm ${mode === 'live' ? 'bg-primary/15 text-foreground' : 'text-muted-foreground'}`} data-testid="mode-live">
-        <Radio className="w-3.5 h-3.5" />LDAP ao vivo
+        <Radio className="w-3.5 h-3.5" />{t('mode.live')}
       </button>
     </div>
   );
@@ -574,16 +577,16 @@ const AdBrowse = () => {
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
           <Button variant="ghost" size="sm" onClick={() => navigate('/ad')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />Domínios
+            <ArrowLeft className="w-4 h-4 mr-2" />{t('common:nav.ad-domains')}
           </Button>
           <div className="flex items-center gap-2 min-w-0">
             <Network className="w-5 h-5 text-indigo-400 shrink-0" />
-            <h1 className="text-xl font-semibold truncate">{domain?.name || `Domínio ${domainId}`}</h1>
-            {domain?.object_count != null && <Badge variant="outline" className="shrink-0">{domain.object_count.toLocaleString()} objetos</Badge>}
+            <h1 className="text-xl font-semibold truncate">{domain?.name || t('domainN', { id: domainId })}</h1>
+            {domain?.object_count != null && <Badge variant="outline" className="shrink-0">{t('objects', { count: domain.object_count, val: domain.object_count.toLocaleString() })}</Badge>}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => loadRoots(mode)} title="Atualizar árvore">
+          <Button variant="ghost" size="sm" onClick={() => loadRoots(mode)} title={t('refreshTree')}>
             <RefreshCw className={`w-4 h-4 ${loadingRoots ? 'animate-spin' : ''}`} />
           </Button>
           <ModeToggle />
@@ -600,14 +603,14 @@ const AdBrowse = () => {
                 <form onSubmit={runSearch} className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input className="pl-9 h-9" placeholder="Buscar objeto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="ad-search-input" />
+                    <Input className="pl-9 h-9" placeholder={t('searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="ad-search-input" />
                     {(searchTerm || searchResults !== null) && (
                       <button type="button" onClick={clearSearch} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         <X className="w-4 h-4" />
                       </button>
                     )}
                   </div>
-                  <Button type="button" size="sm" variant={showFilters ? 'default' : 'outline'} onClick={() => setShowFilters((v) => !v)} title="Filtros avançados">
+                  <Button type="button" size="sm" variant={showFilters ? 'default' : 'outline'} onClick={() => setShowFilters((v) => !v)} title={t('advancedFilters')}>
                     <Code2 className="w-4 h-4" />
                   </Button>
                   <Button type="submit" size="sm" disabled={searching} data-testid="ad-search-btn">
@@ -619,49 +622,49 @@ const AdBrowse = () => {
                   <div className="rounded-md border border-border p-3 space-y-2 bg-background/40">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-muted-foreground">Tipo</label>
+                        <label className="text-[11px] text-muted-foreground">{t('common:fields.type')}</label>
                         <select className={selField} value={filters.object_type} onChange={(e) => setF('object_type', e.target.value)}>
-                          <option value="">Todos os tipos</option>
-                          {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                          <option value="">{t('filters.allTypes')}</option>
+                          {TYPE_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-muted-foreground">Status</label>
+                        <label className="text-[11px] text-muted-foreground">{t('common:fields.status')}</label>
                         <select className={selField} value={filters.enabled} onChange={(e) => setF('enabled', e.target.value)}>
-                          <option value="">Todos</option>
-                          <option value="true">Habilitado</option>
-                          <option value="false">Desabilitado</option>
+                          <option value="">{t('filters.all')}</option>
+                          <option value="true">{t('filters.enabled')}</option>
+                          <option value="false">{t('filters.disabled')}</option>
                         </select>
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-[11px] text-muted-foreground">High Value</label>
                         <select className={selField} value={filters.highvalue} onChange={(e) => setF('highvalue', e.target.value)}>
-                          <option value="">Todos</option>
-                          <option value="true">Sim</option>
-                          <option value="false">Não</option>
+                          <option value="">{t('filters.all')}</option>
+                          <option value="true">{t('common:actions.yes')}</option>
+                          <option value="false">{t('common:actions.no')}</option>
                         </select>
                       </div>
                       <div />
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-muted-foreground">Criado de</label>
+                        <label className="text-[11px] text-muted-foreground">{t('filters.createdFrom')}</label>
                         <Input type="date" className="h-9" value={filters.created_from} onChange={(e) => setF('created_from', e.target.value)} />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-muted-foreground">Criado até</label>
+                        <label className="text-[11px] text-muted-foreground">{t('filters.createdTo')}</label>
                         <Input type="date" className="h-9" value={filters.created_to} onChange={(e) => setF('created_to', e.target.value)} />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-muted-foreground">pwdLastSet de</label>
+                        <label className="text-[11px] text-muted-foreground">{t('filters.pwdFrom')}</label>
                         <Input type="date" className="h-9" value={filters.pwd_from} onChange={(e) => setF('pwd_from', e.target.value)} />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-muted-foreground">pwdLastSet até</label>
+                        <label className="text-[11px] text-muted-foreground">{t('filters.pwdTo')}</label>
                         <Input type="date" className="h-9" value={filters.pwd_to} onChange={(e) => setF('pwd_to', e.target.value)} />
                       </div>
                     </div>
                     <div className="flex justify-end">
                       <Button type="button" size="sm" onClick={runSearch} disabled={searching}>
-                        {searching ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Search className="w-4 h-4 mr-1" />}Buscar
+                        {searching ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Search className="w-4 h-4 mr-1" />}{t('common:actions.search')}
                       </Button>
                     </div>
                   </div>
@@ -670,24 +673,24 @@ const AdBrowse = () => {
             ) : (
               <div className="p-3 border-b border-border text-xs text-muted-foreground flex items-center gap-2">
                 <Radio className="w-4 h-4 text-indigo-400 shrink-0" />
-                Navegação ao vivo via LDAP — filhos/membros buscados sob demanda ao expandir.
+                {t('liveHint')}
               </div>
             )}
 
             {/* Cabeçalho da árvore com ações */}
             <div className="px-3 py-1.5 border-b border-border flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">Árvore</span>
+              <span className="text-xs font-medium text-muted-foreground">{t('tree')}</span>
               <div className="flex items-center gap-1">
                 <Button
                   variant={focusedKey ? 'default' : 'ghost'} size="icon" className="h-7 w-7"
                   disabled={!focusedKey && (!selected || !selected.distinguished_name)}
                   onClick={toggleFocus}
-                  title={focusedKey ? 'Mostrar todos' : 'Focar no objeto selecionado'}
+                  title={focusedKey ? t('focus.showAll') : t('focus.focusSelected')}
                   data-testid="ad-focus-btn"
                 >
                   {focusedKey ? <X className="w-4 h-4" /> : <Focus className="w-4 h-4" />}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => loadRoots(mode)} disabled={loadingRoots} title="Atualizar árvore">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => loadRoots(mode)} disabled={loadingRoots} title={t('refreshTree')}>
                   <RefreshCw className={`w-4 h-4 ${loadingRoots ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
@@ -697,10 +700,10 @@ const AdBrowse = () => {
             {focusedKey && (
               <div className="px-3 py-1.5 bg-primary/10 border-b border-border flex items-center justify-between">
                 <span className="text-xs text-primary truncate">
-                  Focado em: <strong>{focusedNode?.name || focusedNode?.object_id}</strong>
+                  {t('focus.focusedOn')} <strong>{focusedNode?.name || focusedNode?.object_id}</strong>
                 </span>
                 <Button variant="ghost" size="sm" className="h-5 text-xs px-2 shrink-0" onClick={toggleFocus}>
-                  Mostrar todos
+                  {t('focus.showAll')}
                 </Button>
               </div>
             )}
@@ -710,14 +713,14 @@ const AdBrowse = () => {
               {mode === 'db' && searchResults !== null && (
                 <div className="m-2 rounded-lg border border-border overflow-hidden">
                   <div className="flex items-center justify-between px-3 py-2 bg-muted/60 border-b border-border">
-                    <span className="text-sm text-muted-foreground">{searchResults.length} resultado(s) encontrado(s)</span>
-                    <button onClick={exportResults} disabled={!searchResults.length} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40" title="Exportar JSON">
-                      <FileDown className="w-4 h-4" />Exportar
+                    <span className="text-sm text-muted-foreground">{t('resultsFound', { count: searchResults.length })}</span>
+                    <button onClick={exportResults} disabled={!searchResults.length} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40" title={t('exportJson')}>
+                      <FileDown className="w-4 h-4" />{t('common:actions.export')}
                     </button>
                   </div>
                   <div className="max-h-72 overflow-auto">
                     {searchResults.length === 0 ? (
-                      <div className="p-4 text-center text-muted-foreground text-sm">Nenhum objeto encontrado</div>
+                      <div className="p-4 text-center text-muted-foreground text-sm">{t('noObjectsFound')}</div>
                     ) : groupedResults().map(([type, items]) => (
                       <div key={type}>
                         <div className="px-3 py-1.5 text-xs text-muted-foreground bg-muted/30 border-b border-border">{type} ({items.length})</div>
@@ -746,7 +749,7 @@ const AdBrowse = () => {
                   <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
                 ) : roots.length === 0 ? (
                   <div className="p-4 text-center text-muted-foreground text-sm">
-                    {mode === 'live' ? 'Nada retornado do LDAP — verifique a conexão do domínio.' : 'Árvore vazia — importe o BloodHound, inicie uma varredura ou use "LDAP ao vivo".'}
+                    {mode === 'live' ? t('emptyLive') : t('emptyTree')}
                   </div>
                 ) : (
                   <div key={treeKey}>
@@ -775,7 +778,7 @@ const AdBrowse = () => {
             {loadingDetail ? (
               <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
             ) : !detail ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Selecione um objeto para ver os detalhes.</div>
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('selectObject')}</div>
             ) : (
               <>
                 {/* Cabeçalho do objeto */}
@@ -784,7 +787,7 @@ const AdBrowse = () => {
                   <span className="text-lg font-semibold break-all">{detail.name || detail.object_id}</span>
                   <Badge variant="outline">{detail.object_type}</Badge>
                   {detail.highvalue && <Badge variant="destructive">High Value</Badge>}
-                  {detail.enabled === false && <Badge variant="secondary">Desabilitado</Badge>}
+                  {detail.enabled === false && <Badge variant="secondary">{t('filters.disabled')}</Badge>}
                 </div>
 
                 {/* Abas */}
@@ -802,7 +805,7 @@ const AdBrowse = () => {
                         onClick={() => setRightTab('objetos')}
                         className={`pb-3 text-sm font-medium transition-colors relative ${rightTab === 'objetos' ? 'text-green-500' : 'text-muted-foreground hover:text-foreground'}`}
                       >
-                        Objetos
+                        {t('tab.objects')}
                         {detail.child_count > 0 && <span className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded">{detail.child_count}</span>}
                         {rightTab === 'objetos' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />}
                       </button>
@@ -817,13 +820,13 @@ const AdBrowse = () => {
                       <DetailRow label="Object ID" value={detail.object_id} mono />
                       <DetailRow label="Distinguished Name" value={detail.distinguished_name} mono />
                       {detail.samaccountname && <DetailRow label="samAccountName" value={detail.samaccountname} mono />}
-                      {detail.description && <DetailRow label="Descrição" value={detail.description} />}
-                      {detail.whencreated ? <DetailRow label="Criado em" value={fmtDateTime(detail.whencreated)} /> : null}
-                      {detail.child_count > 0 && <DetailRow label={isGroup(detail) ? 'Membros' : 'Filhos'} value={String(detail.child_count)} />}
+                      {detail.description && <DetailRow label={t('common:fields.description')} value={detail.description} />}
+                      {detail.whencreated ? <DetailRow label={t('common:fields.createdAt')} value={fmtDateTime(detail.whencreated)} /> : null}
+                      {detail.child_count > 0 && <DetailRow label={isGroup(detail) ? t('detail.members') : t('detail.children')} value={String(detail.child_count)} />}
                     </div>
                     {detail.properties && Object.keys(detail.properties).length > 0 && (
                       <div>
-                        <div className="text-xs font-medium text-muted-foreground mb-1">Propriedades (BloodHound v6)</div>
+                        <div className="text-xs font-medium text-muted-foreground mb-1">{t('detail.properties')}</div>
                         <div className="rounded border border-border divide-y divide-border">
                           {Object.entries(detail.properties).map(([k, v]) => (
                             <div key={k} className="flex gap-3 px-3 py-1.5 text-sm">
@@ -860,6 +863,7 @@ const AdBrowse = () => {
 
 // Diálogo das ações do menu de contexto (bloquear, senha, criar, add a grupo)
 const ActionDialog = ({ action, domainId, onClose, onConfirm }) => {
+  const { t } = useTranslation('ad-browse');
   const [form, setForm] = useState({ name: '', sam: '', password: '' });
   const [picker, setPicker] = useState({ q: '', results: [], picked: null, loading: false });
   const [busy, setBusy] = useState(false);
@@ -875,12 +879,12 @@ const ActionDialog = ({ action, domainId, onClose, onConfirm }) => {
   const name = node?.name || node?.object_id || '';
 
   const TITLES = {
-    block: 'Bloquear usuário',
-    'reset-password': 'Trocar senha',
-    'create-user': 'Inserir usuário',
-    'create-group': 'Inserir grupo',
-    'add-member': 'Inserir usuário no grupo',
-    'add-to-group': 'Adicionar a um grupo',
+    block: t('dialog.block'),
+    'reset-password': t('dialog.resetPassword'),
+    'create-user': t('dialog.createUser'),
+    'create-group': t('dialog.createGroup'),
+    'add-member': t('dialog.addMember'),
+    'add-to-group': t('dialog.addToGroup'),
   };
   const pickerType = kind === 'add-member' ? 'User' : kind === 'add-to-group' ? 'Group' : null;
 
@@ -892,7 +896,7 @@ const ActionDialog = ({ action, domainId, onClose, onConfirm }) => {
       const { data } = await axios.get(`${API}/ad/domains/${domainId}/search`, { params: { q, object_type: pickerType, limit: 25 } });
       setPicker((p) => ({ ...p, results: data, loading: false }));
     } catch (e) {
-      toast.error(apiErr(e, 'Erro na busca'));
+      toast.error(apiErr(e, t('toast.searchError')));
       setPicker((p) => ({ ...p, loading: false }));
     }
   };
@@ -917,30 +921,30 @@ const ActionDialog = ({ action, domainId, onClose, onConfirm }) => {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{TITLES[kind] || 'Ação'}</DialogTitle>
+          <DialogTitle>{TITLES[kind] || t('dialog.action')}</DialogTitle>
           <DialogDescription className="break-all">{name}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-1">
           {kind === 'block' && (
             <p className="text-sm text-muted-foreground">
-              Tem certeza que deseja <strong className="text-foreground">bloquear</strong> esta conta? O usuário não poderá autenticar até ser desbloqueado.
+              {t('dialog.blockConfirmPre')} <strong className="text-foreground">{t('dialog.blockConfirmStrong')}</strong> {t('dialog.blockConfirmPost')}
             </p>
           )}
 
           {kind === 'reset-password' && (
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Nova senha</label>
-              <Input type="password" autoFocus value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Nova senha" />
-              <p className="text-[11px] text-muted-foreground">Requer LDAPS habilitado no domínio.</p>
+              <label className="text-xs text-muted-foreground">{t('dialog.newPassword')}</label>
+              <Input type="password" autoFocus value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder={t('dialog.newPassword')} />
+              <p className="text-[11px] text-muted-foreground">{t('dialog.requiresLdaps')}</p>
             </div>
           )}
 
           {(kind === 'create-user' || kind === 'create-group') && (
             <>
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Nome (CN)</label>
-                <Input autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nome" />
+                <label className="text-xs text-muted-foreground">{t('dialog.nameCn')}</label>
+                <Input autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t('dialog.namePlaceholder')} />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">samAccountName</label>
@@ -948,9 +952,9 @@ const ActionDialog = ({ action, domainId, onClose, onConfirm }) => {
               </div>
               {kind === 'create-user' && (
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Senha (opcional)</label>
-                  <Input type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Deixe vazio p/ criar desabilitado" />
-                  <p className="text-[11px] text-muted-foreground">Com senha + LDAPS o usuário já é criado habilitado.</p>
+                  <label className="text-xs text-muted-foreground">{t('dialog.passwordOptional')}</label>
+                  <Input type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder={t('dialog.passwordHint')} />
+                  <p className="text-[11px] text-muted-foreground">{t('dialog.createUserHint')}</p>
                 </div>
               )}
             </>
@@ -959,17 +963,17 @@ const ActionDialog = ({ action, domainId, onClose, onConfirm }) => {
           {pickerType && (
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground">
-                Selecione {pickerType === 'User' ? 'o usuário' : 'o grupo'}
+                {pickerType === 'User' ? t('dialog.selectUser') : t('dialog.selectGroup')}
               </label>
               <form onSubmit={(e) => { e.preventDefault(); doSearch(); }} className="flex gap-2">
-                <Input value={picker.q} onChange={(e) => setPicker((p) => ({ ...p, q: e.target.value }))} placeholder={`Buscar ${pickerType === 'User' ? 'usuário' : 'grupo'}...`} />
+                <Input value={picker.q} onChange={(e) => setPicker((p) => ({ ...p, q: e.target.value }))} placeholder={pickerType === 'User' ? t('dialog.searchUser') : t('dialog.searchGroup')} />
                 <Button type="submit" size="sm" disabled={picker.loading}>
                   {picker.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </form>
               <div className="max-h-56 overflow-auto rounded border border-border divide-y divide-border">
                 {picker.results.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-muted-foreground">Nenhum resultado</div>
+                  <div className="p-3 text-center text-xs text-muted-foreground">{t('dialog.noResults')}</div>
                 ) : picker.results.map((r) => {
                   const Icon = typeIcon(r.object_type);
                   const sel = picker.picked?.id === r.id;
@@ -989,10 +993,10 @@ const ActionDialog = ({ action, domainId, onClose, onConfirm }) => {
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancelar</Button>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>{t('common:actions.cancel')}</Button>
           <Button onClick={submit} disabled={busy || !valid} variant={kind === 'block' ? 'destructive' : 'default'}>
             {busy && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-            {kind === 'block' ? 'Bloquear' : 'Confirmar'}
+            {kind === 'block' ? t('menu.block') : t('common:actions.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1002,6 +1006,7 @@ const ActionDialog = ({ action, domainId, onClose, onConfirm }) => {
 
 // Aba "Objetos": lista filhos (ou membros, p/ grupos) em tabela ordenável
 const ObjectsTab = ({ loading, items, sort, setSort, onSelect, isGroupContainer, ldapConfigured, onMenuAction }) => {
+  const { t } = useTranslation('ad-browse');
   if (loading) {
     return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -1009,7 +1014,7 @@ const ObjectsTab = ({ loading, items, sort, setSort, onSelect, isGroupContainer,
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Folder className="w-8 h-8 mb-2 opacity-30" />
-        <p className="text-sm">{isGroupContainer ? 'Grupo sem membros carregados' : 'Nenhum objeto filho'}</p>
+        <p className="text-sm">{isGroupContainer ? t('objectsTab.noMembers') : t('objectsTab.noChildren')}</p>
       </div>
     );
   }
@@ -1044,16 +1049,16 @@ const ObjectsTab = ({ loading, items, sort, setSort, onSelect, isGroupContainer,
         <thead className="bg-muted sticky top-0">
           <tr>
             <th className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80" onClick={() => handleSort('name')}>
-              <div className="flex items-center gap-1">Nome <SortIcon columnKey="name" /></div>
+              <div className="flex items-center gap-1">{t('common:fields.name')} <SortIcon columnKey="name" /></div>
             </th>
             <th className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-28" onClick={() => handleSort('type')}>
-              <div className="flex items-center gap-1">Tipo <SortIcon columnKey="type" /></div>
+              <div className="flex items-center gap-1">{t('common:fields.type')} <SortIcon columnKey="type" /></div>
             </th>
             <th className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-48" onClick={() => handleSort('sam')}>
               <div className="flex items-center gap-1">samAccountName <SortIcon columnKey="sam" /></div>
             </th>
             <th className="px-4 py-2 text-left font-medium border-b border-border cursor-pointer hover:bg-muted/80 w-44" onClick={() => handleSort('created')}>
-              <div className="flex items-center gap-1">Criado <SortIcon columnKey="created" /></div>
+              <div className="flex items-center gap-1">{t('objectsTab.created')} <SortIcon columnKey="created" /></div>
             </th>
           </tr>
         </thead>

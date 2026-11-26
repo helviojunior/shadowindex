@@ -1,0 +1,64 @@
+{
+  "intro": "Explore the Active Directory tree by domain. Import BloodHound (v6) data to build and navigate the full tree.",
+  "newDomain": "New Domain",
+  "explore": "Explore",
+  "importBloodhound": "Import BloodHound",
+  "ldapConnection": "LDAP Connection",
+  "empty": "No domains registered. Create one and import the BloodHound files.",
+  "objects_one": "{{val}} object",
+  "objects_other": "{{val}} objects",
+  "lastImport": "Last import: {{date}}",
+  "form": {
+    "title": "New domain",
+    "description": "Enter the domain FQDN (e.g.: company.local). The AD Explorer is based on the domain, not a server.",
+    "domainLabel": "Domain (FQDN) *",
+    "domainPlaceholder": "company.local",
+    "create": "Create"
+  },
+  "status": {
+    "queued": "Queued",
+    "importing": "Importing",
+    "scanning": "Scanning (LDAP)"
+  },
+  "cfg": {
+    "authMethod": "Authentication method",
+    "authUserPassword": "Username and Password (NTLM)",
+    "authKerberos": "Kerberos (ccache)",
+    "authCert": "Digital certificate (LDAPS mTLS)",
+    "credential": "Credential",
+    "select": "Select...",
+    "clientCert": "Client certificate (PEM)",
+    "clientKey": "Private key (PEM)",
+    "discoverSrv": "Discover DCs via DNS SRV",
+    "dcHostsManual": "Domain controllers (manual, comma-separated)",
+    "discoverDcs": "Discover DCs",
+    "testConnection": "Test connection",
+    "ldapScan": "LDAP Scan",
+    "connOkAt": "Connection OK at {{server}}:{{port}} — {{ctx}}",
+    "dcByLatency": "Domain controllers (sorted by latency)",
+    "unreachable": "unreachable"
+  },
+  "confirm": {
+    "startScan": "Start the recursive LDAP scan of the domain tree? This walks the entire AD and may take a few minutes.",
+    "deleteDomain": "Remove this domain and the entire imported tree?"
+  },
+  "toast": {
+    "saveConfigError": "Error saving configuration",
+    "fastestDc": "Fastest DC: {{dc}}",
+    "noDcFound": "No reachable DC found",
+    "discoverFailed": "Discovery failed: {{error}}",
+    "connOk": "Connection OK ({{server}})",
+    "connFailed": "Failed: {{error}}",
+    "testFailed": "Test failed: {{error}}",
+    "scanStarted": "LDAP scan started in background",
+    "scanStartFailed": "Failed to start scan: {{error}}",
+    "domainRequired": "Enter the domain (FQDN)",
+    "domainCreated": "Domain created",
+    "domainCreateError": "Error creating domain",
+    "domainRemoved": "Domain removed",
+    "domainRemoveError": "Error removing domain",
+    "uploadDone": "Upload complete — import started in background",
+    "uploadFailed": "Upload failed: {{error}}",
+    "configSaved": "Configuration saved"
+  }
+}

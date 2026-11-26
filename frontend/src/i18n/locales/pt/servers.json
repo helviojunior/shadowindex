@@ -1,0 +1,93 @@
+{
+  "title": "Servidores",
+  "subtitle": "Gerencie os servidores monitorados",
+  "addServer": "Adicionar Servidor",
+  "pluginType": {
+    "direct": "Direto"
+  },
+  "form": {
+    "title": "Novo Servidor",
+    "description": "Adicione um novo servidor para monitoramento",
+    "nameLabel": "Nome do Servidor",
+    "namePlaceholder": "servidor.exemplo.com",
+    "ipLabel": "Endereço IP",
+    "ipPlaceholder": "192.168.1.100",
+    "resolving": "Resolvendo...",
+    "resolveIp": "Resolve IP",
+    "pluginLabel": "Instância de Plugin",
+    "pluginPlaceholder": "Selecione a instância (opcional)",
+    "pluginNone": "Nenhuma (usar padrão)"
+  },
+  "table": {
+    "cardTitle": "Servidores Cadastrados",
+    "countAll": "{{count}} servidores no sistema",
+    "countFiltered": "{{filtered}} de {{total}} servidores",
+    "searchPlaceholder": "Buscar por nome ou IP...",
+    "empty": "Nenhum servidor cadastrado",
+    "noResults": "Nenhum servidor encontrado para \"{{term}}\"",
+    "flags": "Flags",
+    "risk": "Risco",
+    "editNamePlaceholder": "Nome do servidor",
+    "editNameTitle": "Editar nome do servidor",
+    "instancePlaceholder": "Instância",
+    "instanceNone": "Nenhuma",
+    "notConfigured": "Não configurado",
+    "never": "Nunca"
+  },
+  "contextMenu": {
+    "openNewTab": "Abrir em nova aba"
+  },
+  "tooltip": {
+    "unreachable": "Servidor inacessível",
+    "openShares": "Shares abertas",
+    "favorite": "Favorito"
+  },
+  "duplicate": {
+    "title": "IP Duplicado Detectado",
+    "messagePrefix": "Já existe no cadastro um servidor com o IP",
+    "messageMiddle": "com nome",
+    "confirm": "Deseja continuar com o cadastro duplicado?",
+    "confirmButton": "Sim, cadastrar mesmo assim"
+  },
+  "cleanup": {
+    "button": "Remover inacessíveis / sem acesso",
+    "title": "Remover servidores",
+    "descPrefix": "Selecione quais grupos remover. Servidores que possuem",
+    "descMiddle": "nunca são removidos. O storage existente é movido para",
+    "unreachable": "Inacessíveis",
+    "unreachableDesc": "Servidores marcados como inacessíveis na rede",
+    "neverAccessed": "Sem tentativa de acesso",
+    "neverAccessedDesc": "Nunca acessados com sucesso (sem shares e não verificados)",
+    "calculating": "Calculando...",
+    "willRemoveSuffix": "servidor(es) serão removidos.",
+    "removing": "Removendo...",
+    "removeCount": "Remover {{count}}"
+  },
+  "toast": {
+    "previewError": "Erro ao calcular a prévia da limpeza",
+    "removed": "{{count}} servidor(es) removido(s)",
+    "noneToRemove": "Nenhum servidor correspondente para remover",
+    "removeFailures": "{{count}} falha(s) ao remover",
+    "removeError": "Erro ao remover servidores",
+    "loadError": "Erro ao carregar servidores",
+    "created": "Servidor cadastrado com sucesso",
+    "createError": "Erro ao cadastrar servidor",
+    "deleted": "Servidor removido com sucesso",
+    "deleteError": "Erro ao remover servidor",
+    "nameEmpty": "Nome não pode estar vazio",
+    "nameUpdated": "Nome atualizado com sucesso",
+    "nameUpdateError": "Erro ao atualizar nome",
+    "pluginUpdated": "Plugin atualizado com sucesso",
+    "pluginUpdateError": "Erro ao atualizar plugin",
+    "ipEmpty": "IP não pode estar vazio",
+    "ipInvalid": "IP inválido. Use o formato: 192.168.1.100",
+    "ipUpdated": "IP atualizado com sucesso",
+    "ipUpdateError": "Erro ao atualizar IP",
+    "enterNameFirst": "Digite o nome do servidor primeiro",
+    "ipResolved": "IP resolvido: {{ip}}",
+    "ipNotFound": "Nenhum IP encontrado para este hostname",
+    "resolveError": "Erro ao resolver IP",
+    "resolveErrorDesc": "Verifique as configurações do plugin selecionado.",
+    "resolveErrorCheckName": "Erro ao resolver IP. Verifique o nome do servidor."
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "title": "Scan Pool",
+  "subtitle": "Manage configuration pools for share scans",
+  "newPool": "New Pool",
+  "createPool": "Create Pool",
+  "listSectionEmpty": "No item configured",
+  "form": {
+    "basicTitle": "Basic Settings",
+    "basicDescription": "Pool name and scan performance parameters",
+    "nameLabel": "Name *",
+    "namePlaceholder": "My Pool",
+    "scannersLabel": "Simultaneous scanners",
+    "delayMinLabel": "Min. delay (ms)",
+    "delayMaxLabel": "Max. delay (ms)"
+  },
+  "includeServers": {
+    "title": "Include Hostnames",
+    "description": "Hostnames that will be included in the scan. Supports wildcards (e.g. SRV-*, *-DB-*).",
+    "placeholder": "e.g. SRV-WEB-* or exact hostname",
+    "info1": "Add hostnames that should be included in the scan",
+    "info2": "<strong>Wildcards:</strong> Use <code class=\"bg-green-500/20 px-1 rounded\">SRV-*</code> to include all that start with SRV-",
+    "info3": "If the list is empty, all hostnames will be considered"
+  },
+  "excludeServers": {
+    "title": "Exclude Hostnames",
+    "description": "Hostnames that will be excluded from the scan. Exclusion always takes precedence over inclusion. Supports wildcards.",
+    "placeholder": "e.g. SRV-DEV-* or exact hostname",
+    "info1": "Hostnames in this list will be <strong>always ignored</strong>, even if they are in the inclusion list",
+    "info2": "<strong>Wildcards:</strong> Use <code class=\"bg-red-500/20 px-1 rounded\">*-DEV-*</code> to exclude development hostnames",
+    "info3": "The exclusion list always takes precedence over the inclusion list"
+  },
+  "includeIps": {
+    "title": "Include IP/Subnet",
+    "description": "IPs or subnets that will be included in the scan. Supports CIDR notation.",
+    "placeholder": "e.g. 192.168.1.1 or 10.0.0.0/24",
+    "info1": "Add individual IPs (e.g. <code class=\"bg-blue-500/20 px-1 rounded\">192.168.1.1</code>) or subnets in CIDR notation (e.g. <code class=\"bg-blue-500/20 px-1 rounded\">10.0.0.0/24</code>)",
+    "info2": "If the list is empty, all IPs will be considered"
+  },
+  "excludeIps": {
+    "title": "Exclude IP/Subnet",
+    "description": "IPs or subnets that will be excluded from the scan. Exclusion always takes precedence over inclusion.",
+    "placeholder": "e.g. 10.0.0.5 or 172.16.0.0/12",
+    "info1": "IPs and subnets in this list will be <strong>always ignored</strong>, even if they are in the inclusion list",
+    "info2": "Use CIDR to exclude entire subnets (e.g. <code class=\"bg-red-500/20 px-1 rounded\">192.168.99.0/24</code>)",
+    "info3": "The exclusion list always takes precedence over the inclusion list"
+  },
+  "list": {
+    "title": "Registered Pools",
+    "count_one": "{{count}} pool in the system",
+    "count_other": "{{count}} pools in the system",
+    "empty": "No scan pool registered",
+    "scanners": "Scanners",
+    "delay": "Delay (ms)",
+    "rules": "Rules",
+    "hostIncludeBadge": "+{{count}} host",
+    "hostExcludeBadge": "-{{count}} host",
+    "ipIncludeBadge": "+{{count}} IP",
+    "ipExcludeBadge": "-{{count}} IP",
+    "noFilters": "No filters"
+  },
+  "toast": {
+    "invalidIp": "Invalid IP. Use IPv4 (e.g. 192.168.1.1) or CIDR (e.g. 10.0.0.0/24)",
+    "itemExists": "Item already exists in the list",
+    "loadError": "Error loading scan pools",
+    "nameRequired": "Name is required",
+    "createSuccess": "Scan pool created successfully",
+    "createError": "Error creating scan pool",
+    "deleteSuccess": "Scan pool removed successfully",
+    "deleteError": "Error removing scan pool",
+    "updateSuccess": "Scan pool updated successfully",
+    "updateError": "Error updating scan pool"
+  }
+}

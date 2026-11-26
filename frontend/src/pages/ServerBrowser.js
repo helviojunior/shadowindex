@@ -73,6 +73,7 @@ import {
   CheckCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '@/contexts/AppContext';
 import { useFileStatusEvents, useDownloadEvents } from '@/hooks/useWebSocket';
 import { ShieldKeyIcon } from '@/components/icons';
@@ -168,6 +169,7 @@ const CERTIFICATE_EXTENSIONS = ['.cer', '.crt', '.pem', '.der', '.p7b', '.p7c', 
 const PDF_EXTENSION = '.pdf';
 
 const ServerBrowser = () => {
+  const { t } = useTranslation('server-browser');
   const { serverId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -190,9 +192,9 @@ const ServerBrowser = () => {
   };
   
   const backDestination = getBackDestination();
-  const backLabel = backDestination === '/files/browse' ? 'Navegação' 
-                  : backDestination === '/leaks' ? 'Leaks' 
-                  : 'Servidores';
+  const backLabel = backDestination === '/files/browse' ? t('common:nav.navigation')
+                  : backDestination === '/leaks' ? t('common:nav.leaks')
+                  : t('common:nav.servidores');
   
   const [server, setServer] = useState(null);
   const [shares, setShares] = useState([]);
@@ -352,14 +354,14 @@ const ServerBrowser = () => {
         console.error('Error loading leak types:', error);
         // Usar tipos padrão se falhar
         setLeakTypes([
-          { value: 'password', label: 'Senha', severity: 'medium' },
-          { value: 'token', label: 'Token', severity: 'medium' },
-          { value: 'api_key', label: 'API Key', severity: 'high' },
-          { value: 'private_key', label: 'Chave Privada', severity: 'critical' },
-          { value: 'ssh_key', label: 'Chave SSH', severity: 'critical' },
-          { value: 'certificate', label: 'Certificado com Chave', severity: 'critical' },
-          { value: 'connection_string', label: 'String de Conexão', severity: 'high' },
-          { value: 'other', label: 'Outro', severity: 'low' }
+          { value: 'password', label: t('leakTypes.password'), severity: 'medium' },
+          { value: 'token', label: t('leakTypes.token'), severity: 'medium' },
+          { value: 'api_key', label: t('leakTypes.apiKey'), severity: 'high' },
+          { value: 'private_key', label: t('leakTypes.privateKey'), severity: 'critical' },
+          { value: 'ssh_key', label: t('leakTypes.sshKey'), severity: 'critical' },
+          { value: 'certificate', label: t('leakTypes.certificate'), severity: 'critical' },
+          { value: 'connection_string', label: t('leakTypes.connectionString'), severity: 'high' },
+          { value: 'other', label: t('leakTypes.other'), severity: 'low' }
         ]);
       }
     };
@@ -371,7 +373,7 @@ const ServerBrowser = () => {
   // Função para submeter leak manual
   const submitManualLeak = async () => {
     if (!selectedItem || !selectedItem.fullPath) {
-      toast.error('Nenhum arquivo selecionado');
+      toast.error(t('leakModal.noFile'));
       return;
     }
     
@@ -387,7 +389,7 @@ const ServerBrowser = () => {
       });
       
       if (response.data.success) {
-        toast.success('Credencial identificada com sucesso');
+        toast.success(t('toast.leakSuccess'));
         setShowLeakModal(false);
         setManualLeak({
           secret_type: 'password',
@@ -396,11 +398,11 @@ const ServerBrowser = () => {
           match_text: ''
         });
       } else {
-        toast.error(response.data.message || 'Erro ao registrar credencial');
+        toast.error(response.data.message || t('toast.leakError'));
       }
     } catch (error) {
       console.error('Error submitting manual leak:', error);
-      toast.error('Erro ao registrar credencial');
+      toast.error(t('toast.leakError'));
     } finally {
       setSubmittingLeak(false);
     }
@@ -488,11 +490,11 @@ const ServerBrowser = () => {
           // Usar a função de navegação existente
           await navigateToSearchResult(item);
         } else {
-          toast.error('Arquivo não encontrado');
+          toast.error(t('toast.fileNotFound'));
         }
       } catch (error) {
         console.error('Error navigating to file:', error);
-        toast.error('Erro ao navegar até o arquivo');
+        toast.error(t('toast.navError'));
       } finally {
         setNavigatingToResult(false);
         setPendingFileNavigation(null);
@@ -646,7 +648,7 @@ const ServerBrowser = () => {
       setServer(response.data);
     } catch (error) {
       console.error('Error loading server:', error);
-      toast.error('Erro ao carregar servidor');
+      toast.error(t('toast.loadServerError'));
     }
   };
 
@@ -722,7 +724,7 @@ const ServerBrowser = () => {
   // Carrega o conteúdo do arquivo para visualização
   const loadFileContent = async () => {
     if (!selectedItem || !isFileDownloaded(selectedItem.fullPath || selectedItem.serverPath)) {
-      toast.error('Arquivo precisa ser sincronizado primeiro');
+      toast.error(t('toast.needSync'));
       return;
     }
 
@@ -736,11 +738,11 @@ const ServerBrowser = () => {
     }
     
     if (!fileId) {
-      toast.error('Arquivo não encontrado no banco de dados');
+      toast.error(t('toast.fileNotInDb'));
       setContentLoadError(true);
       return;
     }
-    
+
     // Para certificados, carregar informações parseadas
     if (isCertificateFile(filename)) {
       setLoadingContent(true);
@@ -796,7 +798,7 @@ const ServerBrowser = () => {
       } catch (error) {
         console.error('Error loading file preview:', error);
         // Handle blob error response
-        let errorMessage = 'Erro ao carregar preview do arquivo';
+        let errorMessage = t('toast.previewError');
         if (error.response?.data instanceof Blob) {
           try {
             const text = await error.response.data.text();
@@ -818,7 +820,7 @@ const ServerBrowser = () => {
     const MAX_VIEW_SIZE = 1 * 1024 * 1024; // 1MB
     const fileSize = parseInt(downloadedFilesInfo[filePath]?.file_size || selectedItem.size) || 0;
     if (fileSize > MAX_VIEW_SIZE) {
-      setFileContent(`Arquivo muito grande para ser exibido (${formatSize(fileSize)}). Tamanho máximo para visualização: 1 MB.`);
+      setFileContent(t('content.tooLarge', { size: formatSize(fileSize) }));
       setRawFileContent(null);
       setFilePreviewUrl(null);
       return;
@@ -866,7 +868,7 @@ const ServerBrowser = () => {
       }
     } catch (error) {
       console.error('Error loading file content:', error);
-      toast.error('Erro ao carregar conteúdo do arquivo');
+      toast.error(t('toast.loadContentError'));
       setContentLoadError(true);
     } finally {
       setLoadingContent(false);
@@ -1033,7 +1035,7 @@ const ServerBrowser = () => {
       setBeautified(true);
     } catch (error) {
       console.error('Beautify error:', error);
-      toast.error('Erro ao formatar conteúdo');
+      toast.error(t('toast.formatError'));
     }
   };
 
@@ -1102,7 +1104,7 @@ const ServerBrowser = () => {
           hexdump += `${offsetHex}  ${hexPart} |${asciiPart}|\n`;
         }
         
-        setFileContent(`[Conteúdo binário - ${decoded.length} bytes]\n\n${hexdump}`);
+        setFileContent(`${t('content.binary', { count: decoded.length })}\n\n${hexdump}`);
       } else {
         setFileContent(decoded);
       }
@@ -1111,7 +1113,7 @@ const ServerBrowser = () => {
       setBeautified(false);
     } catch (error) {
       console.error('Base64 decode error:', error);
-      toast.error('Erro ao decodificar Base64 - conteúdo inválido');
+      toast.error(t('toast.base64Error'));
     }
   };
 
@@ -1129,7 +1131,7 @@ const ServerBrowser = () => {
 
     // Verificar se o arquivo está baixado
     if (!isFileDownloaded(filePath)) {
-      toast.error('Arquivo precisa ser sincronizado primeiro');
+      toast.error(t('toast.needSync'));
       return;
     }
 
@@ -1140,7 +1142,7 @@ const ServerBrowser = () => {
     }
 
     if (!fileId) {
-      toast.error('Arquivo não encontrado no banco de dados');
+      toast.error(t('toast.fileNotInDb'));
       return;
     }
 
@@ -1157,7 +1159,7 @@ const ServerBrowser = () => {
       setActiveTab('view');
     } catch (error) {
       console.error('Error loading file for hexdump:', error);
-      const errorMessage = error.response?.data?.detail || 'Erro ao carregar hexdump';
+      const errorMessage = error.response?.data?.detail || t('toast.hexdumpError');
       toast.error(errorMessage);
     } finally {
       setLoadingContent(false);
@@ -1177,15 +1179,15 @@ const ServerBrowser = () => {
     }
     
     if (!fileId) {
-      toast.error('Arquivo não encontrado no banco de dados');
+      toast.error(t('toast.fileNotInDb'));
       return;
     }
-    
+
     try {
       const response = await axios.get(`${API_V2}/servers/${serverId}/files/${fileId}/download`, {
         responseType: 'blob'
       });
-      
+
       // Criar URL para download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -1198,7 +1200,7 @@ const ServerBrowser = () => {
     } catch (error) {
       console.error('Error downloading file:', error);
       // Handle blob error response
-      let errorMessage = 'Erro ao baixar arquivo';
+      let errorMessage = t('toast.downloadError');
       if (error.response?.data instanceof Blob) {
         try {
           const text = await error.response.data.text();
@@ -1253,7 +1255,7 @@ const ServerBrowser = () => {
     const fileInfo = downloadedFilesInfo[filePath];
     
     if (!fileInfo?.id) {
-      toast.error('Arquivo não encontrado para processar OCR');
+      toast.error(t('toast.ocrFileNotFound'));
       return;
     }
     
@@ -1262,15 +1264,15 @@ const ServerBrowser = () => {
       const response = await axios.post(`${API_V2}/servers/${serverId}/files/${fileInfo.id}/process-ocr`);
       
       if (response.data.success) {
-        toast.success(`OCR processado! ${response.data.content_length} caracteres extraídos`);
+        toast.success(t('toast.ocrSuccess', { count: response.data.content_length }));
         // Recarregar dados de OCR
         await loadOcrData(fileInfo.id);
       } else {
-        toast.error(`Erro no OCR: ${response.data.error}`);
+        toast.error(t('toast.ocrError', { error: response.data.error }));
       }
     } catch (error) {
       console.error('Error processing OCR:', error);
-      toast.error('Erro ao processar OCR');
+      toast.error(t('toast.ocrProcessError'));
     } finally {
       setProcessingOcr(false);
     }
@@ -1314,7 +1316,7 @@ const ServerBrowser = () => {
       setSearchResults(response.data);
     } catch (error) {
       console.error('Error searching:', error);
-      toast.error('Erro ao buscar');
+      toast.error(t('toast.searchError'));
     } finally {
       setSearchLoading(false);
     }
@@ -1344,7 +1346,7 @@ const ServerBrowser = () => {
       });
     } catch (error) {
       console.error('Error in advanced search:', error);
-      toast.error('Erro na busca avançada');
+      toast.error(t('toast.advSearchError'));
     } finally {
       setSearchLoading(false);
     }
@@ -1710,7 +1712,7 @@ const ServerBrowser = () => {
       const pathParts = filePath.replace(/\//g, '\\').split('\\').filter(p => p);
       
       if (pathParts.length < 2) {
-        toast.error('Caminho de arquivo inválido');
+        toast.error(t('toast.invalidPath'));
         return;
       }
       
@@ -1732,7 +1734,7 @@ const ServerBrowser = () => {
       
     } catch (error) {
       console.error('Error navigating to file path:', error);
-      toast.error('Erro ao navegar até o arquivo');
+      toast.error(t('toast.navError'));
     } finally {
       setNavigatingToResult(false);
     }
@@ -1741,9 +1743,9 @@ const ServerBrowser = () => {
   const loadShares = async () => {
     // Verificar se o servidor tem uma instância de plugin configurada
     if (!server?.plugin_instance_id) {
-      toast.error('Instância de plugin não configurada', {
+      toast.error(t('toast.noPluginTitle'), {
         duration: 6000,
-        description: 'Configure uma instância de plugin nas configurações do servidor antes de navegar nos arquivos.'
+        description: t('toast.noPluginDesc')
       });
       setLoadingShares(false);
       return;
@@ -1862,9 +1864,9 @@ const ServerBrowser = () => {
       if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
         const detail = error.response.data.detail;
         setServer(prev => ({ ...prev, is_unreachable: true }));
-        toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+        toast.error(t('toast.serverUnreachable', { ip: detail.server_ip || server?.ip || '' }), {
           duration: 6000,
-          description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+          description: t('toast.serverUnreachableDesc')
         });
         setLoadingShares(false);
         return;
@@ -1873,37 +1875,37 @@ const ServerBrowser = () => {
       // Verificar se é erro de credencial não configurada
       if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
         const detail = error.response.data.detail;
-        toast.error(detail.message || 'Credencial não configurada para este servidor', {
+        toast.error(detail.message || t('toast.credentialNotSet'), {
           duration: 6000,
-          description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
+          description: t('toast.credentialNotSetDesc')
         });
         setLoadingShares(false);
         return;
       }
-      
+
       // Verificar se é erro estruturado 500
       if (error.response?.status === 500 && error.response?.data?.detail) {
         const detail = error.response.data.detail;
-        let errorMessage = detail.message || 'Erro ao carregar compartilhamentos';
+        let errorMessage = detail.message || t('toast.loadSharesError');
         let description = '';
-        
+
         switch (detail.error) {
           case 'credential_error':
-            description = 'Verifique as credenciais configuradas no plugin.';
+            description = t('errorDesc.credential');
             break;
           case 'connection_error':
-            description = 'Verifique se o servidor está acessível na rede.';
+            description = t('errorDesc.connection');
             break;
           case 'timeout_error':
-            description = 'Servidor demorou muito para responder.';
+            description = t('errorDesc.timeout');
             break;
           case 'config_error':
-            description = 'Verifique as configurações do plugin (URL, credenciais, etc).';
+            description = t('errorDesc.config');
             break;
           default:
-            description = 'Verifique os logs para mais detalhes.';
+            description = t('errorDesc.default');
         }
-        
+
         toast.error(errorMessage, {
           duration: 6000,
           description
@@ -1921,30 +1923,30 @@ const ServerBrowser = () => {
         if (detail && typeof detail === 'object') {
           if (detail.error === 'server_unreachable') {
             setServer(prev => ({ ...prev, is_unreachable: true }));
-            toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+            toast.error(t('toast.serverUnreachable', { ip: detail.server_ip || server?.ip || '' }), {
               duration: 6000,
-              description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+              description: t('toast.serverUnreachableDesc')
             });
           } else {
             const descriptions = {
-              credential_not_set: 'Configure uma credencial válida nas configurações do plugin do servidor.',
-              credential_error: 'Verifique as credenciais configuradas no plugin.',
-              auth_error: 'A autenticação foi recusada pelo servidor. Verifique usuário, senha/estado da conta.',
-              access_denied: 'A credencial não tem permissão para acessar este recurso.',
-              connection_error: 'Verifique se o servidor está acessível na rede.',
-              timeout_error: 'Servidor demorou muito para responder.',
-              config_error: 'Verifique as configurações do plugin (URL, credenciais, etc).',
-              plugin_not_configured: 'Configure o plugin do servidor antes de prosseguir.'
+              credential_not_set: t('descMap.credentialNotSet'),
+              credential_error: t('descMap.credentialError'),
+              auth_error: t('descMap.authError'),
+              access_denied: t('descMap.accessDenied'),
+              connection_error: t('descMap.connectionError'),
+              timeout_error: t('descMap.timeoutError'),
+              config_error: t('descMap.configError'),
+              plugin_not_configured: t('descMap.pluginNotConfigured')
             };
-            toast.error(detail.message || 'Erro ao carregar compartilhamentos', {
+            toast.error(detail.message || t('toast.loadSharesError'), {
               duration: 7000,
-              description: descriptions[detail.error] || 'Verifique os logs do servidor para mais detalhes.'
+              description: descriptions[detail.error] || t('descMap.fallbackServer')
             });
           }
         } else {
-          toast.error('Erro ao carregar compartilhamentos', {
+          toast.error(t('toast.loadSharesError'), {
             duration: 4000,
-            description: fallbackError.message || 'Erro desconhecido'
+            description: fallbackError.message || t('toast.unknownError')
           });
         }
       }
@@ -2018,31 +2020,31 @@ const ServerBrowser = () => {
         // Servidor inacessível: marcar flag visual
         if (detail.error === 'server_unreachable') {
           setServer(prev => ({ ...prev, is_unreachable: true }));
-          toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+          toast.error(t('toast.serverUnreachable', { ip: detail.server_ip || server?.ip || '' }), {
             duration: 6000,
-            description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+            description: t('toast.serverUnreachableDesc')
           });
         } else {
           // Descrição auxiliar por tipo de erro
           const descriptions = {
-            credential_not_set: 'Configure uma credencial válida nas configurações do plugin do servidor.',
-            credential_error: 'Verifique as credenciais configuradas no plugin.',
-            auth_error: 'A autenticação foi recusada pelo servidor. Verifique usuário, senha/estado da conta.',
-            access_denied: 'A credencial não tem permissão para acessar este recurso.',
-            connection_error: 'Verifique se o servidor está acessível na rede.',
-            timeout_error: 'Servidor demorou muito para responder.',
-            config_error: 'Verifique as configurações do plugin (URL, credenciais, etc).',
-            plugin_not_configured: 'Configure o plugin do servidor antes de prosseguir.'
+            credential_not_set: t('descMap.credentialNotSet'),
+            credential_error: t('descMap.credentialError'),
+            auth_error: t('descMap.authError'),
+            access_denied: t('descMap.accessDenied'),
+            connection_error: t('descMap.connectionError'),
+            timeout_error: t('descMap.timeoutError'),
+            config_error: t('descMap.configError'),
+            plugin_not_configured: t('descMap.pluginNotConfigured')
           };
-          toast.error(detail.message || 'Erro ao atualizar compartilhamentos', {
+          toast.error(detail.message || t('toast.refreshSharesError'), {
             duration: 7000,
-            description: descriptions[detail.error] || 'Verifique os logs para mais detalhes.'
+            description: descriptions[detail.error] || t('descMap.fallback')
           });
         }
       } else {
-        toast.error('Erro ao atualizar compartilhamentos', {
+        toast.error(t('toast.refreshSharesError'), {
           duration: 4000,
-          description: error.message || 'Erro desconhecido'
+          description: error.message || t('toast.unknownError')
         });
       }
     } finally {
@@ -2108,7 +2110,7 @@ const ServerBrowser = () => {
           [nodeId]: []  // Sem filhos - diretório marcado como acesso negado
         }));
         
-        const errorMsg = response.data.errorMessage || 'Acesso negado';
+        const errorMsg = response.data.errorMessage || t('errors.accessDenied');
         
         // Detectar se é um share pelo path (formato: \\IP\ShareName - sem subpastas adicionais)
         // Um share tem exatamente 4 partes quando dividido por \: ['', '', 'IP', 'ShareName']
@@ -2311,8 +2313,7 @@ const ServerBrowser = () => {
       
       // Toast informativo quando diretório/share está vazio
       if (items.length === 0) {
-        const label = (isSharePath || nodeId.startsWith('share-')) ? 'Compartilhamento' : 'Diretório';
-        toast.info(`${label} vazio`, { duration: 3000 });
+        toast.info((isSharePath || nodeId.startsWith('share-')) ? t('toast.shareEmpty') : t('toast.dirEmpty'), { duration: 3000 });
       }
     } catch (error) {
       console.error('Error loading directory:', error);
@@ -2321,50 +2322,50 @@ const ServerBrowser = () => {
       if (error.response?.status === 503 && error.response?.data?.detail?.error === 'server_unreachable') {
         const detail = error.response.data.detail;
         setServer(prev => ({ ...prev, is_unreachable: true }));
-        toast.error(`Servidor ${detail.server_ip || server?.ip || ''} inacessível`, {
+        toast.error(t('toast.serverUnreachable', { ip: detail.server_ip || server?.ip || '' }), {
           duration: 6000,
-          description: 'O servidor não respondeu à conexão. Verifique se está online e acessível na rede.'
+          description: t('toast.serverUnreachableDesc')
         });
       } else if (error.response?.status === 422 && error.response?.data?.detail?.error === 'credential_not_set') {
         const detail = error.response.data.detail;
-        toast.error(detail.message || 'Credencial não configurada para este servidor', {
+        toast.error(detail.message || t('toast.credentialNotSet'), {
           duration: 6000,
-          description: 'Configure uma credencial válida nas configurações do plugin do servidor.'
+          description: t('toast.credentialNotSetDesc')
         });
       } else if (error.response?.status === 500 && error.response?.data?.detail) {
         // Tratamento para erros estruturados do plugin
         const detail = error.response.data.detail;
-        let errorMessage = detail.message || 'Erro ao navegar diretório';
+        let errorMessage = detail.message || t('toast.browseDirError');
         let description = '';
-        
+
         switch (detail.error) {
           case 'credential_error':
-            description = 'Verifique as credenciais configuradas no plugin.';
+            description = t('errorDesc.credential');
             break;
           case 'connection_error':
-            description = 'Verifique se o servidor está acessível na rede.';
+            description = t('errorDesc.connection');
             break;
           case 'timeout_error':
-            description = 'Servidor demorou muito para responder.';
+            description = t('errorDesc.timeout');
             break;
           case 'config_error':
-            description = 'Verifique as configurações do plugin (URL, credenciais, etc).';
+            description = t('errorDesc.config');
             break;
           case 'auth_error':
-            description = 'Falha na autenticação. Verifique usuário e senha.';
+            description = t('errorDesc.auth');
             break;
           default:
-            description = 'Verifique os logs para mais detalhes.';
+            description = t('errorDesc.default');
         }
-        
+
         toast.error(errorMessage, {
           duration: 6000,
           description
         });
       } else {
-        toast.error('Erro ao carregar diretório', {
+        toast.error(t('toast.loadDirError'), {
           duration: 4000,
-          description: error.message || 'Erro desconhecido'
+          description: error.message || t('toast.unknownError')
         });
       }
     } finally {
@@ -2435,10 +2436,10 @@ const ServerBrowser = () => {
         });
         
         if (response.data.success) {
-          toast.success(`Download adicionado à fila (${(fileSize / ONE_MB).toFixed(2)} MB). Acompanhe em Arquivos > Downloads`);
+          toast.success(t('toast.downloadQueued', { size: (fileSize / ONE_MB).toFixed(2) }));
         }
       } catch (error) {
-        const errorMsg = error.response?.data?.detail || 'Erro ao adicionar à fila de downloads';
+        const errorMsg = error.response?.data?.detail || t('toast.queueError');
         toast.error(errorMsg);
       }
       return;
@@ -2464,7 +2465,7 @@ const ServerBrowser = () => {
         while (true) {
           // Verificar cancelamento
           if (singleDownloadCancelledRef.current) {
-            toast.info('Download cancelado');
+            toast.info(t('toast.downloadCancelled'));
             return;
           }
           
@@ -2484,7 +2485,7 @@ const ServerBrowser = () => {
           
           // Verificar cancelamento após resposta
           if (singleDownloadCancelledRef.current) {
-            toast.info('Download cancelado');
+            toast.info(t('toast.downloadCancelled'));
             return;
           }
           
@@ -2510,7 +2511,7 @@ const ServerBrowser = () => {
         
         // Verificar cancelamento antes de salvar
         if (singleDownloadCancelledRef.current) {
-          toast.info('Download cancelado');
+          toast.info(t('toast.downloadCancelled'));
           return;
         }
         
@@ -2590,13 +2591,13 @@ const ServerBrowser = () => {
       console.error('Error downloading file:', error);
       // Extrair mensagem de erro do response do backend
       const errorDetail = error.response?.data?.detail;
-      const errorMessage = errorDetail || error.message || 'Erro ao baixar arquivo';
-      
+      const errorMessage = errorDetail || error.message || t('toast.downloadError');
+
       // Mostrar mensagem específica baseada no código de status
       if (error.response?.status === 403) {
-        toast.error(`Acesso Negado: ${errorMessage}`);
+        toast.error(t('toast.accessDeniedPrefix', { message: errorMessage }));
       } else if (error.response?.status === 404) {
-        toast.error(`Arquivo não encontrado: ${errorMessage}`);
+        toast.error(t('toast.fileNotFoundPrefix', { message: errorMessage }));
       } else {
         toast.error(errorMessage);
       }
@@ -2697,7 +2698,7 @@ const ServerBrowser = () => {
             shareName,
             fileSize,
             status: 'skipped',
-            error: `Tamanho excede limite (${formatSize(fileSize)})`
+            error: t('download.sizeExceeds', { size: formatSize(fileSize) })
           }, ...prev]);
           setBulkDownloadStats(prev => ({ 
             ...prev, 
@@ -2836,13 +2837,13 @@ const ServerBrowser = () => {
         } catch (error) {
           // Extrair mensagem de erro do response do backend
           const errorDetail = error.response?.data?.detail;
-          let errorMessage = errorDetail || error.message || 'Erro desconhecido';
-          
+          let errorMessage = errorDetail || error.message || t('toast.unknownError');
+
           // Mensagem amigável para erros comuns
           if (error.response?.status === 403) {
-            errorMessage = 'Acesso Negado';
+            errorMessage = t('errors.accessDeniedShort');
           } else if (error.response?.status === 404) {
-            errorMessage = 'Não encontrado';
+            errorMessage = t('errors.notFound');
           }
           
           // Atualizar para failed com mensagem de erro adequada
@@ -2904,11 +2905,11 @@ const ServerBrowser = () => {
         }
       });
       
-      toast.success(`${response.data.message}. Acompanhe em Arquivos > Downloads`);
+      toast.success(t('toast.scanQueued', { message: response.data.message }));
 
     } catch (error) {
       console.error('Error starting bulk download:', error);
-      const errorMsg = error.response?.data?.detail || 'Erro ao iniciar download em massa';
+      const errorMsg = error.response?.data?.detail || t('toast.bulkDownloadError');
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -2940,11 +2941,11 @@ const ServerBrowser = () => {
         }
       });
       
-      toast.success(`${response.data.message}. Busca crítica iniciada - GitLeaks será executado automaticamente ao final.`);
+      toast.success(t('toast.criticalSearchStarted', { message: response.data.message }));
 
     } catch (error) {
       console.error('Error starting critical search:', error);
-      const errorMsg = error.response?.data?.detail || 'Erro ao iniciar busca crítica';
+      const errorMsg = error.response?.data?.detail || t('toast.criticalSearchError');
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -2967,7 +2968,7 @@ const ServerBrowser = () => {
     setBulkDownloadStats({ total: 0, completed: 0, failed: 0, skipped: 0 });
     setActiveTab('download');
     
-    toast.info('Iniciando download...');
+    toast.info(t('toast.startingDownload'));
     
     // Processar diretório de forma incremental
     await processDirectoryDownload(path, shareName, 1, bulkDownloadConfig.depth, maxSizeBytes);
@@ -2977,16 +2978,16 @@ const ServerBrowser = () => {
     loadDownloadedFiles();
     
     if (bulkDownloadCancelledRef.current) {
-      toast.info('Download cancelado');
+      toast.info(t('toast.downloadCancelled'));
     } else {
-      toast.success('Download em massa concluído');
+      toast.success(t('toast.bulkDownloadComplete'));
     }
   };
 
   // Cancelar download em massa
   const cancelBulkDownload = () => {
     bulkDownloadCancelledRef.current = true;
-    toast.info('Cancelando downloads...');
+    toast.info(t('toast.cancellingDownloads'));
   };
 
   // Cancelar sync individual
@@ -3017,7 +3018,7 @@ const ServerBrowser = () => {
       });
       
       if (response.data.success) {
-        toast.success(`Download forçado adicionado à fila: ${item.name}`);
+        toast.success(t('toast.forceQueued', { name: item.name }));
         
         // Atualizar status do item na lista
         setBulkDownloadItems(prev => prev.map((it, idx) => 
@@ -3027,14 +3028,14 @@ const ServerBrowser = () => {
         ));
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || 'Erro ao forçar download';
+      const errorMsg = error.response?.data?.detail || t('toast.forceError');
       toast.error(errorMsg);
     }
   };
 
   const copyToClipboard = async (text, field) => {
     if (!text) {
-      toast.error('Nenhum texto para copiar');
+      toast.error(t('toast.noTextToCopy'));
       return;
     }
     
@@ -3060,10 +3061,10 @@ const ServerBrowser = () => {
       }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
-      toast.success('Copiado!');
+      toast.success(t('toast.copied'));
     } catch (error) {
       console.error('Erro ao copiar:', error);
-      toast.error('Erro ao copiar para a área de transferência');
+      toast.error(t('toast.copyError'));
     }
   };
 
@@ -3399,7 +3400,7 @@ const ServerBrowser = () => {
               >
                 {isShare ? String(item.share_name) : String(item.name)}
                 {isAccessDenied && (
-                  <span className="ml-2 text-xs text-red-400">(Acesso Negado)</span>
+                  <span className="ml-2 text-xs text-red-400">{t('tree.accessDeniedInline')}</span>
                 )}
               </span>
 
@@ -3411,10 +3412,10 @@ const ServerBrowser = () => {
                     // Forçar refresh ignorando cache
                     setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
                     await loadDirectory(nodeId, path, currentShareName, true); // true = forceRefresh
-                    toast.success(`Diretório atualizado: ${isShare ? item.share_name : item.name}`);
+                    toast.success(t('toast.dirUpdated', { name: isShare ? item.share_name : item.name }));
                   }}
                   className="p-1 hover:bg-muted rounded flex-shrink-0 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Forçar atualização (ignorar cache)"
+                  title={t('contextMenu.forceRefresh')}
                   data-testid={`force-refresh-${safeTestId}`}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -3427,14 +3428,14 @@ const ServerBrowser = () => {
             <ContextMenuItem onClick={() => {
               window.open(`${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(path)}&from=${encodeURIComponent(window.location.pathname)}`, '_blank');
             }}>
-              Abrir em nova aba
+              {t('contextMenu.openNewTab')}
             </ContextMenuItem>
             {/* Copiar link */}
             <ContextMenuItem onClick={() => {
               const url = `${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(path)}&from=${encodeURIComponent(window.location.pathname)}`;
               setTimeout(() => copyToClipboard(url, 'link'), 100);
             }}>
-              Copiar link
+              {t('contextMenu.copyLink')}
             </ContextMenuItem>
             {/* View as HexDump - apenas arquivos baixados */}
             {isFile && isDownloaded && (
@@ -3442,22 +3443,22 @@ const ServerBrowser = () => {
                 handleSelectItem(item, item.type, path, currentShareName);
                 setTimeout(() => viewAsHexDump(item, path, currentShareName), 100);
               }}>
-                View as HexDump
+                {t('contextMenu.viewHexDump')}
               </ContextMenuItem>
             )}
             <ContextMenuSeparator />
             {/* Busca crítica */}
             <ContextMenuItem onClick={startCriticalSearch}>
-              Busca Crítica
+              {t('criticalSearch')}
             </ContextMenuItem>
             {/* Recarregar - para diretórios/shares */}
             {isDirectory && (
               <ContextMenuItem onClick={async () => {
                 setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
                 await loadDirectory(nodeId, path, currentShareName, true);
-                toast.success(`Recarregado: ${isShare ? item.share_name : item.name}`);
+                toast.success(t('toast.reloaded', { name: isShare ? item.share_name : item.name }));
               }}>
-                Recarregar
+                {t('contextMenu.reload')}
               </ContextMenuItem>
             )}
             {/* Enviar para fila - arquivos e diretórios */}
@@ -3477,10 +3478,10 @@ const ServerBrowser = () => {
                     max_depth: null
                   });
                   if (response.data.success) {
-                    toast.success(`Adicionado à fila: ${item.name}`);
+                    toast.success(t('toast.addedToQueue', { name: item.name }));
                   }
                 } catch (error) {
-                  const errorMsg = error.response?.data?.detail || 'Erro ao enviar para fila';
+                  const errorMsg = error.response?.data?.detail || t('toast.sendQueueError');
                   toast.error(errorMsg);
                 }
               } else {
@@ -3497,14 +3498,14 @@ const ServerBrowser = () => {
                       max_file_size_mb: bulkDownloadConfig.maxSize
                     }
                   });
-                  toast.success(`${response.data.message}. Acompanhe em Arquivos > Downloads`);
+                  toast.success(t('toast.scanQueued', { message: response.data.message }));
                 } catch (error) {
-                  const errorMsg = error.response?.data?.detail || 'Erro ao enviar para fila';
+                  const errorMsg = error.response?.data?.detail || t('toast.sendQueueError');
                   toast.error(errorMsg);
                 }
               }
             }}>
-              Enviar para fila
+              {t('contextMenu.sendToQueue')}
             </ContextMenuItem>
             {/* Sync - apenas arquivos */}
             {isFile && (
@@ -3527,10 +3528,10 @@ const ServerBrowser = () => {
                       max_depth: null
                     });
                     if (response.data.success) {
-                      toast.success(`Sync adicionado à fila (${(fileSize / ONE_MB).toFixed(2)} MB)`);
+                      toast.success(t('toast.syncQueued', { size: (fileSize / ONE_MB).toFixed(2) }));
                     }
                   } catch (error) {
-                    const errorMsg = error.response?.data?.detail || 'Erro ao adicionar sync à fila';
+                    const errorMsg = error.response?.data?.detail || t('toast.syncQueueError');
                     toast.error(errorMsg);
                   }
                 } else {
@@ -3539,7 +3540,7 @@ const ServerBrowser = () => {
                   setTimeout(() => handleDownload(), 100);
                 }
               }}>
-                Sync
+                {t('actions.sync')}
               </ContextMenuItem>
             )}
 
@@ -3640,7 +3641,7 @@ const ServerBrowser = () => {
     if (!selectedItem) {
       return (
         <div className="flex items-center justify-center h-full text-muted-foreground">
-          <p>Selecione um item para ver detalhes</p>
+          <p>{t('info.selectItem')}</p>
         </div>
       );
     }
@@ -3662,7 +3663,7 @@ const ServerBrowser = () => {
     // - Para arquivos: se foi baixado, acesso é permitido
     const childrenFetched = isShare ? selectedItem.children_fetched : selectedItem.childrenFetched;
     const accessVerified = isAccessDenied || childrenFetched || downloaded;
-    const accessStatus = isAccessDenied ? 'Negado' : (accessVerified ? 'Permitido' : 'Desconhecido');
+    const accessStatus = isAccessDenied ? t('info.accessDenied') : (accessVerified ? t('info.accessAllowed') : t('info.accessUnknown'));
     const accessStatusColor = isAccessDenied ? 'text-red-500 font-medium' : (accessVerified ? 'text-green-500' : 'text-muted-foreground');
 
     // Cor do ícone no header baseada no status de acesso
@@ -3689,13 +3690,13 @@ const ServerBrowser = () => {
             </h2>
             {isAccessDenied && (
               <Badge variant="destructive" className="ml-2 flex-shrink-0">
-                Acesso Negado
+                {t('info.accessDeniedBadge')}
               </Badge>
             )}
             {downloaded && (
               <>
                 <Badge variant="outline" className="ml-2 flex-shrink-0 text-green-500 border-green-500">
-                  Sincronizado
+                  {t('info.synced')}
                 </Badge>
                 {fileVersions.length > 1 && (
                   <Select
@@ -3706,14 +3707,14 @@ const ServerBrowser = () => {
                         const filePath = selectedItem.fullPath || selectedItem.serverPath;
                         loadFileVersions(filePath);
                         loadDownloadedFiles();
-                        toast.success('Versão alterada');
+                        toast.success(t('toast.versionChanged'));
                       } catch (error) {
-                        toast.error('Erro ao alterar versão');
+                        toast.error(t('toast.versionError'));
                       }
                     }}
                   >
                     <SelectTrigger className="w-auto min-w-[140px] h-7 ml-2 mr-4">
-                      <SelectValue placeholder="Versão" />
+                      <SelectValue placeholder={t('info.version')} />
                     </SelectTrigger>
                     <SelectContent>
                       {fileVersions.map((v) => (
@@ -3738,11 +3739,11 @@ const ServerBrowser = () => {
                   variant="outline"
                   className="h-7 text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
                   onClick={() => setShowLeakModal(true)}
-                  title="Identificar credencial manualmente"
+                  title={t('actions.identifyTitle')}
                   data-testid="identify-credential-button"
                 >
                   <ShieldKeyIcon className="w-4 h-4 mr-1" />
-                  Identificar
+                  {t('actions.identify')}
                 </Button>
               )}
               
@@ -3755,7 +3756,7 @@ const ServerBrowser = () => {
                   data-testid="open-file-button"
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  Abrir
+                  {t('common:actions.open')}
                 </Button>
               )}
               
@@ -3785,9 +3786,9 @@ const ServerBrowser = () => {
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
-                Sync
+                {t('actions.sync')}
               </Button>
-              
+
               {/* Botão Cancelar Sync */}
               {loading && singleDownloadProgress !== null && (
                 <Button 
@@ -3798,7 +3799,7 @@ const ServerBrowser = () => {
                   data-testid="cancel-sync-button"
                 >
                   <XCircle className="w-4 h-4 mr-1" />
-                  Cancelar
+                  {t('common:actions.cancel')}
                 </Button>
               )}
             </div>
@@ -3809,7 +3810,7 @@ const ServerBrowser = () => {
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* Seletor de profundidade */}
               <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground">Níveis:</span>
+                <span className="text-xs text-muted-foreground">{t('bulk.levels')}</span>
                 <Select
                   value={bulkDownloadConfig.depth.toString()}
                   onValueChange={(val) => setBulkDownloadConfig(prev => ({ ...prev, depth: parseInt(val) }))}
@@ -3828,7 +3829,7 @@ const ServerBrowser = () => {
               
               {/* Seletor de tamanho máximo */}
               <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground">Max:</span>
+                <span className="text-xs text-muted-foreground">{t('bulk.max')}</span>
                 <Select
                   value={bulkDownloadConfig.maxSize.toString()}
                   onValueChange={(val) => setBulkDownloadConfig(prev => ({ ...prev, maxSize: parseInt(val) }))}
@@ -3853,21 +3854,21 @@ const ServerBrowser = () => {
                     className="h-7"
                     onClick={startBulkDownloadQueue}
                     data-testid="bulk-download-queue-button"
-                    title="Enviar para fila de downloads (recomendado)"
+                    title={t('actions.sendToQueueTitle')}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Enviar para Fila
+                    {t('actions.sendToQueueBtn')}
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     className="h-7 border-red-500/50 text-red-500 hover:bg-red-500/10"
                     onClick={startCriticalSearch}
                     data-testid="critical-search-button"
-                    title="Buscar arquivos sensíveis (ignora logs, foca em arquivos críticos)"
+                    title={t('actions.criticalSearchTitle')}
                   >
                     <Shield className="w-4 h-4 mr-2" />
-                    Busca Crítica
+                    {t('criticalSearch')}
                   </Button>
                 </div>
               ) : (
@@ -3879,7 +3880,7 @@ const ServerBrowser = () => {
                   data-testid="cancel-bulk-download-button"
                 >
                   <XCircle className="w-4 h-4 mr-2" />
-                  Cancelar
+                  {t('common:actions.cancel')}
                 </Button>
               )}
             </div>
@@ -3893,7 +3894,7 @@ const ServerBrowser = () => {
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-red-400">
-                  <p className="font-medium">Erro de Acesso</p>
+                  <p className="font-medium">{t('accessDenied.errorTitle')}</p>
                   {selectedItem.error_message && (
                     <p className="text-xs mt-1 text-red-300/80">{selectedItem.error_message}</p>
                   )}
@@ -4004,16 +4005,16 @@ const ServerBrowser = () => {
                       ...clearedData
                     }));
                     
-                    toast.success('Flag de bloqueio limpa. Clique novamente para re-testar.');
+                    toast.success(t('toast.flagCleared'));
                   } catch (error) {
                     console.error('Error clearing access denied:', error);
-                    toast.error('Erro ao limpar flag de bloqueio');
+                    toast.error(t('toast.flagClearError'));
                   }
                 }}
                 data-testid="clear-access-denied-button"
               >
                 <RefreshCw className="w-3 h-3 mr-1" />
-                Limpar flag de bloqueio
+                {t('accessDenied.clearFlag')}
               </Button>
             </div>
           </div>
@@ -4032,7 +4033,7 @@ const ServerBrowser = () => {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Info
+                {t('tabs.info')}
                 {activeTab === 'info' && (
                   <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${isAccessDenied ? 'bg-red-500' : 'bg-green-500'}`} />
                 )}
@@ -4050,7 +4051,7 @@ const ServerBrowser = () => {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  View
+                  {t('tabs.view')}
                   {activeTab === 'view' && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
                   )}
@@ -4066,7 +4067,7 @@ const ServerBrowser = () => {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Objetos
+                  {t('tabs.objects')}
                   {activeTab === 'objetos' && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
                   )}
@@ -4082,7 +4083,7 @@ const ServerBrowser = () => {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Download
+                  {t('tabs.download')}
                   {bulkDownloadActive && (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   )}
@@ -4106,7 +4107,7 @@ const ServerBrowser = () => {
                   }`}
                 >
                   <ScanText className="w-3.5 h-3.5" />
-                  OCR
+                  {t('tabs.ocr')}
                   {ocrData?.ocr_processed && (
                     <CheckCircle className="w-3 h-3 text-green-500" />
                   )}
@@ -4124,64 +4125,64 @@ const ServerBrowser = () => {
               <div className="p-4">
                 <div className="flex flex-col gap-3">
                   {/* Name */}
-                  <InfoRow 
-                    label="Nome" 
+                  <InfoRow
+                    label={t('common:fields.name')}
                     value={String(itemName)}
                     onCopy={() => copyToClipboard(String(itemName), 'name')}
                     copied={copiedField === 'name'}
                   />
                   
                   {/* Server Path */}
-                  <InfoRow 
-                    label="Caminho" 
+                  <InfoRow
+                    label={t('info.path')}
                     value={selectedItem.serverPath}
                     onCopy={() => copyToClipboard(selectedItem.serverPath, 'path')}
                     copied={copiedField === 'path'}
                   />
                   
                   {/* Access Status */}
-                  <InfoRow 
-                    label="Status de Acesso" 
+                  <InfoRow
+                    label={t('info.accessStatus')}
                     value={accessStatus}
                     valueClassName={accessStatusColor}
                   />
                   
                   {/* Error Message - apenas quando acesso negado */}
                   {isAccessDenied && selectedItem.error_message && (
-                    <InfoRow 
-                      label="Mensagem de Erro" 
+                    <InfoRow
+                      label={t('info.errorMessage')}
                       value={selectedItem.error_message}
                       valueClassName="text-red-400 text-xs"
                     />
                   )}
                   
                   {/* Fetched Date */}
-                  <InfoRow 
-                    label="Data de Leitura" 
+                  <InfoRow
+                    label={t('info.readDate')}
                     value={formatDate(selectedItem.fetchedAt)}
                   />
                   
                   {/* Last Write Time - para diretórios e arquivos */}
                   {(isDirectory || isFile) && selectedItem.modified_at && (
-                    <InfoRow 
-                      label="Última Modificação" 
+                    <InfoRow
+                      label={t('info.lastModified')}
                       value={formatDate(selectedItem.modified_at)}
                     />
                   )}
                   
                   {/* Size - apenas para arquivos */}
                   {isFile && !isAccessDenied && (
-                    <InfoRow 
-                      label="Tamanho" 
+                    <InfoRow
+                      label={t('info.size')}
                       value={formatSize(selectedItem.size)}
                     />
                   )}
                   
                   {/* Sync Status - apenas para arquivos */}
                   {isFile && !isAccessDenied && (
-                    <InfoRow 
-                      label="Status de Sincronização" 
-                      value={downloaded ? 'Sincronizado' : 'Não sincronizado'}
+                    <InfoRow
+                      label={t('info.syncStatus')}
+                      value={downloaded ? t('info.synced') : t('info.notSynced')}
                       valueClassName={downloaded ? 'text-green-500' : 'text-muted-foreground'}
                     />
                   )}
@@ -4189,7 +4190,7 @@ const ServerBrowser = () => {
                   {/* MIME Type - apenas para arquivos sincronizados */}
                   {isFile && downloaded && downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath]?.mimetype && (
                     <InfoRow
-                      label="MIME Type"
+                      label={t('info.mimeType')}
                       value={downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath].mimetype}
                       valueClassName="font-mono text-xs"
                     />
@@ -4197,8 +4198,8 @@ const ServerBrowser = () => {
                   
                   {/* SHA1 Hash - apenas para arquivos sincronizados */}
                   {isFile && downloaded && downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath]?.sha1_hash && (
-                    <InfoRow 
-                      label="Hash SHA1" 
+                    <InfoRow
+                      label={t('info.sha1Hash')}
                       value={downloadedFilesInfo[selectedItem.fullPath || selectedItem.serverPath].sha1_hash}
                       valueClassName="font-mono text-xs"
                     />
@@ -4206,13 +4207,13 @@ const ServerBrowser = () => {
                   
                   {/* OCR Status - apenas para arquivos sincronizados */}
                   {isFile && downloaded && (
-                    <InfoRow 
-                      label="OCR" 
+                    <InfoRow
+                      label={t('info.ocr')}
                       value={
                         ocrData?.ocr_processed ? (
                           <div className="flex items-center gap-2">
                             <CheckCircle className="w-4 h-4 text-green-500" />
-                            <span className="text-green-500">Processado</span>
+                            <span className="text-green-500">{t('info.processed')}</span>
                             {ocrData?.ocr_content && (
                               <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                 {ocrData.ocr_content.length.toLocaleString()} chars
@@ -4222,7 +4223,7 @@ const ServerBrowser = () => {
                         ) : (
                           <div className="flex items-center gap-2">
                             <XCircle className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Não processado</span>
+                            <span className="text-muted-foreground">{t('info.notProcessed')}</span>
                           </div>
                         )
                       } 
@@ -4231,17 +4232,17 @@ const ServerBrowser = () => {
                   
                   {/* Versão atual - apenas para arquivos sincronizados com múltiplas versões */}
                   {isFile && downloaded && fileVersions.length > 0 && (
-                    <InfoRow 
-                      label="Versão" 
-                      value={`v${fileVersions.find(v => v.is_current)?.version_number || 1} de ${fileVersions.length}`}
+                    <InfoRow
+                      label={t('info.version')}
+                      value={t('info.versionValue', { current: fileVersions.find(v => v.is_current)?.version_number || 1, total: fileVersions.length })}
                     />
                   )}
                   
                   {/* Senha PFX - apenas para certificados PFX com senha descoberta */}
                   {isFile && downloaded && isCertificateFile(selectedItem?.name) && 
                    fileContent?.password_used && (
-                    <InfoRow 
-                      label="Senha PFX" 
+                    <InfoRow
+                      label={t('info.pfxPassword')}
                       value={fileContent.password_used}
                       valueClassName="font-mono bg-yellow-500/10 px-2 py-1 rounded"
                       onCopy={() => copyToClipboard(fileContent.password_used, 'pfx_password')}
@@ -4251,16 +4252,16 @@ const ServerBrowser = () => {
                   
                   {/* Remark - apenas para shares */}
                   {isShare && selectedItem.remark && (
-                    <InfoRow 
-                      label="Observação" 
+                    <InfoRow
+                      label={t('info.remark')}
                       value={selectedItem.remark}
                     />
                   )}
                   
                   {/* Type - apenas para shares */}
                   {isShare && selectedItem.share_type && (
-                    <InfoRow 
-                      label="Tipo de Compartilhamento" 
+                    <InfoRow
+                      label={t('info.shareType')}
                       value={selectedItem.share_type}
                     />
                   )}
@@ -4307,7 +4308,7 @@ const ServerBrowser = () => {
                               <ChevronLeft className="w-4 h-4" />
                             </Button>
                             <span className="text-sm">
-                              Página {pdfPageNumber} de {pdfNumPages || '?'}
+                              {t('view.page', { current: pdfPageNumber, total: pdfNumPages || '?' })}
                             </span>
                             <Button 
                               variant="outline" 
@@ -4349,7 +4350,7 @@ const ServerBrowser = () => {
                             }}
                             onLoadError={(error) => {
                               console.error('Error loading PDF:', error);
-                              toast.error('Erro ao carregar PDF');
+                              toast.error(t('toast.pdfError'));
                             }}
                             loading={
                               <div className="flex items-center justify-center p-8">
@@ -4380,10 +4381,10 @@ const ServerBrowser = () => {
                         {fileContent.requires_password && (
                           <>
                             <p className="text-sm text-muted-foreground">
-                              Digite a senha para desbloquear o certificado
+                              {t('cert.enterPassword')}
                               {fileContent.passwords_tried?.length > 0 && (
                                 <span className="ml-2 text-xs">
-                                  ({fileContent.passwords_tried.length} tentativa(s) falhada(s))
+                                  {t('cert.attemptsFailed', { count: fileContent.passwords_tried.length })}
                                 </span>
                               )}
                             </p>
@@ -4397,7 +4398,7 @@ const ServerBrowser = () => {
                                     loadFileContent();
                                   }
                                 }}
-                                placeholder="Digite a senha do certificado"
+                                placeholder={t('cert.passwordPlaceholder')}
                                 className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                               />
                               <Button 
@@ -4408,7 +4409,7 @@ const ServerBrowser = () => {
                                 {loadingContent ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  'Desbloquear'
+                                  t('cert.unlock')
                                 )}
                               </Button>
                             </div>
@@ -4421,7 +4422,7 @@ const ServerBrowser = () => {
                             <details className="group">
                               <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
                                 <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
-                                Debug: {fileContent.debug_log.length} passos
+                                {t('cert.debugSteps', { count: fileContent.debug_log.length })}
                               </summary>
                               <div className="mt-3 space-y-1 pl-6">
                                 {fileContent.debug_log.map((entry, idx) => (
@@ -4456,7 +4457,7 @@ const ServerBrowser = () => {
                             {fileContent.last_exception && (
                               <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded text-xs">
                                 <div className="font-medium text-red-400 mb-1">
-                                  Exception: {fileContent.exception_type || 'Unknown'}
+                                  Exception: {fileContent.exception_type || t('cert.unknown')}
                                 </div>
                                 <pre className="text-red-300/80 whitespace-pre-wrap break-all font-mono">
                                   {fileContent.last_exception}
@@ -4474,14 +4475,14 @@ const ServerBrowser = () => {
                             {fileContent.type?.toUpperCase()}
                           </Badge>
                           <span className="text-sm text-muted-foreground">
-                            {fileContent.total_certificates} certificado(s)
+                            {t('cert.certificatesCount', { count: fileContent.total_certificates })}
                           </span>
                           {(() => {
                             const privateKeyCount = fileContent.certificates?.filter(c => c.has_private_key).length || 0;
                             if (privateKeyCount > 0) {
                               return (
                                 <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500">
-                                  🔑 {privateKeyCount === 1 ? 'Contém Chave Privada' : `${privateKeyCount} Chaves Privadas`}
+                                  🔑 {privateKeyCount === 1 ? t('cert.hasPrivateKey') : t('cert.privateKeysCount', { count: privateKeyCount })}
                                 </Badge>
                               );
                             }
@@ -4489,7 +4490,7 @@ const ServerBrowser = () => {
                           })()}
                           {fileContent.password_used && (
                             <Badge variant="secondary" className="text-xs">
-                              Senha: {fileContent.password_used}
+                              {t('cert.passwordLabel', { password: fileContent.password_used })}
                             </Badge>
                           )}
                         </div>
@@ -4503,25 +4504,25 @@ const ServerBrowser = () => {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">
-                                    Certificado {cert.index}
-                                    {cert.is_self_signed && <span className="text-xs text-muted-foreground ml-2">(Auto-assinado)</span>}
+                                    {t('cert.certificate', { index: cert.index })}
+                                    {cert.is_self_signed && <span className="text-xs text-muted-foreground ml-2">{t('cert.selfSigned')}</span>}
                                   </span>
                                   {cert.has_private_key && (
                                     <Badge variant="secondary" className="bg-purple-500/20 text-purple-400 border-purple-500">
-                                      🔑 Chave Privada
+                                      🔑 {t('cert.privateKey')}
                                     </Badge>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {cert.is_expired ? (
-                                    <Badge variant="destructive">Expirado</Badge>
+                                    <Badge variant="destructive">{t('cert.expired')}</Badge>
                                   ) : cert.days_until_expiry <= 30 ? (
                                     <Badge variant="warning" className="bg-yellow-500/20 text-yellow-500 border-yellow-500">
-                                      Expira em {cert.days_until_expiry} dias
+                                      {t('cert.expiresIn', { days: cert.days_until_expiry })}
                                     </Badge>
                                   ) : (
                                     <Badge variant="outline" className="text-green-500 border-green-500">
-                                      Válido ({cert.days_until_expiry} dias)
+                                      {t('cert.valid', { days: cert.days_until_expiry })}
                                     </Badge>
                                   )}
                                 </div>
@@ -4532,7 +4533,7 @@ const ServerBrowser = () => {
                             <div className="p-4 space-y-4 text-sm">
                               {/* Subject */}
                               <div>
-                                <h4 className="font-medium text-muted-foreground mb-2">Titular (Subject)</h4>
+                                <h4 className="font-medium text-muted-foreground mb-2">{t('cert.subject')}</h4>
                                 <div className="bg-muted/30 p-3 rounded space-y-1 font-mono text-xs">
                                   {cert.subject.commonName && <div><span className="text-muted-foreground">CN:</span> {cert.subject.commonName}</div>}
                                   {cert.subject.organizationName && <div><span className="text-muted-foreground">O:</span> {cert.subject.organizationName}</div>}
@@ -4545,7 +4546,7 @@ const ServerBrowser = () => {
                               
                               {/* Issuer */}
                               <div>
-                                <h4 className="font-medium text-muted-foreground mb-2">Emissor (Issuer)</h4>
+                                <h4 className="font-medium text-muted-foreground mb-2">{t('cert.issuer')}</h4>
                                 <div className="bg-muted/30 p-3 rounded space-y-1 font-mono text-xs">
                                   {cert.issuer.commonName && <div><span className="text-muted-foreground">CN:</span> {cert.issuer.commonName}</div>}
                                   {cert.issuer.organizationName && <div><span className="text-muted-foreground">O:</span> {cert.issuer.organizationName}</div>}
@@ -4557,13 +4558,13 @@ const ServerBrowser = () => {
                               {/* Validity */}
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <h4 className="font-medium text-muted-foreground mb-2">Válido de</h4>
+                                  <h4 className="font-medium text-muted-foreground mb-2">{t('cert.validFrom')}</h4>
                                   <div className="bg-muted/30 p-3 rounded font-mono text-xs">
                                     {cert.not_before ? new Date(cert.not_before).toLocaleString('pt-BR') : 'N/A'}
                                   </div>
                                 </div>
                                 <div>
-                                  <h4 className="font-medium text-muted-foreground mb-2">Válido até</h4>
+                                  <h4 className="font-medium text-muted-foreground mb-2">{t('cert.validUntil')}</h4>
                                   <div className={`p-3 rounded font-mono text-xs ${cert.is_expired ? 'bg-red-500/10 text-red-400' : 'bg-muted/30'}`}>
                                     {cert.not_after ? new Date(cert.not_after).toLocaleString('pt-BR') : 'N/A'}
                                   </div>
@@ -4572,18 +4573,18 @@ const ServerBrowser = () => {
                               
                               {/* Technical Details */}
                               <div>
-                                <h4 className="font-medium text-muted-foreground mb-2">Detalhes Técnicos</h4>
+                                <h4 className="font-medium text-muted-foreground mb-2">{t('cert.technicalDetails')}</h4>
                                 <div className="bg-muted/30 p-3 rounded space-y-1 font-mono text-xs">
-                                  <div><span className="text-muted-foreground">Versão:</span> {cert.version}</div>
-                                  <div><span className="text-muted-foreground">Algoritmo:</span> {cert.signature_algorithm}</div>
-                                  <div><span className="text-muted-foreground">Chave Pública:</span> {cert.public_key?.algorithm} {cert.public_key?.key_size && `(${cert.public_key.key_size} bits)`}</div>
-                                  <div><span className="text-muted-foreground">Nº Serial:</span> {cert.serial_number}</div>
+                                  <div><span className="text-muted-foreground">{t('cert.versionLabel')}</span> {cert.version}</div>
+                                  <div><span className="text-muted-foreground">{t('cert.algorithm')}</span> {cert.signature_algorithm}</div>
+                                  <div><span className="text-muted-foreground">{t('cert.publicKey')}</span> {cert.public_key?.algorithm} {cert.public_key?.key_size && `(${cert.public_key.key_size} bits)`}</div>
+                                  <div><span className="text-muted-foreground">{t('cert.serialNumber')}</span> {cert.serial_number}</div>
                                 </div>
                               </div>
                               
                               {/* Fingerprints */}
                               <div>
-                                <h4 className="font-medium text-muted-foreground mb-2">Impressões Digitais</h4>
+                                <h4 className="font-medium text-muted-foreground mb-2">{t('cert.fingerprints')}</h4>
                                 <div className="bg-muted/30 p-3 rounded space-y-2 font-mono text-xs">
                                   <div>
                                     <span className="text-muted-foreground">SHA-1:</span>
@@ -4599,13 +4600,13 @@ const ServerBrowser = () => {
                               {/* Extensions */}
                               {cert.extensions?.length > 0 && (
                                 <div>
-                                  <h4 className="font-medium text-muted-foreground mb-2">Extensões</h4>
+                                  <h4 className="font-medium text-muted-foreground mb-2">{t('cert.extensions')}</h4>
                                   <div className="bg-muted/30 p-3 rounded space-y-2 text-xs">
                                     {cert.extensions.map((ext, extIdx) => (
                                       <div key={extIdx} className="border-b border-border last:border-0 pb-2 last:pb-0">
                                         <div className="flex items-center gap-2">
                                           <span className="font-medium">{ext.name}</span>
-                                          {ext.critical && <Badge variant="destructive" className="text-[10px] px-1 py-0">Crítico</Badge>}
+                                          {ext.critical && <Badge variant="destructive" className="text-[10px] px-1 py-0">{t('cert.critical')}</Badge>}
                                         </div>
                                         {ext.values && (
                                           <div className="text-muted-foreground mt-1 font-mono">
@@ -4633,7 +4634,7 @@ const ServerBrowser = () => {
                             <details className="group">
                               <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
                                 <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
-                                Debug: {fileContent.debug_log.length} passos
+                                {t('cert.debugSteps', { count: fileContent.debug_log.length })}
                               </summary>
                               <div className="mt-3 space-y-1 pl-6">
                                 {fileContent.debug_log.map((entry, idx) => (
@@ -4695,14 +4696,14 @@ const ServerBrowser = () => {
                         size="sm" 
                         variant="outline" 
                         onClick={() => copyToClipboard(rawFileContent || fileContent, 'content')}
-                        title="Copiar conteúdo original (RAW)"
+                        title={t('view.copyRawTitle')}
                       >
                         {copiedField === 'content' ? (
                           <Check className="w-4 h-4 mr-2 text-green-500" />
                         ) : (
                           <Copy className="w-4 h-4 mr-2" />
                         )}
-                        Copiar
+                        {t('copy')}
                       </Button>
                       
                       {/* Botão Base64 Decode */}
@@ -4711,17 +4712,17 @@ const ServerBrowser = () => {
                           size="sm" 
                           variant="outline" 
                           onClick={restoreOriginalContent}
-                          title="Restaurar conteúdo original"
+                          title={t('view.restoreOriginal')}
                         >
                           <Binary className="w-4 h-4 mr-2" />
-                          Original
+                          {t('view.original')}
                         </Button>
                       ) : (
                         <Button 
                           size="sm" 
                           variant="outline" 
                           onClick={decodeBase64Content}
-                          title="Decodificar Base64"
+                          title={t('view.decodeBase64')}
                         >
                           <Binary className="w-4 h-4 mr-2" />
                           Base64
@@ -4787,7 +4788,7 @@ const ServerBrowser = () => {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                     <Eye className="w-8 h-8 mb-2" />
-                    <p>Clique em "View" para carregar o conteúdo</p>
+                    <p>{t('view.clickToLoad')}</p>
                   </div>
                 )}
               </div>
@@ -4885,8 +4886,8 @@ const ServerBrowser = () => {
                   return (
                     <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                       <Folder className="w-8 h-8 mb-2 opacity-30" />
-                      <p>Diretório vazio ou não carregado</p>
-                      <p className="text-xs mt-1">Expanda o item na árvore para carregar</p>
+                      <p>{t('objects.emptyDir')}</p>
+                      <p className="text-xs mt-1">{t('objects.expandHint')}</p>
                     </div>
                   );
                 }
@@ -4920,7 +4921,7 @@ const ServerBrowser = () => {
                             </div>
                           </td>
                           <td className="px-4 py-2 border-b border-border text-muted-foreground">
-                            {item.type === 'Directory' ? 'Pasta' : 'Arquivo'}
+                            {item.type === 'Directory' ? t('objects.folder') : t('objects.file')}
                           </td>
                           <td className="px-4 py-2 border-b border-border text-right text-muted-foreground font-mono text-xs">
                             {item.type === 'Directory' ? '—' : formatSize(item.size)}
@@ -4935,14 +4936,14 @@ const ServerBrowser = () => {
                         <ContextMenuItem onClick={() => {
                           window.open(`${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(itemPath)}&from=${encodeURIComponent(window.location.pathname)}`, '_blank');
                         }}>
-                          Abrir em nova aba
+                          {t('contextMenu.openNewTab')}
                         </ContextMenuItem>
                         {/* Copiar link */}
                         <ContextMenuItem onClick={() => {
                           const url = `${window.location.origin}/servers/${serverId}/browse?path=${encodeURIComponent(itemPath)}&from=${encodeURIComponent(window.location.pathname)}`;
                           setTimeout(() => copyToClipboard(url, 'link'), 100);
                         }}>
-                          Copiar link
+                          {t('contextMenu.copyLink')}
                         </ContextMenuItem>
                         <ContextMenuSeparator />
                         {/* Busca Crítica */}
@@ -4950,7 +4951,7 @@ const ServerBrowser = () => {
                           handleSelectItem(item, item.type, itemPath, shareName);
                           setTimeout(() => startCriticalSearch(), 100);
                         }}>
-                          Busca Crítica
+                          {t('criticalSearch')}
                         </ContextMenuItem>
                         {/* Recarregar - para diretórios */}
                         {isDir && (
@@ -4958,9 +4959,9 @@ const ServerBrowser = () => {
                             const dirNodeId = String(item.id || itemPath);
                             setExpandedNodes(prev => ({ ...prev, [dirNodeId]: true }));
                             await loadDirectory(dirNodeId, itemPath, shareName, true);
-                            toast.success(`Recarregado: ${item.name}`);
+                            toast.success(t('toast.reloaded', { name: item.name }));
                           }}>
-                            Recarregar
+                            {t('contextMenu.reload')}
                           </ContextMenuItem>
                         )}
                         {/* Enviar para fila */}
@@ -4978,10 +4979,10 @@ const ServerBrowser = () => {
                                 max_depth: null
                               });
                               if (response.data.success) {
-                                toast.success(`Adicionado à fila: ${item.name}`);
+                                toast.success(t('toast.addedToQueue', { name: item.name }));
                               }
                             } catch (error) {
-                              const errorMsg = error.response?.data?.detail || 'Erro ao enviar para fila';
+                              const errorMsg = error.response?.data?.detail || t('toast.sendQueueError');
                               toast.error(errorMsg);
                             }
                           } else {
@@ -4995,14 +4996,14 @@ const ServerBrowser = () => {
                                   max_file_size_mb: bulkDownloadConfig.maxSize
                                 }
                               });
-                              toast.success(`${response.data.message}. Acompanhe em Arquivos > Downloads`);
+                              toast.success(t('toast.scanQueued', { message: response.data.message }));
                             } catch (error) {
-                              const errorMsg = error.response?.data?.detail || 'Erro ao enviar para fila';
+                              const errorMsg = error.response?.data?.detail || t('toast.sendQueueError');
                               toast.error(errorMsg);
                             }
                           }
                         }}>
-                          Enviar para fila
+                          {t('contextMenu.sendToQueue')}
                         </ContextMenuItem>
                         {/* Sync - apenas arquivos */}
                         {isFile && (
@@ -5022,17 +5023,17 @@ const ServerBrowser = () => {
                                   max_depth: null
                                 });
                                 if (response.data.success) {
-                                  toast.success(`Sync adicionado à fila (${(fileSize / ONE_MB).toFixed(2)} MB)`);
+                                  toast.success(t('toast.syncQueued', { size: (fileSize / ONE_MB).toFixed(2) }));
                                 }
                               } catch (error) {
-                                const errorMsg = error.response?.data?.detail || 'Erro ao adicionar sync à fila';
+                                const errorMsg = error.response?.data?.detail || t('toast.syncQueueError');
                                 toast.error(errorMsg);
                               }
                             } else {
                               setTimeout(() => handleDownload(), 100);
                             }
                           }}>
-                            Sync
+                            {t('actions.sync')}
                           </ContextMenuItem>
                         )}
                         {/* View as HexDump - apenas arquivos baixados */}
@@ -5041,7 +5042,7 @@ const ServerBrowser = () => {
                             handleSelectItem(item, item.type, itemPath, shareName);
                             setTimeout(() => viewAsHexDump(item, itemPath, shareName), 100);
                           }}>
-                            View as HexDump
+                            {t('contextMenu.viewHexDump')}
                           </ContextMenuItem>
                         )}
                       </ContextMenuContent>
@@ -5059,7 +5060,7 @@ const ServerBrowser = () => {
                             onClick={() => handleSort('name')}
                           >
                             <div className="flex items-center gap-1">
-                              Nome
+                              {t('common:fields.name')}
                               <SortIcon columnKey="name" />
                             </div>
                           </th>
@@ -5068,7 +5069,7 @@ const ServerBrowser = () => {
                             onClick={() => handleSort('type')}
                           >
                             <div className="flex items-center gap-1">
-                              Tipo
+                              {t('common:fields.type')}
                               <SortIcon columnKey="type" />
                             </div>
                           </th>
@@ -5077,7 +5078,7 @@ const ServerBrowser = () => {
                             onClick={() => handleSort('size')}
                           >
                             <div className="flex items-center justify-end gap-1">
-                              Tamanho
+                              {t('info.size')}
                               <SortIcon columnKey="size" />
                             </div>
                           </th>
@@ -5086,7 +5087,7 @@ const ServerBrowser = () => {
                             onClick={() => handleSort('modified_at')}
                           >
                             <div className="flex items-center gap-1">
-                              Modificado
+                              {t('objects.modified')}
                               <SortIcon columnKey="modified_at" />
                             </div>
                           </th>
@@ -5109,25 +5110,25 @@ const ServerBrowser = () => {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">{bulkDownloadStats.completed} concluídos</span>
+                      <span className="text-sm">{t('download.completed', { count: bulkDownloadStats.completed })}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <XCircle className="w-4 h-4 text-red-500" />
-                      <span className="text-sm">{bulkDownloadStats.failed} falhas</span>
+                      <span className="text-sm">{t('download.failed', { count: bulkDownloadStats.failed })}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Ban className="w-4 h-4 text-yellow-500" />
-                      <span className="text-sm">{bulkDownloadStats.skipped} ignorados</span>
+                      <span className="text-sm">{t('download.skipped', { count: bulkDownloadStats.skipped })}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm">{bulkDownloadStats.total} total</span>
+                      <span className="text-sm">{t('download.total', { count: bulkDownloadStats.total })}</span>
                     </div>
                   </div>
-                  
+
                   {bulkDownloadActive && (
                     <span className="text-xs text-muted-foreground">
-                      Download em andamento...
+                      {t('download.inProgress')}
                     </span>
                   )}
                 </div>
@@ -5150,10 +5151,10 @@ const ServerBrowser = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-muted sticky top-0">
                     <tr>
-                      <th className="px-4 py-2 text-left font-medium border-b border-border">Arquivo</th>
-                      <th className="px-4 py-2 text-left font-medium border-b border-border w-28">Tamanho</th>
-                      <th className="px-4 py-2 text-left font-medium border-b border-border w-32">Status</th>
-                      <th className="px-4 py-2 text-center font-medium border-b border-border w-20">Ação</th>
+                      <th className="px-4 py-2 text-left font-medium border-b border-border">{t('download.fileCol')}</th>
+                      <th className="px-4 py-2 text-left font-medium border-b border-border w-28">{t('info.size')}</th>
+                      <th className="px-4 py-2 text-left font-medium border-b border-border w-32">{t('common:fields.status')}</th>
+                      <th className="px-4 py-2 text-center font-medium border-b border-border w-20">{t('download.actionCol')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -5184,40 +5185,40 @@ const ServerBrowser = () => {
                         <td className="px-4 py-2 border-b border-border">
                           <div className="flex items-center gap-2">
                             {item.status === 'pending' && (
-                              <span className="text-xs text-muted-foreground">Aguardando</span>
+                              <span className="text-xs text-muted-foreground">{t('download.waiting')}</span>
                             )}
                             {item.status === 'downloading' && (
                               <div className="flex items-center gap-1">
                                 <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
                                 <span className="text-xs text-blue-500">
                                   {item.progress !== null && item.progress !== undefined
-                                    ? `${item.progress}%` 
-                                    : 'Baixando...'}
+                                    ? `${item.progress}%`
+                                    : t('download.downloading')}
                                 </span>
                               </div>
                             )}
                             {item.status === 'completed' && (
                               <div className="flex items-center gap-1">
                                 <CheckCircle className="w-3 h-3 text-green-500" />
-                                <span className="text-xs text-green-500">Concluído</span>
+                                <span className="text-xs text-green-500">{t('common:status.completed')}</span>
                               </div>
                             )}
                             {item.status === 'failed' && (
                               <div className="flex items-center gap-1">
                                 <XCircle className="w-3 h-3 text-red-500" />
-                                <span className="text-xs text-red-500">Falha</span>
+                                <span className="text-xs text-red-500">{t('download.failure')}</span>
                               </div>
                             )}
                             {item.status === 'skipped' && (
                               <div className="flex items-center gap-1">
                                 <Ban className="w-3 h-3 text-yellow-500" />
-                                <span className="text-xs text-yellow-500">Ignorado</span>
+                                <span className="text-xs text-yellow-500">{t('download.skippedStatus')}</span>
                               </div>
                             )}
                             {item.status === 'cancelled' && (
                               <div className="flex items-center gap-1">
                                 <Ban className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">Cancelado</span>
+                                <span className="text-xs text-muted-foreground">{t('common:status.cancelled')}</span>
                               </div>
                             )}
                           </div>
@@ -5229,7 +5230,7 @@ const ServerBrowser = () => {
                               variant="ghost"
                               className="h-6 w-6 p-0"
                               onClick={() => cancelBulkDownloadItem(idx)}
-                              title="Cancelar este item"
+                              title={t('download.cancelItem')}
                             >
                               <XCircle className="w-4 h-4 text-muted-foreground hover:text-red-500" />
                             </Button>
@@ -5240,10 +5241,10 @@ const ServerBrowser = () => {
                               variant="outline"
                               className="h-6 px-2 text-xs"
                               onClick={() => forceDownloadItem(item, idx)}
-                              title="Forçar download deste arquivo"
+                              title={t('download.forceItem')}
                             >
                               <Download className="w-3 h-3 mr-1" />
-                              Forçar
+                              {t('download.force')}
                             </Button>
                           )}
                         </td>
@@ -5263,7 +5264,7 @@ const ServerBrowser = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <ScanText className="w-5 h-5 text-muted-foreground" />
-                    <span className="font-medium">OCR / Extração de Texto</span>
+                    <span className="font-medium">{t('ocr.title')}</span>
                     {ocrLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                   </div>
                   <Button
@@ -5277,7 +5278,7 @@ const ServerBrowser = () => {
                     ) : (
                       <ScanText className="w-4 h-4 mr-2" />
                     )}
-                    {ocrData?.ocr_processed ? "Reprocessar OCR" : "Processar OCR"}
+                    {ocrData?.ocr_processed ? t('ocr.reprocess') : t('ocr.process')}
                   </Button>
                 </div>
 
@@ -5286,7 +5287,7 @@ const ServerBrowser = () => {
                   <div className="p-3 bg-destructive/10 border border-destructive rounded-lg">
                     <div className="flex items-center gap-2 text-destructive">
                       <AlertTriangle className="w-4 h-4" />
-                      <span className="font-medium">Erro no OCR</span>
+                      <span className="font-medium">{t('ocr.errorTitle')}</span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{ocrData.ocr_error}</p>
                   </div>
@@ -5297,10 +5298,10 @@ const ServerBrowser = () => {
                   <div className="p-6 text-center border border-dashed border-border rounded-lg">
                     <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
                     <p className="text-muted-foreground">
-                      Clique em "Processar OCR" para extrair texto e metadados deste arquivo.
+                      {t('ocr.notProcessedDesc')}
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Suporta PDFs, imagens, documentos Office e mais.
+                      {t('ocr.supports')}
                     </p>
                   </div>
                 )}
@@ -5310,9 +5311,9 @@ const ServerBrowser = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <FileJson className="w-4 h-4" />
-                      <span>Metadados Extraídos</span>
+                      <span>{t('ocr.metadata')}</span>
                       <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                        {Object.keys(ocrData.ocr_metadata).length} campos
+                        {t('ocr.fieldsCount', { count: Object.keys(ocrData.ocr_metadata).length })}
                       </span>
                     </div>
                     <div className="border border-border rounded-lg divide-y divide-border max-h-64 overflow-auto">
@@ -5337,9 +5338,9 @@ const ServerBrowser = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <FileText className="w-4 h-4" />
-                        <span>Conteúdo Extraído</span>
+                        <span>{t('ocr.content')}</span>
                         <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                          {ocrData.ocr_content.length.toLocaleString()} caracteres
+                          {t('ocr.charsCount', { count: ocrData.ocr_content.length.toLocaleString() })}
                         </span>
                       </div>
                       <Button
@@ -5348,7 +5349,7 @@ const ServerBrowser = () => {
                         onClick={() => copyToClipboard(ocrData.ocr_content, 'ocr_content')}
                       >
                         <Copy className="w-3 h-3 mr-1" />
-                        Copiar
+                        {t('copy')}
                       </Button>
                     </div>
                     <div className="relative">
@@ -5362,7 +5363,7 @@ const ServerBrowser = () => {
                 {/* OCR Processing Info */}
                 {ocrData?.ocr_processed_at && (
                   <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border">
-                    Processado em: {new Date(ocrData.ocr_processed_at).toLocaleString('pt-BR')}
+                    {t('ocr.processedAt', { date: new Date(ocrData.ocr_processed_at).toLocaleString('pt-BR') })}
                   </div>
                 )}
               </div>
@@ -5391,7 +5392,7 @@ const ServerBrowser = () => {
         >
           <div className="flex flex-col items-center gap-3 bg-card/90 px-6 py-4 rounded-lg shadow-lg border border-border">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            <span className="text-sm text-muted-foreground">Navegando até o item...</span>
+            <span className="text-sm text-muted-foreground">{t('nav.navigatingToItem')}</span>
           </div>
         </div>
       )}
@@ -5418,7 +5419,7 @@ const ServerBrowser = () => {
                     setServer(prev => ({ ...prev, favorite: newVal }));
                   } catch (e) { console.error(e); }
                 }}
-                title={server.favorite ? 'Remover favorito' : 'Marcar como favorito'}
+                title={server.favorite ? t('header.removeFavorite') : t('header.markFavorite')}
                 className="hover:scale-110 transition-transform"
               >
                 <Star className={`w-5 h-5 ${server.favorite ? 'fill-orange-400 text-orange-400' : 'text-muted-foreground'}`} />
@@ -5435,7 +5436,7 @@ const ServerBrowser = () => {
                     setServer(prev => ({ ...prev, is_checked: newVal }));
                   } catch (e) { console.error(e); }
                 }}
-                title={server.is_checked ? 'Remover verificado' : 'Marcar como verificado'}
+                title={server.is_checked ? t('header.removeChecked') : t('header.markChecked')}
                 className="hover:scale-110 transition-transform"
               >
                 <CheckCheck className={`w-5 h-5 ${server.is_checked ? 'text-green-500' : 'text-muted-foreground'}`} />
@@ -5455,11 +5456,11 @@ const ServerBrowser = () => {
         <div className="flex items-center gap-2">
           <Badge variant="outline">
             <HardDrive className="w-3 h-3 mr-1" />
-            {shares.length} Shares
+            {t('header.sharesBadge', { count: shares.length })}
           </Badge>
           <Badge variant="outline">
             <Download className="w-3 h-3 mr-1" />
-            {server.downloaded_files_count} Downloads
+            {t('header.downloadsBadge', { count: server.downloaded_files_count })}
           </Badge>
         </div>
       </div>
@@ -5470,13 +5471,13 @@ const ServerBrowser = () => {
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-500" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-yellow-500">Instância de Plugin Não Configurada</p>
+              <p className="text-sm font-medium text-yellow-500">{t('noPlugin.title')}</p>
               <p className="text-xs text-muted-foreground">
-                Configure uma instância de plugin na página de <a href="/servers" className="text-primary hover:underline">Servidores</a> para poder navegar e baixar arquivos.
+                {t('noPlugin.descBefore')}<a href="/servers" className="text-primary hover:underline">{t('noPlugin.serversLink')}</a>{t('noPlugin.descAfter')}
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => navigate('/servers')}>
-              Configurar
+              {t('header.configure')}
             </Button>
           </div>
         </div>
@@ -5492,7 +5493,7 @@ const ServerBrowser = () => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Buscar arquivos e diretórios..."
+                  placeholder={t('search.placeholder')}
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className="w-full px-3 py-2 pr-20 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -5515,7 +5516,7 @@ const ServerBrowser = () => {
                     size="icon"
                     className="h-6 w-6"
                     onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
-                    title="Busca avançada"
+                    title={t('search.advanced')}
                   >
                     <Code className="w-3 h-3" />
                   </Button>
@@ -5528,28 +5529,28 @@ const ServerBrowser = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <input
                       type="text"
-                      placeholder="Extensão (.aspx)"
+                      placeholder={t('search.extensionPlaceholder')}
                       value={searchFilters.extension}
                       onChange={(e) => setSearchFilters(prev => ({ ...prev, extension: e.target.value }))}
                       className="px-2 py-1 text-xs bg-background border border-border rounded"
                     />
                     <input
                       type="text"
-                      placeholder="SHA1 hash"
+                      placeholder={t('search.sha1Placeholder')}
                       value={searchFilters.sha1}
                       onChange={(e) => setSearchFilters(prev => ({ ...prev, sha1: e.target.value }))}
                       className="px-2 py-1 text-xs bg-background border border-border rounded"
                     />
                     <input
                       type="date"
-                      placeholder="Data inicial"
+                      placeholder={t('search.dateFrom')}
                       value={searchFilters.dateFrom}
                       onChange={(e) => setSearchFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
                       className="px-2 py-1 text-xs bg-background border border-border rounded"
                     />
                     <input
                       type="date"
-                      placeholder="Data final"
+                      placeholder={t('search.dateTo')}
                       value={searchFilters.dateTo}
                       onChange={(e) => setSearchFilters(prev => ({ ...prev, dateTo: e.target.value }))}
                       className="px-2 py-1 text-xs bg-background border border-border rounded"
@@ -5561,9 +5562,9 @@ const ServerBrowser = () => {
                       onChange={(e) => setSearchFilters(prev => ({ ...prev, itemType: e.target.value }))}
                       className="flex-1 px-2 py-1 text-xs bg-background border border-border rounded"
                     >
-                      <option value="">Todos os tipos</option>
-                      <option value="File">Arquivos</option>
-                      <option value="Directory">Diretórios</option>
+                      <option value="">{t('search.allTypes')}</option>
+                      <option value="File">{t('search.files')}</option>
+                      <option value="Directory">{t('search.directories')}</option>
                     </select>
                     <Button
                       size="sm"
@@ -5571,7 +5572,7 @@ const ServerBrowser = () => {
                       onClick={performAdvancedSearch}
                       disabled={searchLoading}
                     >
-                      Buscar
+                      {t('common:actions.search')}
                     </Button>
                   </div>
                 </div>
@@ -5582,14 +5583,14 @@ const ServerBrowser = () => {
                 <div className="mt-2 max-h-64 overflow-y-auto border border-border rounded-md bg-background">
                   {searchResults.total === 0 ? (
                     <div className="p-3 text-center text-sm text-muted-foreground">
-                      Nenhum resultado encontrado
+                      {t('search.noResults')}
                     </div>
                   ) : (
                     <div className="divide-y divide-border">
                       {/* Header com total e botão de exportar */}
                       <div className="px-3 py-2 bg-muted flex items-center justify-between sticky top-0 z-10">
                         <span className="text-xs font-medium text-muted-foreground">
-                          {searchResults.total} resultado(s) encontrado(s)
+                          {t('search.resultsCount', { count: searchResults.total })}
                         </span>
                         <div className="flex items-center gap-1">
                           <Button 
@@ -5598,7 +5599,7 @@ const ServerBrowser = () => {
                             className={`h-6 w-6 p-0 ${showOnlySearchResults ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
                             onClick={() => setShowOnlySearchResults(!showOnlySearchResults)}
                             data-testid="filter-search-results-btn"
-                            title={showOnlySearchResults ? "Mostrar toda a árvore" : "Filtrar árvore pelos resultados"}
+                            title={showOnlySearchResults ? t('search.showAllTree') : t('search.filterByResults')}
                           >
                             <Eye className="w-3 h-3" />
                           </Button>
@@ -5608,10 +5609,10 @@ const ServerBrowser = () => {
                             className="h-6 px-2 text-xs"
                             onClick={exportSearchResultsToJson}
                             data-testid="export-search-btn"
-                            title="Exportar resultados para JSON"
+                            title={t('search.exportJson')}
                           >
                             <FileJson className="w-3 h-3 mr-1" />
-                            Exportar
+                            {t('common:actions.export')}
                           </Button>
                         </div>
                       </div>
@@ -5620,7 +5621,7 @@ const ServerBrowser = () => {
                       {searchResults.directories?.length > 0 && (
                         <div>
                           <div className="px-3 py-1 bg-muted/50 text-xs font-medium text-muted-foreground">
-                            Diretórios ({searchResults.directories.length})
+                            {t('search.directoriesGroup', { count: searchResults.directories.length })}
                           </div>
                           {searchResults.directories.map((item, idx) => (
                             <div
@@ -5644,7 +5645,7 @@ const ServerBrowser = () => {
                       {searchResults.files?.length > 0 && (
                         <div>
                           <div className="px-3 py-1 bg-muted/50 text-xs font-medium text-muted-foreground">
-                            Arquivos ({searchResults.files.length})
+                            {t('search.filesGroup', { count: searchResults.files.length })}
                           </div>
                           {searchResults.files.map((item, idx) => (
                             <div
@@ -5669,7 +5670,7 @@ const ServerBrowser = () => {
                         <div>
                           <div className="px-3 py-1 bg-muted/50 text-xs font-medium text-muted-foreground flex items-center gap-1">
                             <FileCheck className="w-3 h-3 text-green-500" />
-                            Baixados ({searchResults.downloaded.length})
+                            {t('search.downloadedGroup', { count: searchResults.downloaded.length })}
                           </div>
                           {searchResults.downloaded.map((item, idx) => (
                             <div
@@ -5700,9 +5701,9 @@ const ServerBrowser = () => {
             
             <div className="p-3 border-b border-border flex items-center justify-between">
               <h3 className="text-sm font-medium text-muted-foreground">
-                Arquivos
+                {t('tree.filesTitle')}
                 {showOnlyDownloaded && (
-                  <span className="ml-2 text-xs text-green-500">(Somente Baixados)</span>
+                  <span className="ml-2 text-xs text-green-500">{t('tree.onlyDownloaded')}</span>
                 )}
               </h3>
               <div className="flex items-center gap-1">
@@ -5713,7 +5714,7 @@ const ServerBrowser = () => {
                   className={`h-7 w-7 ${showOnlyDownloaded ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   onClick={() => setShowOnlyDownloaded(!showOnlyDownloaded)}
                   data-testid="filter-downloaded-btn"
-                  title={showOnlyDownloaded ? "Mostrar todos os arquivos" : "Ver apenas baixados"}
+                  title={showOnlyDownloaded ? t('tree.showAllFiles') : t('tree.viewOnlyDownloaded')}
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
@@ -5759,7 +5760,7 @@ const ServerBrowser = () => {
                       }
                     }}
                     data-testid="focus-item-btn"
-                    title={focusedItem ? "Mostrar todos" : "Focar no item selecionado"}
+                    title={focusedItem ? t('tree.showAll') : t('tree.focusSelected')}
                   >
                     {focusedItem ? (
                       <X className="w-4 h-4" />
@@ -5777,7 +5778,7 @@ const ServerBrowser = () => {
                   onClick={refreshShares}
                   disabled={loadingShares}
                   data-testid="refresh-shares-btn"
-                  title="Recarregar arquivos"
+                  title={t('tree.reloadFiles')}
                 >
                   {loadingShares ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -5792,15 +5793,15 @@ const ServerBrowser = () => {
             {focusedItem && (
               <div className="px-3 py-1.5 bg-primary/10 border-b border-border flex items-center justify-between">
                 <span className="text-xs text-primary truncate">
-                  Focado em: <strong>{focusedItem.name}</strong>
+                  {t('tree.focusedOn')} <strong>{focusedItem.name}</strong>
                 </span>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   className="h-5 text-xs px-2 flex-shrink-0"
                   onClick={() => setFocusedItem(null)}
                 >
-                  Mostrar todos
+                  {t('tree.showAll')}
                 </Button>
               </div>
             )}
@@ -5816,11 +5817,11 @@ const ServerBrowser = () => {
                     {server?.is_unreachable ? (
                       <>
                         <Unplug className="w-8 h-8 mx-auto text-orange-500 mb-2" />
-                        <p className="text-sm font-medium text-orange-500">Servidor inacessível</p>
+                        <p className="text-sm font-medium text-orange-500">{t('tree.serverUnreachable')}</p>
                       </>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Nenhum compartilhamento encontrado
+                        {t('tree.noShares')}
                       </p>
                     )}
                   </div>
@@ -5874,31 +5875,31 @@ const ServerBrowser = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-yellow-500" />
-              Identificar Credencial
+              {t('leakModal.title')}
             </DialogTitle>
             <DialogDescription>
-              Registre manualmente uma credencial encontrada neste arquivo que não foi detectada automaticamente pelo GitLeaks.
+              {t('leakModal.description')}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             {/* Arquivo */}
             <div className="space-y-2">
-              <Label>Arquivo</Label>
+              <Label>{t('leakModal.file')}</Label>
               <div className="p-2 bg-muted/50 rounded text-sm font-mono break-all">
-                {selectedItem?.fullPath || selectedItem?.name || 'Nenhum arquivo selecionado'}
+                {selectedItem?.fullPath || selectedItem?.name || t('leakModal.noFile')}
               </div>
             </div>
             
             {/* Tipo de Credencial */}
             <div className="space-y-2">
-              <Label htmlFor="leak-type">Tipo de Credencial</Label>
+              <Label htmlFor="leak-type">{t('leakModal.credentialType')}</Label>
               <Select 
                 value={manualLeak.secret_type} 
                 onValueChange={(value) => setManualLeak(prev => ({ ...prev, secret_type: value }))}
               >
                 <SelectTrigger id="leak-type">
-                  <SelectValue placeholder="Selecione o tipo" />
+                  <SelectValue placeholder={t('leakModal.selectType')} />
                 </SelectTrigger>
                 <SelectContent>
                   {leakTypes.map((type) => (
@@ -5925,26 +5926,26 @@ const ServerBrowser = () => {
             
             {/* Texto Encontrado */}
             <div className="space-y-2">
-              <Label htmlFor="match-text">Texto/Padrão Encontrado (opcional)</Label>
+              <Label htmlFor="match-text">{t('leakModal.matchText')}</Label>
               <Input
                 id="match-text"
-                placeholder="Ex: password=abc123"
+                placeholder={t('leakModal.matchPlaceholder')}
                 value={manualLeak.match_text}
                 onChange={(e) => setManualLeak(prev => ({ ...prev, match_text: e.target.value }))}
               />
               <p className="text-xs text-muted-foreground">
-                Cole o trecho do arquivo onde a credencial foi encontrada
+                {t('leakModal.matchHint')}
               </p>
             </div>
             
             {/* Número da Linha */}
             <div className="space-y-2">
-              <Label htmlFor="line-number">Número da Linha (opcional)</Label>
+              <Label htmlFor="line-number">{t('leakModal.lineNumber')}</Label>
               <Input
                 id="line-number"
                 type="number"
                 min="1"
-                placeholder="Ex: 42"
+                placeholder={t('leakModal.linePlaceholder')}
                 value={manualLeak.line_number || ''}
                 onChange={(e) => setManualLeak(prev => ({ ...prev, line_number: e.target.value ? parseInt(e.target.value) : null }))}
               />
@@ -5952,10 +5953,10 @@ const ServerBrowser = () => {
             
             {/* Descrição */}
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição (opcional)</Label>
+              <Label htmlFor="description">{t('leakModal.descriptionLabel')}</Label>
               <Textarea
                 id="description"
-                placeholder="Descreva a credencial encontrada..."
+                placeholder={t('leakModal.descPlaceholder')}
                 value={manualLeak.description}
                 onChange={(e) => setManualLeak(prev => ({ ...prev, description: e.target.value }))}
                 rows={2}
@@ -5965,7 +5966,7 @@ const ServerBrowser = () => {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLeakModal(false)}>
-              Cancelar
+              {t('common:actions.cancel')}
             </Button>
             <Button 
               onClick={submitManualLeak} 
@@ -5977,7 +5978,7 @@ const ServerBrowser = () => {
               ) : (
                 <ShieldKeyIcon className="w-4 h-4 mr-2" />
               )}
-              Registrar Credencial
+              {t('leakModal.register')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -5987,16 +5988,18 @@ const ServerBrowser = () => {
 };
 
 // Componente auxiliar para linhas de informação
-const InfoRow = ({ label, value, onCopy, copied, valueClassName = '' }) => (
+const InfoRow = ({ label, value, onCopy, copied, valueClassName = '' }) => {
+  const { t } = useTranslation('server-browser');
+  return (
   <div className="flex items-center gap-4 min-h-[32px] py-1">
     <span className="text-sm text-muted-foreground flex-shrink-0" style={{ minWidth: '25%', width: '25%' }}>{label}:</span>
     <div className="flex items-center gap-2 flex-1 min-w-0">
       <span className={`text-sm break-all ${valueClassName}`}>{value}</span>
       {onCopy && (
-        <button 
+        <button
           onClick={onCopy}
           className="text-muted-foreground hover:text-foreground flex-shrink-0"
-          title="Copiar"
+          title={t('copy')}
         >
           {copied ? (
             <Check className="w-3.5 h-3.5 text-green-500" />
@@ -6007,6 +6010,7 @@ const InfoRow = ({ label, value, onCopy, copied, valueClassName = '' }) => (
       )}
     </div>
   </div>
-);
+  );
+};
 
 export default ServerBrowser;

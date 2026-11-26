@@ -1,0 +1,93 @@
+{
+  "title": "Servers",
+  "subtitle": "Manage monitored servers",
+  "addServer": "Add Server",
+  "pluginType": {
+    "direct": "Direct"
+  },
+  "form": {
+    "title": "New Server",
+    "description": "Add a new server for monitoring",
+    "nameLabel": "Server Name",
+    "namePlaceholder": "server.example.com",
+    "ipLabel": "IP Address",
+    "ipPlaceholder": "192.168.1.100",
+    "resolving": "Resolving...",
+    "resolveIp": "Resolve IP",
+    "pluginLabel": "Plugin Instance",
+    "pluginPlaceholder": "Select the instance (optional)",
+    "pluginNone": "None (use default)"
+  },
+  "table": {
+    "cardTitle": "Registered Servers",
+    "countAll": "{{count}} servers in the system",
+    "countFiltered": "{{filtered}} of {{total}} servers",
+    "searchPlaceholder": "Search by name or IP...",
+    "empty": "No server registered",
+    "noResults": "No server found for \"{{term}}\"",
+    "flags": "Flags",
+    "risk": "Risk",
+    "editNamePlaceholder": "Server name",
+    "editNameTitle": "Edit server name",
+    "instancePlaceholder": "Instance",
+    "instanceNone": "None",
+    "notConfigured": "Not configured",
+    "never": "Never"
+  },
+  "contextMenu": {
+    "openNewTab": "Open in new tab"
+  },
+  "tooltip": {
+    "unreachable": "Unreachable server",
+    "openShares": "Open shares",
+    "favorite": "Favorite"
+  },
+  "duplicate": {
+    "title": "Duplicate IP Detected",
+    "messagePrefix": "A server is already registered with IP",
+    "messageMiddle": "and name",
+    "confirm": "Do you want to continue with the duplicate registration?",
+    "confirmButton": "Yes, register anyway"
+  },
+  "cleanup": {
+    "button": "Remove unreachable / never accessed",
+    "title": "Remove servers",
+    "descPrefix": "Select which groups to remove. Servers that have",
+    "descMiddle": "are never removed. Existing storage is moved to",
+    "unreachable": "Unreachable",
+    "unreachableDesc": "Servers marked as unreachable on the network",
+    "neverAccessed": "No access attempt",
+    "neverAccessedDesc": "Never successfully accessed (no shares and not verified)",
+    "calculating": "Calculating...",
+    "willRemoveSuffix": "server(s) will be removed.",
+    "removing": "Removing...",
+    "removeCount": "Remove {{count}}"
+  },
+  "toast": {
+    "previewError": "Error calculating the cleanup preview",
+    "removed": "{{count}} server(s) removed",
+    "noneToRemove": "No matching server to remove",
+    "removeFailures": "{{count}} removal failure(s)",
+    "removeError": "Error removing servers",
+    "loadError": "Error loading servers",
+    "created": "Server registered successfully",
+    "createError": "Error registering server",
+    "deleted": "Server removed successfully",
+    "deleteError": "Error removing server",
+    "nameEmpty": "Name cannot be empty",
+    "nameUpdated": "Name updated successfully",
+    "nameUpdateError": "Error updating name",
+    "pluginUpdated": "Plugin updated successfully",
+    "pluginUpdateError": "Error updating plugin",
+    "ipEmpty": "IP cannot be empty",
+    "ipInvalid": "Invalid IP. Use the format: 192.168.1.100",
+    "ipUpdated": "IP updated successfully",
+    "ipUpdateError": "Error updating IP",
+    "enterNameFirst": "Enter the server name first",
+    "ipResolved": "IP resolved: {{ip}}",
+    "ipNotFound": "No IP found for this hostname",
+    "resolveError": "Error resolving IP",
+    "resolveErrorDesc": "Check the settings of the selected plugin.",
+    "resolveErrorCheckName": "Error resolving IP. Check the server name."
+  }
+}

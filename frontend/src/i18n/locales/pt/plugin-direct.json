@@ -1,0 +1,98 @@
+{
+  "header": {
+    "title": "Interação Direta",
+    "subtitle": "Comunicação direta via SMB/Impacket",
+    "newInstance": "Nova Instância"
+  },
+  "tabs": {
+    "instances": "Instâncias",
+    "info": "Info"
+  },
+  "form": {
+    "title": "Nova Instância de Interação Direta",
+    "description": "Configure uma nova instância do plugin SMB/Impacket",
+    "nameLabel": "Nome da Instância",
+    "namePlaceholder": "Produção, Homologação, etc.",
+    "credentialLabel": "Credencial",
+    "selectCredential": "Selecione uma credencial",
+    "noAuth": "Sem autenticação",
+    "proxyLabel": "Proxy",
+    "selectProxy": "Selecione um proxy",
+    "noProxy": "Sem proxy",
+    "requiresSocks": "Requer SOCKS",
+    "descriptionPlaceholder": "Descrição opcional da instância",
+    "createInstance": "Criar Instância"
+  },
+  "credential": {
+    "anonymous": "Anônima (null session)",
+    "kerberos": "Kerberos: {{who}}",
+    "kerberosCcache": "Kerberos (ccache)"
+  },
+  "empty": {
+    "title": "Nenhuma instância configurada",
+    "hint": "Clique em \"Nova Instância\" para criar"
+  },
+  "badges": {
+    "default": "Padrão",
+    "inactive": "Inativo"
+  },
+  "instance": {
+    "credential": "Credencial: {{name}}",
+    "noCredential": "Sem autenticação",
+    "proxy": "Proxy: {{name}}",
+    "noProxy": "Sem proxy"
+  },
+  "health": {
+    "ok": "OK"
+  },
+  "titles": {
+    "checkHealth": "Verificar saúde",
+    "removeDefault": "Remover padrão",
+    "setDefault": "Definir como padrão",
+    "deactivate": "Desativar",
+    "activate": "Ativar"
+  },
+  "confirm": {
+    "delete": "Tem certeza que deseja excluir esta instância?"
+  },
+  "toast": {
+    "loadError": "Erro ao carregar dados",
+    "created": "Instância criada com sucesso",
+    "createError": "Erro ao criar instância",
+    "deleted": "Instância excluída com sucesso",
+    "deleteError": "Erro ao excluir instância",
+    "updated": "Instância atualizada com sucesso",
+    "updateError": "Erro ao atualizar instância",
+    "healthy": "Plugin saudável",
+    "unhealthy": "Plugin com problemas",
+    "healthCheckError": "Erro ao verificar saúde do plugin",
+    "verifyError": "Erro ao verificar",
+    "defaultRemoved": "Removido como padrão",
+    "defaultSet": "Definido como padrão",
+    "deactivated": "Instância desativada",
+    "activated": "Instância ativada",
+    "statusError": "Erro ao alterar status"
+  },
+  "info": {
+    "pluginInfo": "Informações do Plugin",
+    "version": "Versão",
+    "features": "Funcionalidades",
+    "featuresDesc": "Status das funcionalidades do plugin",
+    "implemented": "Implementado",
+    "notImplemented": "Não Implementado",
+    "configSchema": "Esquema de Configuração",
+    "configSchemaDesc": "Campos disponíveis para configuração de instâncias",
+    "required": "obrigatório",
+    "values": "Valores: {{values}}",
+    "feature1Name": "Resolução DNS",
+    "feature1Desc": "Resolver nomes de domínio para IP com suporte a DNS personalizado",
+    "feature2Name": "Listagem de Compartilhamentos (SMB)",
+    "feature2Desc": "Listar compartilhamentos de rede via protocolo SMB",
+    "feature3Name": "Navegação de Diretórios (SMB)",
+    "feature3Desc": "Navegar diretórios em compartilhamentos de rede",
+    "feature4Name": "Download de Arquivos (SMB)",
+    "feature4Desc": "Baixar arquivos diretamente via protocolo SMB",
+    "feature5Name": "Execução SQL Direta",
+    "feature5Desc": "Execução de queries SQL via conexão direta"
+  }
+}

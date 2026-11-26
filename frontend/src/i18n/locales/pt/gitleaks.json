@@ -1,0 +1,54 @@
+{
+  "subtitle": "Detecção de secrets e credenciais em arquivos",
+  "status": {
+    "title": "Status do GitLeaks",
+    "available": "Disponível",
+    "unavailable": "Não disponível",
+    "version": "Versão: {{version}}"
+  },
+  "scan": {
+    "title": "Iniciar Scan",
+    "description": "Escaneie arquivos em busca de secrets, chaves de API e credenciais",
+    "byServer": "Por Servidor",
+    "customPath": "Caminho Custom",
+    "serverLabel": "Servidor",
+    "selectServerPlaceholder": "Selecione um servidor",
+    "serverHint": "Escaneia todos os arquivos baixados do servidor selecionado",
+    "directoryLabel": "Caminho do Diretório",
+    "pathPlaceholder": "/caminho/para/diretorio",
+    "pathHint": "Informe o caminho absoluto do diretório a ser escaneado"
+  },
+  "jobs": {
+    "title": "Jobs de Scan",
+    "registered": "{{count}} job(s) registrado(s)",
+    "clearFinished": "Limpar Finalizados",
+    "emptyTitle": "Nenhum job de scan registrado",
+    "emptyDesc": "Inicie um scan para detectar secrets",
+    "findingsCount": "{{count}} findings",
+    "startedAt": "Iniciado: {{date}}",
+    "errorLabel": "Erro: {{error}}",
+    "viewReportJsonTitle": "Ver JSON do relatório",
+    "viewJson": "Ver JSON",
+    "viewFindings": "Ver Findings"
+  },
+  "report": {
+    "title": "Relatório GitLeaks - Job #{{id}}",
+    "summary": "{{count}} finding(s) encontrado(s) • Servidor ID: {{serverId}}",
+    "loading": "Carregando relatório...",
+    "copyJson": "Copiar JSON",
+    "downloadJson": "Download JSON",
+    "scannedPath": "Caminho escaneado:",
+    "reportFile": "Arquivo do relatório:"
+  },
+  "toast": {
+    "reportLoadError": "Erro ao carregar relatório: {{error}}",
+    "jsonCopied": "JSON copiado para a área de transferência",
+    "copyError": "Erro ao copiar",
+    "downloadStarted": "Download iniciado",
+    "selectServer": "Selecione um servidor",
+    "enterPath": "Informe o caminho do diretório",
+    "scanError": "Erro ao iniciar scan: {{error}}",
+    "cancelJobError": "Erro ao cancelar job",
+    "clearJobsError": "Erro ao limpar jobs"
+  }
+}

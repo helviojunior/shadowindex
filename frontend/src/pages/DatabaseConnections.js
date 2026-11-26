@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Trash2, Plus, CheckCircle, XCircle, Play, Database, Loader2, Zap, Pencil, ChevronUp, Plug } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation, Trans } from 'react-i18next';
 import { getDatabaseIcon } from '@/components/DatabaseIcons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -34,8 +35,8 @@ const DEFAULT_PORT_HINT = {
   postgres: '5432', oracle: '1521', mongodb: '27017',
 };
 const DB_FIELD_LABELS = {
-  oracle: { database: 'Service Name / SID' },
-  sqlite: { database: 'Arquivo (caminho)' },
+  oracle: { database: 'wizard.serviceNameSid' },
+  sqlite: { database: 'wizard.filePath' },
 };
 
 /**
@@ -44,6 +45,7 @@ const DB_FIELD_LABELS = {
  * Também oferece um modo "Manual" para colar/editar a string diretamente.
  */
 function ConnectionFields({ dbTypeId, dbTypes, value, onChange, defaultMode = 'wizard' }) {
+  const { t } = useTranslation('database-connections');
   const dbType = dbTypes.find((d) => d.id?.toString() === (dbTypeId || '').toString());
   const code = dbType?.code || '';
   const isSqlite = code === 'sqlite';
@@ -86,19 +88,19 @@ function ConnectionFields({ dbTypeId, dbTypes, value, onChange, defaultMode = 'w
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Label>Connection String</Label>
+        <Label>{t('wizard.connectionString')}</Label>
         <div className="ml-auto inline-flex rounded-md border border-border overflow-hidden text-xs">
           <button type="button" data-testid="conn-mode-wizard"
             className={`px-3 py-1 ${mode === 'wizard' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-            onClick={() => setMode('wizard')}>Assistente</button>
+            onClick={() => setMode('wizard')}>{t('wizard.modeWizard')}</button>
           <button type="button" data-testid="conn-mode-manual"
             className={`px-3 py-1 ${mode === 'manual' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-            onClick={() => setMode('manual')}>Manual</button>
+            onClick={() => setMode('manual')}>{t('wizard.modeManual')}</button>
         </div>
       </div>
 
       {!dbTypeId && mode === 'wizard' && (
-        <p className="text-xs text-amber-500">Selecione o <strong>Tipo de Banco</strong> para montar a string automaticamente.</p>
+        <p className="text-xs text-amber-500"><Trans t={t} i18nKey="wizard.selectDbTypeHint" components={{ strong: <strong /> }} /></p>
       )}
 
       {mode === 'wizard' ? (
@@ -106,31 +108,31 @@ function ConnectionFields({ dbTypeId, dbTypes, value, onChange, defaultMode = 'w
           {!isSqlite && (
             <div className="grid grid-cols-4 gap-3">
               <div className="col-span-3 space-y-1">
-                <Label className="text-xs">Host</Label>
+                <Label className="text-xs">{t('common:fields.host')}</Label>
                 <Input data-testid="wiz-host" placeholder="10.0.0.5 / db.local"
                   value={fields.host} onChange={(e) => set('host', e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Porta</Label>
-                <Input data-testid="wiz-port" placeholder={DEFAULT_PORT_HINT[code] || 'porta'}
+                <Label className="text-xs">{t('common:fields.port')}</Label>
+                <Input data-testid="wiz-port" placeholder={DEFAULT_PORT_HINT[code] || t('wizard.portPlaceholder')}
                   value={fields.port} onChange={(e) => set('port', e.target.value)} />
               </div>
             </div>
           )}
           <div className="space-y-1">
-            <Label className="text-xs">{DB_FIELD_LABELS[code]?.database || 'Database'}</Label>
-            <Input data-testid="wiz-database" placeholder={isSqlite ? '/caminho/arquivo.db' : 'nome do banco'}
+            <Label className="text-xs">{DB_FIELD_LABELS[code]?.database ? t(DB_FIELD_LABELS[code].database) : t('wizard.database')}</Label>
+            <Input data-testid="wiz-database" placeholder={isSqlite ? t('wizard.sqlitePathPlaceholder') : t('wizard.databasePlaceholder')}
               value={fields.database} onChange={(e) => set('database', e.target.value)} />
           </div>
           {!isSqlite && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Usuário</Label>
+                <Label className="text-xs">{t('common:fields.username')}</Label>
                 <Input data-testid="wiz-username" value={fields.username}
                   onChange={(e) => set('username', e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Senha</Label>
+                <Label className="text-xs">{t('common:fields.password')}</Label>
                 <Input data-testid="wiz-password" type="password" value={fields.password}
                   onChange={(e) => set('password', e.target.value)} />
               </div>
@@ -140,18 +142,18 @@ function ConnectionFields({ dbTypeId, dbTypes, value, onChange, defaultMode = 'w
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input type="checkbox" checked={fields.trust_server_certificate}
                 onChange={(e) => set('trust_server_certificate', e.target.checked)} />
-              Trust Server Certificate
+              {t('wizard.trustServerCertificate')}
             </label>
           )}
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Parâmetros extras (opcional)</Label>
-            <Input data-testid="wiz-extra" placeholder="Ex.: Connection Timeout=5"
+            <Label className="text-xs text-muted-foreground">{t('wizard.extraParams')}</Label>
+            <Input data-testid="wiz-extra" placeholder={t('wizard.extraPlaceholder')}
               value={fields.extra} onChange={(e) => set('extra', e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">String gerada (montada no backend)</Label>
+            <Label className="text-xs text-muted-foreground">{t('wizard.generatedString')}</Label>
             <code data-testid="wiz-preview" className="block text-xs bg-muted px-3 py-2 rounded break-all min-h-[2.25rem]">
-              {value || <span className="text-muted-foreground">preencha os campos acima…</span>}
+              {value || <span className="text-muted-foreground">{t('wizard.fillFieldsAbove')}</span>}
             </code>
           </div>
         </div>
@@ -169,6 +171,7 @@ function ConnectionFields({ dbTypeId, dbTypes, value, onChange, defaultMode = 'w
 }
 
 const DatabaseConnections = () => {
+  const { t } = useTranslation('database-connections');
   const navigate = useNavigate();
   const [connections, setConnections] = useState([]);
   const [dbTypes, setDbTypes] = useState([]);
@@ -208,7 +211,7 @@ const DatabaseConnections = () => {
       setConnections(response.data);
     } catch (error) {
       console.error('Error loading connections:', error);
-      toast.error('Erro ao carregar conexões');
+      toast.error(t('toast.loadError'));
     }
   };
 
@@ -253,14 +256,14 @@ const DatabaseConnections = () => {
       };
       
       await axios.post(`${API}/db-connections`, payload);
-      toast.success('Conexão cadastrada com sucesso');
+      toast.success(t('toast.createSuccess'));
       setFormData({ name: '', db_type_id: '', connection_string: '', plugin_instance_id: '' });
       setNewConnectionTestResult(null);
       setShowAddForm(false);
       loadConnections();
     } catch (error) {
       console.error('Error creating connection:', error);
-      toast.error('Erro ao cadastrar conexão');
+      toast.error(t('toast.createError'));
     } finally {
       setLoading(false);
     }
@@ -269,7 +272,7 @@ const DatabaseConnections = () => {
   // Test new connection before adding
   const testNewConnection = async () => {
     if (!formData.connection_string) {
-      toast.error('Preencha a Connection String para testar');
+      toast.error(t('toast.fillConnectionString'));
       return;
     }
     
@@ -298,10 +301,10 @@ const DatabaseConnections = () => {
 
         if (testResponse.data.success) {
           setNewConnectionTestResult('success');
-          toast.success(`Conexão OK! (${testResponse.data.execution_time_ms}ms)`);
+          toast.success(t('toast.connectionOk', { ms: testResponse.data.execution_time_ms }));
         } else {
           setNewConnectionTestResult('error');
-          toast.error(`Falha na conexão: ${testResponse.data.error_message}`);
+          toast.error(t('toast.connectionFailed', { error: testResponse.data.error_message }));
         }
       } finally {
         // Always delete the temp connection
@@ -309,7 +312,7 @@ const DatabaseConnections = () => {
       }
     } catch (error) {
       setNewConnectionTestResult('error');
-      toast.error(`Erro ao testar: ${error.response?.data?.detail || error.message}`);
+      toast.error(t('toast.testError', { error: error.response?.data?.detail || error.message }));
     } finally {
       setTestingNewConnection(false);
     }
@@ -318,11 +321,11 @@ const DatabaseConnections = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API}/db-connections/${id}`);
-      toast.success('Conexão removida com sucesso');
+      toast.success(t('toast.deleteSuccess'));
       loadConnections();
     } catch (error) {
       console.error('Error deleting connection:', error);
-      toast.error('Erro ao remover conexão');
+      toast.error(t('toast.deleteError'));
     }
   };
 
@@ -340,13 +343,13 @@ const DatabaseConnections = () => {
       });
 
       if (response.data.success) {
-        toast.success(`Conexão OK! (${response.data.execution_time_ms}ms)`);
+        toast.success(t('toast.connectionOk', { ms: response.data.execution_time_ms }));
         loadConnections();
       } else {
-        toast.error(`Falha na conexão: ${response.data.error_message}`);
+        toast.error(t('toast.connectionFailed', { error: response.data.error_message }));
       }
     } catch (error) {
-      toast.error(`Erro ao testar: ${error.response?.data?.detail || error.message}`);
+      toast.error(t('toast.testError', { error: error.response?.data?.detail || error.message }));
     } finally {
       setTestingConnectionId(null);
     }
@@ -377,13 +380,13 @@ const DatabaseConnections = () => {
       };
       
       await axios.put(`${API}/db-connections/${editingConnection.id}`, payload);
-      toast.success('Conexão atualizada com sucesso');
+      toast.success(t('toast.updateSuccess'));
       setEditModalOpen(false);
       setEditingConnection(null);
       loadConnections();
     } catch (error) {
       console.error('Error updating connection:', error);
-      toast.error('Erro ao atualizar conexão');
+      toast.error(t('toast.updateError'));
     } finally {
       setEditLoading(false);
     }
@@ -399,32 +402,32 @@ const DatabaseConnections = () => {
   };
 
   const getPluginLabel = (pluginInstanceId) => {
-    if (!pluginInstanceId) return 'Não configurado';
+    if (!pluginInstanceId) return t('pluginLabel.notConfigured');
     const instance = pluginInstances.find(p => p.id === pluginInstanceId);
-    return instance ? instance.name : `Instância #${pluginInstanceId}`;
+    return instance ? instance.name : t('pluginLabel.instance', { id: pluginInstanceId });
   };
 
   return (
     <div className="space-y-6" data-testid="db-connections-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Conexões SQL</h1>
-          <p className="text-muted-foreground mt-2">Gerencie as conexões com bancos de dados</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
         </div>
-        <Button 
-          onClick={() => setShowAddForm(!showAddForm)} 
+        <Button
+          onClick={() => setShowAddForm(!showAddForm)}
           data-testid="toggle-add-form-btn"
           variant={showAddForm ? "secondary" : "default"}
         >
           {showAddForm ? (
             <>
               <ChevronUp className="w-4 h-4 mr-2" />
-              Fechar
+              {t('common:actions.close')}
             </>
           ) : (
             <>
               <Plus className="w-4 h-4 mr-2" />
-              Adicionar Conexão
+              {t('addConnection')}
             </>
           )}
         </Button>
@@ -434,31 +437,31 @@ const DatabaseConnections = () => {
       {showAddForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Nova Conexão</CardTitle>
-            <CardDescription>Adicione uma nova conexão de banco de dados</CardDescription>
+            <CardTitle>{t('newConnection')}</CardTitle>
+            <CardDescription>{t('newConnectionDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
+                <Label htmlFor="name">{t('common:fields.name')}</Label>
                 <Input
                   id="name"
                   data-testid="db-connection-name-input"
-                  placeholder="Minha Conexão"
+                  placeholder={t('namePlaceholder')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="db_type">Tipo de Banco</Label>
+                <Label htmlFor="db_type">{t('dbType')}</Label>
                 <Select
                   value={formData.db_type_id}
                   onValueChange={(value) => setFormData({ ...formData, db_type_id: value })}
                 >
                   <SelectTrigger data-testid="db-type-select">
-                    <SelectValue placeholder="Selecione o tipo..." />
+                    <SelectValue placeholder={t('selectTypePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {dbTypes.map((type) => (
@@ -473,13 +476,13 @@ const DatabaseConnections = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="plugin_instance">Instância de Plugin</Label>
+                <Label htmlFor="plugin_instance">{t('pluginInstance')}</Label>
                 <Select
                   value={formData.plugin_instance_id}
                   onValueChange={(value) => setFormData({ ...formData, plugin_instance_id: value })}
                 >
                   <SelectTrigger data-testid="db-plugin-select">
-                    <SelectValue placeholder="Selecione a instância..." />
+                    <SelectValue placeholder={t('selectInstancePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {pluginInstances.map((instance) => (
@@ -507,7 +510,7 @@ const DatabaseConnections = () => {
             <div className="flex items-center gap-3">
               <Button type="submit" disabled={loading || !formData.connection_string} data-testid="add-db-connection-btn">
                 <Plus className="w-4 h-4 mr-2" />
-                Adicionar Conexão
+                {t('addConnection')}
               </Button>
               <Button 
                 type="button" 
@@ -521,18 +524,18 @@ const DatabaseConnections = () => {
                 ) : (
                   <Zap className="w-4 h-4 mr-2" />
                 )}
-                Testar Conexão
+                {t('testConnection')}
               </Button>
               {newConnectionTestResult === 'success' && (
                 <Badge variant="outline" className="text-green-500 border-green-500">
                   <CheckCircle className="w-3 h-3 mr-1" />
-                  Conexão OK
+                  {t('testResultOk')}
                 </Badge>
               )}
               {newConnectionTestResult === 'error' && (
                 <Badge variant="outline" className="text-red-500 border-red-500">
                   <XCircle className="w-3 h-3 mr-1" />
-                  Falha
+                  {t('testResultFailed')}
                 </Badge>
               )}
             </div>
@@ -544,27 +547,27 @@ const DatabaseConnections = () => {
       {/* Connections Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Conexões Cadastradas</CardTitle>
-          <CardDescription>{connections.length} conexões no sistema</CardDescription>
+          <CardTitle>{t('registeredConnections')}</CardTitle>
+          <CardDescription>{t('connectionsCount', { count: connections.length })}</CardDescription>
         </CardHeader>
         <CardContent>
           {connections.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Database className="w-12 h-12 mb-4 opacity-30" />
-              <p>Nenhuma conexão cadastrada</p>
+              <p>{t('noConnections')}</p>
             </div>
           ) : (
             <div className="border border-border rounded-lg overflow-hidden">
               <table className="w-full">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Nome</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Tipo</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Plugin</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Connection String</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Última Verificação</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Ações</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common:fields.name')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common:fields.type')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('table.plugin')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('table.connectionString')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common:fields.status')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common:fields.lastVerification')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('common:fields.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -610,12 +613,12 @@ const DatabaseConnections = () => {
                         {conn.verified ? (
                           <Badge variant="outline" className="text-green-500 border-green-500">
                             <CheckCircle className="w-3 h-3 mr-1" />
-                            Verificado
+                            {t('common:status.verified')}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-muted-foreground">
                             <XCircle className="w-3 h-3 mr-1" />
-                            Não verificado
+                            {t('common:status.notVerified')}
                           </Badge>
                         )}
                       </td>
@@ -629,7 +632,7 @@ const DatabaseConnections = () => {
                             size="icon"
                             onClick={() => openEditModal(conn)}
                             data-testid={`edit-connection-${conn.id}`}
-                            title="Editar Conexão"
+                            title={t('editConnection')}
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
@@ -639,7 +642,7 @@ const DatabaseConnections = () => {
                             onClick={() => testConnection(conn.id)}
                             disabled={testingConnectionId === conn.id}
                             data-testid={`test-connection-${conn.id}`}
-                            title="Testar Conexão"
+                            title={t('testConnection')}
                           >
                             {testingConnectionId === conn.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -652,7 +655,7 @@ const DatabaseConnections = () => {
                             size="icon"
                             onClick={() => openSqlExecutor(conn.id)}
                             data-testid={`execute-sql-${conn.id}`}
-                            title="Executar SQL"
+                            title={t('executeSql')}
                           >
                             <Play className="w-4 h-4" />
                           </Button>
@@ -680,19 +683,19 @@ const DatabaseConnections = () => {
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Editar Conexão</DialogTitle>
+            <DialogTitle>{t('editConnection')}</DialogTitle>
             <DialogDescription>
-              Atualize as informações da conexão de banco de dados
+              {t('editConnectionDescription')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-name">Nome</Label>
+                <Label htmlFor="edit-name">{t('common:fields.name')}</Label>
                 <Input
                   id="edit-name"
                   data-testid="edit-connection-name-input"
-                  placeholder="Nome da conexão"
+                  placeholder={t('editNamePlaceholder')}
                   value={editFormData.name}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                   required
@@ -700,13 +703,13 @@ const DatabaseConnections = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-db-type">Tipo de Banco</Label>
+                  <Label htmlFor="edit-db-type">{t('dbType')}</Label>
                   <Select
                     value={editFormData.db_type_id}
                     onValueChange={(value) => setEditFormData({ ...editFormData, db_type_id: value })}
                   >
                     <SelectTrigger data-testid="edit-db-type-select">
-                      <SelectValue placeholder="Selecione o tipo..." />
+                      <SelectValue placeholder={t('selectTypePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {dbTypes.map((type) => (
@@ -721,13 +724,13 @@ const DatabaseConnections = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-plugin-instance">Instância de Plugin</Label>
+                  <Label htmlFor="edit-plugin-instance">{t('pluginInstance')}</Label>
                   <Select
                     value={editFormData.plugin_instance_id}
                     onValueChange={(value) => setEditFormData({ ...editFormData, plugin_instance_id: value })}
                   >
                     <SelectTrigger data-testid="edit-plugin-select">
-                      <SelectValue placeholder="Selecione a instância..." />
+                      <SelectValue placeholder={t('selectInstancePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {pluginInstances.map((instance) => (
@@ -754,11 +757,11 @@ const DatabaseConnections = () => {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>
-                Cancelar
+                {t('common:actions.cancel')}
               </Button>
               <Button type="submit" disabled={editLoading || !editFormData.connection_string} data-testid="save-edit-connection-btn">
                 {editLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Salvar Alterações
+                {t('common:actions.saveChanges')}
               </Button>
             </DialogFooter>
           </form>

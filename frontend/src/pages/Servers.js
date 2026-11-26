@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '@/contexts/AppContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -45,6 +46,7 @@ const isValidIp = (ip) => {
 };
 
 const Servers = () => {
+  const { t } = useTranslation('servers');
   const navigate = useNavigate();
   const { ignoreCache } = useApp();
   const [servers, setServers] = useState([]);
@@ -96,7 +98,7 @@ const Servers = () => {
       setCleanupDialog((d) => ({ ...d, loading: false, preview: data, unreachable: true, neverAccessed: true }));
     } catch (error) {
       console.error('Error loading cleanup preview:', error);
-      toast.error('Erro ao calcular a prévia da limpeza');
+      toast.error(t('toast.previewError'));
       setCleanupDialog((d) => ({ ...d, open: false, loading: false }));
     }
   };
@@ -122,18 +124,18 @@ const Servers = () => {
         never_accessed: cleanupDialog.neverAccessed
       });
       if (data.deleted > 0) {
-        toast.success(`${data.deleted} servidor(es) removido(s)`);
+        toast.success(t('toast.removed', { count: data.deleted }));
       } else {
-        toast.info('Nenhum servidor correspondente para remover');
+        toast.info(t('toast.noneToRemove'));
       }
       if (data.errors && data.errors.length > 0) {
-        toast.error(`${data.errors.length} falha(s) ao remover`);
+        toast.error(t('toast.removeFailures', { count: data.errors.length }));
       }
       setCleanupDialog((d) => ({ ...d, open: false, deleting: false, preview: null }));
       loadServers();
     } catch (error) {
       console.error('Error during cleanup:', error);
-      toast.error('Erro ao remover servidores');
+      toast.error(t('toast.removeError'));
       setCleanupDialog((d) => ({ ...d, deleting: false }));
     }
   };
@@ -155,7 +157,7 @@ const Servers = () => {
   };
 
   const getPluginInstanceName = (instanceId) => {
-    if (!instanceId) return 'Não configurado';
+    if (!instanceId) return t('table.notConfigured');
     const instance = pluginInstances.find(i => i.id === instanceId);
     return instance ? instance.name : `ID: ${instanceId}`;
   };
@@ -278,7 +280,7 @@ const Servers = () => {
       setServers(response.data);
     } catch (error) {
       console.error('Error loading servers:', error);
-      toast.error('Erro ao carregar servidores');
+      toast.error(t('toast.loadError'));
     } finally {
       setLoadingServers(false);
     }
@@ -329,13 +331,13 @@ const Servers = () => {
       }
 
       await axios.post(`${API}/servers`, payload);
-      toast.success('Servidor cadastrado com sucesso');
+      toast.success(t('toast.created'));
       setFormData({ name: '', ip: '', plugin_instance_id: '' });
       setShowAddForm(false);
       loadServers();
     } catch (error) {
       console.error('Error creating server:', error);
-      toast.error('Erro ao cadastrar servidor');
+      toast.error(t('toast.createError'));
     } finally {
       setLoading(false);
     }
@@ -372,11 +374,11 @@ const Servers = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API}/servers/${id}`);
-      toast.success('Servidor removido com sucesso');
+      toast.success(t('toast.deleted'));
       loadServers();
     } catch (error) {
       console.error('Error deleting server:', error);
-      toast.error('Erro ao remover servidor');
+      toast.error(t('toast.deleteError'));
     }
   };
 
@@ -402,7 +404,7 @@ const Servers = () => {
 
   const handleSaveName = async (serverId) => {
     if (!editName.trim()) {
-      toast.error('Nome não pode estar vazio');
+      toast.error(t('toast.nameEmpty'));
       return;
     }
 
@@ -414,13 +416,13 @@ const Servers = () => {
 
     try {
       await axios.patch(`${API}/servers/${serverId}`, { name: editName.trim() });
-      toast.success('Nome atualizado com sucesso');
+      toast.success(t('toast.nameUpdated'));
       setEditingNameServer(null);
       setEditName('');
       loadServers();
     } catch (error) {
       console.error('Error updating server name:', error);
-      toast.error('Erro ao atualizar nome');
+      toast.error(t('toast.nameUpdateError'));
     }
   };
 
@@ -440,42 +442,42 @@ const Servers = () => {
         plugin_instance_id: editPluginInstanceId ? parseInt(editPluginInstanceId) : null 
       };
       await axios.patch(`${API}/servers/${serverId}`, payload);
-      toast.success('Plugin atualizado com sucesso');
+      toast.success(t('toast.pluginUpdated'));
       setEditingPluginServer(null);
       setEditPluginInstanceId('');
       loadServers();
     } catch (error) {
       console.error('Error updating server plugin:', error);
-      toast.error('Erro ao atualizar plugin');
+      toast.error(t('toast.pluginUpdateError'));
     }
   };
 
   const handleSaveIp = async (serverId) => {
     if (!editIp.trim()) {
-      toast.error('IP não pode estar vazio');
+      toast.error(t('toast.ipEmpty'));
       return;
     }
 
     if (!isValidIp(editIp.trim())) {
-      toast.error('IP inválido. Use o formato: 192.168.1.100');
+      toast.error(t('toast.ipInvalid'));
       return;
     }
 
     try {
       await axios.patch(`${API}/servers/${serverId}`, { ip: editIp.trim() });
-      toast.success('IP atualizado com sucesso');
+      toast.success(t('toast.ipUpdated'));
       setEditingServer(null);
       setEditIp('');
       loadServers();
     } catch (error) {
       console.error('Error updating server IP:', error);
-      toast.error('Erro ao atualizar IP');
+      toast.error(t('toast.ipUpdateError'));
     }
   };
 
   const handleResolveIp = async () => {
     if (!formData.name) {
-      toast.error('Digite o nome do servidor primeiro');
+      toast.error(t('toast.enterNameFirst'));
       return;
     }
 
@@ -503,9 +505,9 @@ const Servers = () => {
       if (result && result.trim()) {
         const ipAddress = result.trim();
         setFormData({ ...formData, ip: ipAddress });
-        toast.success(`IP resolvido: ${ipAddress}`);
+        toast.success(t('toast.ipResolved', { ip: ipAddress }));
       } else {
-        toast.error('Nenhum IP encontrado para este hostname');
+        toast.error(t('toast.ipNotFound'));
       }
     } catch (error) {
       console.error('Error resolving IP:', error);
@@ -514,14 +516,14 @@ const Servers = () => {
       if (error.response?.data?.detail) {
         const detail = error.response.data.detail;
         if (typeof detail === 'object') {
-          toast.error(detail.message || 'Erro ao resolver IP', {
-            description: 'Verifique as configurações do plugin selecionado.'
+          toast.error(detail.message || t('toast.resolveError'), {
+            description: t('toast.resolveErrorDesc')
           });
         } else {
           toast.error(detail);
         }
       } else {
-        toast.error('Erro ao resolver IP. Verifique o nome do servidor.');
+        toast.error(t('toast.resolveErrorCheckName'));
       }
     } finally {
       setResolvingIp(false);
@@ -529,7 +531,7 @@ const Servers = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Nunca';
+    if (!dateString) return t('table.never');
     return new Date(dateString).toLocaleString('pt-BR');
   };
 
@@ -537,8 +539,8 @@ const Servers = () => {
     <div className="space-y-6" data-testid="servers-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Servidores</h1>
-          <p className="text-muted-foreground mt-2">Gerencie os servidores monitorados</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
         <Button
@@ -548,7 +550,7 @@ const Servers = () => {
           data-testid="cleanup-servers-btn"
         >
           <Unplug className="w-4 h-4 mr-2" />
-          Remover inacessíveis / sem acesso
+          {t('cleanup.button')}
         </Button>
         <Button
           onClick={() => setShowAddForm(!showAddForm)}
@@ -558,12 +560,12 @@ const Servers = () => {
           {showAddForm ? (
             <>
               <ChevronUp className="w-4 h-4 mr-2" />
-              Fechar
+              {t('common:actions.close')}
             </>
           ) : (
             <>
               <Plus className="w-4 h-4 mr-2" />
-              Adicionar Servidor
+              {t('addServer')}
             </>
           )}
         </Button>
@@ -574,30 +576,30 @@ const Servers = () => {
       {showAddForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Novo Servidor</CardTitle>
-            <CardDescription>Adicione um novo servidor para monitoramento</CardDescription>
+            <CardTitle>{t('form.title')}</CardTitle>
+            <CardDescription>{t('form.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Servidor</Label>
+                  <Label htmlFor="name">{t('form.nameLabel')}</Label>
                   <Input
                     id="name"
                     data-testid="server-name-input"
-                    placeholder="servidor.exemplo.com"
+                    placeholder={t('form.namePlaceholder')}
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ip">Endereço IP</Label>
+                  <Label htmlFor="ip">{t('form.ipLabel')}</Label>
                   <div className="flex gap-2">
                     <Input
                       id="ip"
                       data-testid="server-ip-input"
-                      placeholder="192.168.1.100"
+                      placeholder={t('form.ipPlaceholder')}
                       value={formData.ip}
                       onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
                       required
@@ -611,22 +613,22 @@ const Servers = () => {
                       data-testid="resolve-ip-btn"
                     >
                       <Network className="w-4 h-4 mr-2" />
-                      {resolvingIp ? 'Resolvendo...' : 'Resolve IP'}
+                      {resolvingIp ? t('form.resolving') : t('form.resolveIp')}
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="plugin_instance">Instância de Plugin</Label>
+                  <Label htmlFor="plugin_instance">{t('form.pluginLabel')}</Label>
                   <Select 
                     value={formData.plugin_instance_id || 'none'} 
                     onValueChange={(value) => setFormData({ ...formData, plugin_instance_id: value === 'none' ? '' : value })}
                   >
                     <SelectTrigger data-testid="server-plugin-select">
-                      <SelectValue placeholder="Selecione a instância (opcional)" />
+                      <SelectValue placeholder={t('form.pluginPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">
-                        <span className="text-muted-foreground">Nenhuma (usar padrão)</span>
+                        <span className="text-muted-foreground">{t('form.pluginNone')}</span>
                       </SelectItem>
                       {pluginInstances.map((instance) => (
                         <SelectItem key={instance.id} value={instance.id.toString()}>
@@ -634,7 +636,7 @@ const Servers = () => {
                             <Plug className="w-4 h-4" />
                             {instance.name}
                             <Badge variant="outline" className="text-xs ml-1">
-                              {instance.plugin_type === 'soap_api' ? 'SOAP' : 'Direto'}
+                              {instance.plugin_type === 'soap_api' ? 'SOAP' : t('pluginType.direct')}
                             </Badge>
                           </div>
                         </SelectItem>
@@ -646,7 +648,7 @@ const Servers = () => {
               
               <Button type="submit" disabled={loading} data-testid="add-server-btn">
                 <Plus className="w-4 h-4 mr-2" />
-                Adicionar Servidor
+                {t('addServer')}
               </Button>
             </form>
           </CardContent>
@@ -658,11 +660,11 @@ const Servers = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Servidores Cadastrados</CardTitle>
+              <CardTitle>{t('table.cardTitle')}</CardTitle>
               <CardDescription>
-                {filteredAndSortedServers.length === servers.length 
-                  ? `${servers.length} servidores no sistema`
-                  : `${filteredAndSortedServers.length} de ${servers.length} servidores`
+                {filteredAndSortedServers.length === servers.length
+                  ? t('table.countAll', { count: servers.length })
+                  : t('table.countFiltered', { filtered: filteredAndSortedServers.length, total: servers.length })
                 }
               </CardDescription>
             </div>
@@ -670,7 +672,7 @@ const Servers = () => {
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou IP..."
+                placeholder={t('table.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -685,9 +687,9 @@ const Servers = () => {
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : servers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhum servidor cadastrado</p>
+            <p className="text-muted-foreground text-center py-8">{t('table.empty')}</p>
           ) : filteredAndSortedServers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhum servidor encontrado para "{searchTerm}"</p>
+            <p className="text-muted-foreground text-center py-8">{t('table.noResults', { term: searchTerm })}</p>
           ) : (
             <div className="overflow-auto max-h-[500px] border rounded-lg">
               <table className="w-full">
@@ -698,7 +700,7 @@ const Servers = () => {
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center">
-                        Nome
+                        {t('common:fields.name')}
                         {getSortIcon('name')}
                       </div>
                     </th>
@@ -711,7 +713,7 @@ const Servers = () => {
                         {getSortIcon('ip')}
                       </div>
                     </th>
-                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">Flags</th>
+                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">{t('table.flags')}</th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">
                       <Plug className="w-4 h-4 inline mr-1" />
                       Plugin
@@ -722,7 +724,7 @@ const Servers = () => {
                     >
                       <div className="flex items-center justify-center">
                         <ShieldAlert className="w-4 h-4 mr-1" />
-                        Risco
+                        {t('table.risk')}
                         {getSortIcon('risk_score')}
                       </div>
                     </th>
@@ -761,11 +763,11 @@ const Servers = () => {
                       onClick={() => handleSort('last_verified_at')}
                     >
                       <div className="flex items-center">
-                        Última Verificação
+                        {t('common:fields.lastVerification')}
                         {getSortIcon('last_verified_at')}
                       </div>
                     </th>
-                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">Ações</th>
+                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">{t('common:fields.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -782,7 +784,7 @@ const Servers = () => {
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
                               className="w-48 h-8 text-sm"
-                              placeholder="Nome do servidor"
+                              placeholder={t('table.editNamePlaceholder')}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleSaveName(server.id);
                                 if (e.key === 'Escape') handleCancelNameEdit();
@@ -820,10 +822,10 @@ const Servers = () => {
                                 </ContextMenuTrigger>
                                 <ContextMenuContent>
                                   <ContextMenuItem onClick={() => window.open(window.location.origin + `/servers/${server.id}/browse?from=/servers`, '_blank')}>
-                                    Abrir em nova aba
+                                    {t('contextMenu.openNewTab')}
                                   </ContextMenuItem>
                                   <ContextMenuItem onClick={() => navigate(`/servers/${server.id}/browse?from=/servers`)}>
-                                    Abrir
+                                    {t('common:actions.open')}
                                   </ContextMenuItem>
                                 </ContextMenuContent>
                               </ContextMenu>
@@ -834,7 +836,7 @@ const Servers = () => {
                               size="icon"
                               className="h-6 w-6 text-muted-foreground hover:text-foreground"
                               onClick={() => handleEditName(server)}
-                              title="Editar nome do servidor"
+                              title={t('table.editNameTitle')}
                             >
                               <Pencil className="w-3 h-3" />
                             </Button>
@@ -848,7 +850,7 @@ const Servers = () => {
                               value={editIp}
                               onChange={(e) => setEditIp(e.target.value)}
                               className="w-36 h-8 text-sm"
-                              placeholder="192.168.1.100"
+                              placeholder={t('form.ipPlaceholder')}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleSaveIp(server.id);
                                 if (e.key === 'Escape') handleCancelEdit();
@@ -897,7 +899,7 @@ const Servers = () => {
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Servidor inacessível</p>
+                                  <p>{t('tooltip.unreachable')}</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -909,7 +911,7 @@ const Servers = () => {
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Shares abertas</p>
+                                  <p>{t('tooltip.openShares')}</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -919,7 +921,7 @@ const Servers = () => {
                                   <Star className="w-4 h-4 fill-orange-400 text-orange-400" />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Favorito</p>
+                                  <p>{t('tooltip.favorite')}</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -929,7 +931,7 @@ const Servers = () => {
                                   <CheckCheck className="w-4 h-4 text-green-500" />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Verificado</p>
+                                  <p>{t('common:status.verified')}</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -947,11 +949,11 @@ const Servers = () => {
                               onValueChange={(value) => setEditPluginInstanceId(value === 'none' ? '' : value)}
                             >
                               <SelectTrigger className="w-40 h-8 text-xs">
-                                <SelectValue placeholder="Instância" />
+                                <SelectValue placeholder={t('table.instancePlaceholder')} />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">
-                                  <span className="text-muted-foreground">Nenhuma</span>
+                                  <span className="text-muted-foreground">{t('table.instanceNone')}</span>
                                 </SelectItem>
                                 {pluginInstances.map((instance) => (
                                   <SelectItem key={instance.id} value={instance.id.toString()}>
@@ -1043,21 +1045,21 @@ const Servers = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-yellow-500" />
-              IP Duplicado Detectado
+              {t('duplicate.title')}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                Já existe no cadastro um servidor com o IP <strong className="text-foreground">{duplicateConfirmDialog.existingServer?.ip}</strong> com nome <strong className="text-foreground">"{duplicateConfirmDialog.existingServer?.name}"</strong>.
+                {t('duplicate.messagePrefix')} <strong className="text-foreground">{duplicateConfirmDialog.existingServer?.ip}</strong> {t('duplicate.messageMiddle')} <strong className="text-foreground">"{duplicateConfirmDialog.existingServer?.name}"</strong>.
               </p>
-              <p>Deseja continuar com o cadastro duplicado?</p>
+              <p>{t('duplicate.confirm')}</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancelDuplicate}>
-              Cancelar
+              {t('common:actions.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDuplicate} className="bg-yellow-600 hover:bg-yellow-700">
-              Sim, cadastrar mesmo assim
+              {t('duplicate.confirmButton')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1072,11 +1074,10 @@ const Servers = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-destructive" />
-              Remover servidores
+              {t('cleanup.title')}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
-              Selecione quais grupos remover. Servidores que possuem <strong className="text-foreground">downloads</strong> nunca
-              são removidos. O storage existente é movido para <span className="font-mono">storage_deleted</span>.
+              {t('cleanup.descPrefix')} <strong className="text-foreground">downloads</strong> {t('cleanup.descMiddle')} <span className="font-mono">storage_deleted</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -1087,9 +1088,9 @@ const Servers = () => {
                 onCheckedChange={(v) => refreshCleanupPreview(!!v, cleanupDialog.neverAccessed)}
               />
               <div className="space-y-0.5">
-                <div className="text-sm font-medium text-foreground">Inacessíveis</div>
+                <div className="text-sm font-medium text-foreground">{t('cleanup.unreachable')}</div>
                 <div className="text-xs text-muted-foreground">
-                  Servidores marcados como inacessíveis na rede
+                  {t('cleanup.unreachableDesc')}
                   {cleanupDialog.preview && ` (${cleanupDialog.preview.unreachable})`}
                 </div>
               </div>
@@ -1100,9 +1101,9 @@ const Servers = () => {
                 onCheckedChange={(v) => refreshCleanupPreview(cleanupDialog.unreachable, !!v)}
               />
               <div className="space-y-0.5">
-                <div className="text-sm font-medium text-foreground">Sem tentativa de acesso</div>
+                <div className="text-sm font-medium text-foreground">{t('cleanup.neverAccessed')}</div>
                 <div className="text-xs text-muted-foreground">
-                  Nunca acessados com sucesso (sem shares e não verificados)
+                  {t('cleanup.neverAccessedDesc')}
                   {cleanupDialog.preview && ` (${cleanupDialog.preview.never_accessed})`}
                 </div>
               </div>
@@ -1112,19 +1113,19 @@ const Servers = () => {
               {cleanupDialog.loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Calculando...</span>
+                  <span>{t('cleanup.calculating')}</span>
                 </>
               ) : (
                 <span>
                   <strong className="text-foreground">{cleanupDialog.preview?.total ?? 0}</strong>{' '}
-                  servidor(es) serão removidos.
+                  {t('cleanup.willRemoveSuffix')}
                 </span>
               )}
             </div>
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cleanupDialog.deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={cleanupDialog.deleting}>{t('common:actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); handleCleanupConfirm(); }}
               disabled={
@@ -1136,9 +1137,9 @@ const Servers = () => {
               className="bg-destructive hover:bg-destructive/90"
             >
               {cleanupDialog.deleting ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Removendo...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('cleanup.removing')}</>
               ) : (
-                <><Trash2 className="w-4 h-4 mr-2" /> Remover {cleanupDialog.preview?.total ?? 0}</>
+                <><Trash2 className="w-4 h-4 mr-2" /> {t('cleanup.removeCount', { count: cleanupDialog.preview?.total ?? 0 })}</>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

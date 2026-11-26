@@ -45,10 +45,22 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useTranslation } from 'react-i18next';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api/v2`;
 
+// Mapeamento do status cru (badge) -> chave de tradução
+const BADGE_LABEL_KEYS = {
+  pending: 'common:status.pending',
+  running: 'common:status.running',
+  completed: 'common:status.completed',
+  failed: 'common:status.failed',
+  cancelled: 'common:status.cancelled',
+  skipped: 'badge.skipped',
+};
+
 const OCRStatusBadge = ({ status }) => {
+  const { t } = useTranslation('ocr-jobs');
   const variants = {
     pending: { icon: Clock, className: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50' },
     running: { icon: Loader2, className: 'bg-blue-500/20 text-blue-500 border-blue-500/50', spin: true },
@@ -64,12 +76,14 @@ const OCRStatusBadge = ({ status }) => {
   return (
     <Badge variant="outline" className={cn("gap-1", variant.className)}>
       <Icon className={cn("w-3 h-3", variant.spin && "animate-spin")} />
-      {status}
+      {t(BADGE_LABEL_KEYS[status] || status)}
     </Badge>
   );
 };
 
 const OCRJobs = () => {
+  const { t } = useTranslation('ocr-jobs');
+  const statusLabel = (status) => t('status.' + status);
   const { isConnected } = useWebSocket();
   const [jobs, setJobs] = useState([]);
   const [stats, setStats] = useState({
@@ -109,7 +123,7 @@ const OCRJobs = () => {
     } catch (error) {
       console.error('Error loading Tika status:', error);
       if (isMounted.current) {
-        setTikaStatus({ online: false, error: 'Erro ao verificar status' });
+        setTikaStatus({ online: false, error: t('tika.statusError') });
       }
     }
   }, []);
@@ -182,12 +196,12 @@ const OCRJobs = () => {
   const cancelJob = async (jobId) => {
     try {
       await axios.post(`${API}/ocr/jobs/${jobId}/cancel`);
-      toast.success('Job cancelado com sucesso');
+      toast.success(t('toast.cancelSuccess'));
       loadJobs();
       loadStats();
     } catch (error) {
       console.error('Error cancelling job:', error);
-      toast.error('Erro ao cancelar job');
+      toast.error(t('toast.cancelError'));
     }
   };
 
@@ -195,12 +209,12 @@ const OCRJobs = () => {
   const cancelAllOcrJobs = async () => {
     try {
       const response = await axios.post(`${API}/ocr/cancel-all`);
-      toast.success(response.data.message || 'Todos os jobs OCR cancelados');
+      toast.success(response.data.message || t('toast.cancelAllDefault'));
       loadJobs();
       loadStats();
     } catch (error) {
       console.error('Error cancelling all OCR jobs:', error);
-      toast.error('Erro ao cancelar todos os jobs OCR');
+      toast.error(t('toast.cancelAllError'));
     }
   };
 
@@ -208,12 +222,12 @@ const OCRJobs = () => {
   const clearFinishedJobs = async () => {
     try {
       const response = await axios.delete(`${API}/ocr/jobs/clear-finished`);
-      toast.success(`${response.data.deleted} jobs removidos`);
+      toast.success(t('toast.clearSuccess', { count: response.data.deleted }));
       loadJobs();
       loadStats();
     } catch (error) {
       console.error('Error clearing jobs:', error);
-      toast.error('Erro ao limpar jobs');
+      toast.error(t('toast.clearError'));
     }
   };
 
@@ -225,7 +239,7 @@ const OCRJobs = () => {
       loadJobs();
     } catch (error) {
       console.error('Error prioritizing job:', error);
-      toast.error(error.response?.data?.detail || 'Erro ao priorizar job');
+      toast.error(error.response?.data?.detail || t('toast.prioritizeError'));
     }
   };
 
@@ -239,7 +253,7 @@ const OCRJobs = () => {
       loadStats();
     } catch (error) {
       console.error('Error retrying failed jobs:', error);
-      toast.error('Erro ao reexecutar jobs falhados');
+      toast.error(t('toast.retryFailedError'));
     } finally {
       setRetrying(false);
     }
@@ -255,7 +269,7 @@ const OCRJobs = () => {
       loadStats();
     } catch (error) {
       console.error('Error retrying cancelled jobs:', error);
-      toast.error('Erro ao reexecutar jobs cancelados');
+      toast.error(t('toast.retryCancelledError'));
     } finally {
       setRetrying(false);
     }
@@ -270,7 +284,7 @@ const OCRJobs = () => {
       loadStats();
     } catch (error) {
       console.error('Error retrying job:', error);
-      toast.error(error.response?.data?.detail || 'Erro ao reexecutar job');
+      toast.error(error.response?.data?.detail || t('toast.retryError'));
     }
   };
 
@@ -283,7 +297,7 @@ const OCRJobs = () => {
       loadStats();
     } catch (error) {
       console.error('Error deleting job:', error);
-      toast.error(error.response?.data?.detail || 'Erro ao deletar job');
+      toast.error(error.response?.data?.detail || t('toast.deleteError'));
     }
   };
 
@@ -315,9 +329,9 @@ const OCRJobs = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Jobs de OCR</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Gerenciamento e monitoramento de processamento OCR
+            {t('description')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -326,11 +340,11 @@ const OCRJobs = () => {
             className={`text-xs ${isConnected ? 'border-green-600 text-green-600' : 'text-muted-foreground'}`}
           >
             <span className={`w-2 h-2 rounded-full mr-1.5 ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-            {isConnected ? 'Tempo real' : 'Offline'}
+            {isConnected ? t('realtime') : t('offline')}
           </Badge>
           <Button variant="outline" onClick={() => { loadJobs(); loadStats(); loadTikaStatus(); }} disabled={loading}>
             <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
-            Atualizar
+            {t('common:actions.refresh')}
           </Button>
         </div>
       </div>
@@ -347,10 +361,10 @@ const OCRJobs = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-lg font-bold">
-                  {tikaStatus.online === null ? 'Verificando...' :
-                   tikaStatus.online ? 'Online' : 'Offline'}
+                  {tikaStatus.online === null ? t('tika.checking') :
+                   tikaStatus.online ? t('tika.online') : t('tika.offline')}
                 </p>
-                <p className="text-xs text-muted-foreground uppercase">Tika Server</p>
+                <p className="text-xs text-muted-foreground uppercase">{t('tika.label')}</p>
                 {tikaStatus.error && (
                   <p className="text-xs text-red-500 mt-1 truncate" title={tikaStatus.error}>
                     {tikaStatus.error}
@@ -391,7 +405,7 @@ const OCRJobs = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-2xl font-bold">{count}</p>
-                    <p className={cn("text-xs uppercase", config.textColor)}>{config.label}</p>
+                    <p className={cn("text-xs uppercase", config.textColor)}>{statusLabel(status)}</p>
                   </div>
                   <Icon className={cn("w-6 h-6 opacity-60", config.textColor)} />
                 </div>
@@ -415,7 +429,7 @@ const OCRJobs = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.total || 0}</p>
-                <p className="text-xs text-muted-foreground uppercase">Total</p>
+                <p className="text-xs text-muted-foreground uppercase">{t('total')}</p>
               </div>
               <Eye className="w-6 h-6 text-blue-500 opacity-60" />
             </div>
@@ -428,7 +442,7 @@ const OCRJobs = () => {
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="flex items-center gap-1">
             <Filter className="w-3 h-3" />
-            Filtro: {statusConfig[activeFilter]?.label}
+            {t('filter', { label: statusLabel(activeFilter) })}
             <button 
               onClick={() => setActiveFilter(null)}
               className="ml-1 hover:text-destructive"
@@ -446,7 +460,7 @@ const OCRJobs = () => {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por arquivo..."
+                placeholder={t('search.placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -465,7 +479,7 @@ const OCRJobs = () => {
                 ) : (
                   <RotateCcw className="w-4 h-4 mr-2" />
                 )}
-                Reexecutar Falhados ({stats.failed || 0})
+                {t('actions.retryFailed', { count: stats.failed || 0 })}
               </Button>
               <Button 
                 variant="outline" 
@@ -479,7 +493,7 @@ const OCRJobs = () => {
                 ) : (
                   <RotateCcw className="w-4 h-4 mr-2" />
                 )}
-                Reexecutar Cancelados ({stats.cancelled || 0})
+                {t('actions.retryCancelled', { count: stats.cancelled || 0 })}
               </Button>
               <Button 
                 variant="outline" 
@@ -489,7 +503,7 @@ const OCRJobs = () => {
                 className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
               >
                 <StopCircle className="w-4 h-4 mr-2" />
-                Cancelar Todos
+                {t('actions.cancelAll')}
               </Button>
               <Button 
                 variant="destructive" 
@@ -498,7 +512,7 @@ const OCRJobs = () => {
                 disabled={stats.completed === 0 && stats.failed === 0 && stats.skipped === 0 && stats.cancelled === 0}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Limpar Finalizados
+                {t('actions.clearFinished')}
               </Button>
             </div>
           </div>
@@ -510,7 +524,7 @@ const OCRJobs = () => {
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            Jobs ({filteredJobs.length})
+            {t('table.heading', { count: filteredJobs.length })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -521,21 +535,21 @@ const OCRJobs = () => {
           ) : filteredJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Eye className="w-12 h-12 mb-4 opacity-30" />
-              <p className="text-lg">Nenhum job de OCR encontrado</p>
-              <p className="text-sm">Jobs serão criados automaticamente ao baixar arquivos</p>
+              <p className="text-lg">{t('empty.title')}</p>
+              <p className="text-sm">{t('empty.hint')}</p>
             </div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[60px]">ID</TableHead>
-                    <TableHead>Arquivo</TableHead>
-                    <TableHead className="w-[100px]">Server</TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="w-[100px]">Chars</TableHead>
-                    <TableHead className="w-[140px]">Criado</TableHead>
-                    <TableHead className="w-[80px]">Ações</TableHead>
+                    <TableHead className="w-[60px]">{t('table.id')}</TableHead>
+                    <TableHead>{t('table.file')}</TableHead>
+                    <TableHead className="w-[100px]">{t('table.server')}</TableHead>
+                    <TableHead className="w-[100px]">{t('table.status')}</TableHead>
+                    <TableHead className="w-[100px]">{t('table.chars')}</TableHead>
+                    <TableHead className="w-[140px]">{t('table.created')}</TableHead>
+                    <TableHead className="w-[80px]">{t('table.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -569,7 +583,7 @@ const OCRJobs = () => {
                         ) : job.status === 'cancelled' || job.status === 'skipped' ? (
                           <span className="text-muted-foreground">-</span>
                         ) : job.status === 'failed' && job.error_message ? (
-                          <span className="text-red-500" title={job.error_message}>Erro</span>
+                          <span className="text-red-500" title={job.error_message}>{t('table.error')}</span>
                         ) : (
                           '-'
                         )}
@@ -585,7 +599,7 @@ const OCRJobs = () => {
                               size="sm"
                               onClick={() => prioritizeJob(job.id)}
                               className="h-7 w-7 p-0 text-green-500 hover:text-green-600"
-                              title="Executar agora (prioridade máxima)"
+                              title={t('rowActions.prioritize')}
                             >
                               <Play className="w-4 h-4" />
                             </Button>
@@ -596,7 +610,7 @@ const OCRJobs = () => {
                               size="sm"
                               onClick={() => setConfirmDialog({ open: true, action: 'cancel', jobId: job.id })}
                               className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-                              title="Cancelar job"
+                              title={t('rowActions.cancel')}
                             >
                               <StopCircle className="w-4 h-4" />
                             </Button>
@@ -608,7 +622,7 @@ const OCRJobs = () => {
                                 size="sm"
                                 onClick={() => retryJob(job.id)}
                                 className="h-7 w-7 p-0 text-blue-500 hover:text-blue-600"
-                                title="Reexecutar job"
+                                title={t('rowActions.retry')}
                               >
                                 <RotateCcw className="w-4 h-4" />
                               </Button>
@@ -617,7 +631,7 @@ const OCRJobs = () => {
                                 size="sm"
                                 onClick={() => setConfirmDialog({ open: true, action: 'delete', jobId: job.id })}
                                 className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-                                title="Remover job"
+                                title={t('rowActions.delete')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -639,30 +653,21 @@ const OCRJobs = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog.action === 'clear' ? 'Limpar Jobs Finalizados' : 
-               confirmDialog.action === 'retry' ? 'Reexecutar Jobs Falhados' :
-               confirmDialog.action === 'retryCancelled' ? 'Reexecutar Jobs Cancelados' :
-               confirmDialog.action === 'cancelAll' ? 'Cancelar Todos os Jobs' :
-               confirmDialog.action === 'delete' ? 'Remover Job' :
-               'Cancelar Job'}
+              {t(`dialog.titles.${confirmDialog.action}`, { defaultValue: t('dialog.titles.cancel') })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmDialog.action === 'clear' 
-                ? 'Isso removerá todos os jobs concluídos, falhados, ignorados e cancelados. Esta ação não pode ser desfeita.'
-                : confirmDialog.action === 'retry'
-                ? `Isso reenfileirará ${stats.failed} jobs falhados para processamento novamente.`
-                : confirmDialog.action === 'retryCancelled'
-                ? `Isso reenfileirará ${stats.cancelled} jobs cancelados para processamento novamente.`
-                : confirmDialog.action === 'cancelAll'
-                ? `Isso cancelará ${(stats.pending || 0) + (stats.running || 0)} jobs pendentes e em execução.`
-                : confirmDialog.action === 'delete'
-                ? 'Tem certeza que deseja remover este job? Esta ação não pode ser desfeita.'
-                : 'Tem certeza que deseja cancelar este job?'
-              }
+              {t(`dialog.descriptions.${confirmDialog.action}`, {
+                defaultValue: t('dialog.descriptions.cancel'),
+                count: confirmDialog.action === 'retry'
+                  ? stats.failed
+                  : confirmDialog.action === 'retryCancelled'
+                  ? stats.cancelled
+                  : (stats.pending || 0) + (stats.running || 0)
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common:actions.back')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (confirmDialog.action === 'clear') {
@@ -686,7 +691,7 @@ const OCRJobs = () => {
                   : "bg-red-500 hover:bg-red-600"
               }
             >
-              Confirmar
+              {t('common:actions.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

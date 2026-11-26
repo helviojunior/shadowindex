@@ -1,0 +1,104 @@
+{
+  "domainN": "Domain {{id}}",
+  "objects_one": "{{val}} object",
+  "objects_other": "{{val}} objects",
+  "refreshTree": "Refresh tree",
+  "searchPlaceholder": "Search object...",
+  "advancedFilters": "Advanced filters",
+  "liveHint": "Live browsing via LDAP — children/members fetched on demand when expanding.",
+  "tree": "Tree",
+  "resultsFound_one": "{{count}} result found",
+  "resultsFound_other": "{{count}} results found",
+  "exportJson": "Export JSON",
+  "noObjectsFound": "No object found",
+  "emptyLive": "Nothing returned from LDAP — check the domain connection.",
+  "emptyTree": "Empty tree — import BloodHound, start a scan or use \"Live LDAP\".",
+  "selectObject": "Select an object to see the details.",
+  "mode": {
+    "imported": "Imported",
+    "live": "Live LDAP"
+  },
+  "filters": {
+    "allTypes": "All types",
+    "all": "All",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "createdFrom": "Created from",
+    "createdTo": "Created to",
+    "pwdFrom": "pwdLastSet from",
+    "pwdTo": "pwdLastSet to"
+  },
+  "focus": {
+    "showAll": "Show all",
+    "focusSelected": "Focus on the selected object",
+    "focusedOn": "Focused on:"
+  },
+  "tab": {
+    "objects": "Objects"
+  },
+  "detail": {
+    "members": "Members",
+    "children": "Children",
+    "properties": "Properties (BloodHound v6)"
+  },
+  "menu": {
+    "requiresLdap": "Requires LDAP configured on the domain",
+    "openTab": "Open in a new tab",
+    "copyLink": "Copy link",
+    "createUser": "Insert User",
+    "createGroup": "Insert Group",
+    "addMember": "Insert user",
+    "block": "Block",
+    "unblock": "Unblock",
+    "resetPassword": "Change password",
+    "addToGroup": "Add to a group"
+  },
+  "dialog": {
+    "block": "Block user",
+    "resetPassword": "Change password",
+    "createUser": "Insert user",
+    "createGroup": "Insert group",
+    "addMember": "Insert user into group",
+    "addToGroup": "Add to a group",
+    "action": "Action",
+    "blockConfirmPre": "Are you sure you want to",
+    "blockConfirmStrong": "block",
+    "blockConfirmPost": "this account? The user won't be able to authenticate until unblocked.",
+    "newPassword": "New password",
+    "requiresLdaps": "Requires LDAPS enabled on the domain.",
+    "nameCn": "Name (CN)",
+    "namePlaceholder": "Name",
+    "passwordOptional": "Password (optional)",
+    "passwordHint": "Leave empty to create disabled",
+    "createUserHint": "With a password + LDAPS the user is created already enabled.",
+    "selectUser": "Select the user",
+    "selectGroup": "Select the group",
+    "searchUser": "Search user...",
+    "searchGroup": "Search group...",
+    "noResults": "No results"
+  },
+  "objectsTab": {
+    "noMembers": "Group with no loaded members",
+    "noChildren": "No child objects",
+    "created": "Created"
+  },
+  "toast": {
+    "loadTreeError": "Error loading the tree",
+    "loadChildrenError": "Error loading children",
+    "loadObjChildrenError": "Error loading child objects",
+    "accountUnblocked": "Account unblocked",
+    "accountBlocked": "Account blocked",
+    "accountChangeFailed": "Failed to change the account",
+    "linkCopied": "Link copied",
+    "copyFailed": "Could not copy",
+    "ldapNotConfigured": "LDAP not configured for this domain",
+    "passwordChanged": "Password changed",
+    "userCreated": "User created",
+    "groupCreated": "Group created",
+    "memberAdded": "Member added to the group",
+    "userAddedToGroup": "User added to the group",
+    "operationFailed": "Operation failed",
+    "searchMinChars": "Enter at least 2 characters or a filter",
+    "searchError": "Search error"
+  }
+}

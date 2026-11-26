@@ -1,0 +1,64 @@
+{
+  "intro": "Explore a árvore do Active Directory por domínio. Importe dados do BloodHound (v6) para montar e navegar a árvore completa.",
+  "newDomain": "Novo Domínio",
+  "explore": "Explorar",
+  "importBloodhound": "Importar BloodHound",
+  "ldapConnection": "Conexão LDAP",
+  "empty": "Nenhum domínio cadastrado. Crie um e importe os arquivos do BloodHound.",
+  "objects_one": "{{val}} objeto",
+  "objects_other": "{{val}} objetos",
+  "lastImport": "Última importação: {{date}}",
+  "form": {
+    "title": "Novo domínio",
+    "description": "Informe o FQDN do domínio (ex.: empresa.local). A base do AD Explorer é o domínio, não um servidor.",
+    "domainLabel": "Domínio (FQDN) *",
+    "domainPlaceholder": "empresa.local",
+    "create": "Criar"
+  },
+  "status": {
+    "queued": "Na fila",
+    "importing": "Importando",
+    "scanning": "Varrendo (LDAP)"
+  },
+  "cfg": {
+    "authMethod": "Método de autenticação",
+    "authUserPassword": "Usuário e Senha (NTLM)",
+    "authKerberos": "Kerberos (ccache)",
+    "authCert": "Certificado digital (LDAPS mTLS)",
+    "credential": "Credencial",
+    "select": "Selecione...",
+    "clientCert": "Certificado cliente (PEM)",
+    "clientKey": "Chave privada (PEM)",
+    "discoverSrv": "Descobrir DCs por DNS SRV",
+    "dcHostsManual": "Controladores de domínio (manuais, separados por vírgula)",
+    "discoverDcs": "Descobrir DCs",
+    "testConnection": "Testar conexão",
+    "ldapScan": "Varredura LDAP",
+    "connOkAt": "Conexão OK em {{server}}:{{port}} — {{ctx}}",
+    "dcByLatency": "Controladores de domínio (ordenados por latência)",
+    "unreachable": "inacessível"
+  },
+  "confirm": {
+    "startScan": "Iniciar a varredura LDAP recursiva da árvore do domínio? Isso percorre todo o AD e pode levar alguns minutos.",
+    "deleteDomain": "Remover este domínio e toda a árvore importada?"
+  },
+  "toast": {
+    "saveConfigError": "Erro ao salvar configuração",
+    "fastestDc": "DC mais rápido: {{dc}}",
+    "noDcFound": "Nenhum DC acessível encontrado",
+    "discoverFailed": "Descoberta falhou: {{error}}",
+    "connOk": "Conexão OK ({{server}})",
+    "connFailed": "Falhou: {{error}}",
+    "testFailed": "Teste falhou: {{error}}",
+    "scanStarted": "Varredura LDAP iniciada em background",
+    "scanStartFailed": "Falha ao iniciar varredura: {{error}}",
+    "domainRequired": "Informe o domínio (FQDN)",
+    "domainCreated": "Domínio criado",
+    "domainCreateError": "Erro ao criar domínio",
+    "domainRemoved": "Domínio removido",
+    "domainRemoveError": "Erro ao remover domínio",
+    "uploadDone": "Upload concluído — importação iniciada em background",
+    "uploadFailed": "Falha no upload: {{error}}",
+    "configSaved": "Configuração salva"
+  }
+}

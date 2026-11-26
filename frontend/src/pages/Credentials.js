@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash2, Plus, ChevronUp, Pencil, X, Check, Hash, Ticket, KeyRound, CheckCircle, XCircle, Loader2, Key, Ghost, Fingerprint, Server, Clock, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { ShieldKeyIcon } from '@/components/icons';
 
@@ -24,6 +25,7 @@ const CREDENTIAL_TYPES = {
 };
 
 const Credentials = () => {
+  const { t } = useTranslation('credentials');
   const [credentials, setCredentials] = useState([]);
   const [activeTab, setActiveTab] = useState('user_password');
   const [formData, setFormData] = useState({
@@ -101,7 +103,7 @@ const Credentials = () => {
       setCcacheFileName(file.name);
     } catch (err) {
       console.error('Error reading ccache file:', err);
-      toast.error('Não foi possível ler o arquivo ccache');
+      toast.error(t('toast.ccacheReadError'));
     }
   };
 
@@ -121,13 +123,13 @@ const Credentials = () => {
       });
       
       await axios.post(`${API}/credentials`, payload);
-      toast.success('Credencial cadastrada com sucesso');
+      toast.success(t('toast.created'));
       resetForm();
       setShowAddForm(false);
       loadCredentials();
     } catch (error) {
       console.error('Error creating credential:', error);
-      const errorMsg = error.response?.data?.detail || 'Erro ao cadastrar credencial';
+      const errorMsg = error.response?.data?.detail || t('toast.createError');
       toast.error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
     } finally {
       setLoading(false);
@@ -137,11 +139,11 @@ const Credentials = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API}/credentials/${id}`);
-      toast.success('Credencial removida com sucesso');
+      toast.success(t('toast.removed'));
       loadCredentials();
     } catch (error) {
       console.error('Error deleting credential:', error);
-      toast.error('Erro ao remover credencial');
+      toast.error(t('toast.removeError'));
     }
   };
 
@@ -163,13 +165,13 @@ const Credentials = () => {
       });
       
       await axios.put(`${API}/credentials/${id}`, payload);
-      toast.success('Credencial atualizada com sucesso');
+      toast.success(t('toast.updated'));
       setEditingId(null);
       setEditData({});
       loadCredentials();
     } catch (error) {
       console.error('Error updating credential:', error);
-      const errorMsg = error.response?.data?.detail || 'Erro ao atualizar credencial';
+      const errorMsg = error.response?.data?.detail || t('toast.updateError');
       toast.error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
     }
   };
@@ -188,24 +190,24 @@ const Credentials = () => {
       return (
         <div className="flex-1 grid grid-cols-5 gap-4">
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Nome</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.name')}</div>
             <div className="font-medium">{cred.name || '-'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Domínio</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.domain')}</div>
             <div className="font-medium">{cred.domain || '-'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Usuário</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.username')}</div>
             <div className="font-medium">{cred.username}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('display.auth')}</div>
             <div className="flex items-center gap-2">
               {cred.password && (
                 <Badge variant="outline" className="gap-1">
                   <Key className="w-3 h-3" />
-                  Senha
+                  {t('common:fields.password')}
                 </Badge>
               )}
               {cred.ntlm_hash && (
@@ -217,16 +219,16 @@ const Credentials = () => {
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Status</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.status')}</div>
             {cred.verified ? (
               <Badge variant="default" className="gap-1 bg-green-600">
                 <CheckCircle className="w-3 h-3" />
-                Verificada
+                {t('display.verified')}
               </Badge>
             ) : (
               <Badge variant="outline" className="gap-1 text-muted-foreground">
                 <XCircle className="w-3 h-3" />
-                Não verificada
+                {t('display.notVerified')}
               </Badge>
             )}
           </div>
@@ -236,19 +238,19 @@ const Credentials = () => {
       return (
         <div className="flex-1 grid grid-cols-5 gap-4">
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Nome</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.name')}</div>
             <div className="font-medium">{cred.name || '-'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Domínio</div>
-            <div className="font-medium">{cred.domain || '(do ccache)'}</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.domain')}</div>
+            <div className="font-medium">{cred.domain || t('display.fromCcache')}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Usuário</div>
-            <div className="font-medium">{cred.username || '(do ccache)'}</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.username')}</div>
+            <div className="font-medium">{cred.username || t('display.fromCcache')}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('display.auth')}</div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="gap-1">
                 <Fingerprint className="w-3 h-3" />
@@ -263,11 +265,11 @@ const Credentials = () => {
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Validade do ticket</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('display.ticketValidity')}</div>
             {cred.kerberos_expired === true ? (
               <Badge variant="destructive" className="gap-1">
                 <AlertTriangle className="w-3 h-3" />
-                Expirado
+                {t('display.expired')}
               </Badge>
             ) : cred.kerberos_expires_at ? (
               <Badge variant="outline" className="gap-1 text-muted-foreground">
@@ -279,16 +281,16 @@ const Credentials = () => {
             )}
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Status</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.status')}</div>
             {cred.verified ? (
               <Badge variant="default" className="gap-1 bg-green-600">
                 <CheckCircle className="w-3 h-3" />
-                Verificada
+                {t('display.verified')}
               </Badge>
             ) : (
               <Badge variant="outline" className="gap-1 text-muted-foreground">
                 <XCircle className="w-3 h-3" />
-                Não verificada
+                {t('display.notVerified')}
               </Badge>
             )}
           </div>
@@ -298,28 +300,28 @@ const Credentials = () => {
       return (
         <div className="flex-1 grid grid-cols-4 gap-4">
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Nome</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.name')}</div>
             <div className="font-medium">{cred.name || '-'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Tipo de Token</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('display.tokenType')}</div>
             <div className="font-medium">{cred.token_type || 'bearer'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Token</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('display.token')}</div>
             <div className="font-mono text-sm">{cred.token ? `${cred.token.substring(0, 20)}...` : '-'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Status</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.status')}</div>
             {cred.verified ? (
               <Badge variant="default" className="gap-1 bg-green-600">
                 <CheckCircle className="w-3 h-3" />
-                Verificada
+                {t('display.verified')}
               </Badge>
             ) : (
               <Badge variant="outline" className="gap-1 text-muted-foreground">
                 <XCircle className="w-3 h-3" />
-                Não verificada
+                {t('display.notVerified')}
               </Badge>
             )}
           </div>
@@ -329,27 +331,27 @@ const Credentials = () => {
       return (
         <div className="flex-1 grid grid-cols-3 gap-4">
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Nome</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.name')}</div>
             <div className="font-medium">{cred.name || '-'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Autenticação</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('display.auth')}</div>
             <Badge variant="outline" className="gap-1">
               <Ghost className="w-3 h-3" />
-              Anônima (null session)
+              {t('display.anonymousBadge')}
             </Badge>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Status</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.status')}</div>
             {cred.verified ? (
               <Badge variant="default" className="gap-1 bg-green-600">
                 <CheckCircle className="w-3 h-3" />
-                Verificada
+                {t('display.verified')}
               </Badge>
             ) : (
               <Badge variant="outline" className="gap-1 text-muted-foreground">
                 <XCircle className="w-3 h-3" />
-                Não verificada
+                {t('display.notVerified')}
               </Badge>
             )}
           </div>
@@ -359,28 +361,28 @@ const Credentials = () => {
       return (
         <div className="flex-1 grid grid-cols-4 gap-4">
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Nome</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.name')}</div>
             <div className="font-medium">{cred.name || '-'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Chave Privada</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('display.privateKey')}</div>
             <div className="font-mono text-sm">{cred.ssh_private_key ? '********' : '-'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Passphrase</div>
-            <div className="font-mono text-sm">{cred.ssh_passphrase ? '••••••••' : 'Sem passphrase'}</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('display.passphrase')}</div>
+            <div className="font-mono text-sm">{cred.ssh_passphrase ? '••••••••' : t('display.noPassphrase')}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Status</div>
+            <div className="text-xs text-muted-foreground mb-1">{t('common:fields.status')}</div>
             {cred.verified ? (
               <Badge variant="default" className="gap-1 bg-green-600">
                 <CheckCircle className="w-3 h-3" />
-                Verificada
+                {t('display.verified')}
               </Badge>
             ) : (
               <Badge variant="outline" className="gap-1 text-muted-foreground">
                 <XCircle className="w-3 h-3" />
-                Não verificada
+                {t('display.notVerified')}
               </Badge>
             )}
           </div>
@@ -393,23 +395,23 @@ const Credentials = () => {
     <div className="space-y-6" data-testid="credentials-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Credenciais</h1>
-          <p className="text-muted-foreground mt-2">Gerencie credenciais de acesso (usuário/senha, tokens, chaves SSH)</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
         </div>
-        <Button 
-          onClick={() => setShowAddForm(!showAddForm)} 
+        <Button
+          onClick={() => setShowAddForm(!showAddForm)}
           data-testid="toggle-add-form-btn"
           variant={showAddForm ? "secondary" : "default"}
         >
           {showAddForm ? (
             <>
               <ChevronUp className="w-4 h-4 mr-2" />
-              Fechar
+              {t('common:actions.close')}
             </>
           ) : (
             <>
               <Plus className="w-4 h-4 mr-2" />
-              Adicionar Credencial
+              {t('addButton')}
             </>
           )}
         </Button>
@@ -419,42 +421,42 @@ const Credentials = () => {
       {showAddForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Nova Credencial</CardTitle>
-            <CardDescription>Adicione uma nova credencial ao sistema</CardDescription>
+            <CardTitle>{t('form.cardTitle')}</CardTitle>
+            <CardDescription>{t('form.cardDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-5 mb-6">
                 <TabsTrigger value="user_password" className="gap-2">
                   <Key className="w-4 h-4" />
-                  Usuário/Senha
+                  {t('tabs.user_password')}
                 </TabsTrigger>
                 <TabsTrigger value="kerberos" className="gap-2">
                   <Fingerprint className="w-4 h-4" />
-                  Kerberos
+                  {t('tabs.kerberos')}
                 </TabsTrigger>
                 <TabsTrigger value="token" className="gap-2">
                   <Ticket className="w-4 h-4" />
-                  Token
+                  {t('tabs.token')}
                 </TabsTrigger>
                 <TabsTrigger value="ssh_key" className="gap-2">
                   <KeyRound className="w-4 h-4" />
-                  Chave SSH
+                  {t('tabs.ssh_key')}
                 </TabsTrigger>
                 <TabsTrigger value="anonymous" className="gap-2">
                   <Ghost className="w-4 h-4" />
-                  Anônima
+                  {t('tabs.anonymous')}
                 </TabsTrigger>
               </TabsList>
 
               <form onSubmit={handleSubmit}>
                 {/* Name field - common to all types */}
                 <div className="space-y-2 mb-4">
-                  <Label htmlFor="name">Nome (opcional)</Label>
+                  <Label htmlFor="name">{t('form.nameLabel')}</Label>
                   <Input
                     id="name"
                     data-testid="credential-name-input"
-                    placeholder="Nome identificador da credencial"
+                    placeholder={t('form.namePlaceholder')}
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
@@ -463,21 +465,21 @@ const Credentials = () => {
                 <TabsContent value="user_password" className="space-y-4 mt-0">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="domain">Domínio</Label>
+                      <Label htmlFor="domain">{t('common:fields.domain')}</Label>
                       <Input
                         id="domain"
                         data-testid="credential-domain-input"
-                        placeholder="exemplo.com"
+                        placeholder={t('form.userPassword.domainPlaceholder')}
                         value={formData.domain}
                         onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="username">Usuário *</Label>
+                      <Label htmlFor="username">{t('form.userPassword.usernameLabel')}</Label>
                       <Input
                         id="username"
                         data-testid="credential-username-input"
-                        placeholder="usuario"
+                        placeholder={t('form.userPassword.usernamePlaceholder')}
                         value={formData.username}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                         required={activeTab === 'user_password'}
@@ -489,7 +491,7 @@ const Credentials = () => {
                     <div className="space-y-2">
                       <Label htmlFor="password" className="flex items-center gap-2">
                         <Key className="w-4 h-4" />
-                        Senha
+                        {t('common:fields.password')}
                       </Label>
                       <Input
                         id="password"
@@ -503,43 +505,43 @@ const Credentials = () => {
                     <div className="space-y-2">
                       <Label htmlFor="ntlm_hash" className="flex items-center gap-2">
                         <Hash className="w-4 h-4" />
-                        NTLM Hash
+                        {t('form.userPassword.ntlmLabel')}
                       </Label>
                       <Input
                         id="ntlm_hash"
                         data-testid="credential-ntlm-input"
-                        placeholder="aad3b435b51404eeaad3b435b51404ee:..."
+                        placeholder={t('form.userPassword.ntlmPlaceholder')}
                         value={formData.ntlm_hash}
                         onChange={(e) => setFormData({ ...formData, ntlm_hash: e.target.value })}
                       />
-                      <p className="text-xs text-muted-foreground">Formato: LM:NT ou apenas NT hash</p>
+                      <p className="text-xs text-muted-foreground">{t('form.userPassword.ntlmHelp')}</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                     <span className="text-yellow-500">⚠</span>
-                    <span>É obrigatório informar pelo menos uma senha OU um hash NTLM</span>
+                    <span>{t('form.userPassword.warning')}</span>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="kerberos" className="space-y-4 mt-0">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="krb-domain">Domínio / Realm (opcional)</Label>
+                      <Label htmlFor="krb-domain">{t('form.kerberos.domainLabel')}</Label>
                       <Input
                         id="krb-domain"
                         data-testid="credential-kerberos-domain-input"
-                        placeholder="exemplo.com (derivado do ccache se vazio)"
+                        placeholder={t('form.kerberos.domainPlaceholder')}
                         value={formData.domain}
                         onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="krb-username">Usuário (opcional)</Label>
+                      <Label htmlFor="krb-username">{t('form.kerberos.usernameLabel')}</Label>
                       <Input
                         id="krb-username"
                         data-testid="credential-kerberos-username-input"
-                        placeholder="usuario (derivado do ccache se vazio)"
+                        placeholder={t('form.kerberos.usernamePlaceholder')}
                         value={formData.username}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                       />
@@ -547,11 +549,11 @@ const Credentials = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="krb-kdc">KDC / Controlador de domínio (opcional)</Label>
+                    <Label htmlFor="krb-kdc">{t('form.kerberos.kdcLabel')}</Label>
                     <Input
                       id="krb-kdc"
                       data-testid="credential-kerberos-kdc-input"
-                      placeholder="IP ou hostname do KDC/DC"
+                      placeholder={t('form.kerberos.kdcPlaceholder')}
                       value={formData.kdc_host}
                       onChange={(e) => setFormData({ ...formData, kdc_host: e.target.value })}
                     />
@@ -560,7 +562,7 @@ const Credentials = () => {
                   <div className="space-y-2 pt-2 border-t border-border">
                     <Label htmlFor="krb-ccache-file" className="flex items-center gap-2">
                       <Fingerprint className="w-4 h-4" />
-                      Ticket Kerberos (arquivo ccache) *
+                      {t('form.kerberos.ccacheFileLabel')}
                     </Label>
                     <div className="flex items-center gap-3">
                       <Input
@@ -574,21 +576,23 @@ const Credentials = () => {
                       {formData.kerberos_ccache && (
                         <Badge variant="secondary" className="gap-1 shrink-0">
                           <Check className="w-3 h-3" />
-                          {ccacheFileName || 'ccache carregado'}
+                          {ccacheFileName || t('form.kerberos.ccacheLoaded')}
                         </Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Selecione o arquivo ccache (ex.: krb5cc_1000, saída de <span className="font-mono">KRB5CCNAME</span>, ou obtido via <span className="font-mono">getTGT.py</span>). O conteúdo é enviado em base64.
+                      {t('form.kerberos.ccacheHelpA')}{' '}
+                      <span className="font-mono">KRB5CCNAME</span>{t('form.kerberos.ccacheHelpB')}{' '}
+                      <span className="font-mono">getTGT.py</span>{t('form.kerberos.ccacheHelpC')}
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="krb-ccache-b64">… ou cole o ccache em base64</Label>
+                    <Label htmlFor="krb-ccache-b64">{t('form.kerberos.ccacheBase64Label')}</Label>
                     <Textarea
                       id="krb-ccache-b64"
                       data-testid="credential-kerberos-ccache-input"
-                      placeholder="Conteúdo do ccache em base64"
+                      placeholder={t('form.kerberos.ccacheBase64Placeholder')}
                       value={formData.kerberos_ccache}
                       onChange={(e) => { setFormData({ ...formData, kerberos_ccache: e.target.value }); setCcacheFileName(''); }}
                       className="font-mono text-xs"
@@ -598,14 +602,14 @@ const Credentials = () => {
 
                   <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                     <span className="text-yellow-500">⚠</span>
-                    <span>O ticket precisa estar válido (não expirado). Usuário e domínio são derivados do ccache quando não informados.</span>
+                    <span>{t('form.kerberos.warning')}</span>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="token" className="space-y-4 mt-0">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="token_type">Tipo de Token</Label>
+                      <Label htmlFor="token_type">{t('form.token.typeLabel')}</Label>
                       <Select 
                         value={formData.token_type} 
                         onValueChange={(value) => setFormData({ ...formData, token_type: value })}
@@ -624,11 +628,11 @@ const Credentials = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="token">Token *</Label>
+                    <Label htmlFor="token">{t('form.token.label')}</Label>
                     <Textarea
                       id="token"
                       data-testid="credential-token-input"
-                      placeholder="Cole o token aqui..."
+                      placeholder={t('form.token.placeholder')}
                       value={formData.token}
                       onChange={(e) => setFormData({ ...formData, token: e.target.value })}
                       className="font-mono text-sm"
@@ -640,7 +644,7 @@ const Credentials = () => {
 
                 <TabsContent value="ssh_key" className="space-y-4 mt-0">
                   <div className="space-y-2">
-                    <Label htmlFor="ssh_private_key">Chave Privada SSH *</Label>
+                    <Label htmlFor="ssh_private_key">{t('form.ssh.privateLabel')}</Label>
                     <Textarea
                       id="ssh_private_key"
                       data-testid="credential-ssh-private-input"
@@ -654,7 +658,7 @@ const Credentials = () => {
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="ssh_passphrase">Passphrase (opcional)</Label>
+                      <Label htmlFor="ssh_passphrase">{t('form.ssh.passphraseLabel')}</Label>
                       <Input
                         id="ssh_passphrase"
                         data-testid="credential-ssh-passphrase-input"
@@ -666,7 +670,7 @@ const Credentials = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ssh_public_key">Chave Pública SSH (opcional)</Label>
+                    <Label htmlFor="ssh_public_key">{t('form.ssh.publicLabel')}</Label>
                     <Textarea
                       id="ssh_public_key"
                       data-testid="credential-ssh-public-input"
@@ -683,11 +687,9 @@ const Credentials = () => {
                   <div className="flex items-start gap-3 text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg">
                     <Ghost className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                     <div className="space-y-1">
-                      <p className="font-medium text-foreground">Autenticação anônima (null session)</p>
+                      <p className="font-medium text-foreground">{t('form.anonymous.title')}</p>
                       <p>
-                        Este tipo de credencial não possui usuário nem senha. Ao selecioná-la em um
-                        servidor, o scan tentará uma sessão SMB anônima (usuário e senha vazios).
-                        Útil para servidores que permitem acesso anônimo a shares.
+                        {t('form.anonymous.description')}
                       </p>
                     </div>
                   </div>
@@ -695,7 +697,7 @@ const Credentials = () => {
 
                 <Button type="submit" disabled={loading} className="mt-4" data-testid="add-credential-btn">
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                  Adicionar Credencial
+                  {t('form.submit')}
                 </Button>
               </form>
             </Tabs>
@@ -714,13 +716,13 @@ const Credentials = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TypeIcon className={`w-5 h-5 ${info.color}`} />
-                  {info.label}
+                  {t('types.' + type)}
                 </CardTitle>
-                <CardDescription>{typeCreds.length} credenciais</CardDescription>
+                <CardDescription>{t('list.count', { n: typeCreds.length })}</CardDescription>
               </CardHeader>
               <CardContent>
                 {typeCreds.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">Nenhuma credencial deste tipo</p>
+                  <p className="text-muted-foreground text-center py-4">{t('list.empty')}</p>
                 ) : (
                   <div className="space-y-3">
                     {typeCreds.map((cred) => (
@@ -736,30 +738,30 @@ const Credentials = () => {
                               <Input
                                 value={editData.name || ''}
                                 onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                                placeholder="Nome"
+                                placeholder={t('common:fields.name')}
                               />
                               {type === 'user_password' && (
                                 <>
                                   <Input
                                     value={editData.domain || ''}
                                     onChange={(e) => setEditData({ ...editData, domain: e.target.value })}
-                                    placeholder="Domínio"
+                                    placeholder={t('common:fields.domain')}
                                   />
                                   <Input
                                     value={editData.username || ''}
                                     onChange={(e) => setEditData({ ...editData, username: e.target.value })}
-                                    placeholder="Usuário"
+                                    placeholder={t('common:fields.username')}
                                   />
                                   <Input
                                     type="password"
                                     value={editData.password || ''}
                                     onChange={(e) => setEditData({ ...editData, password: e.target.value })}
-                                    placeholder="Nova senha"
+                                    placeholder={t('edit.newPassword')}
                                   />
                                   <Input
                                     value={editData.ntlm_hash || ''}
                                     onChange={(e) => setEditData({ ...editData, ntlm_hash: e.target.value })}
-                                    placeholder="NTLM Hash (LM:NT ou apenas NT)"
+                                    placeholder={t('edit.ntlmPlaceholder')}
                                     className="col-span-2 font-mono text-sm"
                                   />
                                 </>
@@ -769,17 +771,17 @@ const Credentials = () => {
                                   <Input
                                     value={editData.domain || ''}
                                     onChange={(e) => setEditData({ ...editData, domain: e.target.value })}
-                                    placeholder="Domínio (opcional)"
+                                    placeholder={t('edit.domainOptional')}
                                   />
                                   <Input
                                     value={editData.username || ''}
                                     onChange={(e) => setEditData({ ...editData, username: e.target.value })}
-                                    placeholder="Usuário (opcional)"
+                                    placeholder={t('edit.usernameOptional')}
                                   />
                                   <Input
                                     value={editData.kdc_host || ''}
                                     onChange={(e) => setEditData({ ...editData, kdc_host: e.target.value })}
-                                    placeholder="KDC / DC (opcional)"
+                                    placeholder={t('edit.kdcPlaceholder')}
                                     className="col-span-2"
                                   />
                                   <div className="col-span-2 space-y-1">
@@ -790,13 +792,13 @@ const Credentials = () => {
                                       className="cursor-pointer"
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                      Selecione um novo arquivo ccache para substituir o atual, ou cole o base64 abaixo (deixe em branco para manter).
+                                      {t('edit.ccacheReplaceHelp')}
                                     </p>
                                   </div>
                                   <Textarea
                                     value={editData.kerberos_ccache || ''}
                                     onChange={(e) => setEditData({ ...editData, kerberos_ccache: e.target.value })}
-                                    placeholder="… ou cole o ccache em base64"
+                                    placeholder={t('edit.ccacheBase64Placeholder')}
                                     className="col-span-2 font-mono text-xs"
                                     rows={4}
                                   />
@@ -806,17 +808,17 @@ const Credentials = () => {
                                 <Textarea
                                   value={editData.token || ''}
                                   onChange={(e) => setEditData({ ...editData, token: e.target.value })}
-                                  placeholder="Token"
+                                  placeholder={t('display.token')}
                                   className="col-span-2"
                                 />
                               )}
                             </div>
                             <div className="flex gap-2">
                               <Button type="button" size="sm" onClick={() => saveEdit(cred.id)}>
-                                <Check className="w-4 h-4 mr-1" /> Salvar
+                                <Check className="w-4 h-4 mr-1" /> {t('common:actions.save')}
                               </Button>
                               <Button type="button" size="sm" variant="ghost" onClick={cancelEdit}>
-                                <X className="w-4 h-4 mr-1" /> Cancelar
+                                <X className="w-4 h-4 mr-1" /> {t('common:actions.cancel')}
                               </Button>
                             </div>
                           </div>

@@ -1,0 +1,43 @@
+{
+  "title": "Share Scan",
+  "subtitle": "Finds shares available on the servers",
+  "noPools": {
+    "title": "No Scan Pool configured",
+    "description": "Create a Scan Pool before starting a share scan.",
+    "configure": "Configure Scan Pools"
+  },
+  "selectPool": {
+    "title": "Select Scan Pool",
+    "placeholder": "Select a Scan Pool...",
+    "start": "Start Scan"
+  },
+  "poolParams": {
+    "title": "Pool Parameters: {{name}}",
+    "simultaneousScanners": "Simultaneous Scanners",
+    "minDelay": "Minimum Delay",
+    "maxDelay": "Maximum Delay",
+    "includeServers": "Include Servers",
+    "excludeServers": "Exclude Servers",
+    "includeIps": "Include IPs",
+    "excludeIps": "Exclude IPs",
+    "emptyIncludeServers": "Empty list, all servers will be considered",
+    "emptyExcludeServers": "Empty list, no server will be excluded",
+    "emptyIncludeIps": "Empty list, all IPs will be considered",
+    "emptyExcludeIps": "Empty list, no IP will be excluded"
+  },
+  "warning": {
+    "title": "Warning: Multiple Scanners",
+    "description": "With {{count}} simultaneous scanners, the volume and pattern of requests may trigger alerts in detection and response mechanisms, including IDS/IPS, EDR and Network Detection and Response (NDR) solutions, such as Darktrace, which perform behavioral analysis of network traffic."
+  },
+  "serverList": {
+    "title": "Servers",
+    "count": "{{filtered}} of {{total}}",
+    "empty": "No server found with this pool's filters",
+    "shares": "{{count}} shares"
+  },
+  "toast": {
+    "previewError": "Error loading servers preview",
+    "startSuccess": "Scan started successfully",
+    "startError": "Error starting scan"
+  }
+}

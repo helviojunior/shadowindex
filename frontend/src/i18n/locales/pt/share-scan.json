@@ -1,0 +1,43 @@
+{
+  "title": "Share Scan",
+  "subtitle": "Localiza compartilhamentos disponíveis nos servidores",
+  "noPools": {
+    "title": "Nenhum Scan Pool configurado",
+    "description": "Crie um Scan Pool antes de iniciar um scan de shares.",
+    "configure": "Configurar Scan Pools"
+  },
+  "selectPool": {
+    "title": "Selecionar Scan Pool",
+    "placeholder": "Selecione um Scan Pool...",
+    "start": "Iniciar Scan"
+  },
+  "poolParams": {
+    "title": "Parâmetros do Pool: {{name}}",
+    "simultaneousScanners": "Scanners Simultâneos",
+    "minDelay": "Delay Mínimo",
+    "maxDelay": "Delay Máximo",
+    "includeServers": "Incluir Servidores",
+    "excludeServers": "Excluir Servidores",
+    "includeIps": "Incluir IPs",
+    "excludeIps": "Excluir IPs",
+    "emptyIncludeServers": "Lista vazia, todos os servidores serão considerados",
+    "emptyExcludeServers": "Lista vazia, nenhum servidor será excluído",
+    "emptyIncludeIps": "Lista vazia, todos os IPs serão considerados",
+    "emptyExcludeIps": "Lista vazia, nenhum IP será excluído"
+  },
+  "warning": {
+    "title": "Atenção: Múltiplos Scanners",
+    "description": "Com {{count}} scanners simultâneos, o volume e o padrão das requisições podem gerar alertas em mecanismos de detecção e resposta, incluindo IDS/IPS, EDR e soluções de Network Detection and Response (NDR), como o Darktrace, que realizam análise comportamental do tráfego de rede."
+  },
+  "serverList": {
+    "title": "Servidores",
+    "count": "{{filtered}} de {{total}}",
+    "empty": "Nenhum servidor encontrado com os filtros deste pool",
+    "shares": "{{count}} shares"
+  },
+  "toast": {
+    "previewError": "Erro ao carregar preview dos servidores",
+    "startSuccess": "Scan iniciado com sucesso",
+    "startError": "Erro ao iniciar scan"
+  }
+}

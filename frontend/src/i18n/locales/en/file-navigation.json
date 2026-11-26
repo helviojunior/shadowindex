@@ -1,0 +1,31 @@
+{
+  "title": "File Navigation",
+  "subtitle": "Select a server to browse its files",
+  "searchPlaceholder": "Search by name or IP...",
+  "found_one": "{{count}} found",
+  "found_other": "{{count}} found",
+  "contextMenu": {
+    "openNewTab": "Open in new tab"
+  },
+  "filters": {
+    "nonAdminShares": "Only with non-administrative shares",
+    "noFiles": "Only without listed files",
+    "unchecked": "Only unreviewed"
+  },
+  "tabs": {
+    "accessed": "Accessed",
+    "accessDenied": "Access Denied",
+    "unreachable": "Unreachable",
+    "notAccessed": "Not Accessed"
+  },
+  "empty": {
+    "accessedFiltered": "No accessed server found with this filter",
+    "accessedNone": "No server has been accessed yet",
+    "accessDeniedFiltered": "No access-denied server found with this filter",
+    "accessDeniedNone": "No access-denied server",
+    "unreachableFiltered": "No unreachable server found with this filter",
+    "unreachableNone": "No unreachable server",
+    "notAccessedFiltered": "No pending server found with this filter",
+    "notAccessedNone": "All servers have already been accessed"
+  }
+}

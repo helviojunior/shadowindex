@@ -40,11 +40,13 @@ import {
   Download
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api/v2`;
 
 const Gitleaks = () => {
+  const { t } = useTranslation('gitleaks');
   const [status, setStatus] = useState({ available: false, version: null });
   const [jobs, setJobs] = useState([]);
   const [servers, setServers] = useState([]);
@@ -65,7 +67,7 @@ const Gitleaks = () => {
       setReportModal({ open: true, jobId, data: response.data, loading: false });
     } catch (error) {
       console.error('Error loading job report:', error);
-      toast.error('Erro ao carregar relatório: ' + (error.response?.data?.detail || error.message));
+      toast.error(t('toast.reportLoadError', { error: error.response?.data?.detail || error.message }));
       setReportModal({ open: false, jobId: null, data: null, loading: false });
     }
   };
@@ -87,9 +89,9 @@ const Gitleaks = () => {
           document.execCommand('copy');
           document.body.removeChild(textArea);
         }
-        toast.success('JSON copiado para a área de transferência');
+        toast.success(t('toast.jsonCopied'));
       } catch (error) {
-        toast.error('Erro ao copiar');
+        toast.error(t('toast.copyError'));
       }
     }
   };
@@ -106,7 +108,7 @@ const Gitleaks = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Download iniciado');
+      toast.success(t('toast.downloadStarted'));
     }
   };
 
@@ -165,12 +167,12 @@ const Gitleaks = () => {
   // Iniciar scan
   const handleStartScan = async () => {
     if (scanMode === 'server' && !selectedServer) {
-      toast.error('Selecione um servidor');
+      toast.error(t('toast.selectServer'));
       return;
     }
-    
+
     if (scanMode === 'custom' && !customPath) {
-      toast.error('Informe o caminho do diretório');
+      toast.error(t('toast.enterPath'));
       return;
     }
 
@@ -192,7 +194,7 @@ const Gitleaks = () => {
       
     } catch (error) {
       const errorMsg = error.response?.data?.detail || error.message;
-      toast.error(`Erro ao iniciar scan: ${errorMsg}`);
+      toast.error(t('toast.scanError', { error: errorMsg }));
     } finally {
       setLoading(false);
     }
@@ -204,7 +206,7 @@ const Gitleaks = () => {
       await axios.post(`${API}/gitleaks/jobs/${jobId}/cancel`);
       loadJobs();
     } catch (error) {
-      toast.error('Erro ao cancelar job');
+      toast.error(t('toast.cancelJobError'));
     }
   };
 
@@ -214,7 +216,7 @@ const Gitleaks = () => {
       await axios.delete(`${API}/gitleaks/jobs/clear-finished`);
       loadJobs();
     } catch (error) {
-      toast.error('Erro ao limpar jobs');
+      toast.error(t('toast.clearJobsError'));
     }
   };
 
@@ -222,15 +224,15 @@ const Gitleaks = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />Pendente</Badge>;
+        return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />{t('common:status.pending')}</Badge>;
       case 'running':
-        return <Badge className="gap-1 bg-blue-600"><Loader2 className="w-3 h-3 animate-spin" />Executando</Badge>;
+        return <Badge className="gap-1 bg-blue-600"><Loader2 className="w-3 h-3 animate-spin" />{t('common:status.running')}</Badge>;
       case 'completed':
-        return <Badge className="gap-1 bg-green-600"><CheckCircle className="w-3 h-3" />Concluído</Badge>;
+        return <Badge className="gap-1 bg-green-600"><CheckCircle className="w-3 h-3" />{t('common:status.completed')}</Badge>;
       case 'failed':
-        return <Badge className="gap-1 bg-red-600"><XCircle className="w-3 h-3" />Falhou</Badge>;
+        return <Badge className="gap-1 bg-red-600"><XCircle className="w-3 h-3" />{t('common:status.failed')}</Badge>;
       case 'cancelled':
-        return <Badge variant="outline" className="gap-1"><Square className="w-3 h-3" />Cancelado</Badge>;
+        return <Badge variant="outline" className="gap-1"><Square className="w-3 h-3" />{t('common:status.cancelled')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -242,7 +244,7 @@ const Gitleaks = () => {
     <div className="space-y-6" data-testid="gitleaks-page">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">GitLeaks</h1>
-        <p className="text-muted-foreground mt-2">Detecção de secrets e credenciais em arquivos</p>
+        <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
       </div>
 
       {/* Status Card */}
@@ -250,7 +252,7 @@ const Gitleaks = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="w-5 h-5" />
-            Status do GitLeaks
+            {t('status.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -259,16 +261,16 @@ const Gitleaks = () => {
               <>
                 <Badge className="gap-1 bg-green-600">
                   <CheckCircle className="w-3 h-3" />
-                  Disponível
+                  {t('status.available')}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  Versão: {status.version || 'N/A'}
+                  {t('status.version', { version: status.version || 'N/A' })}
                 </span>
               </>
             ) : (
               <Badge variant="destructive" className="gap-1">
                 <XCircle className="w-3 h-3" />
-                Não disponível
+                {t('status.unavailable')}
               </Badge>
             )}
             <Button variant="ghost" size="sm" onClick={loadStatus}>
@@ -283,10 +285,10 @@ const Gitleaks = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FolderSearch className="w-5 h-5" />
-            Iniciar Scan
+            {t('scan.title')}
           </CardTitle>
           <CardDescription>
-            Escaneie arquivos em busca de secrets, chaves de API e credenciais
+            {t('scan.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -298,7 +300,7 @@ const Gitleaks = () => {
               className="gap-2"
             >
               <Server className="w-4 h-4" />
-              Por Servidor
+              {t('scan.byServer')}
             </Button>
             <Button
               variant={scanMode === 'custom' ? 'default' : 'outline'}
@@ -306,16 +308,16 @@ const Gitleaks = () => {
               className="gap-2"
             >
               <FolderSearch className="w-4 h-4" />
-              Caminho Custom
+              {t('scan.customPath')}
             </Button>
           </div>
 
           {scanMode === 'server' ? (
             <div className="space-y-2">
-              <Label>Servidor</Label>
+              <Label>{t('scan.serverLabel')}</Label>
               <Select value={selectedServer} onValueChange={setSelectedServer}>
                 <SelectTrigger data-testid="server-selector">
-                  <SelectValue placeholder="Selecione um servidor" />
+                  <SelectValue placeholder={t('scan.selectServerPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {servers.map((server) => (
@@ -329,20 +331,20 @@ const Gitleaks = () => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Escaneia todos os arquivos baixados do servidor selecionado
+                {t('scan.serverHint')}
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              <Label>Caminho do Diretório</Label>
+              <Label>{t('scan.directoryLabel')}</Label>
               <Input
-                placeholder="/caminho/para/diretorio"
+                placeholder={t('scan.pathPlaceholder')}
                 value={customPath}
                 onChange={(e) => setCustomPath(e.target.value)}
                 data-testid="custom-path-input"
               />
               <p className="text-xs text-muted-foreground">
-                Informe o caminho absoluto do diretório a ser escaneado
+                {t('scan.pathHint')}
               </p>
             </div>
           )}
@@ -357,7 +359,7 @@ const Gitleaks = () => {
             ) : (
               <Play className="w-4 h-4 mr-2" />
             )}
-            Iniciar Scan
+            {t('scan.title')}
           </Button>
         </CardContent>
       </Card>
@@ -369,21 +371,21 @@ const Gitleaks = () => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <FileWarning className="w-5 h-5" />
-                Jobs de Scan
+                {t('jobs.title')}
               </CardTitle>
               <CardDescription>
-                {jobs.length} job(s) registrado(s)
+                {t('jobs.registered', { count: jobs.length })}
               </CardDescription>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={loadJobs}>
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Atualizar
+                {t('common:actions.refresh')}
               </Button>
               {finishedJobs.length > 0 && (
                 <Button variant="outline" size="sm" onClick={handleClearFinished}>
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Limpar Finalizados
+                  {t('jobs.clearFinished')}
                 </Button>
               )}
             </div>
@@ -393,8 +395,8 @@ const Gitleaks = () => {
           {jobs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Search className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p>Nenhum job de scan registrado</p>
-              <p className="text-sm">Inicie um scan para detectar secrets</p>
+              <p>{t('jobs.emptyTitle')}</p>
+              <p className="text-sm">{t('jobs.emptyDesc')}</p>
             </div>
           ) : (
             <ScrollArea className="h-[400px]">
@@ -413,7 +415,7 @@ const Gitleaks = () => {
                         {job.findings_count > 0 && (
                           <Badge variant="destructive" className="gap-1">
                             <AlertTriangle className="w-3 h-3" />
-                            {job.findings_count} findings
+                            {t('jobs.findingsCount', { count: job.findings_count })}
                           </Badge>
                         )}
                       </div>
@@ -422,12 +424,12 @@ const Gitleaks = () => {
                       </p>
                       {job.started_at && (
                         <p className="text-xs text-muted-foreground">
-                          Iniciado: {new Date(job.started_at).toLocaleString()}
+                          {t('jobs.startedAt', { date: new Date(job.started_at).toLocaleString() })}
                         </p>
                       )}
                       {job.error_message && (
                         <p className="text-xs text-red-500 truncate max-w-md">
-                          Erro: {job.error_message}
+                          {t('jobs.errorLabel', { error: job.error_message })}
                         </p>
                       )}
                     </div>
@@ -439,7 +441,7 @@ const Gitleaks = () => {
                           onClick={() => handleCancelJob(job.job_id)}
                         >
                           <Square className="w-4 h-4 mr-1" />
-                          Cancelar
+                          {t('common:actions.cancel')}
                         </Button>
                       )}
                       {job.status === 'completed' && (
@@ -448,18 +450,18 @@ const Gitleaks = () => {
                             variant="outline" 
                             size="sm"
                             onClick={() => loadJobReport(job.job_id)}
-                            title="Ver JSON do relatório"
+                            title={t('jobs.viewReportJsonTitle')}
                           >
                             <FileJson className="w-4 h-4 mr-1" />
-                            Ver JSON
+                            {t('jobs.viewJson')}
                           </Button>
                           {job.findings_count > 0 && (
-                            <Button 
-                              variant="default" 
+                            <Button
+                              variant="default"
                               size="sm"
                               onClick={() => window.location.href = '/leaks'}
                             >
-                              Ver Findings
+                              {t('jobs.viewFindings')}
                             </Button>
                           )}
                         </>
@@ -479,13 +481,12 @@ const Gitleaks = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileJson className="w-5 h-5" />
-              Relatório GitLeaks - Job #{reportModal.jobId}
+              {t('report.title', { id: reportModal.jobId })}
             </DialogTitle>
             <DialogDescription>
               {reportModal.data && (
                 <span>
-                  {reportModal.data.findings_count} finding(s) encontrado(s) • 
-                  Servidor ID: {reportModal.data.server_id || 'N/A'}
+                  {t('report.summary', { count: reportModal.data.findings_count, serverId: reportModal.data.server_id || 'N/A' })}
                 </span>
               )}
             </DialogDescription>
@@ -494,7 +495,7 @@ const Gitleaks = () => {
           {reportModal.loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <span className="ml-2">Carregando relatório...</span>
+              <span className="ml-2">{t('report.loading')}</span>
             </div>
           ) : reportModal.data ? (
             <div className="space-y-4">
@@ -502,22 +503,22 @@ const Gitleaks = () => {
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={copyJsonToClipboard}>
                   <Copy className="w-4 h-4 mr-2" />
-                  Copiar JSON
+                  {t('report.copyJson')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={downloadJson}>
                   <Download className="w-4 h-4 mr-2" />
-                  Download JSON
+                  {t('report.downloadJson')}
                 </Button>
               </div>
               
               {/* Info do relatório */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <Label className="text-muted-foreground">Caminho escaneado:</Label>
+                  <Label className="text-muted-foreground">{t('report.scannedPath')}</Label>
                   <p className="font-mono text-xs truncate">{reportModal.data.target_path}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Arquivo do relatório:</Label>
+                  <Label className="text-muted-foreground">{t('report.reportFile')}</Label>
                   <p className="font-mono text-xs truncate">{reportModal.data.report_path}</p>
                 </div>
               </div>

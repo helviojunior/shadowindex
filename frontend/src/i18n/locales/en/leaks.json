@@ -1,0 +1,113 @@
+{
+  "title": "Leaks",
+  "subtitle": "Detection of secrets and credentials in downloaded files",
+  "scanPanel": {
+    "title": "Start Scan",
+    "running": "{{count}} running",
+    "searchServerPrompt": "Search server by name or IP...",
+    "serverInputPlaceholder": "Type server name or IP...",
+    "noServerFound": "No server found.",
+    "pathPlaceholder": "/path/to/directory"
+  },
+  "scanMode": {
+    "allServers": "All Servers",
+    "specificServer": "Specific Server",
+    "customPath": "Custom Path",
+    "scanAll": "Scan All"
+  },
+  "jobs": {
+    "recent": "Recent Jobs",
+    "leaksCount": "{{count}} leaks"
+  },
+  "stats": {
+    "totalLeaks": "Total Leaks",
+    "affectedFiles": "Affected Files",
+    "secretTypes": "Secret Types",
+    "highSeverity": "High Severity"
+  },
+  "findings": {
+    "title": "Findings",
+    "searchPlaceholder": "Search...",
+    "rule": "Rule",
+    "searchRule": "Search rule...",
+    "noRuleFound": "No rule found.",
+    "clearRules": "Clear rules",
+    "real": "Real",
+    "all": "All",
+    "falsePositives": "False Positives",
+    "filteredCount": "{{count}} of {{total}} findings",
+    "emptyTitle": "No Leak Detected",
+    "emptyDesc": "Run a scan to detect secrets in downloaded files"
+  },
+  "columns": {
+    "server": "SERVER",
+    "file": "FILE",
+    "line": "LINE",
+    "rule": "RULE",
+    "tags": "TAGS",
+    "risk": "RISK",
+    "actions": "ACTIONS"
+  },
+  "fileFallback": "File",
+  "actions": {
+    "viewDetails": "View details",
+    "copySecret": "Copy secret",
+    "openFile": "Open file in browser",
+    "markFP": "Mark as false positive",
+    "unmarkFP": "Unmark as false positive",
+    "removeFinding": "Remove finding"
+  },
+  "bulk": {
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "markFP": "Mark as FP",
+    "unmarkFP": "Unmark FP"
+  },
+  "detail": {
+    "title": "Finding Details",
+    "line": "Line",
+    "location": "Location",
+    "serverLabel": "Server:",
+    "fileLabel": "File:",
+    "directoryLabel": "Directory:",
+    "openFile": "Open File in Browser",
+    "secretDetected": "Secret Detected",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "matchContext": "Context (Match)",
+    "tagsLabel": "Tags:"
+  },
+  "confirm": {
+    "clearAllTitle": "Clear All Findings",
+    "deleteTitle": "Delete Finding",
+    "clearAllDesc": "Are you sure you want to clear all findings? This action cannot be undone.",
+    "deleteDesc": "Are you sure you want to delete this finding? This action cannot be undone.",
+    "clearAllAction": "Clear All",
+    "deleteAction": "Delete"
+  },
+  "toast": {
+    "loadError": "Error loading findings",
+    "selectServer": "Select a server",
+    "enterPath": "Enter the directory path",
+    "scansStarted": "{{count}} scans started in background",
+    "noServersToScan": "No server with downloaded files to scan",
+    "scanStartedJob": "Scan started! Job ID: {{id}}",
+    "scanError": "Error starting scan: {{error}}",
+    "cancelJobError": "Error cancelling job",
+    "clearJobsError": "Error clearing jobs",
+    "allFindingsRemoved": "All findings were removed",
+    "clearFindingsError": "Error clearing findings",
+    "noFingerprint": "Finding without fingerprint",
+    "findingRemoved": "Finding removed",
+    "removeFindingError": "Error removing finding",
+    "removeFindingErrorDetail": "Error removing finding: {{error}}",
+    "markedFP": "Marked as false positive",
+    "unmarkedFP": "Unmarked as false positive",
+    "updateFindingError": "Error updating finding",
+    "updateFindingErrorDetail": "Error updating finding: {{error}}",
+    "updateFindingsError": "Error updating findings",
+    "errorDetail": "Error: {{error}}",
+    "copied": "Copied!",
+    "copyError": "Error copying"
+  }
+}

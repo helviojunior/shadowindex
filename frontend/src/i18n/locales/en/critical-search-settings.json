@@ -1,0 +1,61 @@
+{
+  "title": "Critical Search",
+  "subtitle": "Configure the rules to identify potentially sensitive files",
+  "resetButton": "Restore Defaults",
+  "errorLoading": "Error loading configuration",
+  "fileRules": {
+    "title": "File Rules",
+    "description": "Define which files are considered critical",
+    "keywordsLabel": "Keywords in Name",
+    "keywordsHelp": "Files that contain these words in their name will be considered critical",
+    "keywordsPlaceholder": "e.g. password, secret, key...",
+    "extensionsLabel": "Critical Extensions",
+    "extensionsHelp": "Files with these extensions will always be considered critical",
+    "extensionsPlaceholder": "e.g. .pfx, .pem, .key...",
+    "exactNamesLabel": "Exact File Names",
+    "exactNamesHelp": "Files with these exact names will be considered critical",
+    "exactNamesPlaceholder": "e.g. .env, web.config...",
+    "mimeTypesLabel": "Critical MIME Types",
+    "mimeTypesHelp": "Files with these MIME types will be considered critical",
+    "mimeTypesPlaceholder": "e.g. application/x-pkcs12...",
+    "excludedLabel": "Excluded Extensions",
+    "excludedHelp": "Files with these extensions will be IGNORED in the critical search (e.g. binaries, media)",
+    "excludedPlaceholder": "e.g. .exe, .dll, .msi..."
+  },
+  "sizeRules": {
+    "title": "Size Rules",
+    "description": "Size limits for critical files",
+    "enabledLabel": "Size filter enabled",
+    "minLabel": "Minimum Size (bytes)",
+    "maxLabel": "Maximum Size (bytes)",
+    "help": "Files outside this range will be ignored in the critical search"
+  },
+  "logDetection": {
+    "title": "Log Detection",
+    "description": "Settings to ignore log directories",
+    "enabledLabel": "Ignore log directories",
+    "minSimilarLabel": "Minimum similar files",
+    "minSimilarHelp": "Number of files with a log pattern to consider a directory a log directory",
+    "extensionsLabel": "Log Extensions",
+    "extensionsPlaceholder": "e.g. .log, .logs..."
+  },
+  "autoGitleaks": {
+    "title": "Auto GitLeaks",
+    "description": "Automatically start a GitLeaks scan after the critical search",
+    "enabledLabel": "Start GitLeaks automatically",
+    "delayLabel": "Delay before starting (seconds)",
+    "delayHelp": "Wait time after the scan finishes before starting GitLeaks"
+  },
+  "info": {
+    "title": "How does Critical Search work?",
+    "description": "The critical search scans directories looking for files that match the rules defined above. Unlike a normal scan, it ignores log directories and focuses only on potentially sensitive files. At the end, if enabled, it automatically starts a GitLeaks scan to detect exposed secrets."
+  },
+  "confirmReset": "Are you sure you want to restore the default settings?",
+  "toast": {
+    "loadError": "Error loading configuration",
+    "saveSuccess": "Configuration saved successfully",
+    "saveError": "Error saving configuration",
+    "resetSuccess": "Configuration restored to default",
+    "resetError": "Error restoring configuration"
+  }
+}

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, ChevronUp, Pencil, X, Check, Server, Network, ShieldCheck, ShieldX } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -46,17 +47,18 @@ const isValidIpEntry = (value) => {
 
 // Card section for a list field (same pattern as GeneralSettings ignored extensions)
 const ListSection = ({ icon: Icon, iconColor, title, description, items, onAdd, onRemove, placeholder, infoItems, testIdPrefix, validateIp }) => {
+  const { t } = useTranslation('scan-pools');
   const [inputValue, setInputValue] = useState('');
 
   const handleAdd = () => {
     const val = inputValue.trim();
     if (!val) return;
     if (validateIp && !isValidIpEntry(val)) {
-      toast.error('IP inválido. Use IPv4 (ex: 192.168.1.1) ou CIDR (ex: 10.0.0.0/24)');
+      toast.error(t('toast.invalidIp'));
       return;
     }
     if (items.includes(val)) {
-      toast.warning('Item já existe na lista');
+      toast.warning(t('toast.itemExists'));
       return;
     }
     onAdd(val);
@@ -85,7 +87,7 @@ const ListSection = ({ icon: Icon, iconColor, title, description, items, onAdd, 
           />
           <Button type="button" variant="outline" onClick={handleAdd} data-testid={`${testIdPrefix}-add-btn`}>
             <Plus className="w-4 h-4 mr-2" />
-            Adicionar
+            {t('common:actions.add')}
           </Button>
         </div>
 
@@ -108,7 +110,7 @@ const ListSection = ({ icon: Icon, iconColor, title, description, items, onAdd, 
             </Badge>
           ))}
           {items.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum item configurado</p>
+            <p className="text-sm text-muted-foreground">{t('listSectionEmpty')}</p>
           )}
         </div>
 
@@ -135,23 +137,25 @@ const updateFormList = (setter, data, field, action, value) => {
   }
 };
 
-const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon, isEdit, onCancel, loading }) => (
+const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon, isEdit, onCancel, loading }) => {
+  const { t } = useTranslation('scan-pools');
+  return (
   <form onSubmit={onSubmit} className="space-y-6">
     {/* Basic settings */}
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
           <Server className="w-5 h-5 text-purple-500" />
-          <CardTitle>Configurações Básicas</CardTitle>
+          <CardTitle>{t('form.basicTitle')}</CardTitle>
         </div>
-        <CardDescription>Nome da pool e parâmetros de performance do scan</CardDescription>
+        <CardDescription>{t('form.basicDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-4">
           <div className="space-y-2">
-            <Label>Nome *</Label>
+            <Label>{t('form.nameLabel')}</Label>
             <Input
-              placeholder="Minha Pool"
+              placeholder={t('form.namePlaceholder')}
               value={data.name}
               onChange={(e) => setData({ ...data, name: e.target.value })}
               required
@@ -159,7 +163,7 @@ const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon
             />
           </div>
           <div className="space-y-2">
-            <Label>Scanners simultâneos</Label>
+            <Label>{t('form.scannersLabel')}</Label>
             <Input
               type="number"
               min="1"
@@ -170,7 +174,7 @@ const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon
             />
           </div>
           <div className="space-y-2">
-            <Label>Delay mín. (ms)</Label>
+            <Label>{t('form.delayMinLabel')}</Label>
             <Input
               type="number"
               min="0"
@@ -180,7 +184,7 @@ const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon
             />
           </div>
           <div className="space-y-2">
-            <Label>Delay máx. (ms)</Label>
+            <Label>{t('form.delayMaxLabel')}</Label>
             <Input
               type="number"
               min="0"
@@ -197,17 +201,17 @@ const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon
     <ListSection
       icon={ShieldCheck}
       iconColor="text-green-500"
-      title="Incluir Hostnames"
-      description="Hostnames que serão incluídos no scan. Suporta wildcards (ex: SRV-*, *-DB-*)."
+      title={t('includeServers.title')}
+      description={t('includeServers.description')}
       items={data.include_servers}
       onAdd={(val) => updateFormList(setData, data, 'include_servers', 'add', val)}
       onRemove={(val) => updateFormList(setData, data, 'include_servers', 'remove', val)}
-      placeholder="Ex: SRV-WEB-* ou hostname exato"
+      placeholder={t('includeServers.placeholder')}
       testIdPrefix="include-servers"
       infoItems={[
-        'Adicione hostnames que devem ser incluídos no scan',
-        '<strong>Wildcards:</strong> Use <code class="bg-green-500/20 px-1 rounded">SRV-*</code> para incluir todos que começam com SRV-',
-        'Se a lista estiver vazia, todos os hostnames serão considerados',
+        t('includeServers.info1'),
+        t('includeServers.info2'),
+        t('includeServers.info3'),
       ]}
     />
 
@@ -215,17 +219,17 @@ const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon
     <ListSection
       icon={ShieldX}
       iconColor="text-red-500"
-      title="Excluir Hostnames"
-      description="Hostnames que serão excluídos do scan. A exclusão sempre tem precedência sobre a inclusão. Suporta wildcards."
+      title={t('excludeServers.title')}
+      description={t('excludeServers.description')}
       items={data.exclude_servers}
       onAdd={(val) => updateFormList(setData, data, 'exclude_servers', 'add', val)}
       onRemove={(val) => updateFormList(setData, data, 'exclude_servers', 'remove', val)}
-      placeholder="Ex: SRV-DEV-* ou hostname exato"
+      placeholder={t('excludeServers.placeholder')}
       testIdPrefix="exclude-servers"
       infoItems={[
-        'Hostnames nesta lista serão <strong>sempre ignorados</strong>, mesmo que estejam na lista de inclusão',
-        '<strong>Wildcards:</strong> Use <code class="bg-red-500/20 px-1 rounded">*-DEV-*</code> para excluir hostnames de desenvolvimento',
-        'A lista de exclusão sempre terá precedência sobre a de inclusão',
+        t('excludeServers.info1'),
+        t('excludeServers.info2'),
+        t('excludeServers.info3'),
       ]}
     />
 
@@ -233,17 +237,17 @@ const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon
     <ListSection
       icon={Network}
       iconColor="text-blue-500"
-      title="Incluir IP/Subnet"
-      description="IPs ou subnets que serão incluídos no scan. Suporta notação CIDR."
+      title={t('includeIps.title')}
+      description={t('includeIps.description')}
       items={data.include_ips}
       onAdd={(val) => updateFormList(setData, data, 'include_ips', 'add', val)}
       onRemove={(val) => updateFormList(setData, data, 'include_ips', 'remove', val)}
-      placeholder="Ex: 192.168.1.1 ou 10.0.0.0/24"
+      placeholder={t('includeIps.placeholder')}
       testIdPrefix="include-ips"
       validateIp
       infoItems={[
-        'Adicione IPs individuais (ex: <code class="bg-blue-500/20 px-1 rounded">192.168.1.1</code>) ou subnets em notação CIDR (ex: <code class="bg-blue-500/20 px-1 rounded">10.0.0.0/24</code>)',
-        'Se a lista estiver vazia, todos os IPs serão considerados',
+        t('includeIps.info1'),
+        t('includeIps.info2'),
       ]}
     />
 
@@ -251,18 +255,18 @@ const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon
     <ListSection
       icon={ShieldX}
       iconColor="text-red-500"
-      title="Excluir IP/Subnet"
-      description="IPs ou subnets que serão excluídos do scan. A exclusão sempre tem precedência sobre a inclusão."
+      title={t('excludeIps.title')}
+      description={t('excludeIps.description')}
       items={data.exclude_ips}
       onAdd={(val) => updateFormList(setData, data, 'exclude_ips', 'add', val)}
       onRemove={(val) => updateFormList(setData, data, 'exclude_ips', 'remove', val)}
-      placeholder="Ex: 10.0.0.5 ou 172.16.0.0/12"
+      placeholder={t('excludeIps.placeholder')}
       testIdPrefix="exclude-ips"
       validateIp
       infoItems={[
-        'IPs e subnets nesta lista serão <strong>sempre ignorados</strong>, mesmo que estejam na lista de inclusão',
-        'Use CIDR para excluir subnets inteiras (ex: <code class="bg-red-500/20 px-1 rounded">192.168.99.0/24</code>)',
-        'A lista de exclusão sempre terá precedência sobre a de inclusão',
+        t('excludeIps.info1'),
+        t('excludeIps.info2'),
+        t('excludeIps.info3'),
       ]}
     />
 
@@ -273,14 +277,16 @@ const PoolForm = ({ data, setData, onSubmit, submitLabel, submitIcon: SubmitIcon
       </Button>
       {isEdit && (
         <Button type="button" variant="ghost" onClick={onCancel} data-testid="pool-cancel-btn">
-          <X className="w-4 h-4 mr-1" /> Cancelar
+          <X className="w-4 h-4 mr-1" /> {t('common:actions.cancel')}
         </Button>
       )}
     </div>
   </form>
-);
+  );
+};
 
 const ScanPools = () => {
+  const { t } = useTranslation('scan-pools');
   const [pools, setPools] = useState([]);
   const [formData, setFormData] = useState({ ...emptyForm });
   const [loading, setLoading] = useState(false);
@@ -298,7 +304,7 @@ const ScanPools = () => {
       setPools(response.data);
     } catch (error) {
       console.error('Error loading scan pools:', error);
-      toast.error('Erro ao carregar scan pools');
+      toast.error(t('toast.loadError'));
     }
   };
 
@@ -316,19 +322,19 @@ const ScanPools = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      toast.error('Nome é obrigatório');
+      toast.error(t('toast.nameRequired'));
       return;
     }
     setLoading(true);
     try {
       await axios.post(`${API}/scan-pools`, buildPayload(formData));
-      toast.success('Scan pool criado com sucesso');
+      toast.success(t('toast.createSuccess'));
       setFormData({ ...emptyForm });
       setShowAddForm(false);
       loadPools();
     } catch (error) {
       console.error('Error creating scan pool:', error);
-      toast.error('Erro ao criar scan pool');
+      toast.error(t('toast.createError'));
     } finally {
       setLoading(false);
     }
@@ -337,11 +343,11 @@ const ScanPools = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API}/scan-pools/${id}`);
-      toast.success('Scan pool removido com sucesso');
+      toast.success(t('toast.deleteSuccess'));
       loadPools();
     } catch (error) {
       console.error('Error deleting scan pool:', error);
-      toast.error('Erro ao remover scan pool');
+      toast.error(t('toast.deleteError'));
     }
   };
 
@@ -366,18 +372,18 @@ const ScanPools = () => {
 
   const saveEdit = async (id) => {
     if (!editData.name.trim()) {
-      toast.error('Nome é obrigatório');
+      toast.error(t('toast.nameRequired'));
       return;
     }
     try {
       await axios.put(`${API}/scan-pools/${id}`, buildPayload(editData));
-      toast.success('Scan pool atualizado com sucesso');
+      toast.success(t('toast.updateSuccess'));
       setEditingId(null);
       setEditData({});
       loadPools();
     } catch (error) {
       console.error('Error updating scan pool:', error);
-      toast.error('Erro ao atualizar scan pool');
+      toast.error(t('toast.updateError'));
     }
   };
 
@@ -385,8 +391,8 @@ const ScanPools = () => {
     <div className="space-y-6" data-testid="scan-pools-page">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Scan Pool</h1>
-          <p className="text-muted-foreground mt-2">Gerencie pools de configuração para scans de shares</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
         </div>
         <Button
           onClick={() => setShowAddForm(!showAddForm)}
@@ -396,12 +402,12 @@ const ScanPools = () => {
           {showAddForm ? (
             <>
               <ChevronUp className="w-4 h-4 mr-2" />
-              Fechar
+              {t('common:actions.close')}
             </>
           ) : (
             <>
               <Plus className="w-4 h-4 mr-2" />
-              Nova Pool
+              {t('newPool')}
             </>
           )}
         </Button>
@@ -413,7 +419,7 @@ const ScanPools = () => {
           data={formData}
           setData={setFormData}
           onSubmit={handleSubmit}
-          submitLabel="Criar Pool"
+          submitLabel={t('createPool')}
           submitIcon={Plus}
           isEdit={false}
           loading={loading}
@@ -423,12 +429,12 @@ const ScanPools = () => {
       {/* List */}
       <Card>
         <CardHeader>
-          <CardTitle>Pools Cadastradas</CardTitle>
-          <CardDescription>{pools.length} pool{pools.length !== 1 ? 's' : ''} no sistema</CardDescription>
+          <CardTitle>{t('list.title')}</CardTitle>
+          <CardDescription>{t('list.count', { count: pools.length })}</CardDescription>
         </CardHeader>
         <CardContent>
           {pools.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhuma scan pool cadastrada</p>
+            <p className="text-muted-foreground text-center py-8">{t('list.empty')}</p>
           ) : (
             <div className="space-y-3">
               {pools.map((pool) => (
@@ -443,7 +449,7 @@ const ScanPools = () => {
                         data={editData}
                         setData={setEditData}
                         onSubmit={(e) => { e.preventDefault(); saveEdit(pool.id); }}
-                        submitLabel="Salvar"
+                        submitLabel={t('common:actions.save')}
                         submitIcon={Check}
                         isEdit={true}
                         onCancel={cancelEdit}
@@ -454,42 +460,42 @@ const ScanPools = () => {
                     <div className="flex items-center justify-between p-4">
                       <div className="flex-1 grid grid-cols-4 gap-4">
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Nome</div>
+                          <div className="text-xs text-muted-foreground mb-1">{t('common:fields.name')}</div>
                           <div className="font-medium">{pool.name}</div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Scanners</div>
+                          <div className="text-xs text-muted-foreground mb-1">{t('list.scanners')}</div>
                           <div className="font-medium">{pool.simultaneous_scanners}</div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Delay (ms)</div>
+                          <div className="text-xs text-muted-foreground mb-1">{t('list.delay')}</div>
                           <div className="font-medium">{pool.request_delay_min} - {pool.request_delay_max}</div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Regras</div>
+                          <div className="text-xs text-muted-foreground mb-1">{t('list.rules')}</div>
                           <div className="flex flex-wrap gap-1">
                             {parseList(pool.include_servers).length > 0 && (
                               <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">
-                                +{parseList(pool.include_servers).length} host
+                                {t('list.hostIncludeBadge', { count: parseList(pool.include_servers).length })}
                               </Badge>
                             )}
                             {parseList(pool.exclude_servers).length > 0 && (
                               <Badge variant="outline" className="text-xs text-red-500 border-red-500/30">
-                                -{parseList(pool.exclude_servers).length} host
+                                {t('list.hostExcludeBadge', { count: parseList(pool.exclude_servers).length })}
                               </Badge>
                             )}
                             {parseList(pool.include_ips).length > 0 && (
                               <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">
-                                +{parseList(pool.include_ips).length} IP
+                                {t('list.ipIncludeBadge', { count: parseList(pool.include_ips).length })}
                               </Badge>
                             )}
                             {parseList(pool.exclude_ips).length > 0 && (
                               <Badge variant="outline" className="text-xs text-red-500 border-red-500/30">
-                                -{parseList(pool.exclude_ips).length} IP
+                                {t('list.ipExcludeBadge', { count: parseList(pool.exclude_ips).length })}
                               </Badge>
                             )}
                             {!parseList(pool.include_servers).length && !parseList(pool.exclude_servers).length && !parseList(pool.include_ips).length && !parseList(pool.exclude_ips).length && (
-                              <span className="text-xs text-muted-foreground">Sem filtros</span>
+                              <span className="text-xs text-muted-foreground">{t('list.noFilters')}</span>
                             )}
                           </div>
                         </div>

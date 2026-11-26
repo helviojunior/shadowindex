@@ -1,0 +1,61 @@
+{
+  "title": "Busca Crítica",
+  "subtitle": "Configure as regras para identificar arquivos potencialmente sensíveis",
+  "resetButton": "Restaurar Padrão",
+  "errorLoading": "Erro ao carregar configuração",
+  "fileRules": {
+    "title": "Regras de Arquivo",
+    "description": "Defina quais arquivos são considerados críticos",
+    "keywordsLabel": "Palavras-chave no Nome",
+    "keywordsHelp": "Arquivos que contenham estas palavras no nome serão considerados críticos",
+    "keywordsPlaceholder": "Ex: password, secret, key...",
+    "extensionsLabel": "Extensões Críticas",
+    "extensionsHelp": "Arquivos com estas extensões serão sempre considerados críticos",
+    "extensionsPlaceholder": "Ex: .pfx, .pem, .key...",
+    "exactNamesLabel": "Nomes de Arquivo Exatos",
+    "exactNamesHelp": "Arquivos com estes nomes exatos serão considerados críticos",
+    "exactNamesPlaceholder": "Ex: .env, web.config...",
+    "mimeTypesLabel": "MIME Types Críticos",
+    "mimeTypesHelp": "Arquivos com estes tipos MIME serão considerados críticos",
+    "mimeTypesPlaceholder": "Ex: application/x-pkcs12...",
+    "excludedLabel": "Extensões Excluídas",
+    "excludedHelp": "Arquivos com estas extensões serão IGNORADOS na busca crítica (ex: binários, mídia)",
+    "excludedPlaceholder": "Ex: .exe, .dll, .msi..."
+  },
+  "sizeRules": {
+    "title": "Regras de Tamanho",
+    "description": "Limites de tamanho para arquivos críticos",
+    "enabledLabel": "Filtro de tamanho habilitado",
+    "minLabel": "Tamanho Mínimo (bytes)",
+    "maxLabel": "Tamanho Máximo (bytes)",
+    "help": "Arquivos fora deste intervalo serão ignorados na busca crítica"
+  },
+  "logDetection": {
+    "title": "Detecção de Logs",
+    "description": "Configurações para ignorar diretórios de log",
+    "enabledLabel": "Ignorar diretórios de log",
+    "minSimilarLabel": "Mínimo de arquivos similares",
+    "minSimilarHelp": "Quantidade de arquivos com padrão de log para considerar diretório de logs",
+    "extensionsLabel": "Extensões de Log",
+    "extensionsPlaceholder": "Ex: .log, .logs..."
+  },
+  "autoGitleaks": {
+    "title": "Auto GitLeaks",
+    "description": "Iniciar varredura do GitLeaks automaticamente após busca crítica",
+    "enabledLabel": "Iniciar GitLeaks automaticamente",
+    "delayLabel": "Delay antes de iniciar (segundos)",
+    "delayHelp": "Tempo de espera após o término do scan para iniciar o GitLeaks"
+  },
+  "info": {
+    "title": "Como funciona a Busca Crítica?",
+    "description": "A busca crítica escaneia diretórios procurando por arquivos que correspondam às regras definidas acima. Diferente do scan normal, ela ignora diretórios de log e foca apenas em arquivos potencialmente sensíveis. Ao final, se habilitado, inicia automaticamente uma varredura do GitLeaks para detectar segredos expostos."
+  },
+  "confirmReset": "Tem certeza que deseja restaurar as configurações padrão?",
+  "toast": {
+    "loadError": "Erro ao carregar configuração",
+    "saveSuccess": "Configuração salva com sucesso",
+    "saveError": "Erro ao salvar configuração",
+    "resetSuccess": "Configuração restaurada para o padrão",
+    "resetError": "Erro ao restaurar configuração"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "title": "Proxy Servers",
+  "subtitle": "Gerencie os servidores proxy (HTTP e SOCKS5)",
+  "addButton": "Adicionar Proxy",
+  "form": {
+    "cardTitle": "Novo Proxy Server",
+    "cardDescription": "Adicione um novo servidor proxy HTTP ou SOCKS5",
+    "nameLabel": "Nome",
+    "namePlaceholder": "Meu Proxy",
+    "typeLabel": "Tipo",
+    "typePlaceholder": "Selecione o tipo",
+    "ipLabel": "IP",
+    "ipPlaceholder": "192.168.1.1",
+    "portLabel": "Porta",
+    "portPlaceholder": "8080",
+    "authLabel": "Autenticação",
+    "authPlaceholder": "Selecione",
+    "noAuth": "Sem autenticação",
+    "dnsLabel": "Servidores DNS (opcional)",
+    "dnsPlaceholder": "10.0.0.10, 10.0.0.11",
+    "dnsHelp": "IPs separados por vírgula, alcançáveis através deste proxy. Usados pela Interação Direta para resolver nomes da rede alvo pelo túnel.",
+    "submit": "Adicionar Proxy"
+  },
+  "list": {
+    "cardTitle": "Proxy Servers Cadastrados",
+    "count": "{{n}} proxies no sistema",
+    "empty": "Nenhum proxy cadastrado"
+  },
+  "display": {
+    "type": "Tipo",
+    "address": "Endereço",
+    "auth": "Autenticação",
+    "dns": "Servidores DNS",
+    "legacy": "{{username}} (legado)",
+    "noAuth": "Sem autenticação",
+    "noDns": "Não definidos"
+  },
+  "edit": {
+    "namePlaceholder": "Nome",
+    "ipPlaceholder": "IP",
+    "portPlaceholder": "Porta",
+    "noAuth": "Sem autenticação",
+    "dnsPlaceholder": "Servidores DNS (IPs separados por vírgula)"
+  },
+  "toast": {
+    "loadError": "Erro ao carregar proxy servers",
+    "created": "Proxy server cadastrado com sucesso",
+    "createError": "Erro ao cadastrar proxy server",
+    "removed": "Proxy server removido com sucesso",
+    "removeError": "Erro ao remover proxy server",
+    "updated": "Proxy server atualizado com sucesso",
+    "updateError": "Erro ao atualizar proxy server"
+  }
+}

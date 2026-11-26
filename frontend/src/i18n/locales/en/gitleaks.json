@@ -1,0 +1,54 @@
+{
+  "subtitle": "Detection of secrets and credentials in files",
+  "status": {
+    "title": "GitLeaks Status",
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "version": "Version: {{version}}"
+  },
+  "scan": {
+    "title": "Start Scan",
+    "description": "Scan files for secrets, API keys and credentials",
+    "byServer": "By Server",
+    "customPath": "Custom Path",
+    "serverLabel": "Server",
+    "selectServerPlaceholder": "Select a server",
+    "serverHint": "Scans all downloaded files from the selected server",
+    "directoryLabel": "Directory Path",
+    "pathPlaceholder": "/path/to/directory",
+    "pathHint": "Enter the absolute path of the directory to scan"
+  },
+  "jobs": {
+    "title": "Scan Jobs",
+    "registered": "{{count}} job(s) registered",
+    "clearFinished": "Clear Finished",
+    "emptyTitle": "No scan job registered",
+    "emptyDesc": "Start a scan to detect secrets",
+    "findingsCount": "{{count}} findings",
+    "startedAt": "Started: {{date}}",
+    "errorLabel": "Error: {{error}}",
+    "viewReportJsonTitle": "View report JSON",
+    "viewJson": "View JSON",
+    "viewFindings": "View Findings"
+  },
+  "report": {
+    "title": "GitLeaks Report - Job #{{id}}",
+    "summary": "{{count}} finding(s) found • Server ID: {{serverId}}",
+    "loading": "Loading report...",
+    "copyJson": "Copy JSON",
+    "downloadJson": "Download JSON",
+    "scannedPath": "Scanned path:",
+    "reportFile": "Report file:"
+  },
+  "toast": {
+    "reportLoadError": "Error loading report: {{error}}",
+    "jsonCopied": "JSON copied to clipboard",
+    "copyError": "Error copying",
+    "downloadStarted": "Download started",
+    "selectServer": "Select a server",
+    "enterPath": "Enter the directory path",
+    "scanError": "Error starting scan: {{error}}",
+    "cancelJobError": "Error cancelling job",
+    "clearJobsError": "Error clearing jobs"
+  }
+}

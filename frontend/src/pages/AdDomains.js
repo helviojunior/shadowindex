@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,14 +17,15 @@ import { toast } from 'sonner';
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const STATUS_META = {
-  pending: { label: 'Na fila', cls: 'text-muted-foreground', icon: Loader2 },
-  running: { label: 'Importando', cls: 'text-blue-400', icon: Loader2 },
-  completed: { label: 'Concluído', cls: 'text-green-500', icon: CheckCircle },
-  failed: { label: 'Falhou', cls: 'text-red-500', icon: XCircle },
-  cancelled: { label: 'Cancelado', cls: 'text-amber-500', icon: XCircle },
+  pending: { labelKey: 'status.queued', cls: 'text-muted-foreground', icon: Loader2 },
+  running: { labelKey: 'status.importing', cls: 'text-blue-400', icon: Loader2 },
+  completed: { labelKey: 'common:status.completed', cls: 'text-green-500', icon: CheckCircle },
+  failed: { labelKey: 'common:status.failed', cls: 'text-red-500', icon: XCircle },
+  cancelled: { labelKey: 'common:status.cancelled', cls: 'text-amber-500', icon: XCircle },
 };
 
 const AdDomains = () => {
+  const { t } = useTranslation('ad-domains');
   const navigate = useNavigate();
   const [domains, setDomains] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -107,7 +109,7 @@ const AdDomains = () => {
       loadDomains();
       return true;
     } catch {
-      toast.error('Erro ao salvar configuração');
+      toast.error(t('toast.saveConfigError'));
       return false;
     } finally {
       setSavingCfg(false);
@@ -123,13 +125,13 @@ const AdDomains = () => {
       setDcs(data.dcs || []);
       if (data.fastest) {
         setCfg((p) => ({ ...p, selected_dc: data.fastest }));
-        toast.success(`DC mais rápido: ${data.fastest}`);
+        toast.success(t('toast.fastestDc', { dc: data.fastest }));
       } else {
-        toast.warning('Nenhum DC acessível encontrado');
+        toast.warning(t('toast.noDcFound'));
       }
     } catch (e) {
       const m = e.response?.data?.detail || e.message;
-      toast.error(`Descoberta falhou: ${typeof m === 'string' ? m : JSON.stringify(m)}`);
+      toast.error(t('toast.discoverFailed', { error: typeof m === 'string' ? m : JSON.stringify(m) }));
     } finally {
       setDiscovering(false);
     }
@@ -142,12 +144,12 @@ const AdDomains = () => {
     try {
       const { data } = await axios.post(`${API}/ad/domains/${domId}/test-connection`, { host: cfg.selected_dc || undefined });
       setTestResult(data);
-      if (data.success) toast.success(`Conexão OK (${data.server})`);
-      else toast.error(`Falhou: ${data.error}`);
+      if (data.success) toast.success(t('toast.connOk', { server: data.server }));
+      else toast.error(t('toast.connFailed', { error: data.error }));
     } catch (e) {
       const m = e.response?.data?.detail || e.message;
       const msg = typeof m === 'string' ? m : JSON.stringify(m);
-      toast.error(`Teste falhou: ${msg}`);
+      toast.error(t('toast.testFailed', { error: msg }));
       setTestResult({ success: false, error: msg });
     } finally {
       setTesting(false);
@@ -156,14 +158,14 @@ const AdDomains = () => {
 
   const startScan = async (domId) => {
     if (!(await saveConfig(domId))) return;
-    if (!window.confirm('Iniciar a varredura LDAP recursiva da árvore do domínio? Isso percorre todo o AD e pode levar alguns minutos.')) return;
+    if (!window.confirm(t('confirm.startScan'))) return;
     try {
       await axios.post(`${API}/ad/domains/${domId}/scan`, { host: cfg.selected_dc || undefined });
-      toast.success('Varredura LDAP iniciada em background');
+      toast.success(t('toast.scanStarted'));
       loadJobs();
     } catch (e) {
       const m = e.response?.data?.detail || e.message;
-      toast.error(`Falha ao iniciar varredura: ${typeof m === 'string' ? m : JSON.stringify(m)}`);
+      toast.error(t('toast.scanStartFailed', { error: typeof m === 'string' ? m : JSON.stringify(m) }));
     }
   };
 
@@ -180,16 +182,16 @@ const AdDomains = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!newDomain.trim()) return toast.error('Informe o domínio (FQDN)');
+    if (!newDomain.trim()) return toast.error(t('toast.domainRequired'));
     setCreating(true);
     try {
       await axios.post(`${API}/ad/domains`, { name: newDomain.trim() });
-      toast.success('Domínio criado');
+      toast.success(t('toast.domainCreated'));
       setNewDomain('');
       setShowAddForm(false);
       loadDomains();
     } catch (error) {
-      const msg = error.response?.data?.detail || 'Erro ao criar domínio';
+      const msg = error.response?.data?.detail || t('toast.domainCreateError');
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setCreating(false);
@@ -197,14 +199,14 @@ const AdDomains = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Remover este domínio e toda a árvore importada?')) return;
+    if (!window.confirm(t('confirm.deleteDomain'))) return;
     try {
       await axios.delete(`${API}/ad/domains/${id}`);
-      toast.success('Domínio removido');
+      toast.success(t('toast.domainRemoved'));
       loadDomains();
       loadJobs();
     } catch {
-      toast.error('Erro ao remover domínio');
+      toast.error(t('toast.domainRemoveError'));
     }
   };
 
@@ -217,11 +219,11 @@ const AdDomains = () => {
       await axios.post(`${API}/ad/domains/${domainId}/import`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success('Upload concluído — importação iniciada em background');
+      toast.success(t('toast.uploadDone'));
       loadJobs();
     } catch (error) {
       const msg = error.response?.data?.detail || error.message;
-      toast.error(`Falha no upload: ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`);
+      toast.error(t('toast.uploadFailed', { error: typeof msg === 'string' ? msg : JSON.stringify(msg) }));
     } finally {
       setUploadingId(null);
       if (fileInputs.current[domainId]) fileInputs.current[domainId].value = '';
@@ -239,30 +241,29 @@ const AdDomains = () => {
             AD Explorer
           </h1>
           <p className="text-muted-foreground mt-2">
-            Explore a árvore do Active Directory por domínio. Importe dados do BloodHound (v6)
-            para montar e navegar a árvore completa.
+            {t('intro')}
           </p>
         </div>
         <Button className="shrink-0" onClick={() => setShowAddForm(!showAddForm)} variant={showAddForm ? 'secondary' : 'default'} data-testid="toggle-add-domain">
-          {showAddForm ? <><ChevronUp className="w-4 h-4 mr-2" />Fechar</> : <><Plus className="w-4 h-4 mr-2" />Novo Domínio</>}
+          {showAddForm ? <><ChevronUp className="w-4 h-4 mr-2" />{t('common:actions.close')}</> : <><Plus className="w-4 h-4 mr-2" />{t('newDomain')}</>}
         </Button>
       </div>
 
       {showAddForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Novo domínio</CardTitle>
-            <CardDescription>Informe o FQDN do domínio (ex.: empresa.local). A base do AD Explorer é o domínio, não um servidor.</CardDescription>
+            <CardTitle>{t('form.title')}</CardTitle>
+            <CardDescription>{t('form.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreate} className="flex items-end gap-3">
               <div className="space-y-2 flex-1 max-w-md">
-                <Label htmlFor="domain-name">Domínio (FQDN) *</Label>
-                <Input id="domain-name" placeholder="empresa.local" value={newDomain} onChange={(e) => setNewDomain(e.target.value)} data-testid="ad-domain-input" />
+                <Label htmlFor="domain-name">{t('form.domainLabel')}</Label>
+                <Input id="domain-name" placeholder={t('form.domainPlaceholder')} value={newDomain} onChange={(e) => setNewDomain(e.target.value)} data-testid="ad-domain-input" />
               </div>
               <Button type="submit" disabled={creating} data-testid="create-domain-btn">
                 {creating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                Criar
+                {t('form.create')}
               </Button>
             </form>
           </CardContent>
@@ -271,7 +272,7 @@ const AdDomains = () => {
 
       <div className="space-y-4">
         {domains.length === 0 && (
-          <Card><CardContent className="py-10 text-center text-muted-foreground">Nenhum domínio cadastrado. Crie um e importe os arquivos do BloodHound.</CardContent></Card>
+          <Card><CardContent className="py-10 text-center text-muted-foreground">{t('empty')}</CardContent></Card>
         )}
         {domains.map((dom) => {
           const domJobs = jobsFor(dom.id);
@@ -287,13 +288,13 @@ const AdDomains = () => {
                       {dom.domain_sid && <Badge variant="outline" className="gap-1 font-mono text-xs max-w-full truncate"><Hash className="w-3 h-3 shrink-0" />{dom.domain_sid}</Badge>}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                      <span className="flex items-center gap-1"><Server className="w-3.5 h-3.5 shrink-0" />{dom.object_count?.toLocaleString() || 0} objetos</span>
-                      {dom.last_scan_at && <span>Última importação: {new Date(dom.last_scan_at).toLocaleString()}</span>}
+                      <span className="flex items-center gap-1"><Server className="w-3.5 h-3.5 shrink-0" />{t('objects', { count: dom.object_count || 0, val: (dom.object_count || 0).toLocaleString() })}</span>
+                      {dom.last_scan_at && <span>{t('lastImport', { date: new Date(dom.last_scan_at).toLocaleString() })}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                     <Button onClick={() => navigate(`/ad/${dom.id}/browse`)} disabled={!dom.object_count && domJobs.length === 0} data-testid={`explore-${dom.id}`}>
-                      <FolderTree className="w-4 h-4 mr-2" />Explorar
+                      <FolderTree className="w-4 h-4 mr-2" />{t('explore')}
                     </Button>
                     <input
                       ref={(el) => (fileInputs.current[dom.id] = el)}
@@ -305,10 +306,10 @@ const AdDomains = () => {
                     />
                     <Button variant="outline" disabled={uploadingId === dom.id || !!activeJob} onClick={() => fileInputs.current[dom.id]?.click()} data-testid={`import-${dom.id}`}>
                       {uploadingId === dom.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                      Importar BloodHound
+                      {t('importBloodhound')}
                     </Button>
                     <Button variant={configId === dom.id ? 'secondary' : 'outline'} onClick={() => openConfig(dom)} data-testid={`config-${dom.id}`}>
-                      <Plug className="w-4 h-4 mr-2" />Conexão LDAP
+                      <Plug className="w-4 h-4 mr-2" />{t('ldapConnection')}
                     </Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(dom.id)} data-testid={`delete-domain-${dom.id}`}>
                       <Trash2 className="w-4 h-4" />
@@ -329,12 +330,12 @@ const AdDomains = () => {
                             <span className={`flex items-center gap-2 ${meta.cls}`}>
                               <Icon className={`w-4 h-4 ${spinning ? 'animate-spin' : ''}`} />
                               {job.status === 'running'
-                                ? (job.job_type === 'ldap' ? 'Varrendo (LDAP)' : 'Importando')
-                                : meta.label}
+                                ? (job.job_type === 'ldap' ? t('status.scanning') : t('status.importing'))
+                                : t(meta.labelKey)}
                               {job.current_step && <span className="text-muted-foreground">— {job.current_step}</span>}
                             </span>
                             <span className="text-muted-foreground font-mono text-xs">
-                              {job.processed_objects?.toLocaleString() || 0} objetos
+                              {t('objects', { count: job.processed_objects || 0, val: (job.processed_objects || 0).toLocaleString() })}
                             </span>
                           </div>
                           {spinning && <Progress value={job.processed_objects > 0 ? 100 : 10} className="h-1.5 mt-1 animate-pulse" />}
@@ -352,21 +353,21 @@ const AdDomains = () => {
                   <div className="mt-4 border-t border-border pt-4 space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>Método de autenticação</Label>
+                        <Label>{t('cfg.authMethod')}</Label>
                         <Select value={cfg.auth_method} onValueChange={(v) => setCfg((p) => ({ ...p, auth_method: v }))}>
                           <SelectTrigger data-testid={`auth-method-${dom.id}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="user_password">Usuário e Senha (NTLM)</SelectItem>
-                            <SelectItem value="kerberos">Kerberos (ccache)</SelectItem>
-                            <SelectItem value="cert">Certificado digital (LDAPS mTLS)</SelectItem>
+                            <SelectItem value="user_password">{t('cfg.authUserPassword')}</SelectItem>
+                            <SelectItem value="kerberos">{t('cfg.authKerberos')}</SelectItem>
+                            <SelectItem value="cert">{t('cfg.authCert')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       {(cfg.auth_method === 'user_password' || cfg.auth_method === 'kerberos') && (
                         <div className="space-y-2">
-                          <Label>Credencial</Label>
+                          <Label>{t('cfg.credential')}</Label>
                           <Select value={cfg.credential_id} onValueChange={(v) => setCfg((p) => ({ ...p, credential_id: v }))}>
-                            <SelectTrigger data-testid={`cred-${dom.id}`}><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectTrigger data-testid={`cred-${dom.id}`}><SelectValue placeholder={t('cfg.select')} /></SelectTrigger>
                             <SelectContent>
                               {credentials.filter((c) => (cfg.auth_method === 'kerberos' ? c.credential_type === 'kerberos' : c.credential_type === 'user_password')).map((c) => (
                                 <SelectItem key={c.id} value={String(c.id)}>
@@ -382,11 +383,11 @@ const AdDomains = () => {
                     {cfg.auth_method === 'cert' && (
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label>Certificado cliente (PEM)</Label>
+                          <Label>{t('cfg.clientCert')}</Label>
                           <Textarea rows={4} className="font-mono text-xs" placeholder="-----BEGIN CERTIFICATE-----" value={cfg.client_cert} onChange={(e) => setCfg((p) => ({ ...p, client_cert: e.target.value }))} />
                         </div>
                         <div className="space-y-2">
-                          <Label>Chave privada (PEM)</Label>
+                          <Label>{t('cfg.clientKey')}</Label>
                           <Textarea rows={4} className="font-mono text-xs" placeholder="-----BEGIN PRIVATE KEY-----" value={cfg.client_key} onChange={(e) => setCfg((p) => ({ ...p, client_key: e.target.value }))} />
                         </div>
                       </div>
@@ -399,13 +400,13 @@ const AdDomains = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Switch checked={cfg.dc_discovery} onCheckedChange={(v) => setCfg((p) => ({ ...p, dc_discovery: v }))} id={`disc-${dom.id}`} />
-                        <Label htmlFor={`disc-${dom.id}`} className="cursor-pointer">Descobrir DCs por DNS SRV</Label>
+                        <Label htmlFor={`disc-${dom.id}`} className="cursor-pointer">{t('cfg.discoverSrv')}</Label>
                       </div>
                     </div>
 
                     {!cfg.dc_discovery && (
                       <div className="space-y-2">
-                        <Label>Controladores de domínio (manuais, separados por vírgula)</Label>
+                        <Label>{t('cfg.dcHostsManual')}</Label>
                         <Input placeholder="dc01.empresa.local, 10.0.0.10" value={cfg.dc_hosts} onChange={(e) => setCfg((p) => ({ ...p, dc_hosts: e.target.value }))} />
                       </div>
                     )}
@@ -413,18 +414,18 @@ const AdDomains = () => {
                     <div className="flex flex-wrap items-center gap-2">
                       <Button variant="outline" onClick={() => discover(dom.id)} disabled={discovering}>
                         {discovering ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Radar className="w-4 h-4 mr-2" />}
-                        Descobrir DCs
+                        {t('cfg.discoverDcs')}
                       </Button>
                       <Button variant="outline" onClick={() => testConn(dom.id)} disabled={testing}>
                         {testing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
-                        Testar conexão
+                        {t('cfg.testConnection')}
                       </Button>
-                      <Button onClick={() => saveConfig(dom.id).then((ok) => ok && toast.success('Configuração salva'))} disabled={savingCfg}>
+                      <Button onClick={() => saveConfig(dom.id).then((ok) => ok && toast.success(t('toast.configSaved')))} disabled={savingCfg}>
                         {savingCfg ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                        Salvar
+                        {t('common:actions.save')}
                       </Button>
                       <Button variant="default" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => startScan(dom.id)} disabled={testing || discovering || !!activeJob}>
-                        <Network className="w-4 h-4 mr-2" />Varredura LDAP
+                        <Network className="w-4 h-4 mr-2" />{t('cfg.ldapScan')}
                       </Button>
                       {cfg.selected_dc && <Badge variant="secondary" className="gap-1"><Zap className="w-3 h-3" />DC: {cfg.selected_dc}</Badge>}
                     </div>
@@ -432,14 +433,14 @@ const AdDomains = () => {
                     {testResult && (
                       <div className={`text-sm rounded-lg p-3 ${testResult.success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                         {testResult.success
-                          ? <>✓ Conexão OK em {testResult.server}:{testResult.port} — {testResult.info?.defaultNamingContext || ''}</>
+                          ? <>✓ {t('cfg.connOkAt', { server: testResult.server, port: testResult.port, ctx: testResult.info?.defaultNamingContext || '' })}</>
                           : <>✗ {testResult.error}</>}
                       </div>
                     )}
 
                     {dcs.length > 0 && (
                       <div className="rounded-lg border border-border overflow-hidden">
-                        <div className="px-3 py-1.5 text-xs text-muted-foreground bg-muted/40">Controladores de domínio (ordenados por latência)</div>
+                        <div className="px-3 py-1.5 text-xs text-muted-foreground bg-muted/40">{t('cfg.dcByLatency')}</div>
                         <div className="divide-y divide-border">
                           {dcs.map((dc) => (
                             <div key={dc.host} className={`flex items-center justify-between gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40 ${cfg.selected_dc === dc.host ? 'bg-primary/10' : ''}`} onClick={() => setCfg((p) => ({ ...p, selected_dc: dc.host }))}>
@@ -451,7 +452,7 @@ const AdDomains = () => {
                               <span className="shrink-0">
                                 {dc.reachable
                                   ? <Badge variant="outline" className="gap-1 text-green-400 border-green-500/40">{dc.latency_ms} ms</Badge>
-                                  : <Badge variant="outline" className="text-red-400 border-red-500/40">inacessível</Badge>}
+                                  : <Badge variant="outline" className="text-red-400 border-red-500/40">{t('cfg.unreachable')}</Badge>}
                               </span>
                             </div>
                           ))}

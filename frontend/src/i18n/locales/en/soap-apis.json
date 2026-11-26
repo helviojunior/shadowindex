@@ -1,0 +1,29 @@
+{
+  "header": {
+    "title": "SOAP API URLs",
+    "subtitle": "Manage the SOAP API URLs",
+    "add": "Add SOAP API"
+  },
+  "form": {
+    "title": "New SOAP API",
+    "description": "Add a new SOAP API URL",
+    "nameLabel": "Name",
+    "namePlaceholder": "My SOAP API",
+    "uriLabel": "URI (WSDL)",
+    "uriPlaceholder": "https://example.com/api.asmx?WSDL"
+  },
+  "list": {
+    "title": "Registered SOAP APIs",
+    "count": "{{count}} APIs in the system",
+    "empty": "No SOAP API registered",
+    "nameLabel": "Name",
+    "uriLabel": "URI"
+  },
+  "toast": {
+    "loadError": "Error loading SOAP APIs",
+    "created": "SOAP API registered successfully",
+    "createError": "Error registering SOAP API",
+    "deleted": "SOAP API removed successfully",
+    "deleteError": "Error removing SOAP API"
+  }
+}

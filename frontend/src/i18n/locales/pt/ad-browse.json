@@ -1,0 +1,104 @@
+{
+  "domainN": "Domínio {{id}}",
+  "objects_one": "{{val}} objeto",
+  "objects_other": "{{val}} objetos",
+  "refreshTree": "Atualizar árvore",
+  "searchPlaceholder": "Buscar objeto...",
+  "advancedFilters": "Filtros avançados",
+  "liveHint": "Navegação ao vivo via LDAP — filhos/membros buscados sob demanda ao expandir.",
+  "tree": "Árvore",
+  "resultsFound_one": "{{count}} resultado encontrado",
+  "resultsFound_other": "{{count}} resultados encontrados",
+  "exportJson": "Exportar JSON",
+  "noObjectsFound": "Nenhum objeto encontrado",
+  "emptyLive": "Nada retornado do LDAP — verifique a conexão do domínio.",
+  "emptyTree": "Árvore vazia — importe o BloodHound, inicie uma varredura ou use \"LDAP ao vivo\".",
+  "selectObject": "Selecione um objeto para ver os detalhes.",
+  "mode": {
+    "imported": "Importado",
+    "live": "LDAP ao vivo"
+  },
+  "filters": {
+    "allTypes": "Todos os tipos",
+    "all": "Todos",
+    "enabled": "Habilitado",
+    "disabled": "Desabilitado",
+    "createdFrom": "Criado de",
+    "createdTo": "Criado até",
+    "pwdFrom": "pwdLastSet de",
+    "pwdTo": "pwdLastSet até"
+  },
+  "focus": {
+    "showAll": "Mostrar todos",
+    "focusSelected": "Focar no objeto selecionado",
+    "focusedOn": "Focado em:"
+  },
+  "tab": {
+    "objects": "Objetos"
+  },
+  "detail": {
+    "members": "Membros",
+    "children": "Filhos",
+    "properties": "Propriedades (BloodHound v6)"
+  },
+  "menu": {
+    "requiresLdap": "Requer LDAP configurado no domínio",
+    "openTab": "Abrir em uma nova aba",
+    "copyLink": "Copiar link",
+    "createUser": "Inserir Usuário",
+    "createGroup": "Inserir Grupo",
+    "addMember": "Inserir usuário",
+    "block": "Bloquear",
+    "unblock": "Desbloquear",
+    "resetPassword": "Trocar senha",
+    "addToGroup": "Adicionar a um grupo"
+  },
+  "dialog": {
+    "block": "Bloquear usuário",
+    "resetPassword": "Trocar senha",
+    "createUser": "Inserir usuário",
+    "createGroup": "Inserir grupo",
+    "addMember": "Inserir usuário no grupo",
+    "addToGroup": "Adicionar a um grupo",
+    "action": "Ação",
+    "blockConfirmPre": "Tem certeza que deseja",
+    "blockConfirmStrong": "bloquear",
+    "blockConfirmPost": "esta conta? O usuário não poderá autenticar até ser desbloqueado.",
+    "newPassword": "Nova senha",
+    "requiresLdaps": "Requer LDAPS habilitado no domínio.",
+    "nameCn": "Nome (CN)",
+    "namePlaceholder": "Nome",
+    "passwordOptional": "Senha (opcional)",
+    "passwordHint": "Deixe vazio p/ criar desabilitado",
+    "createUserHint": "Com senha + LDAPS o usuário já é criado habilitado.",
+    "selectUser": "Selecione o usuário",
+    "selectGroup": "Selecione o grupo",
+    "searchUser": "Buscar usuário...",
+    "searchGroup": "Buscar grupo...",
+    "noResults": "Nenhum resultado"
+  },
+  "objectsTab": {
+    "noMembers": "Grupo sem membros carregados",
+    "noChildren": "Nenhum objeto filho",
+    "created": "Criado"
+  },
+  "toast": {
+    "loadTreeError": "Erro ao carregar a árvore",
+    "loadChildrenError": "Erro ao carregar filhos",
+    "loadObjChildrenError": "Erro ao carregar objetos filhos",
+    "accountUnblocked": "Conta desbloqueada",
+    "accountBlocked": "Conta bloqueada",
+    "accountChangeFailed": "Falha ao alterar a conta",
+    "linkCopied": "Link copiado",
+    "copyFailed": "Não foi possível copiar",
+    "ldapNotConfigured": "LDAP não configurado para este domínio",
+    "passwordChanged": "Senha alterada",
+    "userCreated": "Usuário criado",
+    "groupCreated": "Grupo criado",
+    "memberAdded": "Membro adicionado ao grupo",
+    "userAddedToGroup": "Usuário adicionado ao grupo",
+    "operationFailed": "Falha na operação",
+    "searchMinChars": "Informe ao menos 2 caracteres ou um filtro",
+    "searchError": "Erro na busca"
+  }
+}

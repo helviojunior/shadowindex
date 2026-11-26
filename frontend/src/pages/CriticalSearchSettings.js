@@ -13,10 +13,12 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api/v2';
 
 const CriticalSearchSettings = () => {
+  const { t } = useTranslation('critical-search-settings');
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,7 +85,7 @@ const CriticalSearchSettings = () => {
       setConfig(mergedConfig);
     } catch (error) {
       console.error('Error loading critical search config:', error);
-      toast.error('Erro ao carregar configuração');
+      toast.error(t('toast.loadError'));
       // Em caso de erro, usar configuração padrão
       setConfig(defaultConfig);
     } finally {
@@ -95,17 +97,17 @@ const CriticalSearchSettings = () => {
     setSaving(true);
     try {
       await axios.put(`${API}/settings/critical-search`, config);
-      toast.success('Configuração salva com sucesso');
+      toast.success(t('toast.saveSuccess'));
     } catch (error) {
       console.error('Error saving config:', error);
-      toast.error('Erro ao salvar configuração');
+      toast.error(t('toast.saveError'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleReset = async () => {
-    if (!window.confirm('Tem certeza que deseja restaurar as configurações padrão?')) {
+    if (!window.confirm(t('confirmReset'))) {
       return;
     }
     
@@ -113,10 +115,10 @@ const CriticalSearchSettings = () => {
     try {
       const response = await axios.post(`${API}/settings/critical-search/reset`);
       setConfig(response.data.config);
-      toast.success('Configuração restaurada para o padrão');
+      toast.success(t('toast.resetSuccess'));
     } catch (error) {
       console.error('Error resetting config:', error);
-      toast.error('Erro ao restaurar configuração');
+      toast.error(t('toast.resetError'));
     } finally {
       setResetting(false);
     }
@@ -189,7 +191,7 @@ const CriticalSearchSettings = () => {
   if (!config) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Erro ao carregar configuração</p>
+        <p className="text-muted-foreground">{t('errorLoading')}</p>
       </div>
     );
   }
@@ -201,10 +203,10 @@ const CriticalSearchSettings = () => {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Shield className="w-6 h-6 text-red-500" />
-            Busca Crítica
+            {t('title')}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Configure as regras para identificar arquivos potencialmente sensíveis
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -220,7 +222,7 @@ const CriticalSearchSettings = () => {
             ) : (
               <RotateCcw className="w-4 h-4 mr-2" />
             )}
-            Restaurar Padrão
+            {t('resetButton')}
           </Button>
           <Button
             onClick={handleSave}
@@ -232,7 +234,7 @@ const CriticalSearchSettings = () => {
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            Salvar
+            {t('common:actions.save')}
           </Button>
         </div>
       </div>
@@ -243,18 +245,18 @@ const CriticalSearchSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileKey className="w-5 h-5 text-amber-500" />
-              Regras de Arquivo
+              {t('fileRules.title')}
             </CardTitle>
             <CardDescription>
-              Defina quais arquivos são considerados críticos
+              {t('fileRules.description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Palavras-chave */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Palavras-chave no Nome</Label>
+              <Label className="text-sm font-medium">{t('fileRules.keywordsLabel')}</Label>
               <p className="text-xs text-muted-foreground">
-                Arquivos que contenham estas palavras no nome serão considerados críticos
+                {t('fileRules.keywordsHelp')}
               </p>
               <div className="flex flex-wrap gap-2 min-h-[32px]">
                 {config.file_rules?.keywords?.map((keyword, index) => (
@@ -269,7 +271,7 @@ const CriticalSearchSettings = () => {
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ex: password, secret, key..."
+                  placeholder={t('fileRules.keywordsPlaceholder')}
                   value={newKeyword}
                   onChange={(e) => setNewKeyword(e.target.value)}
                   onKeyDown={(e) => {
@@ -297,9 +299,9 @@ const CriticalSearchSettings = () => {
 
             {/* Extensões */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Extensões Críticas</Label>
+              <Label className="text-sm font-medium">{t('fileRules.extensionsLabel')}</Label>
               <p className="text-xs text-muted-foreground">
-                Arquivos com estas extensões serão sempre considerados críticos
+                {t('fileRules.extensionsHelp')}
               </p>
               <div className="flex flex-wrap gap-2 min-h-[32px]">
                 {config.file_rules?.extensions?.map((ext, index) => (
@@ -314,7 +316,7 @@ const CriticalSearchSettings = () => {
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ex: .pfx, .pem, .key..."
+                  placeholder={t('fileRules.extensionsPlaceholder')}
                   value={newExtension}
                   onChange={(e) => setNewExtension(e.target.value)}
                   onKeyDown={(e) => {
@@ -342,9 +344,9 @@ const CriticalSearchSettings = () => {
 
             {/* Nomes Exatos */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Nomes de Arquivo Exatos</Label>
+              <Label className="text-sm font-medium">{t('fileRules.exactNamesLabel')}</Label>
               <p className="text-xs text-muted-foreground">
-                Arquivos com estes nomes exatos serão considerados críticos
+                {t('fileRules.exactNamesHelp')}
               </p>
               <div className="flex flex-wrap gap-2 min-h-[32px]">
                 {config.file_rules?.exact_names?.map((name, index) => (
@@ -359,7 +361,7 @@ const CriticalSearchSettings = () => {
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ex: .env, web.config..."
+                  placeholder={t('fileRules.exactNamesPlaceholder')}
                   value={newExactName}
                   onChange={(e) => setNewExactName(e.target.value)}
                   onKeyDown={(e) => {
@@ -387,9 +389,9 @@ const CriticalSearchSettings = () => {
 
             {/* MIME Types */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">MIME Types Críticos</Label>
+              <Label className="text-sm font-medium">{t('fileRules.mimeTypesLabel')}</Label>
               <p className="text-xs text-muted-foreground">
-                Arquivos com estes tipos MIME serão considerados críticos
+                {t('fileRules.mimeTypesHelp')}
               </p>
               <div className="flex flex-wrap gap-2 min-h-[32px]">
                 {config.file_rules?.mime_types?.map((mime, index) => (
@@ -404,7 +406,7 @@ const CriticalSearchSettings = () => {
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ex: application/x-pkcs12..."
+                  placeholder={t('fileRules.mimeTypesPlaceholder')}
                   value={newMimeType}
                   onChange={(e) => setNewMimeType(e.target.value)}
                   onKeyDown={(e) => {
@@ -434,10 +436,10 @@ const CriticalSearchSettings = () => {
             <div className="space-y-3">
               <Label className="text-sm font-medium flex items-center gap-2">
                 <Ban className="w-4 h-4 text-red-500" />
-                Extensões Excluídas
+                {t('fileRules.excludedLabel')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Arquivos com estas extensões serão IGNORADOS na busca crítica (ex: binários, mídia)
+                {t('fileRules.excludedHelp')}
               </p>
               <div className="flex flex-wrap gap-2 min-h-[32px]">
                 {config.file_rules?.excluded_extensions?.map((ext, index) => (
@@ -452,7 +454,7 @@ const CriticalSearchSettings = () => {
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ex: .exe, .dll, .msi..."
+                  placeholder={t('fileRules.excludedPlaceholder')}
                   value={newExcludedExtension}
                   onChange={(e) => setNewExcludedExtension(e.target.value)}
                   onKeyDown={(e) => {
@@ -485,15 +487,15 @@ const CriticalSearchSettings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Settings2 className="w-5 h-5 text-blue-500" />
-                Regras de Tamanho
+                {t('sizeRules.title')}
               </CardTitle>
               <CardDescription>
-                Limites de tamanho para arquivos críticos
+                {t('sizeRules.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Filtro de tamanho habilitado</Label>
+                <Label>{t('sizeRules.enabledLabel')}</Label>
                 <Switch
                   checked={config.size_rules?.enabled ?? true}
                   onCheckedChange={(checked) => updateNestedValue('size_rules.enabled', checked)}
@@ -504,7 +506,7 @@ const CriticalSearchSettings = () => {
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-sm">Tamanho Mínimo (bytes)</Label>
+                      <Label className="text-sm">{t('sizeRules.minLabel')}</Label>
                       <Input
                         type="number"
                         value={config.size_rules?.min_bytes ?? 0}
@@ -515,7 +517,7 @@ const CriticalSearchSettings = () => {
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm">Tamanho Máximo (bytes)</Label>
+                      <Label className="text-sm">{t('sizeRules.maxLabel')}</Label>
                       <Input
                         type="number"
                         value={config.size_rules?.max_bytes ?? 52428800}
@@ -527,7 +529,7 @@ const CriticalSearchSettings = () => {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Arquivos fora deste intervalo serão ignorados na busca crítica
+                    {t('sizeRules.help')}
                   </p>
                 </>
               )}
@@ -539,15 +541,15 @@ const CriticalSearchSettings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Folder className="w-5 h-5 text-orange-500" />
-                Detecção de Logs
+                {t('logDetection.title')}
               </CardTitle>
               <CardDescription>
-                Configurações para ignorar diretórios de log
+                {t('logDetection.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Ignorar diretórios de log</Label>
+                <Label>{t('logDetection.enabledLabel')}</Label>
                 <Switch
                   checked={config.log_detection?.enabled ?? true}
                   onCheckedChange={(checked) => updateNestedValue('log_detection.enabled', checked)}
@@ -557,7 +559,7 @@ const CriticalSearchSettings = () => {
               {config.log_detection?.enabled && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-sm">Mínimo de arquivos similares</Label>
+                    <Label className="text-sm">{t('logDetection.minSimilarLabel')}</Label>
                     <Input
                       type="number"
                       value={config.log_detection?.min_similar_files ?? 10}
@@ -565,14 +567,14 @@ const CriticalSearchSettings = () => {
                       className="w-32"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Quantidade de arquivos com padrão de log para considerar diretório de logs
+                      {t('logDetection.minSimilarHelp')}
                     </p>
                   </div>
 
                   <Separator />
 
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">Extensões de Log</Label>
+                    <Label className="text-sm font-medium">{t('logDetection.extensionsLabel')}</Label>
                     <div className="flex flex-wrap gap-2 min-h-[32px]">
                       {config.log_detection?.log_extensions?.map((ext, index) => (
                         <Badge key={index} variant="outline" className="gap-1">
@@ -586,7 +588,7 @@ const CriticalSearchSettings = () => {
                     </div>
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Ex: .log, .logs..."
+                        placeholder={t('logDetection.extensionsPlaceholder')}
                         value={newLogExtension}
                         onChange={(e) => setNewLogExtension(e.target.value)}
                         onKeyDown={(e) => {
@@ -619,15 +621,15 @@ const CriticalSearchSettings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <AlertTriangle className="w-5 h-5 text-yellow-500" />
-                Auto GitLeaks
+                {t('autoGitleaks.title')}
               </CardTitle>
               <CardDescription>
-                Iniciar varredura do GitLeaks automaticamente após busca crítica
+                {t('autoGitleaks.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Iniciar GitLeaks automaticamente</Label>
+                <Label>{t('autoGitleaks.enabledLabel')}</Label>
                 <Switch
                   checked={config.auto_gitleaks?.enabled ?? true}
                   onCheckedChange={(checked) => updateNestedValue('auto_gitleaks.enabled', checked)}
@@ -636,7 +638,7 @@ const CriticalSearchSettings = () => {
               
               {config.auto_gitleaks?.enabled && (
                 <div className="space-y-2">
-                  <Label className="text-sm">Delay antes de iniciar (segundos)</Label>
+                  <Label className="text-sm">{t('autoGitleaks.delayLabel')}</Label>
                   <Input
                     type="number"
                     value={config.auto_gitleaks?.delay_seconds ?? 5}
@@ -644,7 +646,7 @@ const CriticalSearchSettings = () => {
                     className="w-32"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Tempo de espera após o término do scan para iniciar o GitLeaks
+                    {t('autoGitleaks.delayHelp')}
                   </p>
                 </div>
               )}
@@ -659,11 +661,9 @@ const CriticalSearchSettings = () => {
           <div className="flex items-start gap-3">
             <FileSearch className="w-5 h-5 text-blue-500 mt-0.5" />
             <div className="text-sm">
-              <p className="font-medium text-blue-500">Como funciona a Busca Crítica?</p>
+              <p className="font-medium text-blue-500">{t('info.title')}</p>
               <p className="text-muted-foreground mt-1">
-                A busca crítica escaneia diretórios procurando por arquivos que correspondam às regras definidas acima.
-                Diferente do scan normal, ela ignora diretórios de log e foca apenas em arquivos potencialmente sensíveis.
-                Ao final, se habilitado, inicia automaticamente uma varredura do GitLeaks para detectar segredos expostos.
+                {t('info.description')}
               </p>
             </div>
           </div>

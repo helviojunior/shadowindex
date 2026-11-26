@@ -1,0 +1,102 @@
+{
+  "title": "Downloads",
+  "description": "Manage file downloads from the servers",
+  "updating": "Updating...",
+  "realtime": "Real time",
+  "offline": "Offline",
+  "total": "Total",
+  "clickHint": "(click)",
+  "filter": "Filter: {{label}}",
+  "status": {
+    "downloading": "Downloading",
+    "paused": "Paused",
+    "skipped": "Skipped"
+  },
+  "scanStatus": {
+    "pending": "Waiting",
+    "scanning": "Scanning"
+  },
+  "tabs": {
+    "downloads": "Downloads",
+    "scans": "Directory Scans",
+    "active": "{{count}} active"
+  },
+  "actions": {
+    "clearFinished": "Clear Completed",
+    "retryFailed": "Retry Failed",
+    "cancelAll": "Cancel All",
+    "clearFinishedScans": "Clear Finished"
+  },
+  "titles": {
+    "cancel": "Cancel",
+    "pause": "Pause",
+    "resume": "Resume",
+    "retry": "Retry",
+    "force": "Force download",
+    "cancelScan": "Cancel scan"
+  },
+  "files": "{{count}} files",
+  "unknownFile": "Unknown",
+  "progress": {
+    "remaining": "{{duration}} left"
+  },
+  "empty": {
+    "withFilter": "No downloads with status \"{{label}}\"",
+    "noQueue": "No downloads in the queue"
+  },
+  "search": {
+    "scanPlaceholder": "Search by server or path...",
+    "hiddenItems": "+{{count}} hidden items — use the search to filter",
+    "noResults": "No results for \"{{query}}\""
+  },
+  "scans": {
+    "empty": "No directory scan in progress",
+    "emptyHint": "Scans are started automatically when browsing directories",
+    "scanning": "{{processed}} / {{total}} files • {{queued}} to download",
+    "completed": "{{total}} files found • {{queued}} to download"
+  },
+  "dialog": {
+    "titles": {
+      "cancel": "Cancel Download",
+      "pause": "Pause Download",
+      "resume": "Resume Download",
+      "retry": "Retry",
+      "force": "Force Download",
+      "cancelAll": "Cancel All Downloads",
+      "clearFinished": "Clear Completed",
+      "retryAllFailed": "Retry All Failed",
+      "cancelScan": "Cancel Scan",
+      "cancelAllScans": "Cancel All Scans",
+      "clearFinishedScans": "Clear Finished Scans",
+      "default": "Confirm Action"
+    },
+    "descriptions": {
+      "cancel": "Are you sure you want to cancel the download of \"{{name}}\"?",
+      "pause": "Are you sure you want to pause the download of \"{{name}}\"?",
+      "resume": "Are you sure you want to resume the download of \"{{name}}\"?",
+      "retry": "Are you sure you want to retry the download of \"{{name}}\"?",
+      "force": "Are you sure you want to force the download of \"{{name}}\"?",
+      "cancelAll": "This will cancel {{count}} pending, in-progress and paused downloads.",
+      "clearFinished": "This will remove all completed, failed, cancelled and skipped downloads from the list.",
+      "retryAllFailed": "This will requeue {{count}} failed downloads to try again.",
+      "cancelScan": "Are you sure you want to cancel the scan of \"{{name}}\"?",
+      "cancelAllScans": "This will cancel all pending and running scans.",
+      "clearFinishedScans": "This will remove all completed, cancelled and failed scans from the list.",
+      "default": "Are you sure you want to perform this action?"
+    }
+  },
+  "toast": {
+    "cancelScanError": "Error cancelling scan",
+    "cancelScansError": "Error cancelling scans",
+    "clearScansError": "Error clearing scans",
+    "cancelError": "Error cancelling download",
+    "cancelAllError": "Error cancelling downloads",
+    "pauseError": "Error pausing download",
+    "resumeError": "Error resuming download",
+    "forceError": "Error forcing download",
+    "retryError": "Error restarting download",
+    "clearedSuccess": "History cleared successfully",
+    "clearError": "Error clearing history",
+    "retryAllError": "Error requeueing downloads"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "execute": "Execute",
+  "presets": "Presets",
+  "history": "History",
+  "result": "Result",
+  "universal": "Universal",
+  "predefinedCommands": "Predefined Commands",
+  "presetsCount": "{{count}} presets",
+  "noPresetsAvailable": "No presets available",
+  "resizeHint": "Drag the bar below to resize",
+  "editorPlaceholder": "Type your SQL query here...\n\nExample:\nSELECT * FROM table WHERE column = 'value'",
+  "rowCount": "{{count}} row(s)",
+  "executedAt": "Executed at: {{date}}",
+  "runQueryHint": "Run a query to see the results",
+  "executionError": "Execution error",
+  "queryHistory": "Query History",
+  "noHistory": "No query in history",
+  "clickToOpenNewTab": "Click to open in a new tab",
+  "export": {
+    "sheetName": "Result"
+  },
+  "toast": {
+    "loadConnectionError": "Error loading connection",
+    "cannotCloseLastTab": "Cannot close the last tab",
+    "enterQuery": "Type a SQL query",
+    "connectionOk": "Connection OK! ({{ms}}ms)",
+    "connectionFailed": "Connection failed: {{error}}",
+    "testError": "Error testing: {{error}}",
+    "presetSelected": "Preset \"{{name}}\" selected",
+    "historyTabCreated": "New tab created with query and result from history",
+    "historyItemRemoved": "Item removed from history",
+    "removeItemError": "Error removing item",
+    "noResultToExport": "No result to export",
+    "exportedCsv": "Exported to CSV",
+    "exportedExcel": "Exported to Excel",
+    "exportedJson": "Exported to JSON"
+  }
+}
