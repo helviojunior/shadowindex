@@ -49,17 +49,41 @@ def _try_click(page, text, exact=False, timeout=2500):
         return False
 
 
+def _content_visible(page):
+    """True se a aba View já renderizou conteúdo (texto ou PDF)."""
+    for sel in ("text=Raw Content", "canvas", ".react-pdf__Page", "text=Página 1"):
+        try:
+            if page.locator(sel).first.is_visible(timeout=400):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    return False
+
+
 def _open_file_view(page, filename):
-    """Expande VOL_1, abre o arquivo e muda para a aba 'View' (conteúdo)."""
+    """Expande VOL_1, abre o arquivo e garante a aba 'View' com o CONTEÚDO.
+
+    Lida com a condição de corrida: no 1º clique a lista de arquivos baixados
+    ainda pode não ter carregado (a aba View só abre quando o arquivo é
+    reconhecido como baixado). Por isso reabre e clica em 'View' até o conteúdo
+    aparecer.
+    """
     _try_click(page, "VOL_1", exact=True)
-    page.wait_for_timeout(600)
-    if not _try_click(page, filename):
-        return False
     page.wait_for_timeout(700)
-    # alterna para a aba de conteúdo (View) para exibir o arquivo
-    _try_click(page, "View", exact=True)
-    page.wait_for_timeout(1200)
-    return True
+
+    for attempt in range(4):
+        if not _try_click(page, filename):
+            return False
+        page.wait_for_timeout(1000)
+        # tenta ir para a aba de conteúdo (pode já estar aberta automaticamente)
+        _try_click(page, "View", exact=True)
+        page.wait_for_timeout(1200)
+        if _content_visible(page):
+            page.wait_for_timeout(600)
+            return True
+        print(f"    (retry {attempt + 1}: conteúdo ainda não visível para {filename})")
+
+    return True  # segue mesmo assim; o screenshot mostrará o que houver
 
 
 def act_server_browse(page):
