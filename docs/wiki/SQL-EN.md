@@ -14,10 +14,21 @@ queries.
 - SQL command **presets** per database type (ready-made queries).
 - **History** of executed queries, with result, execution time and status.
 
+## Connection wizard
+
+When adding a connection, use the **Wizard** mode to fill structured fields
+(host, port, database, username, password and extras) — the *connection string*
+is **assembled automatically on the backend**, in the correct format for the
+chosen database type. A **Manual** mode is also available to paste a ready-made
+string.
+
+![SQL connection wizard](images/sql-wizard.png)
+
 ## How to use
 
-1. Create a **connection** with its type and connection string (you can use a
-   [credential](Credentials-EN) and a [proxy](Proxy-Servers-EN)).
+1. Create a **connection**: pick the **database type** and fill the **Wizard**
+   fields (or paste the string in **Manual** mode). Optionally attach a
+   [credential](Credentials-EN) and a [proxy](Proxy-Servers-EN).
 2. Verify the connection.
 3. Run a query — manually or from a **preset** (e.g. list databases, logins,
    tables).

@@ -106,6 +106,26 @@ def act_ad_browse(page):
     page.wait_for_timeout(600)
 
 
+def act_sql_wizard(page):
+    """Abre o formulário de nova conexão SQL e preenche o assistente (wizard),
+    mostrando a connection string montada no backend."""
+    try:
+        page.get_by_test_id("toggle-add-form-btn").click(timeout=5000)
+        page.wait_for_timeout(500)
+        page.get_by_test_id("db-type-select").click(timeout=4000)
+        page.wait_for_timeout(300)
+        page.get_by_role("option", name="Microsoft SQL Server").click(timeout=4000)
+        page.wait_for_timeout(300)
+        page.get_by_test_id("db-connection-name-input").fill("SQLPROD01 - Faturamento")
+        page.get_by_test_id("wiz-host").fill("10.20.53.62")
+        page.get_by_test_id("wiz-database").fill("faturamento")
+        page.get_by_test_id("wiz-username").fill("app_reader")
+        page.get_by_test_id("wiz-password").fill("S3cr3t!2026")
+        page.wait_for_timeout(1400)  # espera o build no backend atualizar o preview
+    except Exception as exc:  # noqa: BLE001
+        print(f"    (aviso: interação do wizard SQL falhou: {exc})")
+
+
 def _api(base_url: str, path: str):
     url = base_url.rstrip("/") + "/api" + path
     req = urllib.request.Request(url, headers={"User-Agent": "shadowindex-shots"})
@@ -140,6 +160,10 @@ def resolve_pages(base_url: str):
                           f"Árvore do domínio {d['name']}", act_ad_browse))
     except Exception as exc:  # noqa: BLE001
         print(f"(aviso: não foi possível resolver domínio AD: {exc})")
+
+    # Assistente (wizard) de conexão SQL
+    pages.append(("12-sql-wizard", "/db-connections",
+                  "SQL — assistente de conexão (wizard)", act_sql_wizard))
 
     # normaliza para 4-tuplas (slug, rota, desc, action|None)
     norm = [(p + (None,))[:4] for p in pages]

@@ -14,10 +14,21 @@ coleta de dados.
 - **Presets** de comandos SQL por tipo de banco (consultas prontas).
 - **Histórico** de queries executadas, com resultado, tempo de execução e status.
 
+## Assistente de conexão (wizard)
+
+Ao adicionar uma conexão, use o modo **Assistente** para preencher campos
+estruturados (host, porta, database, usuário, senha e extras) — a
+*connection string* é **montada automaticamente no backend**, no formato
+correto para o tipo de banco escolhido. Há também o modo **Manual** para colar
+uma string pronta.
+
+![Assistente de conexão SQL](images/sql-wizard.png)
+
 ## Como usar
 
-1. Crie uma **conexão** informando o tipo e a *connection string* (pode usar uma
-   [credencial](Credenciais-PT) e um [proxy](Proxy-Servers-PT)).
+1. Crie uma **conexão**: escolha o **tipo de banco** e preencha os campos no
+   **Assistente** (ou cole a string no modo **Manual**). Opcionalmente associe
+   uma [credencial](Credenciais-PT) e um [proxy](Proxy-Servers-PT).
 2. Verifique a conexão.
 3. Execute uma query — manualmente ou a partir de um **preset** (ex.: listar
    bancos, usuários/logins, tabelas).
