@@ -58,7 +58,8 @@ services:
   opensearch-init:
     image: busybox:1.36
     container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-opensearch-init-dev
-    command: ["sh", "-c", "mkdir -p /data && chown -R 1000:1000 /data"]
+    privileged: true
+    command: ["sh", "-c", "sysctl -w vm.max_map_count=262144 || true; mkdir -p /data && chown -R 1000:1000 /data"]
     volumes:
       - ./shadowindex_data/opensearch:/data
     networks:
@@ -76,7 +77,7 @@ services:
       discovery.type: single-node
       DISABLE_SECURITY_PLUGIN: "true"
       DISABLE_INSTALL_DEMO_CONFIG: "true"
-      bootstrap.memory_lock: "true"
+      bootstrap.memory_lock: "false"
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
     ulimits:
       memlock:

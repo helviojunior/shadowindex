@@ -41,12 +41,15 @@ services:
     networks:
       - shadowindex-net
 
-  # Ajusta o ownership do bind-mount do OpenSearch (roda como uid 1000 e não faz
-  # chown do data dir). Roda uma vez e sai; o opensearch espera sua conclusão.
+  # Prepara o host p/ o OpenSearch (roda uma vez e sai; o opensearch espera):
+  #  1) vm.max_map_count>=262144 (bootstrap check obrigatório no Linux) — precisa
+  #     de privileged p/ escrever o sysctl do host; '|| true' não quebra no macOS;
+  #  2) ownership do bind-mount p/ uid 1000 (o opensearch não faz chown sozinho).
   opensearch-init:
     image: busybox:1.36
     container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-opensearch-init
-    command: ["sh", "-c", "mkdir -p /data && chown -R 1000:1000 /data"]
+    privileged: true
+    command: ["sh", "-c", "sysctl -w vm.max_map_count=262144 || true; mkdir -p /data && chown -R 1000:1000 /data"]
     volumes:
       - ./shadowindex_data/opensearch:/data
     networks:
@@ -64,7 +67,9 @@ services:
       discovery.type: single-node
       DISABLE_SECURITY_PLUGIN: "true"
       DISABLE_INSTALL_DEMO_CONFIG: "true"
-      bootstrap.memory_lock: "true"
+      # memory_lock desligado: evita o bootstrap check de memlock (que falha em
+      # hosts sem ulimit de memlock). Trade-off de perf desprezível p/ single-node.
+      bootstrap.memory_lock: "false"
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
     ulimits:
       memlock:
