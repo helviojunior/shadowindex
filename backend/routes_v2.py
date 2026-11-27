@@ -29,8 +29,8 @@ import hashlib
 import os
 
 from database import (
-    get_db, get_db_readonly, Server, ServerShare, ServerItem, DownloadedFile, FileVersion, 
-    DownloadJob, PfxPassword, PluginInstance, GitleaksFinding
+    get_db, get_db_readonly, Server, ServerShare, ServerItem, DownloadedFile, FileVersion,
+    DownloadJob, PfxPassword, PluginInstance, GitleaksFinding, GitRepo, GitRepoFile
 )
 
 logger = logging.getLogger(__name__)
@@ -749,6 +749,40 @@ async def global_search(
                     "navigate_to": f"/leaks#leak_{finding.id}",
                 })
 
+        elif tab == "git":
+            # Arquivos de repositórios Git: match no caminho OU no conteúdo indexado.
+            git_where = or_(
+                GitRepoFile.rel_path.ilike(f"%{q}%"),
+                GitRepoFile.content.ilike(f"%{q}%"),
+            )
+            if ext_filter:
+                git_where = git_where & GitRepoFile.rel_path.ilike(f"%{ext_filter}")
+            git_count_q = await db.execute(
+                select(func.count(GitRepoFile.id)).where(git_where)
+            )
+            total = git_count_q.scalar() or 0
+            git_q = await db.execute(
+                select(GitRepoFile, GitRepo)
+                .join(GitRepo, GitRepo.id == GitRepoFile.repo_id)
+                .where(git_where)
+                .order_by(GitRepoFile.id)
+                .offset(offset).limit(limit)
+            )
+            for gf, grepo in git_q.all():
+                fname = gf.name or (gf.rel_path or "").split("/")[-1]
+                results.append({
+                    "type": "git",
+                    "id": gf.id,
+                    "title": fname,
+                    "subtitle": f"{grepo.full_name} — {gf.rel_path}",
+                    "path": gf.rel_path,
+                    "repo_full_name": grepo.full_name,
+                    "repo_guid": grepo.guid,
+                    "repo_language": grepo.language,
+                    "indexed": bool(gf.indexed),
+                    "navigate_to": f"/git/{grepo.guid}",
+                })
+
         # Counts (only on first page)
         counts = None
         if offset == 0:
@@ -796,10 +830,20 @@ async def global_search(
                 )
                 return r.scalar() or 0
 
-            c_srv, c_items, c_leaks = await asyncio.gather(
-                count_servers(), count_items(), count_leaks()
+            async def count_git():
+                git_where = or_(
+                    GitRepoFile.rel_path.ilike(f"%{q}%"),
+                    GitRepoFile.content.ilike(f"%{q}%"),
+                )
+                if ext_filter:
+                    git_where = git_where & GitRepoFile.rel_path.ilike(f"%{ext_filter}")
+                r = await db.execute(select(func.count(GitRepoFile.id)).where(git_where))
+                return r.scalar() or 0
+
+            c_srv, c_items, c_leaks, c_git = await asyncio.gather(
+                count_servers(), count_items(), count_leaks(), count_git()
             )
-            counts = {"servers": c_srv, "items": c_items, "leaks": c_leaks}
+            counts = {"servers": c_srv, "items": c_items, "leaks": c_leaks, "git": c_git}
 
         return {
             "query": q,

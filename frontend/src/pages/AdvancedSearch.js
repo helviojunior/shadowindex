@@ -24,6 +24,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  GitBranch,
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
@@ -31,6 +32,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const TABS = [
   { key: 'items',   label: 'Arquivos',     icon: FileText, color: 'green',  activeClass: 'text-green-500',  barClass: 'bg-green-500' },
   { key: 'servers', label: 'Servidores',   icon: Server,   color: 'blue',   activeClass: 'text-blue-500',   barClass: 'bg-blue-500' },
+  { key: 'git',     label: 'Git',          icon: GitBranch, color: 'purple', activeClass: 'text-purple-500', barClass: 'bg-purple-500' },
   { key: 'leaks',   label: 'Leaks',        icon: Shield,   color: 'red',    activeClass: 'text-red-500',    barClass: 'bg-red-500' },
 ];
 
@@ -81,7 +83,7 @@ export default function AdvancedSearch() {
   const [query, setQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [results, setResults] = useState([]);
-  const [counts, setCounts] = useState({ servers: 0, items: 0, leaks: 0 });
+  const [counts, setCounts] = useState({ servers: 0, items: 0, leaks: 0, git: 0 });
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -330,6 +332,22 @@ export default function AdvancedSearch() {
                   </th>
                 </>
               )}
+              {activeTab === 'git' && (
+                <>
+                  <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('title')}>
+                    <span className="flex items-center gap-1">{t('common:fields.name')} <SortIcon columnKey="title" /></span>
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('repo_full_name')}>
+                    <span className="flex items-center gap-1">{t('columns.repository')} <SortIcon columnKey="repo_full_name" /></span>
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('path')}>
+                    <span className="flex items-center gap-1">{t('columns.path')} <SortIcon columnKey="path" /></span>
+                  </th>
+                  <th className="px-4 py-3 text-center cursor-pointer select-none hover:text-foreground" onClick={() => handleSort('indexed')}>
+                    <span className="flex items-center justify-center gap-1">{t('columns.indexed')} <SortIcon columnKey="indexed" /></span>
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -402,6 +420,28 @@ export default function AdvancedSearch() {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">
                           {r.server_name} {r.server_ip && <span className="text-muted-foreground/50">({r.server_ip})</span>}
+                        </td>
+                      </>
+                    )}
+                    {activeTab === 'git' && (
+                      <>
+                        <td className="px-4 py-3 font-medium">
+                          <div className="flex items-center gap-2">
+                            <FileText size={14} className="text-purple-400 flex-shrink-0" />
+                            <span className="truncate max-w-[220px]" title={r.title}>{r.title}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          <span className="inline-flex items-center gap-1 text-purple-400">
+                            <GitBranch size={12} className="flex-shrink-0" />
+                            <span className="truncate max-w-[200px]" title={r.repo_full_name}>{r.repo_full_name}</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          <span className="font-mono truncate max-w-[320px] block" title={r.path}>{r.path}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {r.indexed && <Eye size={14} className="text-emerald-400 mx-auto" title={t('columns.indexed')} />}
                         </td>
                       </>
                     )}

@@ -11,7 +11,8 @@
   "tabs": {
     "items": "Files",
     "servers": "Servers",
-    "leaks": "Leaks"
+    "leaks": "Leaks",
+    "git": "Git"
   },
   "fields": {
     "search": "Search",
@@ -30,7 +31,9 @@
     "ocr": "OCR",
     "dl": "DL",
     "file": "File",
-    "rule": "Rule"
+    "rule": "Rule",
+    "repository": "Repository",
+    "indexed": "Indexed"
   },
   "badges": {
     "dir": "Dir",
