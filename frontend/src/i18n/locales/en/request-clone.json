@@ -1,0 +1,39 @@
+{
+  "title": "Request Clone",
+  "subtitle": "On-demand clone of any Git repository by URL.",
+  "card": {
+    "title": "Clone repository by URL",
+    "description": "Enter the repository URL, validate access and queue the clone. The job is enqueued with higher priority than the others already in the queue."
+  },
+  "url": {
+    "label": "Repository URL",
+    "placeholder": "https://github.com/owner/repo  ·  git@host:group/repo.git",
+    "hint": "Accepts any host (GitHub, GitLab, Bitbucket, self-hosted) via https or git@host:path."
+  },
+  "auth": {
+    "label": "Clone mode",
+    "anonymous": "Anonymous",
+    "authenticated": "Authenticated (token)",
+    "tokenPlaceholder": "Select a token",
+    "noTokens": "No tokens registered. Add a token-type credential."
+  },
+  "actions": {
+    "test": "Test access",
+    "enqueue": "Enqueue clone",
+    "highPriority": "High priority"
+  },
+  "result": {
+    "ok": "Access confirmed",
+    "fail": "Access failed",
+    "repo": "Repository",
+    "defaultBranch": "Default branch",
+    "refs": "References"
+  },
+  "toast": {
+    "loadTokensError": "Failed to load tokens",
+    "testOk": "Repository access confirmed",
+    "testFail": "Could not access the repository",
+    "enqueued": "Clone enqueued with priority {{priority}}",
+    "reprioritized": "A clone was already queued for this repository — reprioritized to {{priority}}"
+  }
+}

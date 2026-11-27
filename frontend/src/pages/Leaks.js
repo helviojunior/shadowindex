@@ -1198,8 +1198,10 @@ const Leaks = () => {
                                   size="sm"
                                   onClick={() => {
                                     const relPath = finding.server_path || finding.File || finding.file_name;
-                                    const q = relPath ? `?file=${encodeURIComponent(relPath)}&from=/leaks` : '?from=/leaks';
-                                    window.open(`/git/${finding.git_repo_guid}${q}`, '_blank');
+                                    const params = new URLSearchParams({ from: '/leaks' });
+                                    if (relPath) params.set('file', relPath);
+                                    if (finding.commit_hash) params.set('commit', finding.commit_hash);
+                                    window.open(`/git/${finding.git_repo_guid}?${params.toString()}`, '_blank');
                                   }}
                                   title={t('actions.openFile')}
                                 >
@@ -1338,8 +1340,17 @@ const Leaks = () => {
                         <span className="font-mono text-xs text-muted-foreground">{directoryPath}</span>
                       </>
                     )}
+                    {selectedFinding.commit_hash && (
+                      <>
+                        <span className="text-muted-foreground">Commit</span>
+                        <span className="font-mono text-xs text-amber-400 break-all" title={selectedFinding.commit_hash}>
+                          {String(selectedFinding.commit_hash).slice(0, 10)}
+                          {selectedFinding.commit_author ? ` · ${selectedFinding.commit_author}` : ''}
+                        </span>
+                      </>
+                    )}
                   </div>
-                  
+
                   {/* Botão Abrir Arquivo no modal - mostra se tem extracted_file_id OU path */}
                   {(selectedFinding.extracted_file_id || (selectedFinding.server_id && fullPath)) && (
                     <Button
@@ -1370,8 +1381,10 @@ const Leaks = () => {
                       className="w-full mt-2"
                       onClick={() => {
                         const relPath = selectedFinding.server_path || selectedFinding.File || selectedFinding.file_name;
-                        const q = relPath ? `?file=${encodeURIComponent(relPath)}&from=/leaks` : '?from=/leaks';
-                        window.open(`/git/${selectedFinding.git_repo_guid}${q}`, '_blank');
+                        const params = new URLSearchParams({ from: '/leaks' });
+                        if (relPath) params.set('file', relPath);
+                        if (selectedFinding.commit_hash) params.set('commit', selectedFinding.commit_hash);
+                        window.open(`/git/${selectedFinding.git_repo_guid}?${params.toString()}`, '_blank');
                       }}
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />

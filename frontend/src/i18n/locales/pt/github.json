@@ -58,7 +58,9 @@
     "loadError": "Falha ao carregar repositórios",
     "loadRepoError": "Falha ao carregar repositório",
     "loadFileError": "Falha ao carregar arquivo",
-    "searchError": "Falha na busca"
+    "searchError": "Falha na busca",
+    "reindexQueued": "Reprocessamento enfileirado com prioridade alta",
+    "reindexReclone": "Clone completo reenfileirado (sem histórico em disco) com prioridade alta"
   },
   "tabs": {
     "objects": "Objetos",
@@ -84,7 +86,16 @@
     "sha1": "Hash SHA1",
     "indexed": "Indexado",
     "yes": "Sim",
-    "no": "Não"
+    "no": "Não",
+    "commitSection": "Commit",
+    "commit": "Commit",
+    "viewCommit": "Ver commit no repositório",
+    "branch": "Branch",
+    "author": "Autor",
+    "commitDate": "Data do commit",
+    "changeType": "Tipo de alteração",
+    "isHead": "Versão atual (HEAD)",
+    "versions": "Versões"
   },
   "actions": {
     "open": "Abrir",
@@ -114,5 +125,26 @@
     "cancel": "Cancelar",
     "success": "Leak registrado com sucesso",
     "error": "Falha ao registrar leak"
+  },
+  "versions": {
+    "label": "Versão:",
+    "count": "versões"
+  },
+  "history": {
+    "label": "Histórico",
+    "toggleTitle": "Incluir arquivos de commits antigos/removidos",
+    "on": "Histórico",
+    "off": "Só HEAD",
+    "commits": "{{count}} commits",
+    "indexedOn": "Histórico de commits indexado",
+    "indexedOff": "Apenas o HEAD foi indexado (clone raso ou indexação de histórico desabilitada)",
+    "reindex": "Reindexar",
+    "reindexTitle": "Reprocessar este repositório para (re)indexar o histórico de commits"
+  },
+  "changeType": {
+    "added": "Adicionado",
+    "modified": "Modificado",
+    "deleted": "Removido",
+    "renamed": "Renomeado"
   }
 }

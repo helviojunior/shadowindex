@@ -13,6 +13,7 @@ import shutil
 import hashlib
 import asyncio
 import logging
+import tempfile
 import mimetypes
 import traceback
 from datetime import datetime, timezone
@@ -49,6 +50,40 @@ OCR_MAX_BYTES = 25 * 1024 * 1024  # 25MB cap p/ docs enviados ao Tika
 WATCHDOG_INTERVAL = 30          # segundos entre verificações (NÃO é um timeout)
 MAX_JOB_SECONDS_DEFAULT = 7200  # backstop absoluto (2h) — setting: git_clone_job_timeout_min (0 desativa)
 STALL_SECONDS_DEFAULT = 600     # sem progresso (bytes/arquivos) por este tempo => travado (setting: git_clone_stall_min)
+
+
+def _inject_token(url: str, token: str) -> str:
+    """Injeta um token numa URL https de clone, de forma host-aware.
+    GitHub usa x-access-token, GitLab usa oauth2, demais hosts usam o token como
+    usuário. URLs não-https são retornadas inalteradas."""
+    if not token:
+        return url
+    try:
+        from urllib.parse import urlparse, urlunparse
+        p = urlparse(url)
+        if p.scheme != "https" or not p.hostname:
+            return url
+        host = p.hostname.lower()
+        if "github" in host:
+            userinfo = f"x-access-token:{token}"
+        elif "gitlab" in host:
+            userinfo = f"oauth2:{token}"
+        else:
+            userinfo = token
+        netloc = f"{userinfo}@{p.hostname}" + (f":{p.port}" if p.port else "")
+        return urlunparse((p.scheme, netloc, p.path, p.params, p.query, p.fragment))
+    except Exception:  # noqa: BLE001
+        return url
+
+
+def _parse_leak_date(s) -> Optional[datetime]:
+    """Converte a data ISO8601 do gitleaks (ex.: '2021-01-01T00:00:00Z') em datetime."""
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _dir_size(path: str) -> int:
@@ -435,14 +470,23 @@ class GitCloneWorker:
                 job.status = "processing"
                 job.started_at = datetime.now(timezone.utc)
                 job.current_step = "gitleaks"
+
+                # Histórico disponível? (indexação habilitada + clone completo com .git)
+                history_enabled = await self._git_index_history_enabled(db)
+                has_history = (
+                    history_enabled
+                    and os.path.isdir(os.path.join(clone_dir, ".git"))
+                    and not await self._is_shallow(clone_dir)
+                )
+                repo.history_indexed = bool(has_history)
                 await db.commit()
 
                 if await self._is_cancelled(db, job_id):
                     return
 
-                # 1) GITLEAKS
+                # 1) GITLEAKS (modo 'git' varre todo o histórico; 'dir' só o working tree)
                 try:
-                    leaks = await self._run_gitleaks(db, repo, clone_dir)
+                    leaks = await self._run_gitleaks(db, repo, clone_dir, has_history)
                     job.leaks_found = leaks
                     repo.leaks_count = leaks
                     repo.scan_status = "completed"
@@ -459,7 +503,7 @@ class GitCloneWorker:
                 repo.ocr_status = "running"
                 await db.commit()
                 try:
-                    total, indexed = await self._extract_and_index(db, job, repo, clone_dir)
+                    total, indexed = await self._extract_and_index(db, job, repo, clone_dir, has_history)
                     job.total_files = total
                     job.processed_files = total
                     repo.files_count = total
@@ -540,25 +584,32 @@ class GitCloneWorker:
         os.makedirs(os.path.dirname(clone_dir), exist_ok=True)
 
         full_name = repo.full_name
-        url = f"https://github.com/{full_name}.git"
+        # URL base: funciona p/ QUALQUER host (github, gitlab, bitbucket, self-hosted),
+        # não só github.com. Prioriza o clone_url do repo / a URL do job.
+        base_url = repo.clone_url or job.repo_url or f"https://github.com/{full_name}.git"
+        url = base_url
         if job.clone_auth == "authenticated" and job.credential_id:
             cred = (await db.execute(
                 select(Credential).where(Credential.id == job.credential_id)
             )).scalar_one_or_none()
             token = (cred.token if cred else None) or ""
             if token:
-                url = f"https://x-access-token:{token}@github.com/{full_name}.git"
+                url = _inject_token(base_url, token)
 
         # Estratégia: clone COMPLETO por padrão; raso (--depth) só para repositórios
         # grandes (pelo size_kb da API do GitHub) ou se o completo estourar o timeout.
+        # Com indexação de histórico habilitada, SEMPRE tenta completo primeiro
+        # (o raso descartaria o histórico); o raso fica apenas como fallback de timeout.
         shallow_depth, is_large = await self._resolve_shallow_depth(db, job, repo)
+        history_enabled = await self._git_index_history_enabled(db)
         env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true"}
 
         # 1ª tentativa: completa (a menos que o repo já seja sabidamente grande,
         # ou que o job force uma profundidade explícita).
-        attempt_shallow = is_large
+        forced_depth = job.depth is not None and int(job.depth) > 0
+        attempt_shallow = is_large and not (history_enabled and not forced_depth)
         ok, err, timed_out = await self._run_clone(
-            url, clone_dir, full_name, env, shallow_depth if attempt_shallow else None,
+            url, clone_dir, env, shallow_depth if attempt_shallow else None, base_url,
         )
         if ok:
             repo.local_path = repo.guid
@@ -568,12 +619,12 @@ class GitCloneWorker:
         # Fallback: se a tentativa COMPLETA estourou o timeout, repete em modo raso.
         if timed_out and not attempt_shallow and shallow_depth and shallow_depth > 0:
             logger.warning(
-                f"[git {full_name}] clone completo excedeu o timeout; refazendo raso (depth={shallow_depth})"
+                f"[git {full_name}] clone completo excedeu o timeout; refazendo raso (depth={shallow_depth}) — sem histórico"
             )
             if os.path.isdir(clone_dir):
                 shutil.rmtree(clone_dir, ignore_errors=True)
             ok, err, _ = await self._run_clone(
-                url, clone_dir, full_name, env, shallow_depth,
+                url, clone_dir, env, shallow_depth, base_url,
             )
             if ok:
                 repo.local_path = repo.guid
@@ -582,8 +633,9 @@ class GitCloneWorker:
 
         return False, err
 
-    async def _run_clone(self, url, clone_dir, full_name, env, depth) -> Tuple[bool, Optional[str], bool]:
-        """Executa `git clone`. depth>0 => clone raso. Retorna (ok, err, timed_out)."""
+    async def _run_clone(self, url, clone_dir, env, depth, safe_url=None) -> Tuple[bool, Optional[str], bool]:
+        """Executa `git clone`. depth>0 => clone raso. Retorna (ok, err, timed_out).
+        `safe_url` (sem token) é usada para mascarar a URL em mensagens de erro."""
         cmd = ["git", "clone", "--quiet"]
         if depth and int(depth) > 0:
             cmd += ["--depth", str(int(depth)), "--single-branch", "--no-tags"]
@@ -596,13 +648,57 @@ class GitCloneWorker:
             if proc.returncode != 0:
                 # Não logar a URL (pode conter token)
                 msg = (stderr.decode("utf-8", "replace") if stderr else "").strip()
-                msg = msg.replace(url, f"https://github.com/{full_name}.git")
+                if safe_url:
+                    msg = msg.replace(url, safe_url)
                 return False, msg or f"git exited {proc.returncode}", False
             return True, None, False
         except asyncio.TimeoutError:
             return False, "clone timed out (1800s)", True
         except Exception as e:  # noqa: BLE001
             return False, str(e), False
+
+    async def _git_index_history_enabled(self, db) -> bool:
+        from database import AppSettings
+        try:
+            val = (await db.execute(
+                select(AppSettings.value).where(AppSettings.key == "git_index_history")
+            )).scalar()
+            if val is None:
+                return True
+            return str(val).strip().lower() in ("1", "true", "yes", "on")
+        except Exception:  # noqa: BLE001
+            return True
+
+    async def _history_limits(self, db) -> Tuple[int, int]:
+        """(max_commits, max_versions_per_file) — 0 = ilimitado."""
+        mc = await self._get_setting_int_zero(db, "git_history_max_commits", 5000)
+        mv = await self._get_setting_int_zero(db, "git_history_max_versions_per_file", 100)
+        return mc, mv
+
+    async def _get_setting_int_zero(self, db, key: str, default: int) -> int:
+        """Lê um inteiro >= 0 (0 permitido, significa 'ilimitado')."""
+        from database import AppSettings
+        try:
+            val = (await db.execute(
+                select(AppSettings.value).where(AppSettings.key == key)
+            )).scalar()
+            return max(0, int(val)) if val not in (None, "") else default
+        except Exception:  # noqa: BLE001
+            return default
+
+    async def _is_shallow(self, clone_dir) -> bool:
+        """True se o clone é raso (sem histórico completo)."""
+        if os.path.exists(os.path.join(clone_dir, ".git", "shallow")):
+            return True
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "git", "-C", clone_dir, "rev-parse", "--is-shallow-repository",
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            out, _ = await proc.communicate()
+            return out.decode().strip() == "true"
+        except Exception:  # noqa: BLE001
+            return False
 
     async def _resolve_shallow_depth(self, db, job, repo) -> Tuple[int, bool]:
         """Retorna (depth_para_raso, repo_eh_grande).
@@ -648,15 +744,18 @@ class GitCloneWorker:
             return None
 
     # ------------------------------------------------------------------
-    async def _run_gitleaks(self, db, repo, clone_dir) -> int:
+    async def _run_gitleaks(self, db, repo, clone_dir, has_history: bool = False) -> int:
         from database import GitleaksFinding
 
         gitleaks_bin = shutil.which("gitleaks") or "/usr/sbin/gitleaks"
         report_path = os.path.join(
             GITLEAKS_OUTPUT_DIR, f"git_{repo.guid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         )
+        # 'git' varre TODO o histórico de commits (segredos em commits antigos/removidos);
+        # 'dir' varre apenas a árvore de trabalho (fallback p/ clone raso).
+        mode = "git" if has_history else "dir"
         cmd = [
-            gitleaks_bin, "dir", clone_dir,
+            gitleaks_bin, mode, clone_dir,
             "--report-format", "json", "--report-path", report_path,
             "--config", GITLEAKS_CONFIG_PATH,
         ]
@@ -680,7 +779,9 @@ class GitCloneWorker:
         for fd in findings:
             abs_file = fd.get("File", "") or ""
             rel = os.path.relpath(abs_file, clone_dir) if abs_file.startswith(clone_dir) else abs_file
-            raw_fp = fd.get("Fingerprint") or f"{rel}:{fd.get('RuleID')}:{fd.get('StartLine')}"
+            commit_hash = (fd.get("Commit") or "") or None
+            # No modo 'git' o Fingerprint já inclui o commit; no 'dir' não.
+            raw_fp = fd.get("Fingerprint") or f"{commit_hash or ''}:{rel}:{fd.get('RuleID')}:{fd.get('StartLine')}"
             fingerprint = f"git:{repo.guid}:{raw_fp}"
             exists = (await db.execute(
                 select(GitleaksFinding.id).where(GitleaksFinding.fingerprint == fingerprint)
@@ -707,6 +808,9 @@ class GitCloneWorker:
                 server_path=rel,
                 git_repo_id=repo.id,
                 git_repo_guid=repo.guid,
+                commit_hash=commit_hash,
+                commit_author=(fd.get("Author") or fd.get("Email") or None),
+                commit_date=_parse_leak_date(fd.get("Date")),
                 scanned_at=datetime.now(timezone.utc),
                 raw_data=fd,
             )
@@ -727,14 +831,11 @@ class GitCloneWorker:
         except Exception:  # noqa: BLE001
             return 2 * 1024 * 1024
 
-    async def _extract_and_index(self, db, job, repo, clone_dir) -> Tuple[int, int]:
+    async def _extract_and_index(self, db, job, repo, clone_dir, has_history: bool = False) -> Tuple[int, int]:
         from database import GitRepoFile
         import opensearch_client
 
         max_text_bytes = await self._get_index_max_bytes(db)
-        total = 0
-        index_batch: List[dict] = []
-        indexed_total = 0
 
         # Re-processamento idempotente: remove arquivos/índice de uma execução
         # anterior deste repo (ex.: job reenfileirado pelo watchdog/reboot) para
@@ -746,12 +847,63 @@ class GitCloneWorker:
         except Exception:  # noqa: BLE001
             pass
 
-        async def flush_index():
-            nonlocal index_batch, indexed_total
-            if index_batch:
-                n = await asyncio.to_thread(opensearch_client.bulk_index, list(index_batch))
-                indexed_total += n
-                index_batch = []
+        if has_history:
+            try:
+                return await self._index_history(db, job, repo, clone_dir, max_text_bytes)
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    f"[git {repo.full_name}] falha ao indexar histórico ({e}); "
+                    f"caindo para indexação do HEAD\n{traceback.format_exc()}"
+                )
+                # Limpa parcial e cai para o HEAD snapshot
+                await db.execute(delete(GitRepoFile).where(GitRepoFile.repo_id == repo.id))
+                await db.commit()
+                try:
+                    await asyncio.to_thread(opensearch_client.delete_repo, repo.guid)
+                except Exception:  # noqa: BLE001
+                    pass
+                repo.history_indexed = False
+
+        return await self._index_head_snapshot(db, job, repo, clone_dir, max_text_bytes)
+
+    @staticmethod
+    def _new_idx_ctx() -> dict:
+        """Estado de indexação POR JOB (o worker é singleton e roda vários jobs
+        em paralelo, então este estado NÃO pode viver em self)."""
+        return {"total": 0, "batch": [], "indexed": 0}
+
+    async def _flush_index(self, ctx):
+        import opensearch_client
+        if ctx["batch"]:
+            n = await asyncio.to_thread(opensearch_client.bulk_index, list(ctx["batch"]))
+            ctx["indexed"] += n
+            ctx["batch"] = []
+
+    def _queue_index_doc(self, ctx, repo, gf, rel, name, ext, mimetype, size, content, extra=None):
+        doc = {
+            "_id": f"{repo.guid}:{gf.id}",
+            "repo_id": repo.id,
+            "repo_guid": repo.guid,
+            "repo_full_name": repo.full_name,
+            "file_id": gf.id,
+            "rel_path": rel,
+            "name": name,
+            "extension": ext or None,
+            "mimetype": mimetype,
+            "size": size,
+            "content": content,
+        }
+        if extra:
+            doc.update(extra)
+        ctx["batch"].append(doc)
+
+    # ------------------------------------------------------------------
+    # Indexação do HEAD (working tree) — usada no modo raso/fallback.
+    # ------------------------------------------------------------------
+    async def _index_head_snapshot(self, db, job, repo, clone_dir, max_text_bytes) -> Tuple[int, int]:
+        from database import GitRepoFile
+        head_commit = await self._head_commit_info(clone_dir)
+        ctx = self._new_idx_ctx()
 
         for root, dirs, files in os.walk(clone_dir):
             if ".git" in dirs:
@@ -776,41 +928,151 @@ class GitCloneWorker:
                     extension=ext or None, size=size, sha1=sha1, mimetype=mimetype,
                     is_binary=is_binary, content=content,
                     content_extracted=bool(content), content_error=cerr,
+                    is_head=True,
+                    commit_hash=(head_commit or {}).get("hash"),
+                    commit_short=(head_commit or {}).get("short"),
+                    branch=repo.default_branch,
+                    author=(head_commit or {}).get("author"),
+                    author_email=(head_commit or {}).get("email"),
+                    commit_date=(head_commit or {}).get("date"),
+                    change_type="M",
                 )
                 db.add(gf)
-                await db.flush()  # obtém gf.id
-                total += 1
+                await db.flush()
+                ctx["total"] += 1
 
                 if content:
                     gf.indexed = True
                     gf.indexed_at = datetime.now(timezone.utc)
-                    index_batch.append({
-                        "_id": f"{repo.guid}:{gf.id}",
-                        "repo_id": repo.id,
-                        "repo_guid": repo.guid,
-                        "repo_full_name": repo.full_name,
-                        "file_id": gf.id,
-                        "rel_path": rel,
-                        "name": fname,
-                        "extension": ext or None,
-                        "mimetype": mimetype,
-                        "size": size,
-                        "content": content,
-                    })
+                    self._queue_index_doc(
+                        ctx, repo, gf, rel, fname, ext, mimetype, size, content,
+                        extra={
+                            "is_head": True,
+                            "commit_hash": (head_commit or {}).get("hash"),
+                            "branch": repo.default_branch,
+                            "change_type": "M",
+                        },
+                    )
 
-                if total % 200 == 0:
-                    # Heartbeat de progresso: a UI mostra os arquivos subindo em vez
-                    # de 0/0, e dá um sinal de progresso adicional ao watchdog.
-                    job.processed_files = total
-                    job.total_files = total
+                if ctx["total"] % 200 == 0:
+                    job.processed_files = ctx["total"]
+                    job.total_files = ctx["total"]
                     await db.commit()
-                    await flush_index()
+                    await self._flush_index(ctx)
 
-        job.processed_files = total
-        job.total_files = total
+        job.processed_files = ctx["total"]
+        job.total_files = ctx["total"]
         await db.commit()
-        await flush_index()
-        return total, indexed_total
+        await self._flush_index(ctx)
+        return ctx["total"], ctx["indexed"]
+
+    # ------------------------------------------------------------------
+    # Indexação do HISTÓRICO completo (todas as branches/commits) — filecrawler-style.
+    # ------------------------------------------------------------------
+    async def _index_history(self, db, job, repo, clone_dir, max_text_bytes) -> Tuple[int, int]:
+        from database import GitRepoFile
+        from git_history import GitHistoryReader
+
+        max_commits, max_versions = await self._history_limits(db)
+        ctx = self._new_idx_ctx()
+
+        reader = await asyncio.to_thread(GitHistoryReader, clone_dir)
+        try:
+            versions, meta = await asyncio.to_thread(
+                reader.collect, max_commits, max_versions,
+            )
+            repo.commits_count = meta.get("commits_count")
+            repo.branches_count = meta.get("branches_count")
+            logger.info(
+                f"[git {repo.full_name}] histórico: {len(versions)} versões de arquivo em "
+                f"{meta.get('commits_count')} commits / {meta.get('branches_count')} branches"
+            )
+
+            for v in versions:
+                mimetype = mimetypes.guess_type(v.name)[0]
+                data = None
+                content = None
+                is_binary = False
+                cerr = None
+                sha1 = None
+
+                if v.extension in SKIP_BINARY_EXTS:
+                    is_binary = True
+                else:
+                    data = await asyncio.to_thread(reader.read_blob, v.blob_sha)
+                    if data is None:
+                        cerr = "blob_unreadable"
+                    else:
+                        sha1 = hashlib.sha1(data).hexdigest()
+                        content, is_binary, cerr = await self._extract_text_bytes(
+                            v.name, v.extension, data, max_text_bytes,
+                        )
+
+                gf = GitRepoFile(
+                    repo_id=repo.id, repo_guid=repo.guid, rel_path=v.rel_path, name=v.name,
+                    extension=v.extension, size=v.size, sha1=sha1, mimetype=mimetype,
+                    is_binary=is_binary, content=content,
+                    content_extracted=bool(content), content_error=cerr,
+                    blob_sha=v.blob_sha,
+                    commit_hash=v.commit_hash, commit_short=v.commit_short,
+                    branch=v.branch, author=v.author, author_email=v.author_email,
+                    commit_date=v.commit_date, change_type=v.change_type, is_head=v.is_head,
+                )
+                db.add(gf)
+                await db.flush()
+                ctx["total"] += 1
+
+                if content:
+                    gf.indexed = True
+                    gf.indexed_at = datetime.now(timezone.utc)
+                    self._queue_index_doc(
+                        ctx, repo, gf, v.rel_path, v.name, v.extension, mimetype, v.size, content,
+                        extra={
+                            "is_head": v.is_head,
+                            "commit_hash": v.commit_hash,
+                            "branch": v.branch,
+                            "author": v.author,
+                            "commit_date": v.commit_date.isoformat() if v.commit_date else None,
+                            "change_type": v.change_type,
+                            "blob_sha": v.blob_sha,
+                        },
+                    )
+
+                if ctx["total"] % 200 == 0:
+                    job.processed_files = ctx["total"]
+                    job.total_files = ctx["total"]
+                    await db.commit()
+                    await self._flush_index(ctx)
+        finally:
+            await asyncio.to_thread(reader.close)
+
+        job.processed_files = ctx["total"]
+        job.total_files = ctx["total"]
+        await db.commit()
+        await self._flush_index(ctx)
+        return ctx["total"], ctx["indexed"]
+
+    async def _head_commit_info(self, clone_dir) -> Optional[dict]:
+        """Metadados do commit HEAD (hash/autor/data), para o snapshot sem histórico."""
+        try:
+            fmt = "%H%x00%h%x00%an%x00%ae%x00%aI"
+            proc = await asyncio.create_subprocess_exec(
+                "git", "-C", clone_dir, "log", "-1", f"--format={fmt}",
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            out, _ = await proc.communicate()
+            parts = out.decode("utf-8", "replace").strip().split("\x00")
+            if len(parts) >= 5:
+                return {
+                    "hash": parts[0] or None,
+                    "short": parts[1] or None,
+                    "author": parts[2] or None,
+                    "email": parts[3] or None,
+                    "date": _parse_leak_date(parts[4]),
+                }
+        except Exception:  # noqa: BLE001
+            pass
+        return None
 
     @staticmethod
     def _sha1(path) -> Optional[str]:
@@ -858,6 +1120,47 @@ class GitCloneWorker:
             return (text if text.strip() else None), False, None
         except Exception as e:  # noqa: BLE001
             return None, True, str(e)[:200]
+
+    async def _extract_text_bytes(self, name, ext, data: bytes, max_text_bytes) -> Tuple[Optional[str], bool, Optional[str]]:
+        """Versão de _extract_text para um blob de histórico (bytes em memória).
+        Retorna (content, is_binary, error)."""
+        if ext in SKIP_BINARY_EXTS:
+            return None, True, None
+        size = len(data)
+
+        # Documentos -> Tika/OCR (precisa de um arquivo em disco)
+        if ext in OCR_DOC_EXTS:
+            if size > OCR_MAX_BYTES:
+                return None, True, "too_large_for_ocr"
+            tmp_path = None
+            try:
+                from ocr_service import process_file_ocr
+                with tempfile.NamedTemporaryFile(delete=False, suffix=(ext or "")) as tf:
+                    tf.write(data)
+                    tmp_path = tf.name
+                content, _meta, err = await process_file_ocr(tmp_path)
+                if content:
+                    return content.strip() or None, False, None
+                return None, True, err
+            except Exception as e:  # noqa: BLE001
+                return None, True, str(e)[:200]
+            finally:
+                if tmp_path:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+
+        # Tratar como texto
+        if b"\x00" in data[:8192]:
+            return None, True, None
+        if size > max_text_bytes:
+            return None, False, "too_large"
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            text = data.decode("utf-8", "replace")
+        return (text if text.strip() else None), False, None
 
 
 def get_git_clone_worker() -> GitCloneWorker:

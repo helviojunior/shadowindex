@@ -599,6 +599,10 @@ async def load_findings_from_db() -> List[Dict[str, Any]]:
                     # Linkage com repositórios Git (para o botão "abrir no navegador" na tela de Leaks)
                     'git_repo_id': f.git_repo_id,
                     'git_repo_guid': f.git_repo_guid,
+                    'commit_hash': f.commit_hash,
+                    'commit_author': f.commit_author,
+                    'commit_date': f.commit_date.isoformat() if f.commit_date else None,
+                    'git_file_id': f.git_file_id,
                     'scanned_at': f.scanned_at.isoformat() if f.scanned_at else None,
                     'is_false_positive': f.is_false_positive
                 })
@@ -1199,8 +1203,12 @@ class GitleaksService:
             'extracted_file_version_id': finding.extracted_file_version_id,
             'git_repo_id': finding.git_repo_id,
             'git_repo_guid': finding.git_repo_guid,
+            'commit_hash': finding.commit_hash,
+            'commit_author': finding.commit_author,
+            'commit_date': finding.commit_date.isoformat() if finding.commit_date else None,
+            'git_file_id': finding.git_file_id,
         }
-    
+
     def clear_findings(self) -> int:
         """Método depreciado - use clear_findings_from_db()"""
         logger.warning("clear_findings() está depreciado. Findings são gerenciados no banco.")

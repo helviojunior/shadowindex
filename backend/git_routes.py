@@ -6,13 +6,15 @@ GIT module API - /api/git
 - Content search (OpenSearch with ILIKE fallback)
 - Clone job queue management
 """
+import os
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, or_, desc, asc, case, nullslast
+from sqlalchemy import select, func, or_, desc, asc, case, nullslast, update
+from sqlalchemy.orm import aliased
 
 from database import (
     get_db, get_db_readonly, AsyncSessionLocal,
@@ -68,6 +70,16 @@ class GitManualLeakRequest(BaseModel):
     description: Optional[str] = None
 
 
+class CloneUrlRequest(BaseModel):
+    repo_url: str
+    clone_auth: str = "anonymous"           # anonymous | authenticated
+    credential_id: Optional[int] = None     # token (quando autenticado)
+
+
+class CloneEnqueueUrlRequest(CloneUrlRequest):
+    depth: Optional[int] = None             # opcional: força clone raso nessa profundidade
+
+
 # --------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------
@@ -106,6 +118,9 @@ def _repo_dict(r: GitRepo) -> Dict[str, Any]:
         "index_status": r.index_status,
         "leaks_count": r.leaks_count,
         "files_count": r.files_count,
+        "history_indexed": bool(getattr(r, "history_indexed", False)),
+        "commits_count": getattr(r, "commits_count", None),
+        "branches_count": getattr(r, "branches_count", None),
         "cloned_at": r.cloned_at.isoformat() if r.cloned_at else None,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
@@ -353,6 +368,8 @@ async def search_content(
         hits.append({
             "repo_id": gf.repo_id, "repo_guid": gf.repo_guid, "repo_full_name": full_name,
             "rel_path": gf.rel_path, "name": gf.name, "extension": gf.extension,
+            "file_id": gf.id, "commit_hash": gf.commit_hash, "commit_short": gf.commit_short,
+            "branch": gf.branch, "change_type": gf.change_type, "is_head": bool(gf.is_head),
             "score": None, "highlights": [snippet] if snippet else [],
         })
     return {"total": len(hits), "hits": hits, "backend": "ilike"}
@@ -456,25 +473,101 @@ async def get_repo(guid: str, db=Depends(get_db_readonly)):
 async def list_repo_files(
     guid: str,
     q: Optional[str] = None,
+    include_history: bool = False,
     limit: int = Query(500, le=5000),
     offset: int = 0,
     db=Depends(get_db_readonly),
 ):
+    """Lista os arquivos do repo.
+
+    Por padrão retorna UMA entrada por caminho = a versão atual (HEAD). Com
+    include_history=true, retorna uma entrada por caminho que já existiu em
+    qualquer commit (inclui arquivos removidos), preferindo a versão HEAD e, na
+    falta dela, a mais recente. Cada entrada traz versions_count (nº de versões
+    no histórico daquele caminho).
+    """
     repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
     if not repo:
         raise HTTPException(status_code=404, detail="Repositório não encontrado")
-    stmt = select(GitRepoFile).where(GitRepoFile.repo_id == repo.id)
+
+    # Repos possuem rows marcadas com is_head? (dados novos vs. legado)
+    has_head = (await db.execute(
+        select(func.count()).select_from(GitRepoFile).where(
+            GitRepoFile.repo_id == repo.id, GitRepoFile.is_head.is_(True)
+        )
+    )).scalar() or 0
+
+    if include_history or not has_head:
+        # Uma linha por rel_path: a melhor versão (HEAD primeiro, depois mais recente).
+        gf2 = aliased(GitRepoFile)
+        best_id = (
+            select(gf2.id)
+            .where(gf2.repo_id == GitRepoFile.repo_id, gf2.rel_path == GitRepoFile.rel_path)
+            .order_by(gf2.is_head.desc(), nullslast(gf2.commit_date.desc()), gf2.id.desc())
+            .limit(1)
+            .correlate(GitRepoFile)
+            .scalar_subquery()
+        )
+        stmt = select(GitRepoFile).where(
+            GitRepoFile.repo_id == repo.id, GitRepoFile.id == best_id
+        )
+    else:
+        stmt = select(GitRepoFile).where(
+            GitRepoFile.repo_id == repo.id, GitRepoFile.is_head.is_(True)
+        )
+
     if q:
         stmt = stmt.where(GitRepoFile.rel_path.ilike(f"%{q}%"))
     stmt = stmt.order_by(asc(GitRepoFile.rel_path)).limit(limit).offset(offset)
     files = (await db.execute(stmt)).scalars().all()
+
+    # Contagem de versões por caminho (uma query agregada).
+    paths = [f.rel_path for f in files]
+    vcount: Dict[str, int] = {}
+    if paths:
+        rows = (await db.execute(
+            select(GitRepoFile.rel_path, func.count())
+            .where(GitRepoFile.repo_id == repo.id, GitRepoFile.rel_path.in_(paths))
+            .group_by(GitRepoFile.rel_path)
+        )).all()
+        vcount = {r[0]: r[1] for r in rows}
+
     return {
         "repo": _repo_dict(repo),
         "files": [{
             "id": f.id, "rel_path": f.rel_path, "name": f.name, "extension": f.extension,
             "size": f.size, "mimetype": f.mimetype, "is_binary": f.is_binary,
             "content_extracted": f.content_extracted, "indexed": f.indexed,
+            "is_head": bool(f.is_head), "commit_short": f.commit_short,
+            "commit_hash": f.commit_hash, "change_type": f.change_type,
+            "versions_count": vcount.get(f.rel_path, 1),
         } for f in files],
+    }
+
+
+@router.get("/repos/{guid}/files/by-path")
+async def list_file_versions(guid: str, path: str, db=Depends(get_db_readonly)):
+    """Todas as versões (commits) de um caminho, da mais recente para a mais antiga."""
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+    rows = (await db.execute(
+        select(GitRepoFile)
+        .where(GitRepoFile.repo_id == repo.id, GitRepoFile.rel_path == path)
+        .order_by(GitRepoFile.is_head.desc(), nullslast(GitRepoFile.commit_date.desc()), GitRepoFile.id.desc())
+    )).scalars().all()
+    return {
+        "repo_guid": guid,
+        "rel_path": path,
+        "versions": [{
+            "id": f.id, "is_head": bool(f.is_head),
+            "commit_hash": f.commit_hash, "commit_short": f.commit_short,
+            "branch": f.branch, "author": f.author, "author_email": f.author_email,
+            "commit_date": f.commit_date.isoformat() if f.commit_date else None,
+            "change_type": f.change_type, "size": f.size, "blob_sha": f.blob_sha,
+            "indexed": f.indexed, "is_binary": f.is_binary,
+            "content_extracted": f.content_extracted,
+        } for f in rows],
     }
 
 
@@ -485,12 +578,28 @@ async def get_repo_file(guid: str, file_id: int, db=Depends(get_db_readonly)):
     )).scalar_one_or_none()
     if not f:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    # Nº de versões do mesmo caminho (para a UI oferecer o seletor de versões).
+    versions_count = (await db.execute(
+        select(func.count()).select_from(GitRepoFile).where(
+            GitRepoFile.repo_id == f.repo_id, GitRepoFile.rel_path == f.rel_path
+        )
+    )).scalar() or 1
+    html_url = repo.html_url if repo else None
+    commit_url = f"{html_url}/commit/{f.commit_hash}" if (html_url and f.commit_hash) else None
     return {
         "id": f.id, "rel_path": f.rel_path, "name": f.name, "extension": f.extension,
         "size": f.size, "mimetype": f.mimetype, "is_binary": f.is_binary,
         "sha1": f.sha1, "indexed": f.indexed,
         "content_extracted": f.content_extracted, "content_error": f.content_error,
         "content": f.content,
+        # Versionamento por commit
+        "is_head": bool(f.is_head), "blob_sha": f.blob_sha,
+        "commit_hash": f.commit_hash, "commit_short": f.commit_short,
+        "branch": f.branch, "author": f.author, "author_email": f.author_email,
+        "commit_date": f.commit_date.isoformat() if f.commit_date else None,
+        "change_type": f.change_type, "versions_count": versions_count,
+        "commit_url": commit_url,
     }
 
 
@@ -557,6 +666,221 @@ async def register_git_manual_leak(
     await db.commit()
     await db.refresh(finding)
     return {"success": True, "message": "Leak registrado com sucesso", "finding_id": finding.id}
+
+
+# --------------------------------------------------------------------------
+# Request Clone: clonar uma URL arbitrária (qualquer host) sob demanda
+# --------------------------------------------------------------------------
+def _normalize_repo_url(raw: str) -> Dict[str, Optional[str]]:
+    """Normaliza uma URL de git (https ou scp-like git@host:owner/repo) e extrai
+    host / full_name (owner/.../repo) / owner / name."""
+    import re as _re
+    url = (raw or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL é obrigatória")
+
+    host = None
+    path = None
+    # scp-like: git@github.com:owner/repo.git
+    m = _re.match(r"^[\w.-]+@([\w.-]+):(.+)$", url)
+    if m:
+        host = m.group(1)
+        path = m.group(2)
+        url = f"https://{host}/{path}"
+    else:
+        from urllib.parse import urlparse
+        p = urlparse(url)
+        if not p.scheme:
+            url = "https://" + url
+            p = urlparse(url)
+        if p.scheme not in ("https", "http"):
+            raise HTTPException(status_code=400, detail="Apenas URLs http(s) ou git@host:path são suportadas")
+        host = p.hostname
+        path = (p.path or "").lstrip("/")
+
+    if not host or not path:
+        raise HTTPException(status_code=400, detail="URL de repositório inválida")
+    path = path[:-4] if path.endswith(".git") else path
+    path = path.strip("/")
+    full_name = path
+    segs = [s for s in path.split("/") if s]
+    owner = segs[0] if segs else None
+    name = segs[-1] if segs else None
+    clone_url = url if url.endswith(".git") else f"{url.rstrip('/')}.git"
+    return {"host": host, "full_name": full_name, "owner": owner, "name": name,
+            "clone_url": clone_url, "html_url": f"https://{host}/{full_name}"}
+
+
+async def _git_ls_remote(clone_url: str, token: Optional[str]) -> Dict[str, Any]:
+    """Testa acesso via `git ls-remote --symref`. Retorna {ok, default_branch, ref_count, error}."""
+    import asyncio as _asyncio
+    from git_clone_worker import _inject_token
+
+    url = _inject_token(clone_url, token) if token else clone_url
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true"}
+    try:
+        proc = await _asyncio.create_subprocess_exec(
+            "git", "ls-remote", "--symref", url, "HEAD",
+            stdout=_asyncio.subprocess.PIPE, stderr=_asyncio.subprocess.PIPE, env=env,
+        )
+        out, err = await _asyncio.wait_for(proc.communicate(), timeout=30)
+    except _asyncio.TimeoutError:
+        return {"ok": False, "error": "timeout ao contactar o repositório (30s)"}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300]}
+
+    if proc.returncode != 0:
+        msg = (err.decode("utf-8", "replace") if err else "").strip()
+        if token:
+            msg = msg.replace(url, clone_url)  # mascara o token
+        return {"ok": False, "error": msg or f"git ls-remote falhou ({proc.returncode})"}
+
+    text = out.decode("utf-8", "replace")
+    default_branch = None
+    ref_count = 0
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("ref:"):
+            # ex.: "ref: refs/heads/main\tHEAD"
+            try:
+                ref = line.split()[1]
+                default_branch = ref.rsplit("/", 1)[-1]
+            except Exception:  # noqa: BLE001
+                pass
+        elif line:
+            ref_count += 1
+    return {"ok": True, "default_branch": default_branch, "ref_count": ref_count, "error": None}
+
+
+@router.post("/clone/test-access")
+async def clone_test_access(req: CloneUrlRequest, db=Depends(get_db_readonly)):
+    """Valida se a URL informada é acessível (e autenticável, se for o caso)."""
+    info = _normalize_repo_url(req.repo_url)
+    token = None
+    if req.clone_auth == "authenticated":
+        if not req.credential_id:
+            raise HTTPException(status_code=400, detail="Token é obrigatório para clone autenticado")
+        token = await _get_token(db, req.credential_id)
+    result = await _git_ls_remote(info["clone_url"], token)
+    return {**result, "repo": {"full_name": info["full_name"], "host": info["host"],
+                               "clone_url": info["clone_url"]}}
+
+
+@router.post("/clone/enqueue-url")
+async def clone_enqueue_url(req: CloneEnqueueUrlRequest, db=Depends(get_db)):
+    """Enfileira o clone de uma URL arbitrária com PRIORIDADE ALTA (fura a fila)."""
+    info = _normalize_repo_url(req.repo_url)
+    if req.clone_auth == "authenticated":
+        if not req.credential_id:
+            raise HTTPException(status_code=400, detail="Token é obrigatório para clone autenticado")
+        await _get_token(db, req.credential_id)  # valida
+
+    # Prioridade: acima do maior valor pendente/em execução atual.
+    max_prio = (await db.execute(
+        select(func.max(GitCloneJob.priority)).where(
+            GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"])
+        )
+    )).scalar()
+    priority = (max_prio or 0) + 1
+
+    # Repo (cria/atualiza por full_name)
+    repo = (await db.execute(
+        select(GitRepo).where(GitRepo.full_name == info["full_name"])
+    )).scalar_one_or_none()
+    if not repo:
+        repo = GitRepo(full_name=info["full_name"])
+        db.add(repo)
+    repo.owner = info["owner"]
+    repo.name = info["name"]
+    repo.clone_url = info["clone_url"]
+    repo.html_url = info["html_url"]
+    repo.source = "github" if "github" in (info["host"] or "") else (info["host"] or "git")
+    repo.discovered_via = "request-clone"
+    if repo.clone_status not in ("cloning",):
+        repo.clone_status = "pending"
+    await db.flush()
+
+    # Evita job ativo duplicado para o mesmo repo
+    active = (await db.execute(
+        select(GitCloneJob.id).where(
+            GitCloneJob.repo_id == repo.id,
+            GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]),
+        )
+    )).scalar()
+    if active:
+        # Reprioriza o job existente em vez de duplicar.
+        await db.execute(
+            update(GitCloneJob).where(GitCloneJob.id == active).values(priority=priority)
+        )
+        await db.commit()
+        return {"queued": False, "reprioritized": True, "job_id": active,
+                "priority": priority, "repo_guid": repo.guid}
+
+    job = GitCloneJob(
+        repo_id=repo.id,
+        repo_url=info["clone_url"],
+        repo_full_name=info["full_name"],
+        clone_auth=req.clone_auth,
+        credential_id=req.credential_id if req.clone_auth == "authenticated" else None,
+        depth=req.depth,
+        status="pending",
+        priority=priority,
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+    return {"queued": True, "job_id": job.id, "priority": priority, "repo_guid": repo.guid}
+
+
+@router.post("/repos/{guid}/reindex")
+async def reindex_repo(guid: str, db=Depends(get_db)):
+    """Reprocessa um repositório já clonado para (re)indexar o histórico de commits.
+
+    Se o clone completo ainda existe em disco, reenfileira apenas o pós-processamento
+    (status 'cloned'); caso contrário, reenfileira o clone completo (status 'pending').
+    Em ambos os casos com prioridade alta.
+    """
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+
+    from git_clone_worker import GITCLONES_BASE
+    clone_dir = os.path.join(GITCLONES_BASE, repo.guid)
+    has_full_clone = os.path.isdir(os.path.join(clone_dir, ".git")) and not os.path.exists(
+        os.path.join(clone_dir, ".git", "shallow")
+    )
+
+    max_prio = (await db.execute(
+        select(func.max(GitCloneJob.priority)).where(
+            GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"])
+        )
+    )).scalar()
+    priority = (max_prio or 0) + 1
+
+    # Cancela jobs ativos antigos deste repo para não concorrer.
+    await db.execute(
+        update(GitCloneJob)
+        .where(GitCloneJob.repo_id == repo.id, GitCloneJob.status.in_(["pending", "cloned"]))
+        .values(status="cancelled")
+    )
+
+    status = "cloned" if has_full_clone else "pending"
+    job = GitCloneJob(
+        repo_id=repo.id,
+        repo_url=repo.clone_url or f"https://github.com/{repo.full_name}.git",
+        repo_full_name=repo.full_name,
+        clone_auth="anonymous",
+        status=status,
+        priority=priority,
+        current_step="queued" if has_full_clone else None,
+    )
+    db.add(job)
+    if not has_full_clone:
+        repo.clone_status = "pending"
+    await db.commit()
+    await db.refresh(job)
+    return {"job_id": job.id, "mode": "postprocess" if has_full_clone else "reclone",
+            "priority": priority}
 
 
 # --------------------------------------------------------------------------

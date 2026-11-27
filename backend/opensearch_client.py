@@ -36,6 +36,15 @@ INDEX_MAPPING = {
             "mimetype": {"type": "keyword"},
             "size": {"type": "long"},
             "content": {"type": "text"},
+            # Versionamento por commit (indexação de histórico)
+            "commit_hash": {"type": "keyword"},
+            "commit_short": {"type": "keyword"},
+            "branch": {"type": "keyword"},
+            "author": {"type": "keyword"},
+            "commit_date": {"type": "date"},
+            "change_type": {"type": "keyword"},
+            "blob_sha": {"type": "keyword"},
+            "is_head": {"type": "boolean"},
         }
     },
 }
@@ -179,7 +188,8 @@ def search_content(
     body: Dict[str, Any] = {
         "size": size,
         "query": {"bool": {"must": must, "filter": filt}},
-        "_source": ["repo_id", "repo_guid", "repo_full_name", "rel_path", "name", "extension"],
+        "_source": ["repo_id", "repo_guid", "repo_full_name", "rel_path", "name", "extension",
+                    "file_id", "commit_hash", "commit_short", "branch", "change_type", "is_head"],
     }
     if highlight:
         body["highlight"] = {
@@ -199,6 +209,12 @@ def search_content(
                 "rel_path": src.get("rel_path"),
                 "name": src.get("name"),
                 "extension": src.get("extension"),
+                "file_id": src.get("file_id"),
+                "commit_hash": src.get("commit_hash"),
+                "commit_short": src.get("commit_short"),
+                "branch": src.get("branch"),
+                "change_type": src.get("change_type"),
+                "is_head": src.get("is_head"),
                 "score": h.get("_score"),
                 "highlights": h.get("highlight", {}).get("content", []),
             })

@@ -23,7 +23,7 @@ import {
 import {
   ArrowLeft, FileText, FileCode, FileCheck, File, Star, GitFork, AlertTriangle,
   Loader2, ExternalLink, FileX, ChevronRight, ChevronDown, Folder, FolderOpen, X, Code,
-  Copy, Check, ShieldAlert, ScanText,
+  Copy, Check, ShieldAlert, ScanText, GitCommit, History,
 } from 'lucide-react';
 import { ShieldKeyIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
@@ -96,6 +96,7 @@ export default function GitRepoBrowser() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fileParam = searchParams.get('file'); // rel_path a abrir (deep-link, ex.: vindo de /leaks)
+  const commitParam = searchParams.get('commit'); // commit (hash) a abrir p/ o arquivo do deep-link
 
   const [repo, setRepo] = useState(null);
   const [autoOpened, setAutoOpened] = useState(false);
@@ -107,6 +108,10 @@ export default function GitRepoBrowser() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
+  // Versionamento por commit: todas as versões do caminho aberto + a versão atual.
+  const [versions, setVersions] = useState(null);
+  const [currentVersionId, setCurrentVersionId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false); // inclui arquivos de commits antigos/removidos
 
   // Seleção da árvore (pasta ou arquivo) + aba ativa do painel de detalhe.
   const [selectedPath, setSelectedPath] = useState(null);
@@ -130,6 +135,7 @@ export default function GitRepoBrowser() {
     try {
       const params = new URLSearchParams();
       params.set('limit', '5000');
+      if (showHistory) params.set('include_history', 'true');
       const res = await axios.get(`${API}/git/repos/${guid}/files?${params.toString()}`);
       setRepo(res.data?.repo || null);
       setFiles(res.data?.files || []);
@@ -139,9 +145,51 @@ export default function GitRepoBrowser() {
     } finally {
       setLoading(false);
     }
+  }, [guid, t, showHistory]);
+
+  useEffect(() => { loadFiles(); /* eslint-disable-next-line */ }, [guid, showHistory]);
+
+  const [reindexing, setReindexing] = useState(false);
+  const reindexRepo = useCallback(async () => {
+    setReindexing(true);
+    try {
+      const res = await axios.post(`${API}/git/repos/${guid}/reindex`);
+      const mode = res.data?.mode;
+      toast.success(mode === 'reclone' ? t('toast.reindexReclone') : t('toast.reindexQueued'));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message);
+    } finally {
+      setReindexing(false);
+    }
   }, [guid, t]);
 
-  useEffect(() => { loadFiles(); /* eslint-disable-next-line */ }, [guid]);
+  // Busca as versões (commits) de um caminho. Retorna a lista.
+  const fetchVersions = useCallback(async (relPath) => {
+    try {
+      const res = await axios.get(
+        `${API}/git/repos/${guid}/files/by-path?path=${encodeURIComponent(relPath)}`
+      );
+      return res.data?.versions || [];
+    } catch (e) {
+      return [];
+    }
+  }, [guid]);
+
+  // Carrega o conteúdo de uma versão específica (file_id) no painel de detalhe.
+  const loadVersionContent = useCallback(async (fileId) => {
+    setCurrentVersionId(fileId);
+    setFileContent(null);
+    setLoadingContent(true);
+    try {
+      const res = await axios.get(`${API}/git/repos/${guid}/files/${fileId}`);
+      setFileContent(res.data);
+    } catch (e) {
+      console.error(e);
+      toast.error(t('toast.loadFileError'));
+    } finally {
+      setLoadingContent(false);
+    }
+  }, [guid, t]);
 
   // Tipos de credencial para o modal de identificação manual.
   useEffect(() => {
@@ -170,13 +218,13 @@ export default function GitRepoBrowser() {
     setExpandedNodes(prev => ({ ...prev, [path]: !prev[path] }));
   };
 
-  const openFile = useCallback(async (f) => {
+  const openFile = useCallback(async (f, opts = {}) => {
     setSelectedFile(f);
     setSelectedPath(f.rel_path);
     setSelectedKind('file');
     setActiveTab((prev) => (prev === 'objetos' ? 'info' : prev));
+    setVersions(null);
     setFileContent(null);
-    setLoadingContent(true);
     // Expandir diretórios ancestrais para o arquivo ficar visível na árvore.
     const parts = (f.rel_path || '').split('/').filter(Boolean);
     if (parts.length > 1) {
@@ -188,26 +236,38 @@ export default function GitRepoBrowser() {
       }
       setExpandedNodes(prev => ({ ...prev, ...anc }));
     }
-    try {
-      const res = await axios.get(`${API}/git/repos/${guid}/files/${f.id}`);
-      setFileContent(res.data);
-    } catch (e) {
-      console.error(e);
-      toast.error(t('toast.loadFileError'));
-    } finally {
-      setLoadingContent(false);
+    // Carrega as versões do caminho; se um commit foi pedido, abre a versão dele.
+    const vs = await fetchVersions(f.rel_path);
+    setVersions(vs);
+    let targetId = f.id;
+    if (opts.commit) {
+      const m = vs.find((v) => v.commit_hash === opts.commit || v.commit_short === opts.commit);
+      if (m) targetId = m.id;
     }
-  }, [guid, t]);
+    await loadVersionContent(targetId);
+  }, [fetchVersions, loadVersionContent]);
 
-  // Deep-link: abre automaticamente o arquivo indicado por ?file=<rel_path> (ex.: vindo de /leaks).
+  // Abre um resultado de busca de conteúdo — pode ser uma versão histórica
+  // (arquivo que só existe num commit antigo e não está na árvore atual).
+  const openContentHit = useCallback((h) => {
+    if (h.file_id) {
+      const base = { rel_path: h.rel_path, id: h.file_id, name: h.name || (h.rel_path || '').split('/').pop() };
+      openFile(base, h.commit_hash ? { commit: h.commit_hash } : {});
+      return;
+    }
+    const f = files.find((ff) => ff.rel_path === h.rel_path);
+    if (f) openFile(f);
+  }, [files, openFile]);
+
+  // Deep-link: abre automaticamente o arquivo indicado por ?file=<rel_path> (e ?commit=<hash>).
   useEffect(() => {
     if (autoOpened || !fileParam || files.length === 0) return;
     const target = files.find((f) => f.rel_path === fileParam);
     if (target) {
-      openFile(target);
+      openFile(target, commitParam ? { commit: commitParam } : {});
       setAutoOpened(true);
     }
-  }, [files, fileParam, autoOpened, openFile]);
+  }, [files, fileParam, commitParam, autoOpened, openFile]);
 
   // Seleciona uma PASTA (mostra os Objetos no painel direito) e a expande.
   const selectDir = useCallback((path) => {
@@ -271,6 +331,19 @@ export default function GitRepoBrowser() {
     if (n < 1024) return `${n} B`;
     if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
     return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  };
+
+  const fmtDate = (s) => {
+    if (!s) return '—';
+    try {
+      const d = new Date(s);
+      return d.toLocaleString();
+    } catch (e) { return s; }
+  };
+
+  const changeTypeLabel = (ct) => {
+    const map = { A: t('changeType.added'), M: t('changeType.modified'), D: t('changeType.deleted'), R: t('changeType.renamed') };
+    return map[ct] || ct || '—';
   };
 
   // -------------------------------------------------------------------------
@@ -541,6 +614,32 @@ export default function GitRepoBrowser() {
           </div>
         </div>
 
+        {/* Seletor de versões (commits) do arquivo */}
+        {versions && versions.length > 1 && (
+          <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/30" data-testid="git-version-bar">
+            <GitCommit className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <span className="text-xs text-muted-foreground flex-shrink-0">{t('versions.label')}</span>
+            <div className="min-w-0 flex-1 max-w-md">
+              <Select
+                value={currentVersionId ? String(currentVersionId) : ''}
+                onValueChange={(v) => loadVersionContent(parseInt(v, 10))}
+              >
+                <SelectTrigger className="h-8 text-xs" data-testid="git-version-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {versions.map((v) => (
+                    <SelectItem key={v.id} value={String(v.id)} className="text-xs">
+                      {(v.is_head ? '● ' : '') + (v.commit_short || '—') + ' · ' + changeTypeLabel(v.change_type) + ' · ' + fmtDate(v.commit_date)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Badge variant="secondary" className="text-xs flex-shrink-0">{versions.length} {t('versions.count')}</Badge>
+          </div>
+        )}
+
         {/* Abas */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 pt-4 border-b border-border">
@@ -567,6 +666,36 @@ export default function GitRepoBrowser() {
                 <InfoRow label={t('info.indexed')}
                   value={(fileContent?.indexed ?? selectedFile?.indexed) ? t('info.yes') : t('info.no')}
                   valueClassName={(fileContent?.indexed ?? selectedFile?.indexed) ? 'text-green-500' : 'text-muted-foreground'} />
+
+                {/* Dados do commit (indexação de histórico) */}
+                {fileContent?.commit_short && (
+                  <>
+                    <div className="pt-2 mt-1 border-t border-border flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
+                      <GitCommit className="w-3.5 h-3.5" /> {t('info.commitSection')}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <InfoRow label={t('info.commit')} value={fileContent.commit_short} valueClassName="font-mono text-xs"
+                        onCopy={() => copyToClipboard(fileContent.commit_hash, 'commit')} copied={copiedField === 'commit'} />
+                    </div>
+                    {fileContent.commit_url && (
+                      <a href={fileContent.commit_url} target="_blank" rel="noreferrer"
+                        className="text-xs text-blue-500 inline-flex items-center gap-1 -mt-1">
+                        <ExternalLink className="w-3 h-3" /> {t('info.viewCommit')}
+                      </a>
+                    )}
+                    <InfoRow label={t('info.branch')} value={fileContent.branch || '—'} valueClassName="font-mono text-xs" />
+                    <InfoRow label={t('info.author')} value={fileContent.author || '—'} />
+                    <InfoRow label={t('info.commitDate')} value={fmtDate(fileContent.commit_date)} />
+                    <InfoRow label={t('info.changeType')} value={changeTypeLabel(fileContent.change_type)}
+                      valueClassName={fileContent.change_type === 'D' ? 'text-red-500' : ''} />
+                    <InfoRow label={t('info.isHead')}
+                      value={fileContent.is_head ? t('info.yes') : t('info.no')}
+                      valueClassName={fileContent.is_head ? 'text-green-500' : 'text-amber-500'} />
+                    {fileContent.versions_count > 1 && (
+                      <InfoRow label={t('info.versions')} value={fileContent.versions_count} />
+                    )}
+                  </>
+                )}
               </div>
             </ScrollArea>
           )}
@@ -653,6 +782,22 @@ export default function GitRepoBrowser() {
           <Badge variant="outline">
             <FileText className="w-3 h-3 mr-1" />{repo?.files_count ?? 0} {t('browser.files')}
           </Badge>
+          {repo && (
+            <Badge
+              variant="outline"
+              className={cn('text-xs gap-1', repo.history_indexed ? 'text-green-500 border-green-500/50' : 'text-amber-500 border-amber-500/50')}
+              title={repo.history_indexed ? t('history.indexedOn') : t('history.indexedOff')}
+            >
+              <History className="w-3 h-3" />
+              {repo.history_indexed
+                ? (repo.commits_count != null ? t('history.commits', { count: repo.commits_count }) : t('history.on'))
+                : t('history.off')}
+            </Badge>
+          )}
+          <Button variant="outline" size="sm" onClick={reindexRepo} disabled={reindexing} title={t('history.reindexTitle')}>
+            {reindexing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <History className="w-4 h-4 mr-2" />}
+            {t('history.reindex')}
+          </Button>
           {repo?.html_url && (
             <a href={repo.html_url} target="_blank" rel="noreferrer">
               <Button variant="outline" size="sm"><ExternalLink className="w-4 h-4 mr-2" />{t('browser.openOnGithub')}</Button>
@@ -707,7 +852,7 @@ export default function GitRepoBrowser() {
               </div>
 
               {/* Cabeçalho da árvore */}
-              <div className="p-3 border-b border-border flex items-center justify-between">
+              <div className="p-3 border-b border-border flex items-center justify-between gap-2">
                 <h3 className="text-sm font-medium text-muted-foreground">
                   {searchMode === 'content' ? t('search.contentTitle') : t('browser.files')}
                   {searchMode === 'content' && contentHits !== null && (
@@ -717,6 +862,19 @@ export default function GitRepoBrowser() {
                     <span className="ml-2 text-xs text-primary">{visibleFiles.length}</span>
                   )}
                 </h3>
+                {searchMode !== 'content' && (
+                  <button
+                    onClick={() => setShowHistory((v) => !v)}
+                    title={t('history.toggleTitle')}
+                    data-testid="git-history-toggle"
+                    className={cn(
+                      'inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors flex-shrink-0',
+                      showHistory ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <History className="w-3 h-3" /> {t('history.label')}
+                  </button>
+                )}
               </div>
 
               {/* Árvore (ou resultados de busca de conteúdo) */}
@@ -730,14 +888,23 @@ export default function GitRepoBrowser() {
                     ) : (
                       <div className="space-y-2 px-2">
                         {contentHits.map((h, i) => {
-                          const f = files.find((ff) => ff.rel_path === h.rel_path);
                           return (
                             <div
                               key={i}
                               className="border rounded-md p-2 text-sm cursor-pointer hover:bg-muted/50"
-                              onClick={() => f && openFile(f)}
+                              onClick={() => openContentHit(h)}
                             >
-                              <div className="font-mono text-xs text-blue-500 break-all">{h.rel_path}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className="font-mono text-xs text-blue-500 break-all">{h.rel_path}</div>
+                                {h.commit_short && (
+                                  <span className={cn(
+                                    'inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-mono',
+                                    h.is_head ? 'bg-green-500/10 text-green-500' : 'bg-amber-500/10 text-amber-500'
+                                  )}>
+                                    <GitCommit className="w-2.5 h-2.5" />{h.commit_short}
+                                  </span>
+                                )}
+                              </div>
                               {(h.highlights || []).map((hl, j) => (
                                 <div
                                   key={j}

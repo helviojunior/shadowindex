@@ -58,7 +58,9 @@
     "loadError": "Failed to load repositories",
     "loadRepoError": "Failed to load repository",
     "loadFileError": "Failed to load file",
-    "searchError": "Search failed"
+    "searchError": "Search failed",
+    "reindexQueued": "Reprocessing queued with high priority",
+    "reindexReclone": "Full re-clone queued (no history on disk) with high priority"
   },
   "tabs": {
     "objects": "Objects",
@@ -84,7 +86,16 @@
     "sha1": "SHA1 Hash",
     "indexed": "Indexed",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "commitSection": "Commit",
+    "commit": "Commit",
+    "viewCommit": "View commit in repository",
+    "branch": "Branch",
+    "author": "Author",
+    "commitDate": "Commit date",
+    "changeType": "Change type",
+    "isHead": "Current version (HEAD)",
+    "versions": "Versions"
   },
   "actions": {
     "open": "Open",
@@ -114,5 +125,26 @@
     "cancel": "Cancel",
     "success": "Leak registered successfully",
     "error": "Failed to register leak"
+  },
+  "versions": {
+    "label": "Version:",
+    "count": "versions"
+  },
+  "history": {
+    "label": "History",
+    "toggleTitle": "Include files from old/removed commits",
+    "on": "History",
+    "off": "HEAD only",
+    "commits": "{{count}} commits",
+    "indexedOn": "Commit history indexed",
+    "indexedOff": "Only HEAD was indexed (shallow clone or history indexing disabled)",
+    "reindex": "Reindex",
+    "reindexTitle": "Reprocess this repository to (re)index the commit history"
+  },
+  "changeType": {
+    "added": "Added",
+    "modified": "Modified",
+    "deleted": "Deleted",
+    "renamed": "Renamed"
   }
 }

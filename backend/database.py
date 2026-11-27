@@ -525,6 +525,13 @@ class GitleaksFinding(Base):
     git_repo_id = Column(Integer, nullable=True, index=True)
     git_repo_guid = Column(String, nullable=True, index=True)
 
+    # Vazamentos encontrados no HISTÓRICO do git (gitleaks git). Quando preenchido,
+    # o segredo estava num commit específico (possivelmente antigo/removido).
+    commit_hash = Column(String, nullable=True, index=True)
+    commit_author = Column(String, nullable=True)
+    commit_date = Column(DateTime(timezone=True), nullable=True)
+    git_file_id = Column(Integer, nullable=True, index=True)  # liga à versão GitRepoFile, quando houver
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -746,6 +753,9 @@ class GitRepo(Base):
     index_status = Column(String, default="pending")
     leaks_count = Column(Integer, default=0)
     files_count = Column(Integer, default=0)
+    history_indexed = Column(Boolean, default=False)  # True = histórico de commits indexado (clone completo)
+    commits_count = Column(Integer, nullable=True)     # nº de commits percorridos
+    branches_count = Column(Integer, nullable=True)    # nº de branches percorridas
     cloned_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -758,6 +768,8 @@ class GitRepoFile(Base):
         Index('idx_git_repo_files_repo_id', 'repo_id'),
         Index('idx_git_repo_files_repo_guid', 'repo_guid'),
         Index('idx_git_repo_files_rel_path', 'rel_path'),
+        Index('idx_git_repo_files_repo_path_date', 'repo_id', 'rel_path', 'commit_date'),
+        Index('idx_git_repo_files_repo_head', 'repo_id', 'is_head'),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -775,6 +787,22 @@ class GitRepoFile(Base):
     content_error = Column(String, nullable=True)
     indexed = Column(Boolean, default=False)  # indexado no OpenSearch
     indexed_at = Column(DateTime(timezone=True), nullable=True)
+    # ----------------------------------------------------------------------
+    # Versionamento por commit (indexação de histórico, estilo filecrawler).
+    # Cada linha é uma VERSÃO de conteúdo de um path: 1 linha por (repo, rel_path,
+    # blob_sha). A versão atual do working tree tem is_head=True; versões antigas e
+    # arquivos removidos têm is_head=False. commit_* descreve o commit onde aquela
+    # versão apareceu (o mais recente que introduziu aquele blob).
+    # ----------------------------------------------------------------------
+    blob_sha = Column(String, nullable=True, index=True)   # git object sha do blob (dedup)
+    commit_hash = Column(String, nullable=True, index=True)  # hexsha completo do commit
+    commit_short = Column(String, nullable=True)            # hexsha curto (7)
+    branch = Column(String, nullable=True)                  # branch onde foi observado
+    author = Column(String, nullable=True)                  # nome do autor do commit
+    author_email = Column(String, nullable=True)
+    commit_date = Column(DateTime(timezone=True), nullable=True, index=True)
+    change_type = Column(String, nullable=True)             # A / M / D / R
+    is_head = Column(Boolean, default=False, index=True)    # versão atual (working tree)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
@@ -840,6 +868,9 @@ DEFAULT_SETTINGS = {
     'git_index_max_size_mb': ('2', 'Tamanho máximo (MB) de arquivo de repositório Git para extração/indexação de conteúdo'),
     'git_clone_job_timeout_min': ('120', 'Backstop absoluto (min): tempo máx. de um job de clone em execução antes do watchdog reenfileirá-lo, mesmo progredindo. 0 = desativa'),
     'git_clone_stall_min': ('10', 'Watchdog: minutos SEM progresso (bytes do clone / arquivos indexados sem crescer) antes de considerar o job travado e reenfileirá-lo. 0 = desativa a detecção de estagnação'),
+    'git_index_history': ('true', 'Indexa TODO o histórico de commits/branches (cada versão de cada arquivo), não apenas o HEAD. Requer clone completo'),
+    'git_history_max_commits': ('5000', 'Máximo de commits percorridos por repositório ao indexar histórico (0 = ilimitado). Protege contra repos gigantes'),
+    'git_history_max_versions_per_file': ('100', 'Máximo de versões (commits distintos) indexadas por arquivo (0 = ilimitado)'),
 }
 
 
@@ -987,6 +1018,42 @@ async def apply_pending_migrations():
                     logger.info("Applying migration: adding pushed_at to git_repos")
                     await conn.execute(text("ALTER TABLE git_repos ADD COLUMN pushed_at TIMESTAMPTZ"))
                     logger.info("Migration applied: pushed_at added to git_repos")
+
+            # Módulo GIT: indexação de histórico (versões por commit)
+            async def _pg_add_cols(table, cols):
+                if not (await conn.execute(text(f"SELECT to_regclass('public.{table}')"))).scalar():
+                    return
+                for col, coltype in cols:
+                    exists = (await conn.execute(text(
+                        "SELECT column_name FROM information_schema.columns "
+                        f"WHERE table_name = '{table}' AND column_name = '{col}'"
+                    ))).fetchone()
+                    if not exists:
+                        logger.info(f"Applying migration: adding {col} to {table}")
+                        await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {coltype}"))
+
+            await _pg_add_cols('git_repo_files', [
+                ('blob_sha', 'VARCHAR'), ('commit_hash', 'VARCHAR'), ('commit_short', 'VARCHAR'),
+                ('branch', 'VARCHAR'), ('author', 'VARCHAR'), ('author_email', 'VARCHAR'),
+                ('commit_date', 'TIMESTAMPTZ'), ('change_type', 'VARCHAR'),
+                ('is_head', 'BOOLEAN DEFAULT FALSE'),
+            ])
+            await _pg_add_cols('gitleaks_findings', [
+                ('commit_hash', 'VARCHAR'), ('commit_author', 'VARCHAR'),
+                ('commit_date', 'TIMESTAMPTZ'), ('git_file_id', 'INTEGER'),
+            ])
+            await _pg_add_cols('git_repos', [
+                ('history_indexed', 'BOOLEAN DEFAULT FALSE'),
+                ('commits_count', 'INTEGER'), ('branches_count', 'INTEGER'),
+            ])
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_git_repo_files_repo_path_date "
+                "ON git_repo_files (repo_id, rel_path, commit_date)"
+            ))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_git_repo_files_repo_head "
+                "ON git_repo_files (repo_id, is_head)"
+            ))
         else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))
@@ -1076,6 +1143,8 @@ async def apply_pending_migrations():
                 logger.info("Applying migration: adding pushed_at to git_repos")
                 await conn.execute(text("ALTER TABLE git_repos ADD COLUMN pushed_at TIMESTAMP"))
                 logger.info("Migration applied: pushed_at added to git_repos")
+            # Obs.: as migrações de indexação de histórico do módulo GIT são
+            # aplicadas somente em PostgreSQL (stack de produção).
 
 
 async def init_db():

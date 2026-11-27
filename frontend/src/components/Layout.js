@@ -75,6 +75,7 @@ const menuStructure = [
     label: 'GIT',
     children: [
       { id: 'github-search', path: '/git/search', label: 'Github Search' },
+      { id: 'git-request', path: '/git/request', label: 'Request Clone' },
       { id: 'github', path: '/git', label: 'Github' },
     ]
   },

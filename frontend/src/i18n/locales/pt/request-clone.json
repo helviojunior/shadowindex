@@ -1,0 +1,39 @@
+{
+  "title": "Request Clone",
+  "subtitle": "Clone sob demanda de qualquer repositório Git informando a URL.",
+  "card": {
+    "title": "Clonar repositório por URL",
+    "description": "Informe a URL do repositório, valide o acesso e enfileire o clone. O job entra com prioridade mais alta que os demais já na fila."
+  },
+  "url": {
+    "label": "URL do repositório",
+    "placeholder": "https://github.com/owner/repo  ·  git@host:grupo/repo.git",
+    "hint": "Aceita qualquer host (GitHub, GitLab, Bitbucket, self-hosted) via https ou git@host:caminho."
+  },
+  "auth": {
+    "label": "Modo de clone",
+    "anonymous": "Anônimo",
+    "authenticated": "Autenticado (token)",
+    "tokenPlaceholder": "Selecione um token",
+    "noTokens": "Nenhum token cadastrado. Cadastre uma credencial do tipo token."
+  },
+  "actions": {
+    "test": "Testar acesso",
+    "enqueue": "Enfileirar clone",
+    "highPriority": "Prioridade alta"
+  },
+  "result": {
+    "ok": "Acesso confirmado",
+    "fail": "Falha no acesso",
+    "repo": "Repositório",
+    "defaultBranch": "Branch padrão",
+    "refs": "Referências"
+  },
+  "toast": {
+    "loadTokensError": "Erro ao carregar tokens",
+    "testOk": "Acesso ao repositório confirmado",
+    "testFail": "Não foi possível acessar o repositório",
+    "enqueued": "Clone enfileirado com prioridade {{priority}}",
+    "reprioritized": "Já havia um clone na fila para este repositório — repriorizado para {{priority}}"
+  }
+}
