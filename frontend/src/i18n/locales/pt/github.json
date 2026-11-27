@@ -162,6 +162,10 @@
     "copy": "Copiar",
     "copied": "Copiado",
     "wrap": "Quebrar linhas",
-    "unwrap": "Desativar quebra de linha"
+    "unwrap": "Desativar quebra de linha",
+    "copyLine": "Copiar linha",
+    "copyUrl": "Copiar URL",
+    "viewOrigin": "Ver em {{platform}}",
+    "urlCopied": "URL copiada"
   }
 }

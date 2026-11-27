@@ -459,6 +459,40 @@ export default function GitRepoBrowser() {
     return map[ct] || ct || '—';
   };
 
+  // Plataforma de origem (GitHub/GitLab/Bitbucket) para os links "ver na origem".
+  const originInfo = useMemo(() => {
+    const html = repo?.html_url || '';
+    const h = html.toLowerCase();
+    let platform = 'origin';
+    if (h.includes('github')) platform = 'GitHub';
+    else if (h.includes('gitlab')) platform = 'GitLab';
+    else if (h.includes('bitbucket')) platform = 'Bitbucket';
+    return { html, platform };
+  }, [repo]);
+
+  // Commit do conteúdo exibido (árvore-no-commit, versão do arquivo, ou HEAD).
+  const currentCommitSha = commitTree?.commit?.hash || fileContent?.commit_hash || null;
+
+  // URL compartilhável interna, com #L<linha> (estilo GitHub).
+  const buildShareUrl = useCallback((line) => {
+    const params = new URLSearchParams();
+    if (selectedFile?.rel_path) params.set('file', selectedFile.rel_path);
+    if (currentCommitSha) params.set('commit', currentCommitSha);
+    const qs = params.toString();
+    return `${window.location.origin}/git/${guid}${qs ? `?${qs}` : ''}#L${line}`;
+  }, [guid, selectedFile, currentCommitSha]);
+
+  // URL do arquivo na plataforma de origem, apontando para a linha.
+  const buildOriginUrl = useCallback((line) => {
+    const html = originInfo.html;
+    const path = selectedFile?.rel_path;
+    if (!html || !path) return null;
+    const ref = currentCommitSha || repo?.default_branch || 'HEAD';
+    if (originInfo.platform === 'GitLab') return `${html}/-/blob/${ref}/${path}#L${line}`;
+    if (originInfo.platform === 'Bitbucket') return `${html}/src/${ref}/${path}#lines-${line}`;
+    return `${html}/blob/${ref}/${path}#L${line}`;
+  }, [originInfo, currentCommitSha, selectedFile, repo]);
+
   // -------------------------------------------------------------------------
   // Renderização recursiva da árvore — mesmo visual do ServerBrowser:
   // linhas-guia por profundidade, chevron, ícone de pasta/arquivo, hover/seleção.
@@ -844,6 +878,13 @@ export default function GitRepoBrowser() {
                   copiedLabel={t('view.copied')}
                   wrapLabel={t('view.wrap')}
                   unwrapLabel={t('view.unwrap')}
+                  copyLineLabel={t('view.copyLine')}
+                  copyUrlLabel={t('view.copyUrl')}
+                  viewOriginLabel={t('view.viewOrigin')}
+                  urlCopiedLabel={t('view.urlCopied')}
+                  getShareUrl={buildShareUrl}
+                  getOriginUrl={buildOriginUrl}
+                  originLabel={originInfo.platform}
                 />
               )}
             </div>

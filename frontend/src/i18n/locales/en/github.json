@@ -162,6 +162,10 @@
     "copy": "Copy",
     "copied": "Copied",
     "wrap": "Wrap lines",
-    "unwrap": "Disable wrap"
+    "unwrap": "Disable wrap",
+    "copyLine": "Copy line",
+    "copyUrl": "Copy URL",
+    "viewOrigin": "View on {{platform}}",
+    "urlCopied": "URL copied"
   }
 }
