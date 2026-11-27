@@ -16,6 +16,7 @@ A Wiki é um **guia de uso da ferramenta**, com uma página por funcionalidade, 
 | `images/` | Screenshots usados nas páginas |
 | `Dashboard-PT.md` / `Dashboard-EN.md` | Dashboard |
 | `Servidores-PT.md` / `Servers-EN.md` | Servidores / Servers |
+| `GIT-PT.md` / `GIT-EN.md` | GIT (busca, clone, varredura e indexação de repos) |
 | `Arquivos-PT.md` / `Files-EN.md` | Arquivos (browse, OCR, offline) |
 | `Credenciais-PT.md` / `Credentials-EN.md` | Credenciais |
 | `Proxy-Servers-PT.md` / `Proxy-Servers-EN.md` | Proxy Servers |

@@ -17,6 +17,7 @@ Guia de uso, uma página por funcionalidade:
 |----------------|-----------|
 | [Dashboard](Dashboard-PT) | Visão geral e métricas |
 | [Servidores](Servidores-PT) | Inventário de servidores, risco, leaks, shares |
+| [GIT](GIT-PT) | Buscar no GitHub, clonar, varrer e indexar repositórios |
 | [Arquivos](Arquivos-PT) | Navegar shares, visualizar conteúdo, OCR e offline |
 | [Credenciais](Credenciais-PT) | Usuário/senha, NTLM, Kerberos, token, SSH |
 | [Proxy Servers](Proxy-Servers-PT) | SOCKS5 (Proxychains) e HTTP |
@@ -43,6 +44,7 @@ Usage guide, one page per feature:
 |---------|-------------|
 | [Dashboard](Dashboard-EN) | Overview and metrics |
 | [Servers](Servers-EN) | Server inventory, risk, leaks, shares |
+| [GIT](GIT-EN) | Search GitHub, clone, scan and index repositories |
 | [Files](Files-EN) | Browse shares, view content, OCR and offline |
 | [Credentials](Credentials-EN) | User/password, NTLM, Kerberos, token, SSH |
 | [Proxy Servers](Proxy-Servers-EN) | SOCKS5 (Proxychains) and HTTP |

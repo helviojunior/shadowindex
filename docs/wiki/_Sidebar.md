@@ -5,6 +5,7 @@
 **Português**
 - [Dashboard](Dashboard-PT)
 - [Servidores](Servidores-PT)
+- [GIT](GIT-PT)
 - [Arquivos](Arquivos-PT)
 - [Credenciais](Credenciais-PT)
 - [Proxy Servers](Proxy-Servers-PT)
@@ -16,6 +17,7 @@
 **English**
 - [Dashboard](Dashboard-EN)
 - [Servers](Servers-EN)
+- [GIT](GIT-EN)
 - [Files](Files-EN)
 - [Credentials](Credentials-EN)
 - [Proxy Servers](Proxy-Servers-EN)
