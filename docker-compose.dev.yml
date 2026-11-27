@@ -4,7 +4,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: shadowindex-postgres-dev
+    container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-postgres-dev
     restart: unless-stopped
     environment:
       TZ: "America/Sao_Paulo"
@@ -29,7 +29,7 @@ services:
 
   tika:
     image: apache/tika:latest-full
-    container_name: shadowindex-tika-dev
+    container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-tika-dev
     restart: unless-stopped
     environment:
       TZ: "America/Sao_Paulo"
@@ -46,7 +46,7 @@ services:
     build:
       context: ./backend/soap_mock
       dockerfile: Dockerfile
-    container_name: shadowindex-soap-mock-dev
+    container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-soap-mock-dev
     restart: unless-stopped
     environment:
       TZ: "America/Sao_Paulo"
@@ -57,7 +57,7 @@ services:
 
   opensearch-init:
     image: busybox:1.36
-    container_name: shadowindex-opensearch-init-dev
+    container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-opensearch-init-dev
     command: ["sh", "-c", "mkdir -p /data && chown -R 1000:1000 /data"]
     volumes:
       - ./shadowindex_data/opensearch:/data
@@ -66,7 +66,7 @@ services:
 
   opensearch:
     image: opensearchproject/opensearch:2.17.1
-    container_name: shadowindex-opensearch-dev
+    container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-opensearch-dev
     restart: unless-stopped
     depends_on:
       opensearch-init:
@@ -103,7 +103,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: shadowindex-backend-dev
+    container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-backend-dev
     restart: unless-stopped
     ports:
       - "9090:8001"
@@ -138,7 +138,7 @@ services:
       dockerfile: Dockerfile
       args:
         REACT_APP_BACKEND_URL: "${REACT_APP_BACKEND_URL:-http://localhost:9090}"
-    container_name: shadowindex-frontend-dev
+    container_name: ${COMPOSE_PROJECT_NAME:-shadowindex}-frontend-dev
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-3000}:3000"
