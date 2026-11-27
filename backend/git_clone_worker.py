@@ -18,7 +18,7 @@ import traceback
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple
 
-from sqlalchemy import select, update, nullslast
+from sqlalchemy import select, update, delete, nullslast
 
 logger = logging.getLogger(__name__)
 
@@ -566,6 +566,16 @@ class GitCloneWorker:
         total = 0
         index_batch: List[dict] = []
         indexed_total = 0
+
+        # Re-processamento idempotente: remove arquivos/índice de uma execução
+        # anterior deste repo (ex.: job reenfileirado pelo watchdog/reboot) para
+        # não acumular linhas duplicadas no DB nem docs duplicados no OpenSearch.
+        await db.execute(delete(GitRepoFile).where(GitRepoFile.repo_id == repo.id))
+        await db.commit()
+        try:
+            await asyncio.to_thread(opensearch_client.delete_repo, repo.guid)
+        except Exception:  # noqa: BLE001
+            pass
 
         async def flush_index():
             nonlocal index_batch, indexed_total
