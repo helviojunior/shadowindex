@@ -7,6 +7,7 @@ Follows the same DB-polled asyncio singleton pattern as share_scan_worker.py.
 """
 import os
 import re
+import time
 import json
 import shutil
 import hashlib
@@ -17,7 +18,7 @@ import traceback
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple
 
-from sqlalchemy import select, func, update
+from sqlalchemy import select, update
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,12 @@ SKIP_BINARY_EXTS = {
 }
 OCR_MAX_BYTES = 25 * 1024 * 1024  # 25MB cap p/ docs enviados ao Tika
 
+# Watchdog: periodicamente reconcilia os jobs marcados 'running' no DB com as
+# tasks realmente vivas no worker. Jobs 'running' sem task viva (reboot/crash) ou
+# presos além do tempo máximo são reenfileirados ('pending') para não travar a fila.
+WATCHDOG_INTERVAL = 30          # segundos entre verificações
+MAX_JOB_SECONDS = 3600          # tempo máx. de um job 'running' antes de ser considerado travado
+
 _git_clone_worker: Optional["GitCloneWorker"] = None
 
 
@@ -49,11 +56,16 @@ class GitCloneWorker:
     def __init__(self):
         self.running = False
         self._task: Optional[asyncio.Task] = None
+        # Jobs em processamento: job_id -> {"task": asyncio.Task, "since": monotonic}
+        self._active: Dict[int, dict] = {}
+        self._last_watchdog: float = 0.0
 
     async def start(self):
         if self.running:
             return
         self.running = True
+        self._active.clear()
+        self._last_watchdog = 0.0
         self._task = asyncio.create_task(self._run_loop())
         logger.info("Git clone worker started")
 
@@ -89,6 +101,10 @@ class GitCloneWorker:
         while self.running:
             try:
                 async with AsyncSessionLocal() as db:
+                    now = time.monotonic()
+                    if now - self._last_watchdog >= WATCHDOG_INTERVAL:
+                        await self._watchdog(db)
+                        self._last_watchdog = now
                     await self._process_pending_jobs(db)
             except OperationalError as e:
                 if "database is locked" in str(e):
@@ -98,6 +114,51 @@ class GitCloneWorker:
             except Exception as e:  # noqa: BLE001
                 logger.error(f"Error in git clone worker loop: {e}")
             await asyncio.sleep(3)
+
+    async def _watchdog(self, db):
+        """Reconcilia os jobs 'running' do DB com as tasks realmente vivas.
+
+        - Jobs 'running' sem task viva (reboot/crash do worker) voltam a 'pending'.
+        - Jobs cuja task vive mas excede MAX_JOB_SECONDS são considerados travados:
+          a task é cancelada e o job volta a 'pending' para liberar o slot.
+        """
+        from database import GitCloneJob
+
+        active_ids = set(self._active.keys())
+        stmt = update(GitCloneJob).where(GitCloneJob.status == "running")
+        if active_ids:
+            stmt = stmt.where(GitCloneJob.id.notin_(active_ids))
+        stmt = stmt.values(status="pending", started_at=None, current_step=None)
+        result = await db.execute(stmt)
+        if result.rowcount:
+            await db.commit()
+            logger.warning(
+                f"[git watchdog] {result.rowcount} clone(s) presos em 'running' sem task viva "
+                f"reenfileirados para 'pending'"
+            )
+
+        # Tasks vivas rodando além do limite -> travadas: cancela e reenfileira.
+        now = time.monotonic()
+        for jid, info in list(self._active.items()):
+            if now - info["since"] <= MAX_JOB_SECONDS:
+                continue
+            task = info.get("task")
+            if task and not task.done():
+                task.cancel()
+            self._active.pop(jid, None)
+            try:
+                await db.execute(
+                    update(GitCloneJob)
+                    .where(GitCloneJob.id == jid, GitCloneJob.status == "running")
+                    .values(status="pending", started_at=None, current_step=None)
+                )
+                await db.commit()
+            except Exception:  # noqa: BLE001
+                pass
+            logger.warning(
+                f"[git watchdog] clone job {jid} excedeu {MAX_JOB_SECONDS // 60}min; "
+                f"cancelado e reenfileirado"
+            )
 
     async def _get_max_concurrency(self, db) -> int:
         from database import AppSettings
@@ -115,11 +176,9 @@ class GitCloneWorker:
 
         max_conc = await self._get_max_concurrency(db)
 
-        running_result = await db.execute(
-            select(func.count(GitCloneJob.id)).where(GitCloneJob.status == "running")
-        )
-        running = running_result.scalar() or 0
-        slots = max_conc - running
+        # Concorrência baseada nas tasks REALMENTE vivas no worker (não no count do
+        # DB), evitando spawn duplicado e refletindo o estado real de execução.
+        slots = max_conc - len(self._active)
         if slots <= 0:
             return
 
@@ -131,7 +190,10 @@ class GitCloneWorker:
         )
         pending = result.scalars().all()
         for job in pending:
-            asyncio.create_task(self._execute_job(job.id))
+            if job.id in self._active:
+                continue
+            task = asyncio.create_task(self._execute_job(job.id))
+            self._active[job.id] = {"task": task, "since": time.monotonic()}
 
     # ------------------------------------------------------------------
     async def _execute_job(self, job_id: int):
@@ -232,6 +294,9 @@ class GitCloneWorker:
                         await db2.commit()
             except Exception:  # noqa: BLE001
                 pass
+        finally:
+            # Libera o slot no watchdog, independentemente do desfecho.
+            self._active.pop(job_id, None)
 
     async def _ensure_repo(self, db, job):
         from database import GitRepo
