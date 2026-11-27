@@ -7,7 +7,8 @@
     "contentTitle": "Busca de conteúdo",
     "contentPlaceholder": "Buscar dentro do conteúdo dos arquivos…",
     "contentEmpty": "Nenhuma correspondência.",
-    "backend": "backend"
+    "backend": "backend",
+    "contentToggle": "Buscar no conteúdo dos arquivos"
   },
   "filters": {
     "allStatus": "Todos os status",

@@ -3,9 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -14,8 +12,8 @@ import {
   ResizableHandle,
 } from '@/components/ui/resizable';
 import {
-  ArrowLeft, Search, FileText, FileCode, Star, GitFork, AlertTriangle,
-  Loader2, ExternalLink, FileX, ChevronRight, ChevronDown, Folder, FolderOpen, X,
+  ArrowLeft, FileText, FileCode, Star, GitFork, AlertTriangle,
+  Loader2, ExternalLink, FileX, ChevronRight, ChevronDown, Folder, FolderOpen, X, Code,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -80,6 +78,7 @@ export default function GitRepoBrowser() {
   const [contentQ, setContentQ] = useState('');
   const [contentHits, setContentHits] = useState(null);
   const [searchingContent, setSearchingContent] = useState(false);
+  const [searchMode, setSearchMode] = useState('filter'); // 'filter' | 'content'
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -275,99 +274,81 @@ export default function GitRepoBrowser() {
   const rootChildren = sortedChildren(tree);
 
   return (
-    <div className="p-6 space-y-4 w-full">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/git')}>
-          <ArrowLeft className="w-4 h-4 mr-2" />{t('browser.back')}
-        </Button>
-      </div>
-
-      {repo && (
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <FileCode className="w-5 h-5" />{repo.full_name}
-            </h1>
-            {repo.description && <p className="text-muted-foreground text-sm mt-1 max-w-2xl">{repo.description}</p>}
-            <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
-              {repo.language && <Badge variant="outline">{repo.language}</Badge>}
-              <span className="inline-flex items-center gap-1"><Star className="w-3 h-3" />{repo.stars ?? 0}</span>
-              <span className="inline-flex items-center gap-1"><GitFork className="w-3 h-3" />{repo.forks ?? 0}</span>
-              <span className="inline-flex items-center gap-1"><FileText className="w-3 h-3" />{repo.files_count ?? 0} {t('browser.files')}</span>
-              {repo.leaks_count > 0 && <span className="inline-flex items-center gap-1 text-red-500"><AlertTriangle className="w-3 h-3" />{repo.leaks_count} {t('table.leaks')}</span>}
+    <div className="h-[calc(100vh-120px)] flex flex-col relative w-full" data-testid="git-repo-browser-page">
+      {/* Header compacto (igual ao ServerBrowser) */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/git')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />{t('browser.back')}
+          </Button>
+          {repo && (
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileCode className="w-5 h-5 flex-shrink-0" />
+                <h1 className="text-xl font-semibold truncate" title={repo.full_name}>{repo.full_name}</h1>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                {repo.language && <Badge variant="secondary" className="text-xs">{repo.language}</Badge>}
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Star className="w-3 h-3" />{repo.stars ?? 0}</span>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><GitFork className="w-3 h-3" />{repo.forks ?? 0}</span>
+                {repo.leaks_count > 0 && <span className="inline-flex items-center gap-1 text-xs text-red-500"><AlertTriangle className="w-3 h-3" />{repo.leaks_count} {t('table.leaks')}</span>}
+              </div>
             </div>
-          </div>
-          {repo.html_url && (
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge variant="outline">
+            <FileText className="w-3 h-3 mr-1" />{repo?.files_count ?? 0} {t('browser.files')}
+          </Badge>
+          {repo?.html_url && (
             <a href={repo.html_url} target="_blank" rel="noreferrer">
               <Button variant="outline" size="sm"><ExternalLink className="w-4 h-4 mr-2" />{t('browser.openOnGithub')}</Button>
             </a>
           )}
         </div>
-      )}
-
-      {/* Busca de conteúdo */}
-      <Card>
-        <CardContent className="pt-6 space-y-3">
-          <div className="flex gap-2">
-            <Input
-              value={contentQ}
-              onChange={(e) => setContentQ(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') runContentSearch(); }}
-              placeholder={t('search.contentPlaceholder')}
-              data-testid="git-repo-content-search"
-            />
-            <Button onClick={runContentSearch} disabled={searchingContent}>
-              {searchingContent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            </Button>
-          </div>
-          {contentHits !== null && (
-            contentHits.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('search.contentEmpty')}</p>
-            ) : (
-              <div className="space-y-2">
-                {contentHits.map((h, i) => {
-                  const f = files.find(ff => ff.rel_path === h.rel_path);
-                  return (
-                    <div key={i} className="border rounded-md p-2 text-sm cursor-pointer hover:bg-muted/50"
-                         onClick={() => f && openFile(f)}>
-                      <div className="font-mono text-xs text-blue-500">{h.rel_path}</div>
-                      {(h.highlights || []).map((hl, j) => (
-                        <div key={j} className="text-xs font-mono text-muted-foreground mt-1"
-                             dangerouslySetInnerHTML={{ __html: hl }} />
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            )
-          )}
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Split view: árvore à esquerda, conteúdo à direita (igual ao ServerBrowser) */}
-      <div className="rounded-lg border border-border overflow-hidden h-[calc(100vh-320px)] min-h-[480px]">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
           {/* Painel esquerdo - Árvore */}
           <ResizablePanel defaultSize={30} minSize={18} maxSize={55}>
             <div className="h-full border-r border-border bg-card flex flex-col">
-              {/* Filtro */}
+              {/* Busca: filtra por caminho OU busca no conteúdo (toggle <>) */}
               <div className="p-3 border-b border-border">
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder={t('browser.searchFiles')}
-                    value={filterQuery}
-                    onChange={(e) => setFilterQuery(e.target.value)}
-                    className="w-full px-3 py-2 pr-10 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    data-testid="git-file-filter"
+                    placeholder={searchMode === 'content' ? t('search.contentPlaceholder') : t('browser.searchFiles')}
+                    value={searchMode === 'content' ? contentQ : filterQuery}
+                    onChange={(e) => (searchMode === 'content' ? setContentQ(e.target.value) : setFilterQuery(e.target.value))}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && searchMode === 'content') runContentSearch(); }}
+                    className="w-full px-3 py-2 pr-20 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    data-testid={searchMode === 'content' ? 'git-repo-content-search' : 'git-file-filter'}
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {loading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                    {filterQuery && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFilterQuery('')}>
+                    {(loading || searchingContent) && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                    {(searchMode === 'content' ? contentQ : filterQuery) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          if (searchMode === 'content') { setContentQ(''); setContentHits(null); }
+                          else setFilterQuery('');
+                        }}
+                      >
                         <X className="w-3 h-3" />
                       </Button>
                     )}
+                    <Button
+                      variant={searchMode === 'content' ? 'default' : 'ghost'}
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setSearchMode((m) => (m === 'content' ? 'filter' : 'content'))}
+                      title={t('search.contentToggle')}
+                    >
+                      <Code className="w-3 h-3" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -375,17 +356,48 @@ export default function GitRepoBrowser() {
               {/* Cabeçalho da árvore */}
               <div className="p-3 border-b border-border flex items-center justify-between">
                 <h3 className="text-sm font-medium text-muted-foreground">
-                  {t('browser.files')}
-                  {filterActive && (
+                  {searchMode === 'content' ? t('search.contentTitle') : t('browser.files')}
+                  {searchMode === 'content' && contentHits !== null && (
+                    <span className="ml-2 text-xs text-primary">{contentHits.length}</span>
+                  )}
+                  {searchMode !== 'content' && filterActive && (
                     <span className="ml-2 text-xs text-primary">{visibleFiles.length}</span>
                   )}
                 </h3>
               </div>
 
-              {/* Árvore */}
+              {/* Árvore (ou resultados de busca de conteúdo) */}
               <ScrollArea className="flex-1 tree-scroll-area">
                 <div className="py-2 pr-3">
-                  {loading && files.length === 0 ? (
+                  {searchMode === 'content' && contentHits !== null ? (
+                    contentHits.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-muted-foreground">{t('search.contentEmpty')}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 px-2">
+                        {contentHits.map((h, i) => {
+                          const f = files.find((ff) => ff.rel_path === h.rel_path);
+                          return (
+                            <div
+                              key={i}
+                              className="border rounded-md p-2 text-sm cursor-pointer hover:bg-muted/50"
+                              onClick={() => f && openFile(f)}
+                            >
+                              <div className="font-mono text-xs text-blue-500 break-all">{h.rel_path}</div>
+                              {(h.highlights || []).map((hl, j) => (
+                                <div
+                                  key={j}
+                                  className="text-xs font-mono text-muted-foreground mt-1"
+                                  dangerouslySetInnerHTML={{ __html: hl }}
+                                />
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : loading && files.length === 0 ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-6 h-6 animate-spin" />
                     </div>
@@ -444,7 +456,6 @@ export default function GitRepoBrowser() {
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
-      </div>
     </div>
   );
 }
