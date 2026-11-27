@@ -1113,6 +1113,72 @@ async def reindex_repo(guid: str, db=Depends(get_db)):
             "priority": priority}
 
 
+@router.post("/repos/reindex-all")
+async def reindex_all_repos(db=Depends(get_db)):
+    """Reprocessa/reindexa TODOS os repositórios já clonados.
+
+    - Repo com clone completo em disco -> reprocessa (gitleaks + extração + index),
+      sem re-clonar (status 'cloned').
+    - Repo sem clone em disco, mas que já foi clonado antes (cloned_at) -> re-clona
+      (status 'pending').
+    - Repo nunca clonado -> ignorado.
+    Tudo com prioridade acima da fila atual.
+    """
+    from git_clone_worker import GITCLONES_BASE
+
+    repos = (await db.execute(select(GitRepo))).scalars().all()
+    max_prio = (await db.execute(
+        select(func.max(GitCloneJob.priority)).where(
+            GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"])
+        )
+    )).scalar()
+    priority = (max_prio or 0) + 1
+
+    # Cancela os jobs ativos ainda não iniciados (pending/cloned) para não concorrer.
+    await db.execute(
+        update(GitCloneJob)
+        .where(GitCloneJob.status.in_(["pending", "cloned"]))
+        .values(status="cancelled")
+    )
+
+    postprocess = 0
+    reclone = 0
+    skipped = 0
+    for repo in repos:
+        clone_dir = os.path.join(GITCLONES_BASE, repo.guid)
+        has_full = os.path.isdir(os.path.join(clone_dir, ".git")) and not os.path.exists(
+            os.path.join(clone_dir, ".git", "shallow")
+        )
+        if has_full:
+            status, step = "cloned", "queued"
+            postprocess += 1
+        elif repo.cloned_at is not None:
+            status, step = "pending", None
+            repo.clone_status = "pending"
+            reclone += 1
+        else:
+            skipped += 1
+            continue
+        db.add(GitCloneJob(
+            repo_id=repo.id,
+            repo_url=repo.clone_url or f"https://github.com/{repo.full_name}.git",
+            repo_full_name=repo.full_name,
+            clone_auth="anonymous",
+            status=status,
+            priority=priority,
+            current_step=step,
+        ))
+
+    await db.commit()
+    return {
+        "total": len(repos),
+        "postprocess": postprocess,
+        "reclone": reclone,
+        "skipped": skipped,
+        "priority": priority,
+    }
+
+
 # --------------------------------------------------------------------------
 # Clone jobs
 # --------------------------------------------------------------------------

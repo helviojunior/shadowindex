@@ -114,6 +114,7 @@ const Leaks = () => {
   const [customPath, setCustomPath] = useState('');
   const [scanMode, setScanMode] = useState('all'); // 'all', 'server', 'custom'
   const [scanning, setScanning] = useState(false);
+  const [reindexingGit, setReindexingGit] = useState(false);
   const [polling, setPolling] = useState(false);
   const [showScanPanel, setShowScanPanel] = useState(true);
   const errorCountRef = useRef(0);
@@ -245,6 +246,21 @@ const Leaks = () => {
   }, [loadGitleaksStatus, loadServers, loadJobs, loadFindings]);
 
   // Iniciar scan
+  const handleReindexGits = async () => {
+    setReindexingGit(true);
+    try {
+      const res = await axios.post(`${API}/git/repos/reindex-all`);
+      const d = res.data || {};
+      toast.success(t('reindexGit.success', {
+        post: d.postprocess ?? 0, reclone: d.reclone ?? 0,
+      }));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message);
+    } finally {
+      setReindexingGit(false);
+    }
+  };
+
   const handleStartScan = async () => {
     if (scanMode === 'server' && !selectedServer) {
       toast.error(t('toast.selectServer'));
@@ -733,17 +749,29 @@ const Leaks = () => {
                   </div>
                 )}
 
-                <Button 
-                  onClick={handleStartScan} 
-                  disabled={scanning || !gitleaksStatus.available}
-                >
-                  {scanning ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Play className="w-4 h-4 mr-2" />
-                  )}
-                  {scanMode === 'all' ? t('scanMode.scanAll') : t('scanPanel.title')}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    onClick={handleStartScan}
+                    disabled={scanning || !gitleaksStatus.available}
+                  >
+                    {scanning ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="w-4 h-4 mr-2" />
+                    )}
+                    {scanMode === 'all' ? t('scanMode.scanAll') : t('scanPanel.title')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleReindexGits}
+                    disabled={reindexingGit}
+                    title={t('reindexGit.title')}
+                    data-testid="leaks-reindex-git"
+                  >
+                    {reindexingGit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    {t('reindexGit.button')}
+                  </Button>
+                </div>
               </div>
 
               {/* Running Jobs */}
@@ -1271,7 +1299,7 @@ const Leaks = () => {
 
       {/* Finding Detail Modal */}
       <Dialog open={!!selectedFinding} onOpenChange={() => setSelectedFinding(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden !flex !flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" />
@@ -1288,7 +1316,7 @@ const Leaks = () => {
             const directoryPath = pathParts.length > 1 ? pathParts.slice(startIndex, -1).join('\\') : '';
             
             return (
-              <div className="space-y-6 overflow-y-auto flex-1 pr-2 -mr-2">
+              <div className="space-y-6 overflow-y-auto flex-1 min-h-0 pr-2 -mr-2">
                 {/* Header com informações principais */}
                 <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4">
                   <div className="flex items-start justify-between">

@@ -109,5 +109,10 @@
     "errorDetail": "Error: {{error}}",
     "copied": "Copied!",
     "copyError": "Error copying"
+  },
+  "reindexGit": {
+    "button": "Reindex Gits",
+    "title": "Reprocess all cloned Git repositories (gitleaks + extraction + indexing, incl. JWT claims)",
+    "success": "Reindex queued: {{post}} reprocessing, {{reclone}} re-cloning"
   }
 }
