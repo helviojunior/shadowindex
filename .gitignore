@@ -38,6 +38,10 @@ dist/
 *.env.*
 *token.json*
 *credentials.json*
+# Exceção: os arquivos de tradução (i18n) com esses nomes NÃO são segredos —
+# sem isto a tela de Credenciais fica sem labels num clone/produção limpos.
+!frontend/src/i18n/locales/**/credentials.json
+!frontend/src/i18n/locales/**/token.json
 
 # Logs and debug files
 npm-debug.log*
