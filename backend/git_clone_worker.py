@@ -111,6 +111,7 @@ class GitCloneWorker:
         # conjunto de tasks vivas, boot-reset e watchdog de progresso.
         self._clone_task: Optional[asyncio.Task] = None
         self._post_task: Optional[asyncio.Task] = None
+        self._supervisor_task: Optional[asyncio.Task] = None
         self._active_clone: Dict[int, dict] = {}   # jobs clonando
         self._active_post: Dict[int, dict] = {}    # jobs em pós-processamento
         self._last_watchdog_clone: float = 0.0
@@ -126,11 +127,12 @@ class GitCloneWorker:
         self._last_watchdog_post = 0.0
         self._clone_task = asyncio.create_task(self._run_loop("clone"))
         self._post_task = asyncio.create_task(self._run_loop("post"))
-        logger.info("Git clone worker started (filas: clone + pos-processamento)")
+        self._supervisor_task = asyncio.create_task(self._supervise())
+        logger.info("Git clone worker started (filas: clone + pos-processamento + supervisor)")
 
     async def stop(self):
         self.running = False
-        for t in (self._clone_task, self._post_task):
+        for t in (self._clone_task, self._post_task, self._supervisor_task):
             if t:
                 t.cancel()
                 try:
@@ -138,6 +140,24 @@ class GitCloneWorker:
                 except asyncio.CancelledError:
                     pass
         logger.info("Git clone worker stopped")
+
+    async def _supervise(self):
+        """Reinicia loops que morreram (ex.: exceção não tratada) enquanto o worker
+        está ativo. Sem isso, se o loop de pós-processamento cair, jobs ficam presos
+        em 'processing'/'cloned' para sempre."""
+        while self.running:
+            await asyncio.sleep(15)
+            try:
+                if self.running and self._clone_task and self._clone_task.done():
+                    exc = self._clone_task.exception() if not self._clone_task.cancelled() else None
+                    logger.error(f"[git supervisor] loop CLONE morreu ({exc}); reiniciando")
+                    self._clone_task = asyncio.create_task(self._run_loop("clone"))
+                if self.running and self._post_task and self._post_task.done():
+                    exc = self._post_task.exception() if not self._post_task.cancelled() else None
+                    logger.error(f"[git supervisor] loop POST morreu ({exc}); reiniciando")
+                    self._post_task = asyncio.create_task(self._run_loop("post"))
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"[git supervisor] erro: {e}")
 
     # ------------------------------------------------------------------
     # Configuração por fase (clone x pós-processamento)
@@ -169,20 +189,12 @@ class GitCloneWorker:
 
         cfg = self._phase_cfg(phase)
 
-        # Boot-reset: jobs presos no estado "em andamento" desta fase voltam p/ a fila.
+        # Reconciliação de boot (AMBAS as fases): jobs 'em execução' sem task viva
+        # voltam p/ a fila. Respeita as tasks vivas (active sets), então é seguro
+        # também quando o supervisor reinicia um loop com tasks ainda rodando.
         try:
             async with AsyncSessionLocal() as db:
-                result = await db.execute(
-                    update(GitCloneJob)
-                    .where(GitCloneJob.status == cfg["running_status"])
-                    .values(status=cfg["requeue_status"], started_at=None, current_step=None)
-                )
-                if result.rowcount > 0:
-                    await db.commit()
-                    logger.info(
-                        f"[git {phase}] reset {result.rowcount} job(s) presos em "
-                        f"'{cfg['running_status']}' -> '{cfg['requeue_status']}'"
-                    )
+                await self._reconcile_all_phases(db)
         except Exception as e:  # noqa: BLE001
             logger.error(f"[git {phase}] erro no reset de boot: {e}")
 
@@ -218,18 +230,11 @@ class GitCloneWorker:
         cfg = self._phase_cfg(phase)
         active = cfg["active"]
 
-        active_ids = set(active.keys())
-        stmt = update(GitCloneJob).where(GitCloneJob.status == cfg["running_status"])
-        if active_ids:
-            stmt = stmt.where(GitCloneJob.id.notin_(active_ids))
-        stmt = stmt.values(status=cfg["requeue_status"], started_at=None, current_step=None)
-        result = await db.execute(stmt)
-        if result.rowcount:
-            await db.commit()
-            logger.warning(
-                f"[git {phase} watchdog] {result.rowcount} job(s) em '{cfg['running_status']}' "
-                f"sem task viva -> '{cfg['requeue_status']}'"
-            )
+        # Reconciliação CROSS-FASE: libera órfãos de clone E de pós-processamento,
+        # independentemente de qual loop está rodando o watchdog. Assim, mesmo que o
+        # loop de pós-processamento morra, o loop de clone (vivo) libera os
+        # 'processing' presos (e o supervisor reinicia o loop morto p/ reprocessá-los).
+        await self._reconcile_all_phases(db)
 
         max_seconds = await self._get_job_timeout_seconds(db)   # backstop (0 = off)
         stall_seconds = await self._get_stall_seconds(db)       # janela sem progresso (0 = off)
@@ -286,6 +291,34 @@ class GitCloneWorker:
                 f"[git {phase} watchdog] job {jid} travado ({reason}); "
                 f"cancelado e reenfileirado p/ '{cfg['requeue_status']}'"
             )
+
+    async def _reconcile_all_phases(self, db) -> int:
+        """Reconcilia AMBAS as fases de uma vez: jobs em 'cloning'/'processing' que
+        não têm uma task viva (reboot/crash, ou loop da fase morto) voltam p/ a fila
+        ('pending'/'cloned'). Respeita as tasks vivas (active sets) para não mexer em
+        jobs que estão realmente em execução."""
+        from database import GitCloneJob
+
+        total = 0
+        for running_status, requeue_status, active in (
+            ("cloning", "pending", self._active_clone),
+            ("processing", "cloned", self._active_post),
+        ):
+            active_ids = set(active.keys())
+            stmt = update(GitCloneJob).where(GitCloneJob.status == running_status)
+            if active_ids:
+                stmt = stmt.where(GitCloneJob.id.notin_(active_ids))
+            stmt = stmt.values(status=requeue_status, started_at=None, current_step=None)
+            result = await db.execute(stmt)
+            if result.rowcount:
+                total += result.rowcount
+                logger.warning(
+                    f"[git watchdog] {result.rowcount} job(s) em '{running_status}' "
+                    f"sem task viva -> '{requeue_status}'"
+                )
+        if total:
+            await db.commit()
+        return total
 
     async def _get_setting_int(self, db, key: str, default: int) -> int:
         from database import AppSettings
