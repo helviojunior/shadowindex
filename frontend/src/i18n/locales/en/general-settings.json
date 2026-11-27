@@ -158,6 +158,8 @@
     "indexMaxSizeLabel": "Max file size for indexing (MB)",
     "indexMaxSizeHelp": "Files larger than this are not text-extracted/indexed for content search.",
     "jobTimeoutLabel": "Clone job timeout (min)",
-    "jobTimeoutHelp": "The watchdog re-queues a running clone job that exceeds this (stuck gitleaks/OCR/indexing). Keep it generous — a clone can take ~1h. 0 = disable time-based cancel."
+    "jobTimeoutHelp": "The watchdog re-queues a running clone job that exceeds this (stuck gitleaks/OCR/indexing). Keep it generous — a clone can take ~1h. 0 = disable time-based cancel.",
+    "stallLabel": "No-progress window (min)",
+    "stallHelp": "Watchdog: minutes with NO progress (clone bytes / indexed files not growing) before a job is considered stuck and re-queued. Healthy slow clones keep going. 0 = disable stall detection."
   }
 }

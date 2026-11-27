@@ -59,6 +59,7 @@ const GeneralSettings = () => {
     max_simultaneous_git_clones: '2',
     git_index_max_size_mb: '2',
     git_clone_job_timeout_min: '120',
+    git_clone_stall_min: '10',
     // Aparência / UI
     ui_logo_url: 'https://media.sec4us.com.br/logo/sec4us-dark-mode.svg',
     ui_logo_alignment: 'center',
@@ -648,6 +649,26 @@ const GeneralSettings = () => {
               />
               <p className="text-xs text-muted-foreground">
                 {t('git.jobTimeoutHelp')}
+              </p>
+            </div>
+
+            {/* Janela de estagnação (watchdog) */}
+            <div className="space-y-2">
+              <Label htmlFor="git_clone_stall_min" className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                {t('git.stallLabel')}
+              </Label>
+              <Input
+                id="git_clone_stall_min"
+                type="number"
+                min="0"
+                max="240"
+                value={settings.git_clone_stall_min}
+                onChange={(e) => handleChange('git_clone_stall_min', e.target.value)}
+                data-testid="git-stall-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('git.stallHelp')}
               </p>
             </div>
           </div>

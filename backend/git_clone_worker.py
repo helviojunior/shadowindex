@@ -18,7 +18,7 @@ import traceback
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple
 
-from sqlalchemy import select, update, delete, nullslast
+from sqlalchemy import select, update, delete, func, nullslast
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,23 @@ OCR_MAX_BYTES = 25 * 1024 * 1024  # 25MB cap p/ docs enviados ao Tika
 # tasks realmente vivas no worker. Jobs 'running' sem task viva (reboot/crash) ou
 # presos além do tempo máximo são reenfileirados ('pending') para não travar a fila.
 WATCHDOG_INTERVAL = 30          # segundos entre verificações (NÃO é um timeout)
-MAX_JOB_SECONDS_DEFAULT = 7200  # fallback (2h) do limite p/ considerar um job travado (setting: git_clone_job_timeout_min)
+MAX_JOB_SECONDS_DEFAULT = 7200  # backstop absoluto (2h) — setting: git_clone_job_timeout_min (0 desativa)
+STALL_SECONDS_DEFAULT = 600     # sem progresso (bytes/arquivos) por este tempo => travado (setting: git_clone_stall_min)
+
+
+def _dir_size(path: str) -> int:
+    """Soma o tamanho dos arquivos sob `path` (bytes). Usado p/ medir progresso do clone."""
+    total = 0
+    try:
+        for root, _dirs, files in os.walk(path):
+            for f in files:
+                try:
+                    total += os.path.getsize(os.path.join(root, f))
+                except OSError:
+                    pass
+    except Exception:  # noqa: BLE001
+        pass
+    return total
 
 _git_clone_worker: Optional["GitCloneWorker"] = None
 
@@ -137,16 +153,53 @@ class GitCloneWorker:
                 f"reenfileirados para 'pending'"
             )
 
-        # Tasks vivas rodando além do limite -> travadas: cancela e reenfileira.
-        # O limite é FOLGADO (default 2h, configurável) e NÃO afeta clones saudáveis:
-        # só serve de rede de segurança para gitleaks/OCR/indexação pendurados.
-        max_seconds = await self._get_job_timeout_seconds(db)
-        if max_seconds <= 0:
-            return
+        # Verificação de PROGRESSO: um job vivo só é "travado" se NÃO progride —
+        # bytes do clone crescendo (etapa clone) OU nº de GitRepoFile crescendo
+        # (etapa extração/index) — por uma janela (stall). Clones/indexações lentas
+        # mas SAUDÁVEIS (ex.: repos gigantes) continuam porque estão progredindo.
+        # Um backstop absoluto (max_seconds) permanece como última rede de segurança.
+        from database import GitRepoFile
+        max_seconds = await self._get_job_timeout_seconds(db)   # backstop (0 = off)
+        stall_seconds = await self._get_stall_seconds(db)       # janela sem progresso (0 = off)
         now = time.monotonic()
         for jid, info in list(self._active.items()):
-            if now - info["since"] <= max_seconds:
+            clone_dir = info.get("clone_dir")
+            repo_id = info.get("repo_id")
+            reason = None
+
+            # 1) estagnação (sem crescimento de arquivos/bytes)
+            if stall_seconds > 0 and clone_dir and repo_id is not None:
+                fcount = (await db.execute(
+                    select(func.count(GitRepoFile.id)).where(GitRepoFile.repo_id == repo_id)
+                )).scalar() or 0
+                prev = info.get("progress")  # (dir_bytes, file_count)
+                progressed = False
+                if prev is None:
+                    dbytes = await asyncio.to_thread(_dir_size, clone_dir)
+                    info["progress"] = (dbytes, fcount)
+                    info["progress_ts"] = now
+                    progressed = True
+                elif fcount > prev[1]:
+                    info["progress"] = (prev[0], fcount)
+                    info["progress_ts"] = now
+                    progressed = True
+                else:
+                    # arquivos não cresceram -> confere bytes do diretório (etapa de clone)
+                    dbytes = await asyncio.to_thread(_dir_size, clone_dir)
+                    if dbytes > prev[0]:
+                        info["progress"] = (dbytes, fcount)
+                        info["progress_ts"] = now
+                        progressed = True
+                if not progressed and (now - info.get("progress_ts", info["since"])) > stall_seconds:
+                    reason = f"sem progresso há {stall_seconds // 60}min"
+
+            # 2) backstop absoluto de tempo total
+            if reason is None and max_seconds > 0 and (now - info["since"]) > max_seconds:
+                reason = f"excedeu {max_seconds // 60}min (backstop)"
+
+            if reason is None:
                 continue
+
             task = info.get("task")
             if task and not task.done():
                 task.cancel()
@@ -160,10 +213,7 @@ class GitCloneWorker:
                 await db.commit()
             except Exception:  # noqa: BLE001
                 pass
-            logger.warning(
-                f"[git watchdog] clone job {jid} excedeu {max_seconds // 60}min; "
-                f"cancelado e reenfileirado"
-            )
+            logger.warning(f"[git watchdog] clone job {jid} travado ({reason}); cancelado e reenfileirado")
 
     async def _get_max_concurrency(self, db) -> int:
         from database import AppSettings
@@ -187,6 +237,18 @@ class GitCloneWorker:
             return max(0, minutes) * 60
         except Exception:  # noqa: BLE001
             return MAX_JOB_SECONDS_DEFAULT
+
+    async def _get_stall_seconds(self, db) -> int:
+        """Janela (s) sem progresso para o watchdog considerar um job travado. 0 = desativado."""
+        from database import AppSettings
+        try:
+            val = (await db.execute(
+                select(AppSettings.value).where(AppSettings.key == "git_clone_stall_min")
+            )).scalar()
+            minutes = int(val) if val not in (None, "") else (STALL_SECONDS_DEFAULT // 60)
+            return max(0, minutes) * 60
+        except Exception:  # noqa: BLE001
+            return STALL_SECONDS_DEFAULT
 
     async def _process_pending_jobs(self, db):
         from database import GitCloneJob, GitRepo
@@ -250,6 +312,11 @@ class GitCloneWorker:
                     return
 
                 clone_dir = os.path.join(GITCLONES_BASE, repo.guid)
+                # Dá ao watchdog o caminho/repo p/ medir progresso (bytes/arquivos).
+                info = self._active.get(job_id)
+                if info is not None:
+                    info["clone_dir"] = clone_dir
+                    info["repo_id"] = repo.id
 
                 # 1) CLONE
                 ok, err = await self._do_clone(db, job, repo, clone_dir)
@@ -630,9 +697,15 @@ class GitCloneWorker:
                     })
 
                 if total % 200 == 0:
+                    # Heartbeat de progresso: a UI mostra os arquivos subindo em vez
+                    # de 0/0, e dá um sinal de progresso adicional ao watchdog.
+                    job.processed_files = total
+                    job.total_files = total
                     await db.commit()
                     await flush_index()
 
+        job.processed_files = total
+        job.total_files = total
         await db.commit()
         await flush_index()
         return total, indexed_total

@@ -837,7 +837,8 @@ DEFAULT_SETTINGS = {
     'git_clone_large_repo_mb': ('100', 'Tamanho (MB) a partir do qual o repositório é clonado raso (--depth 1); abaixo disso o clone é completo. 0 = sempre completo. O download nunca é pulado'),
     'git_clone_auth_default': ('anonymous', 'Modo de autenticação padrão para clone: anonymous ou authenticated'),
     'git_index_max_size_mb': ('2', 'Tamanho máximo (MB) de arquivo de repositório Git para extração/indexação de conteúdo'),
-    'git_clone_job_timeout_min': ('120', 'Tempo máx. (min) de um job de clone em execução antes do watchdog considerá-lo travado e reenfileirá-lo. Deve ser folgado (clone pode levar ~1h). 0 = desativa o cancelamento por tempo'),
+    'git_clone_job_timeout_min': ('120', 'Backstop absoluto (min): tempo máx. de um job de clone em execução antes do watchdog reenfileirá-lo, mesmo progredindo. 0 = desativa'),
+    'git_clone_stall_min': ('10', 'Watchdog: minutos SEM progresso (bytes do clone / arquivos indexados sem crescer) antes de considerar o job travado e reenfileirá-lo. 0 = desativa a detecção de estagnação'),
 }
 
 
