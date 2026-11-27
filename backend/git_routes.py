@@ -171,71 +171,96 @@ async def search_enqueue(req: SearchEnqueueRequest, db=Depends(get_db)):
     token = await _get_token(db, req.api_credential_id)
     searcher = AsyncGithubSearcher(token)
 
+    # Estratégia: inserir os jobs no DB em LOTES, commitando conforme são criados.
+    # Assim os workers já começam a pegar do DB enquanto o restante é inserido, e
+    # um reboot/timeout no meio preserva o que já foi commitado (resiliente).
+    BATCH_SIZE = 25
     seen_full_names = set()
-    unique_repos: List[Dict[str, Any]] = []
+    queued = 0
+    repos_found = 0
+    batch = 0
+    errors: List[Dict[str, str]] = []
+
     for term, stype in conditions:
         try:
             repos = await searcher.resolve(term, search_type=stype, exact=req.exact)
         except GithubSearchError as e:
-            raise HTTPException(status_code=400, detail=f"Erro na busca '{term}' ({stype}): {e.message}")
+            # Persiste o que já foi inserido e segue para a próxima condição.
+            if batch:
+                await db.commit()
+                batch = 0
+            errors.append({"term": term, "type": stype, "error": e.message})
+            continue
+
         for r in repos:
             fn = r.get("full_name")
             if not fn or fn in seen_full_names:
                 continue
             seen_full_names.add(fn)
-            r["_discovered_via"] = term
-            r["_search_type"] = stype
-            unique_repos.append(r)
+            repos_found += 1
 
-    queued = 0
-    for r in unique_repos:
-        fn = r["full_name"]
-        repo = (await db.execute(select(GitRepo).where(GitRepo.full_name == fn))).scalar_one_or_none()
-        if not repo:
-            repo = GitRepo(full_name=fn)
-            db.add(repo)
-        repo.owner = r.get("owner")
-        repo.name = r.get("name")
-        repo.html_url = r.get("html_url")
-        repo.clone_url = r.get("clone_url") or f"https://github.com/{fn}.git"
-        repo.description = r.get("description")
-        repo.default_branch = r.get("default_branch")
-        repo.stars = r.get("stars") or 0
-        repo.forks = r.get("forks") or 0
-        repo.language = r.get("language")
-        repo.topics = r.get("topics") or []
-        repo.size_kb = r.get("size_kb")
-        repo.is_private = bool(r.get("private"))
-        repo.discovered_via = r.get("_discovered_via")
-        repo.search_type = r.get("_search_type")
-        if repo.clone_status not in ("cloning",):
-            repo.clone_status = "pending"
-        await db.flush()
+            repo = (await db.execute(select(GitRepo).where(GitRepo.full_name == fn))).scalar_one_or_none()
+            if not repo:
+                repo = GitRepo(full_name=fn)
+                db.add(repo)
+            repo.owner = r.get("owner")
+            repo.name = r.get("name")
+            repo.html_url = r.get("html_url")
+            repo.clone_url = r.get("clone_url") or f"https://github.com/{fn}.git"
+            repo.description = r.get("description")
+            repo.default_branch = r.get("default_branch")
+            repo.stars = r.get("stars") or 0
+            repo.forks = r.get("forks") or 0
+            repo.language = r.get("language")
+            repo.topics = r.get("topics") or []
+            repo.size_kb = r.get("size_kb")
+            repo.is_private = bool(r.get("private"))
+            repo.discovered_via = term
+            repo.search_type = stype
+            if repo.clone_status not in ("cloning",):
+                repo.clone_status = "pending"
+            await db.flush()
 
-        # Evitar jobs duplicados ativos para o mesmo repo
-        active = (await db.execute(
-            select(GitCloneJob.id).where(
-                GitCloneJob.repo_id == repo.id,
-                GitCloneJob.status.in_(["pending", "running"]),
-            )
-        )).scalar()
-        if active:
-            continue
+            # Evitar jobs duplicados ativos para o mesmo repo
+            active = (await db.execute(
+                select(GitCloneJob.id).where(
+                    GitCloneJob.repo_id == repo.id,
+                    GitCloneJob.status.in_(["pending", "running"]),
+                )
+            )).scalar()
+            if active:
+                continue
 
-        job = GitCloneJob(
-            repo_id=repo.id,
-            repo_url=repo.clone_url,
-            repo_full_name=fn,
-            clone_auth=req.clone_auth,
-            credential_id=req.clone_credential_id if req.clone_auth == "authenticated" else None,
-            depth=req.depth,
-            status="pending",
-        )
-        db.add(job)
-        queued += 1
+            db.add(GitCloneJob(
+                repo_id=repo.id,
+                repo_url=repo.clone_url,
+                repo_full_name=fn,
+                clone_auth=req.clone_auth,
+                credential_id=req.clone_credential_id if req.clone_auth == "authenticated" else None,
+                depth=req.depth,
+                status="pending",
+            ))
+            queued += 1
+            batch += 1
 
-    await db.commit()
-    return {"queued": queued, "repos_found": len(unique_repos)}
+            # Commit do lote: persiste e libera os workers para começarem a pegar.
+            if batch >= BATCH_SIZE:
+                await db.commit()
+                batch = 0
+
+        # Fim de cada condição: garante durabilidade do que foi inserido.
+        if batch:
+            await db.commit()
+            batch = 0
+
+    if batch:
+        await db.commit()
+
+    # Se nenhuma condição resolveu e houve erros, sinaliza falha explícita.
+    if queued == 0 and repos_found == 0 and errors:
+        raise HTTPException(status_code=400, detail="; ".join(f"{e['term']} ({e['type']}): {e['error']}" for e in errors))
+
+    return {"queued": queued, "repos_found": repos_found, "errors": errors}
 
 
 @router.get("/search/content")
