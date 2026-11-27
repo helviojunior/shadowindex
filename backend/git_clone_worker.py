@@ -269,17 +269,6 @@ class GitCloneWorker:
     async def _do_clone(self, db, job, repo, clone_dir) -> Tuple[bool, Optional[str]]:
         from database import Credential
 
-        # Teto de tamanho de download: recusa repos maiores que git_clone_max_repo_mb
-        # (pelo tamanho informado pela API do GitHub). 0 = sem limite.
-        max_mb = await self._get_max_repo_mb(db)
-        size_kb = repo.size_kb or 0
-        if max_mb > 0 and size_kb > 0 and (size_kb / 1024.0) > max_mb:
-            size_mb = size_kb / 1024.0
-            return False, (
-                f"Repositório excede o tamanho máximo de download "
-                f"({size_mb:.0f} MB > {max_mb} MB)"
-            )
-
         repo.clone_status = "cloning"
         await db.commit()
 
@@ -384,17 +373,6 @@ class GitCloneWorker:
         size_kb = repo.size_kb or 0
         is_large = threshold_mb > 0 and size_kb > 0 and (size_kb / 1024.0) > threshold_mb
         return depth, is_large
-
-    async def _get_max_repo_mb(self, db) -> int:
-        """Teto de tamanho (MB) para download de um repositório (git_clone_max_repo_mb). 0 = sem limite."""
-        from database import AppSettings
-        try:
-            val = (await db.execute(
-                select(AppSettings.value).where(AppSettings.key == "git_clone_max_repo_mb")
-            )).scalar()
-            return int(val) if val not in (None, "") else 0
-        except Exception:  # noqa: BLE001
-            return 0
 
     async def _detect_branch(self, clone_dir) -> Optional[str]:
         try:

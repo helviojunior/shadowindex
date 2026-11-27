@@ -833,8 +833,7 @@ DEFAULT_SETTINGS = {
     # Módulo GIT
     'max_simultaneous_git_clones': ('2', 'Número máximo de clones Git simultâneos'),
     'git_clone_depth': ('1', 'Profundidade do git clone (--depth) usada SOMENTE no modo raso (repo grande ou fallback de timeout)'),
-    'git_clone_large_repo_mb': ('100', 'Tamanho (MB) a partir do qual o repositório é clonado raso de imediato; abaixo disso o clone é completo. 0 = sempre completo'),
-    'git_clone_max_repo_mb': ('0', 'Tamanho máximo (MB) de um repositório para download; repos maiores (pelo tamanho informado pelo GitHub) são recusados. 0 = sem limite'),
+    'git_clone_large_repo_mb': ('100', 'Tamanho (MB) a partir do qual o repositório é clonado raso (--depth 1); abaixo disso o clone é completo. 0 = sempre completo. O download nunca é pulado'),
     'git_clone_auth_default': ('anonymous', 'Modo de autenticação padrão para clone: anonymous ou authenticated'),
     'git_index_max_size_mb': ('2', 'Tamanho máximo (MB) de arquivo de repositório Git para extração/indexação de conteúdo'),
 }

@@ -55,7 +55,6 @@ const GeneralSettings = () => {
     auto_index_extensions: '.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml',
     auto_index_mimetypes: 'text/',
     // Git (clone de repositórios)
-    git_clone_max_repo_mb: '0',
     git_clone_large_repo_mb: '100',
     max_simultaneous_git_clones: '2',
     git_index_max_size_mb: '2',
@@ -571,30 +570,10 @@ const GeneralSettings = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-6 md:grid-cols-3">
-            {/* Tamanho máximo de download do repositório */}
-            <div className="space-y-2">
-              <Label htmlFor="git_clone_max_repo_mb" className="flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-muted-foreground" />
-                {t('git.maxRepoSizeLabel')}
-              </Label>
-              <Input
-                id="git_clone_max_repo_mb"
-                type="number"
-                min="0"
-                max="100000"
-                value={settings.git_clone_max_repo_mb}
-                onChange={(e) => handleChange('git_clone_max_repo_mb', e.target.value)}
-                data-testid="git-max-repo-size-input"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('git.maxRepoSizeHelp')}
-              </p>
-            </div>
-
-            {/* Clone raso acima de (MB) */}
+            {/* Threshold de clone raso (depth=1) */}
             <div className="space-y-2">
               <Label htmlFor="git_clone_large_repo_mb" className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-muted-foreground" />
+                <HardDrive className="w-4 h-4 text-muted-foreground" />
                 {t('git.shallowThresholdLabel')}
               </Label>
               <Input
