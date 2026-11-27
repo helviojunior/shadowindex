@@ -51,12 +51,68 @@
     "notIndexed": "not indexed",
     "size": "Size",
     "loading": "Loading…",
-    "openOnGithub": "Open on GitHub"
+    "openOnGithub": "Open on GitHub",
+    "selectItem": "Select a folder or file"
   },
   "toast": {
     "loadError": "Failed to load repositories",
     "loadRepoError": "Failed to load repository",
     "loadFileError": "Failed to load file",
     "searchError": "Search failed"
+  },
+  "tabs": {
+    "objects": "Objects",
+    "info": "Info",
+    "view": "View",
+    "ocr": "OCR"
+  },
+  "objects": {
+    "name": "Name",
+    "type": "Type",
+    "size": "Size",
+    "modified": "Modified",
+    "folder": "Folder",
+    "file": "File",
+    "empty": "Empty folder"
+  },
+  "info": {
+    "name": "Name",
+    "path": "Path",
+    "size": "Size",
+    "mime": "MIME Type",
+    "extension": "Extension",
+    "sha1": "SHA1 Hash",
+    "indexed": "Indexed",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "actions": {
+    "open": "Open",
+    "identify": "Identify leaked credential"
+  },
+  "ocr": {
+    "title": "Extracted text (OCR)",
+    "extracted": "Extracted content",
+    "copy": "Copy",
+    "notApplicable": "This file type is not processed by OCR.",
+    "notProcessed": "No extracted content for this file."
+  },
+  "leakModal": {
+    "title": "Identify leaked credential",
+    "description": "Manually register a credential found in this file.",
+    "file": "File",
+    "credentialType": "Credential type",
+    "selectType": "Select a type",
+    "matchText": "Matched text",
+    "matchPlaceholder": "e.g. password=...",
+    "matchHint": "The secret/credential found in the file.",
+    "lineNumber": "Line number",
+    "linePlaceholder": "e.g. 42",
+    "descriptionLabel": "Description",
+    "descPlaceholder": "Optional notes…",
+    "register": "Register",
+    "cancel": "Cancel",
+    "success": "Leak registered successfully",
+    "error": "Failed to register leak"
   }
 }

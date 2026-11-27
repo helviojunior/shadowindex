@@ -51,12 +51,68 @@
     "notIndexed": "não indexado",
     "size": "Tamanho",
     "loading": "Carregando…",
-    "openOnGithub": "Abrir no GitHub"
+    "openOnGithub": "Abrir no GitHub",
+    "selectItem": "Selecione uma pasta ou arquivo"
   },
   "toast": {
     "loadError": "Falha ao carregar repositórios",
     "loadRepoError": "Falha ao carregar repositório",
     "loadFileError": "Falha ao carregar arquivo",
     "searchError": "Falha na busca"
+  },
+  "tabs": {
+    "objects": "Objetos",
+    "info": "Info",
+    "view": "View",
+    "ocr": "OCR"
+  },
+  "objects": {
+    "name": "Nome",
+    "type": "Tipo",
+    "size": "Tamanho",
+    "modified": "Modificado",
+    "folder": "Pasta",
+    "file": "Arquivo",
+    "empty": "Pasta vazia"
+  },
+  "info": {
+    "name": "Nome",
+    "path": "Caminho",
+    "size": "Tamanho",
+    "mime": "MIME Type",
+    "extension": "Extensão",
+    "sha1": "Hash SHA1",
+    "indexed": "Indexado",
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "actions": {
+    "open": "Abrir",
+    "identify": "Identificar credencial vazada"
+  },
+  "ocr": {
+    "title": "Texto extraído (OCR)",
+    "extracted": "Conteúdo extraído",
+    "copy": "Copiar",
+    "notApplicable": "Este tipo de arquivo não é processado por OCR.",
+    "notProcessed": "Sem conteúdo extraído para este arquivo."
+  },
+  "leakModal": {
+    "title": "Identificar credencial vazada",
+    "description": "Registre manualmente uma credencial encontrada neste arquivo.",
+    "file": "Arquivo",
+    "credentialType": "Tipo de credencial",
+    "selectType": "Selecione um tipo",
+    "matchText": "Texto encontrado",
+    "matchPlaceholder": "ex.: senha=...",
+    "matchHint": "O segredo/credencial encontrado no arquivo.",
+    "lineNumber": "Número da linha",
+    "linePlaceholder": "ex.: 42",
+    "descriptionLabel": "Descrição",
+    "descPlaceholder": "Observações (opcional)…",
+    "register": "Registrar",
+    "cancel": "Cancelar",
+    "success": "Leak registrado com sucesso",
+    "error": "Falha ao registrar leak"
   }
 }

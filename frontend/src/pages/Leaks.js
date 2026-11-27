@@ -1191,6 +1191,17 @@ const Leaks = () => {
                                   <ExternalLink className="w-4 h-4" />
                                 </Button>
                               )}
+                              {/* Abrir no navegador - findings de repositórios Git */}
+                              {finding.git_repo_guid && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(`/git/${finding.git_repo_guid}?from=/leaks`, '_blank')}
+                                  title={t('actions.openFile')}
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </Button>
+                              )}
                               {/* Toggle Falso Positivo */}
                               <Button
                                 variant="ghost"
@@ -1342,6 +1353,18 @@ const Leaks = () => {
                           window.open(`/servers/${serverId}/browse?path=${encodedPath}&from=/leaks`, '_blank');
                         }
                       }}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      {t('detail.openFile')}
+                    </Button>
+                  )}
+                  {/* Abrir no navegador - findings de repositórios Git */}
+                  {selectedFinding.git_repo_guid && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={() => window.open(`/git/${selectedFinding.git_repo_guid}?from=/leaks`, '_blank')}
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
                       {t('detail.openFile')}

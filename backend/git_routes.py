@@ -51,6 +51,13 @@ class SearchEnqueueRequest(BaseModel):
     depth: Optional[int] = None
 
 
+class GitManualLeakRequest(BaseModel):
+    secret_type: str = "other"
+    match_text: Optional[str] = None
+    line_number: Optional[int] = None
+    description: Optional[str] = None
+
+
 # --------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------
@@ -385,9 +392,75 @@ async def get_repo_file(guid: str, file_id: int, db=Depends(get_db_readonly)):
     return {
         "id": f.id, "rel_path": f.rel_path, "name": f.name, "extension": f.extension,
         "size": f.size, "mimetype": f.mimetype, "is_binary": f.is_binary,
+        "sha1": f.sha1, "indexed": f.indexed,
         "content_extracted": f.content_extracted, "content_error": f.content_error,
         "content": f.content,
     }
+
+
+@router.post("/repos/{guid}/files/{file_id}/manual-leak")
+async def register_git_manual_leak(
+    guid: str, file_id: int, body: GitManualLeakRequest, db=Depends(get_db),
+):
+    """Registra manualmente uma credencial vazada em um arquivo de repositório Git,
+    criando um GitleaksFinding ligado ao repo/arquivo (git_repo_id/git_repo_guid)."""
+    import hashlib
+    from routes_v2 import LEAK_TYPES
+
+    if not (body.match_text and body.match_text.strip()):
+        raise HTTPException(status_code=400, detail="match_text é obrigatório")
+
+    f = (await db.execute(
+        select(GitRepoFile).where(GitRepoFile.id == file_id, GitRepoFile.repo_guid == guid)
+    )).scalar_one_or_none()
+    if not f:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+
+    leak_info = LEAK_TYPES.get(body.secret_type, LEAK_TYPES["other"])
+
+    fp_source = f"{guid}:{f.id}:{body.secret_type}:{body.line_number or 0}:{body.match_text or ''}"
+    fingerprint = f"git-manual:{hashlib.sha256(fp_source.encode()).hexdigest()[:32]}"
+
+    existing = (await db.execute(
+        select(GitleaksFinding.id).where(GitleaksFinding.fingerprint == fingerprint)
+    )).scalar()
+    if existing:
+        return {"success": False, "message": "Leak já registrado para este arquivo e localização"}
+
+    match_text = body.match_text or "[identificado manualmente]"
+    finding = GitleaksFinding(
+        fingerprint=fingerprint,
+        rule_id=leak_info["rule_id"],
+        description=body.description or f"Credencial identificada manualmente: {leak_info['name']}",
+        match=match_text,
+        secret=(match_text[:50] + "...") if len(match_text) > 50 else match_text,
+        start_line=body.line_number or 1,
+        end_line=body.line_number or 1,
+        tags=["manual", body.secret_type],
+        file_path=f.rel_path,
+        original_file=f.rel_path,
+        file_name=f.name,
+        server_name=repo.full_name,
+        share_name=repo.full_name,
+        server_path=f.rel_path,
+        detection_source="manual",
+        git_repo_id=repo.id,
+        git_repo_guid=repo.guid,
+        scanned_at=datetime.now(timezone.utc),
+        raw_data={"manual": True, "secret_type": body.secret_type, "severity": leak_info["severity"]},
+    )
+    db.add(finding)
+    # Atualiza o contador do repositório
+    repo.leaks_count = (await db.execute(
+        select(func.count(GitleaksFinding.id)).where(GitleaksFinding.git_repo_guid == guid)
+    )).scalar() or 0
+    repo.leaks_count += 1
+    await db.commit()
+    await db.refresh(finding)
+    return {"success": True, "message": "Leak registrado com sucesso", "finding_id": finding.id}
 
 
 # --------------------------------------------------------------------------

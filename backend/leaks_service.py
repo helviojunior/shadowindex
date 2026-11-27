@@ -596,6 +596,9 @@ async def load_findings_from_db() -> List[Dict[str, Any]]:
                     'share_name': f.share_name,
                     'job_id': f.job_id,
                     'server_id': f.server_id,
+                    # Linkage com repositórios Git (para o botão "abrir no navegador" na tela de Leaks)
+                    'git_repo_id': f.git_repo_id,
+                    'git_repo_guid': f.git_repo_guid,
                     'scanned_at': f.scanned_at.isoformat() if f.scanned_at else None,
                     'is_false_positive': f.is_false_positive
                 })
@@ -1193,7 +1196,9 @@ class GitleaksService:
             'is_false_positive': finding.is_false_positive,
             'extracted_server_guid': finding.extracted_server_guid,
             'extracted_share_id': finding.extracted_share_id,
-            'extracted_file_version_id': finding.extracted_file_version_id
+            'extracted_file_version_id': finding.extracted_file_version_id,
+            'git_repo_id': finding.git_repo_id,
+            'git_repo_guid': finding.git_repo_guid,
         }
     
     def clear_findings(self) -> int:
