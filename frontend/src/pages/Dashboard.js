@@ -195,7 +195,7 @@ const Dashboard = () => {
     
     try {
       const config = { signal: controller.signal };
-      const [downloadStats, dbs, proxies, soaps, cache, servers, gitleaks, findings, leaksTime] = await Promise.all([
+      const [downloadStats, dbs, proxies, soaps, cache, servers, gitleaks, findings, leaksTime, gitStats] = await Promise.all([
         axios.get(`${API}/downloads/stats`, config).catch(() => ({ data: { total_size_bytes: 0 } })),
         axios.get(`${API}/db-connections`, config).catch(() => ({ data: [] })),
         axios.get(`${API}/proxy-servers`, config).catch(() => ({ data: [] })),
@@ -204,7 +204,8 @@ const Dashboard = () => {
         axios.get(`${API}/servers`, config).catch(() => ({ data: [] })),
         axios.get(`${API_V2}/gitleaks/stats`, config).catch(() => ({ data: null })),
         axios.get(`${API_V2}/gitleaks/findings`, config).catch(() => ({ data: { files: [] } })),
-        axios.get(`${API_V2}/gitleaks/leaks-over-time`, config).catch(() => ({ data: { data: [] } }))
+        axios.get(`${API_V2}/gitleaks/leaks-over-time`, config).catch(() => ({ data: { data: [] } })),
+        axios.get(`${API}/git/repos/stats`, config).catch(() => ({ data: { total_size_bytes: 0 } }))
       ]);
       
       clearTimeout(timeoutId);
@@ -218,7 +219,8 @@ const Dashboard = () => {
         cacheEntries: cache.data?.total_entries || 0,
         servers: (servers.data || []).length,
         downloadedFiles: totalDownloads,
-        totalDownloadSize: downloadStats.data?.total_size_bytes || 0
+        // Downloads de arquivos (SMB) + arquivos clonados via git clone
+        totalDownloadSize: (downloadStats.data?.total_size_bytes || 0) + (gitStats.data?.total_size_bytes || 0)
       });
 
       if (gitleaks.data) {

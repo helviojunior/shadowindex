@@ -366,6 +366,11 @@ async def repos_stats(db=Depends(get_db_readonly)):
         )).scalar() or 0
         stats[st] = c
     stats["total"] = (await db.execute(select(func.count(GitRepo.id)))).scalar() or 0
+    # Tamanho total dos arquivos clonados (soma de GitRepoFile.size) + contagem.
+    stats["total_size_bytes"] = int(
+        (await db.execute(select(func.coalesce(func.sum(GitRepoFile.size), 0)))).scalar() or 0
+    )
+    stats["files"] = (await db.execute(select(func.count(GitRepoFile.id)))).scalar() or 0
     return stats
 
 
