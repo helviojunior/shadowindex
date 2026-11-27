@@ -832,7 +832,8 @@ DEFAULT_SETTINGS = {
     'ui_favicon_url': ('https://media.sec4us.com.br/icon/favicon.ico', 'URL do favicon (ícone da aba do navegador)'),
     # Módulo GIT
     'max_simultaneous_git_clones': ('2', 'Número máximo de clones Git simultâneos'),
-    'git_clone_depth': ('1', 'Profundidade padrão do git clone (--depth). 0/vazio = clone completo'),
+    'git_clone_depth': ('1', 'Profundidade do git clone (--depth) usada SOMENTE no modo raso (repo grande ou fallback de timeout)'),
+    'git_clone_large_repo_mb': ('100', 'Tamanho (MB) a partir do qual o repositório é clonado raso de imediato; abaixo disso o clone é completo. 0 = sempre completo'),
     'git_clone_auth_default': ('anonymous', 'Modo de autenticação padrão para clone: anonymous ou authenticated'),
     'git_index_max_size_mb': ('2', 'Tamanho máximo (MB) de arquivo de repositório Git para extração/indexação de conteúdo'),
 }

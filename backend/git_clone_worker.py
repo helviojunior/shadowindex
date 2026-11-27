@@ -287,16 +287,45 @@ class GitCloneWorker:
             if token:
                 url = f"https://x-access-token:{token}@github.com/{full_name}.git"
 
+        # Estratégia: clone COMPLETO por padrão; raso (--depth) só para repositórios
+        # grandes (pelo size_kb da API do GitHub) ou se o completo estourar o timeout.
+        shallow_depth, is_large = await self._resolve_shallow_depth(db, job, repo)
+        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true"}
+
+        # 1ª tentativa: completa (a menos que o repo já seja sabidamente grande,
+        # ou que o job force uma profundidade explícita).
+        attempt_shallow = is_large
+        ok, err, timed_out = await self._run_clone(
+            url, clone_dir, full_name, env, shallow_depth if attempt_shallow else None,
+        )
+        if ok:
+            repo.local_path = repo.guid
+            repo.default_branch = repo.default_branch or await self._detect_branch(clone_dir)
+            return True, None
+
+        # Fallback: se a tentativa COMPLETA estourou o timeout, repete em modo raso.
+        if timed_out and not attempt_shallow and shallow_depth and shallow_depth > 0:
+            logger.warning(
+                f"[git {full_name}] clone completo excedeu o timeout; refazendo raso (depth={shallow_depth})"
+            )
+            if os.path.isdir(clone_dir):
+                shutil.rmtree(clone_dir, ignore_errors=True)
+            ok, err, _ = await self._run_clone(
+                url, clone_dir, full_name, env, shallow_depth,
+            )
+            if ok:
+                repo.local_path = repo.guid
+                repo.default_branch = repo.default_branch or await self._detect_branch(clone_dir)
+                return True, None
+
+        return False, err
+
+    async def _run_clone(self, url, clone_dir, full_name, env, depth) -> Tuple[bool, Optional[str], bool]:
+        """Executa `git clone`. depth>0 => clone raso. Retorna (ok, err, timed_out)."""
         cmd = ["git", "clone", "--quiet"]
-        # Profundidade: usa a do job, senão cai para a configuração padrão (git_clone_depth).
-        depth = job.depth
-        if depth is None:
-            depth = await self._get_default_depth(db)
         if depth and int(depth) > 0:
             cmd += ["--depth", str(int(depth)), "--single-branch", "--no-tags"]
         cmd += [url, clone_dir]
-
-        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true"}
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=env,
@@ -306,24 +335,44 @@ class GitCloneWorker:
                 # Não logar a URL (pode conter token)
                 msg = (stderr.decode("utf-8", "replace") if stderr else "").strip()
                 msg = msg.replace(url, f"https://github.com/{full_name}.git")
-                return False, msg or f"git exited {proc.returncode}"
-            repo.local_path = repo.guid
-            repo.default_branch = repo.default_branch or await self._detect_branch(clone_dir)
-            return True, None
+                return False, msg or f"git exited {proc.returncode}", False
+            return True, None, False
         except asyncio.TimeoutError:
-            return False, "clone timed out (1800s)"
+            return False, "clone timed out (1800s)", True
         except Exception as e:  # noqa: BLE001
-            return False, str(e)
+            return False, str(e), False
 
-    async def _get_default_depth(self, db) -> int:
+    async def _resolve_shallow_depth(self, db, job, repo) -> Tuple[int, bool]:
+        """Retorna (depth_para_raso, repo_eh_grande).
+
+        - `depth_para_raso`: profundidade a usar quando o clone for raso (setting git_clone_depth, default 1).
+        - `repo_eh_grande`: True se o repo deve ser clonado raso já de cara, decidido pelo
+          tamanho informado pela API do GitHub (repo.size_kb) contra git_clone_large_repo_mb.
+        Um `job.depth` explícito (>0) força raso nessa profundidade.
+        """
         from database import AppSettings
-        try:
-            val = (await db.execute(
-                select(AppSettings.value).where(AppSettings.key == "git_clone_depth")
-            )).scalar()
-            return int(val) if val else 1
-        except Exception:  # noqa: BLE001
-            return 1
+
+        async def _setting(key, default):
+            try:
+                val = (await db.execute(
+                    select(AppSettings.value).where(AppSettings.key == key)
+                )).scalar()
+                return int(val) if val not in (None, "") else default
+            except Exception:  # noqa: BLE001
+                return default
+
+        depth = await _setting("git_clone_depth", 1)
+        if depth <= 0:
+            depth = 1
+
+        # Override explícito por job.
+        if job.depth is not None and int(job.depth) > 0:
+            return int(job.depth), True
+
+        threshold_mb = await _setting("git_clone_large_repo_mb", 100)
+        size_kb = repo.size_kb or 0
+        is_large = threshold_mb > 0 and size_kb > 0 and (size_kb / 1024.0) > threshold_mb
+        return depth, is_large
 
     async def _detect_branch(self, clone_dir) -> Optional[str]:
         try:
