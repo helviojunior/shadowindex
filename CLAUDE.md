@@ -2,11 +2,14 @@
 
 ## Frontend (React)
 
-- **Largura total sempre**: toda página em `frontend/src/pages/` deve usar a largura
-  inteira do canvas. Não envolva a raiz da página em container centralizado com
-  largura limitada (`max-w-6xl`/`max-w-7xl` + `mx-auto`). Use raiz full width,
-  ex.: `className="p-6 space-y-6 w-full"`. `max-w-*` em blocos de texto/tooltip
-  internos é permitido.
+- **Largura total e margens consistentes**: toda página em `frontend/src/pages/`
+  deve usar a largura inteira do canvas e as mesmas margens das telas existentes
+  (ex.: Servers, Advanced Search). O `<main>` do `Layout.js` **já aplica `p-6`**,
+  então a raiz da página NÃO deve adicionar o próprio `p-6`/`px-*` nem `w-full`
+  nem container centralizado (`max-w-*` + `mx-auto`) — isso dobra a margem. Use
+  a raiz como `className="space-y-6"` (igual ao Servers). Telas full-bleed tipo
+  browser (ServerBrowser/GitRepoBrowser) usam `h-[calc(100vh-120px)] flex flex-col`.
+  `max-w-*` em blocos de texto/tooltip internos é permitido.
 
 ## Deploy (stack prod, docker-compose.yml)
 

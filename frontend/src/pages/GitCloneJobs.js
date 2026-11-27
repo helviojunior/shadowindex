@@ -97,7 +97,7 @@ export default function GitCloneJobs() {
   const stepLabel = (s) => s ? t(`steps.${s}`, { defaultValue: s }) : '';
 
   return (
-    <div className="p-6 space-y-6 w-full">
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <GitBranch className="w-7 h-7" />
