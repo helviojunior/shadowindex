@@ -124,6 +124,8 @@ class AsyncGithubSearcher:
             "topics": repo.get("topics") or [],
             "size_kb": repo.get("size"),
             "private": bool(repo.get("private")),
+            # Data do último push (atualização do código) — usada para priorizar o clone.
+            "pushed_at": repo.get("pushed_at") or repo.get("updated_at"),
         }
 
     # -- public API --------------------------------------------------------

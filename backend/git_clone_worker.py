@@ -18,7 +18,7 @@ import traceback
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, nullslast
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ class GitCloneWorker:
             return MAX_JOB_SECONDS_DEFAULT
 
     async def _process_pending_jobs(self, db):
-        from database import GitCloneJob
+        from database import GitCloneJob, GitRepo
 
         max_conc = await self._get_max_concurrency(db)
 
@@ -199,10 +199,21 @@ class GitCloneWorker:
         if slots <= 0:
             return
 
+        # Ordem de prioridade do processamento:
+        #   1) priority (override manual de "priorizar")
+        #   2) data de atualização do repo (pushed_at) — mais novo primeiro
+        #   3) tamanho do repo (size_kb) — menor primeiro
+        #   4) created_at — desempate
         result = await db.execute(
             select(GitCloneJob)
+            .outerjoin(GitRepo, GitRepo.id == GitCloneJob.repo_id)
             .where(GitCloneJob.status == "pending")
-            .order_by(GitCloneJob.priority.desc(), GitCloneJob.created_at.asc())
+            .order_by(
+                GitCloneJob.priority.desc(),
+                nullslast(GitRepo.pushed_at.desc()),
+                nullslast(GitRepo.size_kb.asc()),
+                GitCloneJob.created_at.asc(),
+            )
             .limit(slots)
         )
         pending = result.scalars().all()

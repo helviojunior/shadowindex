@@ -20,6 +20,16 @@ from database import (
 )
 from github_api import AsyncGithubSearcher, GithubSearchError
 
+
+def _parse_gh_datetime(s):
+    """Converte um timestamp ISO 8601 do GitHub (ex.: '2024-05-01T12:34:56Z') em datetime."""
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+    except Exception:  # noqa: BLE001
+        return None
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/git")
@@ -214,6 +224,7 @@ async def search_enqueue(req: SearchEnqueueRequest, db=Depends(get_db)):
             repo.language = r.get("language")
             repo.topics = r.get("topics") or []
             repo.size_kb = r.get("size_kb")
+            repo.pushed_at = _parse_gh_datetime(r.get("pushed_at"))
             repo.is_private = bool(r.get("private"))
             repo.discovered_via = term
             repo.search_type = stype

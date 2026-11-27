@@ -732,6 +732,7 @@ class GitRepo(Base):
     language = Column(String, nullable=True)
     topics = Column(JSON, nullable=True)  # lista de tags/topics
     size_kb = Column(BigInteger, nullable=True)
+    pushed_at = Column(DateTime(timezone=True), nullable=True, index=True)  # último push no GitHub (prioridade do clone)
     is_private = Column(Boolean, default=False)
     source = Column(String, default="github")  # github, gitlab, ...
     discovered_via = Column(String, nullable=True)  # termo de busca que encontrou o repo
@@ -972,6 +973,18 @@ async def apply_pending_migrations():
                             f"ALTER TABLE gitleaks_findings ADD COLUMN {col} {coltype}"
                         ))
                         logger.info(f"Migration applied: {col} added to gitleaks_findings")
+
+            # Módulo GIT: pushed_at em git_repos (prioridade do clone)
+            result = await conn.execute(text("SELECT to_regclass('public.git_repos')"))
+            if result.scalar():
+                result = await conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'git_repos' AND column_name = 'pushed_at'"
+                ))
+                if not result.fetchone():
+                    logger.info("Applying migration: adding pushed_at to git_repos")
+                    await conn.execute(text("ALTER TABLE git_repos ADD COLUMN pushed_at TIMESTAMPTZ"))
+                    logger.info("Migration applied: pushed_at added to git_repos")
         else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))
@@ -1053,6 +1066,14 @@ async def apply_pending_migrations():
                     await conn.execute(text(
                         "ALTER TABLE gitleaks_findings ADD COLUMN git_repo_guid VARCHAR"
                     ))
+
+            # SQLite: Módulo GIT - pushed_at em git_repos (prioridade do clone)
+            result = await conn.execute(text("PRAGMA table_info(git_repos)"))
+            columns = [row[1] for row in result.fetchall()]
+            if columns and 'pushed_at' not in columns:  # tabela existe
+                logger.info("Applying migration: adding pushed_at to git_repos")
+                await conn.execute(text("ALTER TABLE git_repos ADD COLUMN pushed_at TIMESTAMP"))
+                logger.info("Migration applied: pushed_at added to git_repos")
 
 
 async def init_db():
