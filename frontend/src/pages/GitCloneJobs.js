@@ -20,6 +20,17 @@ import { dateLocale } from '@/lib/datetime';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Estilo dos cards de estatística (mesmo padrão da tela /downloads):
+// borda esquerda colorida, número grande, label em maiúsculo colorido e ícone.
+const STAT_STYLES = {
+  total:     { icon: GitBranch,   text: 'text-blue-500',   border: 'border-l-blue-500' },
+  pending:   { icon: Clock,       text: 'text-yellow-500', border: 'border-l-yellow-500' },
+  running:   { icon: Loader2,     text: 'text-blue-500',   border: 'border-l-blue-500', spin: true },
+  completed: { icon: CheckCircle, text: 'text-green-500',  border: 'border-l-green-500' },
+  failed:    { icon: XCircle,     text: 'text-red-500',    border: 'border-l-red-500' },
+  cancelled: { icon: X,           text: 'text-gray-500',   border: 'border-l-gray-500' },
+};
+
 const ScanStatusBadge = ({ status }) => {
   const { t } = useTranslation('common');
   const variants = {
@@ -116,13 +127,25 @@ export default function GitCloneJobs() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          {['total', 'pending', 'running', 'completed', 'failed', 'cancelled'].map(k => (
-            <Card key={k}><CardContent className="pt-4">
-              <div className="text-2xl font-bold">{stats[k] ?? 0}</div>
-              <div className="text-xs text-muted-foreground">{t(`stats.${k}`)}</div>
-            </CardContent></Card>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {['total', 'pending', 'running', 'completed', 'failed', 'cancelled'].map(k => {
+            const cfg = STAT_STYLES[k];
+            const Icon = cfg.icon;
+            const count = stats[k] ?? 0;
+            return (
+              <Card key={k} className={cn('border-l-4 border border-transparent', cfg.border)}>
+                <CardContent className="pt-4 pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className={cn('text-xs uppercase', cfg.text)}>{t(`stats.${k}`)}</p>
+                    </div>
+                    <Icon className={cn('w-6 h-6 opacity-60', cfg.text, cfg.spin && count > 0 && 'animate-spin')} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
