@@ -60,7 +60,9 @@
     "loadFileError": "Falha ao carregar arquivo",
     "searchError": "Falha na busca",
     "reindexQueued": "Reprocessamento enfileirado com prioridade alta",
-    "reindexReclone": "Clone completo reenfileirado (sem histórico em disco) com prioridade alta"
+    "reindexReclone": "Clone completo reenfileirado (sem histórico em disco) com prioridade alta",
+    "loadCommitsError": "Erro ao carregar commits",
+    "loadTreeError": "Erro ao carregar a árvore do commit"
   },
   "tabs": {
     "objects": "Objetos",
@@ -124,7 +126,8 @@
     "register": "Registrar",
     "cancel": "Cancelar",
     "success": "Leak registrado com sucesso",
-    "error": "Falha ao registrar leak"
+    "error": "Falha ao registrar leak",
+    "notIndexed": "Este arquivo (versão de commit) não foi indexado; não é possível registrar leak manual."
   },
   "versions": {
     "label": "Versão:",
@@ -146,5 +149,13 @@
     "modified": "Modificado",
     "deleted": "Removido",
     "renamed": "Renomeado"
+  },
+  "commits": {
+    "title": "Commits",
+    "viewingTree": "Vendo os arquivos como estavam no commit",
+    "exitTree": "Sair",
+    "empty": "Nenhum commit",
+    "copyHash": "Copiar hash",
+    "browseTree": "Ver árvore neste commit"
   }
 }

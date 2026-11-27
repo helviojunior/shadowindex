@@ -113,6 +113,14 @@ export default function GitRepoBrowser() {
   const [currentVersionId, setCurrentVersionId] = useState(null);
   const [showHistory, setShowHistory] = useState(false); // inclui arquivos de commits antigos/removidos
 
+  // Navegação por commit (estilo GitHub):
+  // - panelMode: 'files' (árvore) | 'commits' (lista de commits)
+  // - commitTree: quando setado, a árvore mostra os arquivos COMO ESTAVAM naquele commit
+  const [panelMode, setPanelMode] = useState('files');
+  const [commits, setCommits] = useState(null);
+  const [loadingCommits, setLoadingCommits] = useState(false);
+  const [commitTree, setCommitTree] = useState(null); // { commit, files, commit_url }
+
   // Seleção da árvore (pasta ou arquivo) + aba ativa do painel de detalhe.
   const [selectedPath, setSelectedPath] = useState(null);
   const [selectedKind, setSelectedKind] = useState(null); // 'dir' | 'file'
@@ -191,6 +199,82 @@ export default function GitRepoBrowser() {
     }
   }, [guid, t]);
 
+  // Conteúdo de um blob que não foi indexado como versão (ex.: binário/grande),
+  // lido direto do clone no commit indicado.
+  const loadBlobContent = useCallback(async (sha, relPath) => {
+    setCurrentVersionId(null);
+    setFileContent(null);
+    setLoadingContent(true);
+    try {
+      const params = new URLSearchParams();
+      if (sha) params.set('commit', sha);
+      if (relPath) params.set('path', relPath);
+      const res = await axios.get(`${API}/git/repos/${guid}/blob?${params.toString()}`);
+      setFileContent(res.data);
+    } catch (e) {
+      console.error(e);
+      toast.error(t('toast.loadFileError'));
+    } finally {
+      setLoadingContent(false);
+    }
+  }, [guid, t]);
+
+  // Lista de commits do repositório (tela "Commits", estilo GitHub).
+  const loadCommits = useCallback(async () => {
+    setLoadingCommits(true);
+    try {
+      const res = await axios.get(`${API}/git/repos/${guid}/commits?limit=300`);
+      setCommits(res.data?.commits || []);
+      if (res.data?.repo) setRepo(res.data.repo);
+    } catch (e) {
+      console.error(e);
+      toast.error(t('toast.loadCommitsError'));
+      setCommits([]);
+    } finally {
+      setLoadingCommits(false);
+    }
+  }, [guid, t]);
+
+  // Entra no modo "árvore no commit": a árvore passa a mostrar os arquivos COMO
+  // estavam naquele commit (git ls-tree), igual ao /tree/<sha> do GitHub.
+  const enterCommitTree = useCallback(async (sha, openPath) => {
+    try {
+      const res = await axios.get(`${API}/git/repos/${guid}/tree?commit=${encodeURIComponent(sha)}`);
+      const data = res.data || {};
+      setCommitTree({ commit: data.commit || { hash: sha, short: (sha || '').slice(0, 7) }, files: data.files || [], commit_url: data.commit_url });
+      setPanelMode('files');
+      setSelectedFile(null); setSelectedPath(null); setSelectedKind(null);
+      setFileContent(null); setVersions(null);
+      setFilterQuery(''); setExpandedNodes({});
+      if (data.repo) setRepo(data.repo);
+      if (openPath) {
+        const entry = (data.files || []).find((f) => f.rel_path === openPath);
+        if (entry) {
+          const commitSha = data.commit?.hash || sha;
+          setSelectedFile(entry); setSelectedPath(entry.rel_path); setSelectedKind('file'); setActiveTab('info');
+          const parts = (entry.rel_path || '').split('/').filter(Boolean);
+          if (parts.length > 1) {
+            const anc = {}; let acc = '';
+            for (let i = 0; i < parts.length - 1; i++) { acc = acc ? `${acc}/${parts[i]}` : parts[i]; anc[acc] = true; }
+            setExpandedNodes(anc);
+          }
+          fetchVersions(entry.rel_path).then(setVersions);
+          if (entry.id) loadVersionContent(entry.id);
+          else loadBlobContent(commitSha, entry.rel_path);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(t('toast.loadTreeError'));
+    }
+  }, [guid, t, fetchVersions, loadVersionContent, loadBlobContent]);
+
+  const exitCommitTree = useCallback(() => {
+    setCommitTree(null);
+    setSelectedFile(null); setSelectedPath(null); setSelectedKind(null);
+    setFileContent(null); setVersions(null); setExpandedNodes({});
+  }, []);
+
   // Tipos de credencial para o modal de identificação manual.
   useEffect(() => {
     (async () => {
@@ -205,12 +289,15 @@ export default function GitRepoBrowser() {
 
   const filterActive = filterQuery.trim() !== '';
 
+  // Fonte da árvore: os arquivos do commit (quando navegando um commit) ou os atuais.
+  const sourceFiles = commitTree ? commitTree.files : files;
+
   // Lista filtrada client-side por caminho; a árvore é remontada sobre ela.
   const visibleFiles = useMemo(() => {
-    if (!filterActive) return files;
+    if (!filterActive) return sourceFiles;
     const q = filterQuery.trim().toLowerCase();
-    return files.filter(f => (f.rel_path || '').toLowerCase().includes(q));
-  }, [files, filterQuery, filterActive]);
+    return sourceFiles.filter(f => (f.rel_path || '').toLowerCase().includes(q));
+  }, [sourceFiles, filterQuery, filterActive]);
 
   const tree = useMemo(() => buildTree(visibleFiles), [visibleFiles]);
 
@@ -236,16 +323,18 @@ export default function GitRepoBrowser() {
       }
       setExpandedNodes(prev => ({ ...prev, ...anc }));
     }
-    // Carrega as versões do caminho; se um commit foi pedido, abre a versão dele.
+    // Carrega as versões do caminho (para o seletor de versões).
     const vs = await fetchVersions(f.rel_path);
     setVersions(vs);
-    let targetId = f.id;
-    if (opts.commit) {
-      const m = vs.find((v) => v.commit_hash === opts.commit || v.commit_short === opts.commit);
-      if (m) targetId = m.id;
+    // Conteúdo: se há file_id (blob indexado) usa-o; senão lê o blob no commit.
+    if (f.id) {
+      await loadVersionContent(f.id);
+    } else if (opts.commit || commitTree) {
+      await loadBlobContent(opts.commit || commitTree?.commit?.hash, f.rel_path);
+    } else if (vs[0]) {
+      await loadVersionContent(vs[0].id);
     }
-    await loadVersionContent(targetId);
-  }, [fetchVersions, loadVersionContent]);
+  }, [fetchVersions, loadVersionContent, loadBlobContent, commitTree]);
 
   // Abre um resultado de busca de conteúdo — pode ser uma versão histórica
   // (arquivo que só existe num commit antigo e não está na árvore atual).
@@ -259,15 +348,29 @@ export default function GitRepoBrowser() {
     if (f) openFile(f);
   }, [files, openFile]);
 
-  // Deep-link: abre automaticamente o arquivo indicado por ?file=<rel_path> (e ?commit=<hash>).
+  // Deep-link:
+  // - ?commit=<hash> (ex.: vindo de um leak): abre a ÁRVORE INTEIRA naquele commit
+  //   (estilo GitHub /tree/<sha>) e, se houver ?file=, já abre esse arquivo.
+  // - só ?file=<rel_path>: abre o arquivo na árvore atual.
   useEffect(() => {
-    if (autoOpened || !fileParam || files.length === 0) return;
+    if (autoOpened) return;
+    if (commitParam) {
+      enterCommitTree(commitParam, fileParam || undefined);
+      setAutoOpened(true);
+      return;
+    }
+    if (!fileParam || files.length === 0) return;
     const target = files.find((f) => f.rel_path === fileParam);
     if (target) {
-      openFile(target, commitParam ? { commit: commitParam } : {});
+      openFile(target);
       setAutoOpened(true);
     }
-  }, [files, fileParam, commitParam, autoOpened, openFile]);
+  }, [files, fileParam, commitParam, autoOpened, openFile, enterCommitTree]);
+
+  // Carrega os commits ao entrar na aba "Commits".
+  useEffect(() => {
+    if (panelMode === 'commits' && commits === null && !loadingCommits) loadCommits();
+  }, [panelMode, commits, loadingCommits, loadCommits]);
 
   // Seleciona uma PASTA (mostra os Objetos no painel direito) e a expande.
   const selectDir = useCallback((path) => {
@@ -287,6 +390,7 @@ export default function GitRepoBrowser() {
 
   const submitManualLeak = useCallback(async () => {
     if (!selectedFile) return;
+    if (!selectedFile.id) { toast.error(t('leakModal.notIndexed')); return; }
     setSubmittingLeak(true);
     try {
       const res = await axios.post(`${API}/git/repos/${guid}/files/${selectedFile.id}/manual-leak`, {
@@ -755,6 +859,55 @@ export default function GitRepoBrowser() {
     );
   };
 
+  // Tela "Commits" (estilo GitHub): lista de commits; clicar abre a árvore no commit.
+  const renderCommitsPanel = () => (
+    <div className="flex-1 overflow-hidden flex flex-col" data-testid="git-commits-panel">
+      <div className="p-3 border-b border-border flex items-center gap-2">
+        <GitCommit className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-sm font-medium">{t('commits.title')}</h3>
+        {commits && <span className="text-xs text-primary">{commits.length}</span>}
+        {loadingCommits && <Loader2 className="w-4 h-4 animate-spin" />}
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-2 max-w-4xl mx-auto">
+          {loadingCommits && !commits ? (
+            <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div>
+          ) : (commits || []).length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground text-sm">{t('commits.empty')}</div>
+          ) : (
+            (commits || []).map((c) => (
+              <div key={c.hash} className="border border-border rounded-lg p-3 flex items-start justify-between gap-3 hover:bg-muted/40 transition-colors">
+                <div className="min-w-0">
+                  <button
+                    onClick={() => enterCommitTree(c.hash)}
+                    className="text-left font-medium hover:text-primary truncate block max-w-full"
+                    title={c.subject}
+                  >
+                    {c.subject || c.short}
+                  </button>
+                  <div className="text-xs text-muted-foreground mt-1 truncate">
+                    {c.author} · {fmtDate(c.date)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <code className="text-xs font-mono text-muted-foreground px-1.5 py-0.5 rounded bg-muted">{c.short}</code>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" title={t('commits.copyHash')}
+                    onClick={() => copyToClipboard(c.hash, `c:${c.short}`)}>
+                    {copiedField === `c:${c.short}` ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" title={t('commits.browseTree')}
+                    onClick={() => enterCommitTree(c.hash)} data-testid="git-commit-browse">
+                    <Code className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col relative w-full" data-testid="git-repo-browser-page">
       {/* Header compacto (igual ao ServerBrowser) */}
@@ -779,9 +932,26 @@ export default function GitRepoBrowser() {
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Badge variant="outline">
-            <FileText className="w-3 h-3 mr-1" />{repo?.files_count ?? 0} {t('browser.files')}
-          </Badge>
+          {/* Alternância Arquivos | Commits */}
+          <div className="inline-flex rounded-md border border-border overflow-hidden">
+            <button
+              onClick={() => setPanelMode('files')}
+              className={cn('px-3 py-1.5 text-xs font-medium inline-flex items-center gap-1',
+                panelMode === 'files' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground')}
+              data-testid="git-view-files"
+            >
+              <FileText className="w-3.5 h-3.5" />{t('browser.files')}
+            </button>
+            <button
+              onClick={() => setPanelMode('commits')}
+              className={cn('px-3 py-1.5 text-xs font-medium inline-flex items-center gap-1 border-l border-border',
+                panelMode === 'commits' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground')}
+              data-testid="git-view-commits"
+            >
+              <GitCommit className="w-3.5 h-3.5" />{t('commits.title')}
+              {repo?.commits_count != null && <span className="opacity-70">({repo.commits_count})</span>}
+            </button>
+          </div>
           {repo && (
             <Badge
               variant="outline"
@@ -789,9 +959,7 @@ export default function GitRepoBrowser() {
               title={repo.history_indexed ? t('history.indexedOn') : t('history.indexedOff')}
             >
               <History className="w-3 h-3" />
-              {repo.history_indexed
-                ? (repo.commits_count != null ? t('history.commits', { count: repo.commits_count }) : t('history.on'))
-                : t('history.off')}
+              {repo.history_indexed ? t('history.on') : t('history.off')}
             </Badge>
           )}
           <Button variant="outline" size="sm" onClick={reindexRepo} disabled={reindexing} title={t('history.reindexTitle')}>
@@ -805,6 +973,32 @@ export default function GitRepoBrowser() {
           )}
         </div>
       </div>
+
+      {panelMode === 'commits' ? (
+        renderCommitsPanel()
+      ) : (
+       <>
+      {/* Banner: navegando os arquivos como estavam em um commit específico */}
+      {commitTree && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-amber-500/10 text-amber-600 dark:text-amber-400" data-testid="git-commit-tree-banner">
+          <GitCommit className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm min-w-0 truncate">
+            {t('commits.viewingTree')}{' '}
+            <span className="font-mono">{commitTree.commit?.short}</span>
+            {commitTree.commit?.subject ? ` · ${commitTree.commit.subject}` : ''}
+          </span>
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            {commitTree.commit_url && (
+              <a href={commitTree.commit_url} target="_blank" rel="noreferrer" className="text-xs inline-flex items-center gap-1 hover:underline">
+                <ExternalLink className="w-3 h-3" />GitHub
+              </a>
+            )}
+            <Button size="sm" variant="outline" className="h-7" onClick={exitCommitTree} data-testid="git-exit-commit-tree">
+              <X className="w-3.5 h-3.5 mr-1" />{t('commits.exitTree')}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Split view: árvore à esquerda, conteúdo à direita (igual ao ServerBrowser) */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
@@ -944,6 +1138,8 @@ export default function GitRepoBrowser() {
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
+       </>
+      )}
 
       {/* Modal: Identificar credencial vazada */}
       <Dialog open={showLeakModal} onOpenChange={setShowLeakModal}>

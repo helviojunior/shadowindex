@@ -60,7 +60,9 @@
     "loadFileError": "Failed to load file",
     "searchError": "Search failed",
     "reindexQueued": "Reprocessing queued with high priority",
-    "reindexReclone": "Full re-clone queued (no history on disk) with high priority"
+    "reindexReclone": "Full re-clone queued (no history on disk) with high priority",
+    "loadCommitsError": "Failed to load commits",
+    "loadTreeError": "Failed to load commit tree"
   },
   "tabs": {
     "objects": "Objects",
@@ -124,7 +126,8 @@
     "register": "Register",
     "cancel": "Cancel",
     "success": "Leak registered successfully",
-    "error": "Failed to register leak"
+    "error": "Failed to register leak",
+    "notIndexed": "This file (commit version) is not indexed; cannot register a manual leak."
   },
   "versions": {
     "label": "Version:",
@@ -146,5 +149,13 @@
     "modified": "Modified",
     "deleted": "Deleted",
     "renamed": "Renamed"
+  },
+  "commits": {
+    "title": "Commits",
+    "viewingTree": "Viewing files as of commit",
+    "exitTree": "Exit",
+    "empty": "No commits",
+    "copyHash": "Copy hash",
+    "browseTree": "Browse tree at this commit"
   }
 }

@@ -571,6 +571,218 @@ async def list_file_versions(guid: str, path: str, db=Depends(get_db_readonly)):
     }
 
 
+# --------------------------------------------------------------------------
+# Navegação por commit (estilo GitHub): lista de commits + árvore em um commit
+# --------------------------------------------------------------------------
+_GIT_SHA_RE = None
+
+
+def _valid_sha(s: str) -> bool:
+    """Aceita apenas hexsha (curto ou completo) para evitar injeção em argumentos git."""
+    import re as _re
+    global _GIT_SHA_RE
+    if _GIT_SHA_RE is None:
+        _GIT_SHA_RE = _re.compile(r"^[0-9a-fA-F]{4,40}$")
+    return bool(s) and bool(_GIT_SHA_RE.match(s))
+
+
+async def _clone_dir_or_404(repo) -> str:
+    from git_clone_worker import GITCLONES_BASE
+    clone_dir = os.path.join(GITCLONES_BASE, repo.guid)
+    if not os.path.isdir(os.path.join(clone_dir, ".git")):
+        raise HTTPException(status_code=409, detail="Clone não disponível em disco (reindexe o repositório)")
+    return clone_dir
+
+
+async def _git_output(clone_dir: str, args: list, timeout: int = 60) -> bytes:
+    import asyncio as _asyncio
+    proc = await _asyncio.create_subprocess_exec(
+        "git", "-C", clone_dir, *args,
+        stdout=_asyncio.subprocess.PIPE, stderr=_asyncio.subprocess.PIPE,
+    )
+    try:
+        out, err = await _asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except _asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="git demorou demais")
+    if proc.returncode != 0:
+        msg = (err.decode("utf-8", "replace") if err else "").strip()
+        raise HTTPException(status_code=400, detail=msg or f"git falhou ({proc.returncode})")
+    return out
+
+
+async def _commit_meta(clone_dir: str, sha: str) -> Optional[Dict[str, Any]]:
+    try:
+        out = await _git_output(clone_dir, [
+            "show", "-s", "--format=%H%x00%h%x00%an%x00%ae%x00%aI%x00%s", sha,
+        ])
+    except HTTPException:
+        return None
+    parts = out.decode("utf-8", "replace").strip().split("\x00")
+    if len(parts) < 6:
+        return None
+    return {"hash": parts[0], "short": parts[1], "author": parts[2],
+            "author_email": parts[3], "date": parts[4], "subject": parts[5]}
+
+
+@router.get("/repos/{guid}/commits")
+async def list_repo_commits(
+    guid: str,
+    q: Optional[str] = None,
+    limit: int = Query(100, le=500),
+    offset: int = 0,
+    db=Depends(get_db_readonly),
+):
+    """Lista os commits do repositório (como a tela Commits do GitHub)."""
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+    clone_dir = await _clone_dir_or_404(repo)
+
+    args = ["log", "--all", "--date-order",
+            f"--max-count={int(limit)}", f"--skip={int(offset)}",
+            "--format=%H%x00%h%x00%an%x00%ae%x00%aI%x00%s"]
+    if q and q.strip():
+        args += ["--grep", q.strip(), "-i"]
+    out = await _git_output(clone_dir, args)
+    commits = []
+    for line in out.decode("utf-8", "replace").splitlines():
+        p = line.split("\x00")
+        if len(p) < 6:
+            continue
+        commits.append({
+            "hash": p[0], "short": p[1], "author": p[2], "author_email": p[3],
+            "date": p[4], "subject": p[5],
+        })
+    html_url = repo.html_url
+    return {
+        "repo": _repo_dict(repo),
+        "commits": commits,
+        "limit": limit, "offset": offset,
+        "html_url_tpl": (f"{html_url}/commit/" if html_url else None),
+    }
+
+
+@router.get("/repos/{guid}/tree")
+async def get_repo_tree_at_commit(guid: str, commit: str, db=Depends(get_db_readonly)):
+    """Lista a árvore COMPLETA de arquivos como estava em um commit (git ls-tree),
+    igual ao /tree/<sha> do GitHub. Cada arquivo traz o file_id (quando aquele blob
+    foi indexado) para abrir o conteúdo já extraído."""
+    if not _valid_sha(commit):
+        raise HTTPException(status_code=400, detail="commit inválido")
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+    clone_dir = await _clone_dir_or_404(repo)
+
+    out = await _git_output(clone_dir, ["ls-tree", "-r", "--long", commit])
+    entries = []
+    blob_shas = []
+    for line in out.decode("utf-8", "replace").splitlines():
+        meta, _, path = line.partition("\t")
+        cols = meta.split()
+        if len(cols) < 4 or cols[1] != "blob":
+            continue
+        sha = cols[2]
+        size = int(cols[3]) if cols[3].isdigit() else None
+        ext = os.path.splitext(path)[1].lower() or None
+        entries.append({
+            "rel_path": path, "name": os.path.basename(path), "extension": ext,
+            "blob_sha": sha, "size": size,
+        })
+        blob_shas.append(sha)
+
+    # Mapeia blob_sha -> GitRepoFile (para reusar o conteúdo já extraído/indexado).
+    info_by_blob: Dict[str, dict] = {}
+    if blob_shas:
+        # Deduplica os shas p/ o IN.
+        uniq = list(dict.fromkeys(blob_shas))
+        rows = (await db.execute(
+            select(GitRepoFile.blob_sha, GitRepoFile.id, GitRepoFile.indexed, GitRepoFile.is_binary)
+            .where(GitRepoFile.repo_id == repo.id, GitRepoFile.blob_sha.in_(uniq))
+        )).all()
+        for bsha, fid, indexed, is_binary in rows:
+            prev = info_by_blob.get(bsha)
+            if prev is None or (indexed and not prev.get("indexed")):
+                info_by_blob[bsha] = {"id": fid, "indexed": bool(indexed), "is_binary": bool(is_binary)}
+
+    for e in entries:
+        info = info_by_blob.get(e["blob_sha"]) or {}
+        e["id"] = info.get("id")
+        e["indexed"] = info.get("indexed", False)
+        e["is_binary"] = info.get("is_binary", False)
+
+    commit_meta = await _commit_meta(clone_dir, commit)
+    commit_url = f"{repo.html_url}/tree/{commit}" if repo.html_url else None
+    return {
+        "repo": _repo_dict(repo),
+        "commit": commit_meta,
+        "commit_url": commit_url,
+        "files": entries,
+    }
+
+
+@router.get("/repos/{guid}/blob")
+async def get_repo_blob(
+    guid: str,
+    blob: Optional[str] = None,
+    commit: Optional[str] = None,
+    path: Optional[str] = None,
+    db=Depends(get_db_readonly),
+):
+    """Conteúdo de um blob (por sha, ou por commit+path). Reaproveita o GitRepoFile
+    quando o blob foi indexado; senão lê do clone via `git cat-file` (texto)."""
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+    clone_dir = await _clone_dir_or_404(repo)
+
+    blob_sha = blob
+    if not blob_sha:
+        if not (commit and path):
+            raise HTTPException(status_code=400, detail="informe blob, ou commit+path")
+        if not _valid_sha(commit):
+            raise HTTPException(status_code=400, detail="commit inválido")
+        out = await _git_output(clone_dir, ["ls-tree", commit, "--", path])
+        line = out.decode("utf-8", "replace").strip()
+        cols = line.split()
+        if len(cols) < 3 or cols[1] != "blob":
+            raise HTTPException(status_code=404, detail="arquivo não existe nesse commit")
+        blob_sha = cols[2]
+    if not _valid_sha(blob_sha):
+        raise HTTPException(status_code=400, detail="blob inválido")
+
+    # 1) Reusar GitRepoFile (conteúdo extraído/OCR) se existir.
+    gf = (await db.execute(
+        select(GitRepoFile).where(GitRepoFile.repo_id == repo.id, GitRepoFile.blob_sha == blob_sha).limit(1)
+    )).scalar_one_or_none()
+    if gf is not None:
+        return await get_repo_file(guid, gf.id, db)
+
+    # 2) Fallback: ler o blob do clone (texto).
+    name = os.path.basename(path) if path else blob_sha[:12]
+    ext = os.path.splitext(name)[1].lower() or None
+    try:
+        raw = await _git_output(clone_dir, ["cat-file", "blob", blob_sha])
+    except HTTPException:
+        raw = b""
+    is_binary = b"\x00" in raw[:8192]
+    content = None
+    if not is_binary and raw:
+        content = raw.decode("utf-8", "replace")
+    commit_url = f"{repo.html_url}/commit/{commit}" if (repo.html_url and commit and _valid_sha(commit)) else None
+    return {
+        "id": None, "rel_path": path or name, "name": name, "extension": ext,
+        "size": len(raw), "mimetype": None, "is_binary": is_binary,
+        "sha1": None, "indexed": False, "content_extracted": bool(content),
+        "content_error": None, "content": content,
+        "is_head": False, "blob_sha": blob_sha,
+        "commit_hash": commit, "commit_short": (commit[:7] if commit else None),
+        "branch": None, "author": None, "author_email": None,
+        "commit_date": None, "change_type": None, "versions_count": 1,
+        "commit_url": commit_url,
+    }
+
+
 @router.get("/repos/{guid}/files/{file_id}")
 async def get_repo_file(guid: str, file_id: int, db=Depends(get_db_readonly)):
     f = (await db.execute(
