@@ -157,5 +157,11 @@
     "empty": "Nenhum commit",
     "copyHash": "Copiar hash",
     "browseTree": "Ver árvore neste commit"
+  },
+  "view": {
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "wrap": "Quebrar linhas",
+    "unwrap": "Desativar quebra de linha"
   }
 }

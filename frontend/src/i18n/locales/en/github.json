@@ -157,5 +157,11 @@
     "empty": "No commits",
     "copyHash": "Copy hash",
     "browseTree": "Browse tree at this commit"
+  },
+  "view": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "wrap": "Wrap lines",
+    "unwrap": "Disable wrap"
   }
 }

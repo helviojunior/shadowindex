@@ -1201,7 +1201,8 @@ const Leaks = () => {
                                     const params = new URLSearchParams({ from: '/leaks' });
                                     if (relPath) params.set('file', relPath);
                                     if (finding.commit_hash) params.set('commit', finding.commit_hash);
-                                    window.open(`/git/${finding.git_repo_guid}?${params.toString()}`, '_blank');
+                                    const hash = finding.StartLine ? `#L${finding.StartLine}` : '';
+                                    window.open(`/git/${finding.git_repo_guid}?${params.toString()}${hash}`, '_blank');
                                   }}
                                   title={t('actions.openFile')}
                                 >
@@ -1384,7 +1385,8 @@ const Leaks = () => {
                         const params = new URLSearchParams({ from: '/leaks' });
                         if (relPath) params.set('file', relPath);
                         if (selectedFinding.commit_hash) params.set('commit', selectedFinding.commit_hash);
-                        window.open(`/git/${selectedFinding.git_repo_guid}?${params.toString()}`, '_blank');
+                        const hash = selectedFinding.StartLine ? `#L${selectedFinding.StartLine}` : '';
+                        window.open(`/git/${selectedFinding.git_repo_guid}?${params.toString()}${hash}`, '_blank');
                       }}
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />

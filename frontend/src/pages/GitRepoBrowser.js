@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ import {
   Copy, Check, ShieldAlert, ScanText, GitCommit, History,
 } from 'lucide-react';
 import { ShieldKeyIcon } from '@/components/icons';
+import CodeViewer from '@/components/CodeViewer';
 import { cn } from '@/lib/utils';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -97,6 +98,10 @@ export default function GitRepoBrowser() {
   const [searchParams] = useSearchParams();
   const fileParam = searchParams.get('file'); // rel_path a abrir (deep-link, ex.: vindo de /leaks)
   const commitParam = searchParams.get('commit'); // commit (hash) a abrir p/ o arquivo do deep-link
+  const location = useLocation();
+  // Linha a destacar: hash estilo GitHub (#L173) tem prioridade; cai p/ ?line=.
+  const hashLine = (location.hash.match(/^#L(\d+)/) || [])[1];
+  const deepLine = hashLine || searchParams.get('line') || null;
 
   const [repo, setRepo] = useState(null);
   const [autoOpened, setAutoOpened] = useState(false);
@@ -108,6 +113,7 @@ export default function GitRepoBrowser() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
+  const [viewerLine, setViewerLine] = useState(null); // linha a destacar no viewer (deep-link de leak)
   // Versionamento por commit: todas as versões do caminho aberto + a versão atual.
   const [versions, setVersions] = useState(null);
   const [currentVersionId, setCurrentVersionId] = useState(null);
@@ -237,21 +243,23 @@ export default function GitRepoBrowser() {
 
   // Entra no modo "árvore no commit": a árvore passa a mostrar os arquivos COMO
   // estavam naquele commit (git ls-tree), igual ao /tree/<sha> do GitHub.
-  const enterCommitTree = useCallback(async (sha, openPath) => {
+  const enterCommitTree = useCallback(async (sha, openPath, openLine) => {
     try {
       const res = await axios.get(`${API}/git/repos/${guid}/tree?commit=${encodeURIComponent(sha)}`);
       const data = res.data || {};
       setCommitTree({ commit: data.commit || { hash: sha, short: (sha || '').slice(0, 7) }, files: data.files || [], commit_url: data.commit_url });
       setPanelMode('files');
       setSelectedFile(null); setSelectedPath(null); setSelectedKind(null);
-      setFileContent(null); setVersions(null);
+      setFileContent(null); setVersions(null); setViewerLine(null);
       setFilterQuery(''); setExpandedNodes({});
       if (data.repo) setRepo(data.repo);
       if (openPath) {
         const entry = (data.files || []).find((f) => f.rel_path === openPath);
         if (entry) {
           const commitSha = data.commit?.hash || sha;
-          setSelectedFile(entry); setSelectedPath(entry.rel_path); setSelectedKind('file'); setActiveTab('info');
+          setSelectedFile(entry); setSelectedPath(entry.rel_path); setSelectedKind('file');
+          setViewerLine(openLine ? parseInt(openLine, 10) : null);
+          setActiveTab(openLine ? 'view' : 'info');
           const parts = (entry.rel_path || '').split('/').filter(Boolean);
           if (parts.length > 1) {
             const anc = {}; let acc = '';
@@ -309,7 +317,8 @@ export default function GitRepoBrowser() {
     setSelectedFile(f);
     setSelectedPath(f.rel_path);
     setSelectedKind('file');
-    setActiveTab((prev) => (prev === 'objetos' ? 'info' : prev));
+    setViewerLine(opts.line ? parseInt(opts.line, 10) : null);
+    setActiveTab((prev) => (opts.line ? 'view' : (prev === 'objetos' ? 'info' : prev)));
     setVersions(null);
     setFileContent(null);
     // Expandir diretórios ancestrais para o arquivo ficar visível na árvore.
@@ -355,17 +364,17 @@ export default function GitRepoBrowser() {
   useEffect(() => {
     if (autoOpened) return;
     if (commitParam) {
-      enterCommitTree(commitParam, fileParam || undefined);
+      enterCommitTree(commitParam, fileParam || undefined, deepLine || undefined);
       setAutoOpened(true);
       return;
     }
     if (!fileParam || files.length === 0) return;
     const target = files.find((f) => f.rel_path === fileParam);
     if (target) {
-      openFile(target);
+      openFile(target, deepLine ? { line: deepLine } : {});
       setAutoOpened(true);
     }
-  }, [files, fileParam, commitParam, autoOpened, openFile, enterCommitTree]);
+  }, [files, fileParam, commitParam, deepLine, autoOpened, openFile, enterCommitTree]);
 
   // Carrega os commits ao entrar na aba "Commits".
   useEffect(() => {
@@ -827,9 +836,15 @@ export default function GitRepoBrowser() {
               ) : !fileContent?.content ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground"><p className="text-sm">{t('browser.noContent')}</p></div>
               ) : (
-                <ScrollArea className="h-full">
-                  <pre className="text-xs font-mono whitespace-pre-wrap break-words p-3" data-testid="git-file-content">{fileContent.content}</pre>
-                </ScrollArea>
+                <CodeViewer
+                  content={fileContent.content}
+                  filename={selectedFile?.name || fileContent?.name}
+                  highlightLine={viewerLine}
+                  copyLabel={t('view.copy')}
+                  copiedLabel={t('view.copied')}
+                  wrapLabel={t('view.wrap')}
+                  unwrapLabel={t('view.unwrap')}
+                />
               )}
             </div>
           )}
