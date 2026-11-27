@@ -147,5 +147,17 @@
     "extensionExists": "Extension already exists in the list",
     "invalidPort": "Invalid port (1-65535)",
     "portExists": "Port already exists in the list"
+  },
+  "git": {
+    "title": "Git — Clone de Repositórios",
+    "description": "Limits and concurrency for cloning, scanning and indexing GitHub repositories.",
+    "maxRepoSizeLabel": "Max download size (MB)",
+    "maxRepoSizeHelp": "Repositories larger than this (by GitHub-reported size) are refused and the clone job fails. 0 = no limit.",
+    "shallowThresholdLabel": "Shallow clone above (MB)",
+    "shallowThresholdHelp": "Repos larger than this are cloned shallow (--depth); smaller ones are cloned in full. 0 = always full.",
+    "simultaneousClonesLabel": "Simultaneous Git clones",
+    "simultaneousClonesHelp": "How many repository clone jobs run in parallel.",
+    "indexMaxSizeLabel": "Max file size for indexing (MB)",
+    "indexMaxSizeHelp": "Files larger than this are not text-extracted/indexed for content search."
   }
 }

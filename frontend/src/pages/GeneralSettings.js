@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database, FileSearch, Eye, EyeOff, Ban, Image as ImageIcon, Palette, AlignLeft, AlignCenter, AlignRight, Upload, Network } from 'lucide-react';
+import { Save, Settings, Download, Layers, HardDrive, RefreshCw, FileX, X, Plus, Server, Database, FileSearch, Eye, EyeOff, Ban, Image as ImageIcon, Palette, AlignLeft, AlignCenter, AlignRight, Upload, Network, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -54,6 +54,11 @@ const GeneralSettings = () => {
     auto_index_max_size_mb: '1',
     auto_index_extensions: '.txt,.csv,.xml,.json,.yaml,.yml,.ini,.cfg,.conf,.log,.md,.bat,.ps1,.sh,.py,.js,.ts,.sql,.vbs,.cmd,.reg,.inf,.properties,.env*,.toml',
     auto_index_mimetypes: 'text/',
+    // Git (clone de repositórios)
+    git_clone_max_repo_mb: '0',
+    git_clone_large_repo_mb: '100',
+    max_simultaneous_git_clones: '2',
+    git_index_max_size_mb: '2',
     // Aparência / UI
     ui_logo_url: 'https://media.sec4us.com.br/logo/sec4us-dark-mode.svg',
     ui_logo_alignment: 'center',
@@ -547,6 +552,102 @@ const GeneralSettings = () => {
               />
               <p className="text-xs text-muted-foreground">
                 {t('download.maxFileSizeHelp')}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Git - Clone de Repositórios */}
+      <Card data-testid="git-clone-settings-card">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <GitBranch className="w-5 h-5 text-purple-500" />
+            <CardTitle>{t('git.title')}</CardTitle>
+          </div>
+          <CardDescription>
+            {t('git.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Tamanho máximo de download do repositório */}
+            <div className="space-y-2">
+              <Label htmlFor="git_clone_max_repo_mb" className="flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-muted-foreground" />
+                {t('git.maxRepoSizeLabel')}
+              </Label>
+              <Input
+                id="git_clone_max_repo_mb"
+                type="number"
+                min="0"
+                max="100000"
+                value={settings.git_clone_max_repo_mb}
+                onChange={(e) => handleChange('git_clone_max_repo_mb', e.target.value)}
+                data-testid="git-max-repo-size-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('git.maxRepoSizeHelp')}
+              </p>
+            </div>
+
+            {/* Clone raso acima de (MB) */}
+            <div className="space-y-2">
+              <Label htmlFor="git_clone_large_repo_mb" className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-muted-foreground" />
+                {t('git.shallowThresholdLabel')}
+              </Label>
+              <Input
+                id="git_clone_large_repo_mb"
+                type="number"
+                min="0"
+                max="100000"
+                value={settings.git_clone_large_repo_mb}
+                onChange={(e) => handleChange('git_clone_large_repo_mb', e.target.value)}
+                data-testid="git-shallow-threshold-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('git.shallowThresholdHelp')}
+              </p>
+            </div>
+
+            {/* Clones Git simultâneos */}
+            <div className="space-y-2">
+              <Label htmlFor="max_simultaneous_git_clones" className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-muted-foreground" />
+                {t('git.simultaneousClonesLabel')}
+              </Label>
+              <Input
+                id="max_simultaneous_git_clones"
+                type="number"
+                min="1"
+                max="10"
+                value={settings.max_simultaneous_git_clones}
+                onChange={(e) => handleChange('max_simultaneous_git_clones', e.target.value)}
+                data-testid="git-max-clones-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('git.simultaneousClonesHelp')}
+              </p>
+            </div>
+
+            {/* Tamanho máximo de arquivo para indexação */}
+            <div className="space-y-2">
+              <Label htmlFor="git_index_max_size_mb" className="flex items-center gap-2">
+                <FileSearch className="w-4 h-4 text-muted-foreground" />
+                {t('git.indexMaxSizeLabel')}
+              </Label>
+              <Input
+                id="git_index_max_size_mb"
+                type="number"
+                min="0"
+                max="1000"
+                value={settings.git_index_max_size_mb}
+                onChange={(e) => handleChange('git_index_max_size_mb', e.target.value)}
+                data-testid="git-index-max-size-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('git.indexMaxSizeHelp')}
               </p>
             </div>
           </div>
