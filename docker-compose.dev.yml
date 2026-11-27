@@ -141,7 +141,7 @@ services:
     container_name: shadowindex-frontend-dev
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     environment:
       TZ: "America/Sao_Paulo"
       # Variável também em runtime (para yarn start)

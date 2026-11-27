@@ -36,6 +36,9 @@ dist/
 # Environment files
 *.env
 *.env.*
+# Exceção: o .env da raiz é versionado (só COMPOSE_PROJECT_NAME/WEB_PORT, sem
+# segredos). Arquivos .env.<algo> (ex.: .env.local, .env.prod) continuam ignorados.
+!/.env
 *token.json*
 *credentials.json*
 # Exceção: os arquivos de tradução (i18n) com esses nomes NÃO são segredos —
