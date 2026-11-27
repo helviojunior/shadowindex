@@ -22,6 +22,16 @@ export function looksLikeJwt(token) {
   return typeof token === 'string' && JWT_RE.test(token.trim());
 }
 
+// True se o token é um JWT com claim exp no passado. False se válido/sem exp/não-JWT.
+export function isJwtExpired(token) {
+  const d = decodeJwt(token);
+  if (!d || d.error || !d.payload || typeof d.payload !== 'object') return false;
+  const exp = d.payload.exp;
+  if (exp == null || !isFinite(Number(exp))) return false;
+  const ms = Number(exp) > 1e12 ? Number(exp) : Number(exp) * 1000;
+  return ms < Date.now();
+}
+
 export function decodeJwt(token) {
   const parts = (token || '').trim().split('.');
   if (parts.length < 2) return null;

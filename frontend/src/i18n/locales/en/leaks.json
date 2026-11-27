@@ -114,5 +114,9 @@
     "button": "Reindex Gits",
     "title": "Reprocess all cloned Git repositories (gitleaks + extraction + indexing, incl. JWT claims)",
     "success": "Reindex queued: {{post}} reprocessing, {{reclone}} re-cloning"
+  },
+  "risk": {
+    "jwtExpired": "JWT expired",
+    "jwtExpiredTitle": "JWT already expired — severity lowered"
   }
 }

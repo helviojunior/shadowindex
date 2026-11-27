@@ -85,7 +85,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { ShieldKeyIcon } from '@/components/icons';
 import { Checkbox } from '@/components/ui/checkbox';
-import JwtDecoded, { looksLikeJwt } from '@/components/JwtDecoded';
+import JwtDecoded, { looksLikeJwt, isJwtExpired } from '@/components/JwtDecoded';
 import { cn } from '@/lib/utils';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -569,10 +569,12 @@ const Leaks = () => {
   }, [location.hash, findings, files]);
 
   // Risk indicators coloridos (como na imagem do Sn1per)
-  const getRiskIndicators = (ruleId) => {
+  const getRiskIndicators = (finding) => {
+    // Aceita o finding inteiro (ou só o RuleID, por compatibilidade).
+    const ruleId = typeof finding === 'string' ? finding : finding?.RuleID;
     const rule = (ruleId || '').toLowerCase();
     let critical = 0, high = 0, medium = 0, low = 0;
-    
+
     if (['private-key', 'jwt', 'rsa'].some(s => rule.includes(s))) {
       critical = 1;
     } else if (['aws', 'stripe', 'github', 'ssh'].some(s => rule.includes(s))) {
@@ -582,10 +584,20 @@ const Leaks = () => {
     } else {
       low = 1;
     }
-    
+
+    // JWT já EXPIRADO vale muito menos: rebaixa a criticidade para 'low'.
+    let jwtExpired = false;
+    if (rule.includes('jwt') && typeof finding === 'object' && finding) {
+      const tok = [finding.Secret, finding.Match].find(x => looksLikeJwt(x));
+      if (tok && isJwtExpired(tok.trim())) {
+        jwtExpired = true;
+        critical = 0; high = 0; medium = 0; low = 1;
+      }
+    }
+
     const score = critical * 100 + high * 50 + medium * 25 + low * 10;
-    
-    return { critical, high, medium, low, score };
+
+    return { critical, high, medium, low, score, jwtExpired };
   };
 
   // Status badge do job
@@ -865,11 +877,17 @@ const Leaks = () => {
               <div>
                 <p className="text-sm text-muted-foreground">{t('stats.highSeverity')}</p>
                 <p className="text-2xl font-bold text-red-500">
-                  {findings.filter(f => 
-                    ['aws', 'private-key', 'github', 'jwt', 'stripe'].some(s => 
-                      (f.RuleID || '').toLowerCase().includes(s)
-                    )
-                  ).length}
+                  {findings.filter(f => {
+                    const rule = (f.RuleID || '').toLowerCase();
+                    const isHigh = ['aws', 'private-key', 'github', 'jwt', 'stripe'].some(s => rule.includes(s));
+                    if (!isHigh) return false;
+                    // JWT expirado não conta como alta severidade.
+                    if (rule.includes('jwt')) {
+                      const tok = [f.Secret, f.Match].find(x => looksLikeJwt(x));
+                      if (tok && isJwtExpired(tok.trim())) return false;
+                    }
+                    return true;
+                  }).length}
                 </p>
               </div>
               <AlertTriangle className="w-8 h-8 text-red-500 opacity-50" />
@@ -1035,7 +1053,7 @@ const Leaks = () => {
                 <TableBody>
                   {filteredFiles.map((file) => 
                     file.findings.map((finding, fIndex) => {
-                      const risk = getRiskIndicators(finding.RuleID);
+                      const risk = getRiskIndicators(finding);
                       // Usar dados enriquecidos pelo backend
                       const detectionSource = finding.detection_source; // "ocr", "metadata" ou null
                       
@@ -1171,6 +1189,11 @@ const Leaks = () => {
                               <span className={`w-3 h-3 rounded-full ${risk.medium ? 'bg-yellow-500' : 'bg-yellow-500/20'}`} />
                               <span className={`w-3 h-3 rounded-full ${risk.low ? 'bg-green-500' : 'bg-green-500/20'}`} />
                               <span className="ml-2 font-mono text-sm">{risk.score}</span>
+                              {risk.jwtExpired && (
+                                <Badge variant="outline" className="ml-2 text-[10px] text-amber-500 border-amber-500/40" title={t('risk.jwtExpiredTitle')}>
+                                  {t('risk.jwtExpired')}
+                                </Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
