@@ -1,0 +1,13 @@
+{
+  "title": "Decoded JWT",
+  "header": "Header",
+  "claims": "Claims (payload)",
+  "valid": "Valid token",
+  "expired": "Expired token",
+  "notYetValid": "Not yet valid",
+  "noExpiration": "No expiration (exp claim absent)",
+  "expiresAt": "expires at",
+  "validFrom": "valid from",
+  "decodeError": "Failed to decode the JWT",
+  "signatureNote": "Signature is not verified (unknown key); the values above are decoded only."
+}

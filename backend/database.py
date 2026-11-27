@@ -532,6 +532,9 @@ class GitleaksFinding(Base):
     commit_date = Column(DateTime(timezone=True), nullable=True)
     git_file_id = Column(Integer, nullable=True, index=True)  # liga à versão GitRepoFile, quando houver
 
+    # JWT: claims/header decodificados (texto plano) para permitir busca pelo conteúdo.
+    decoded_claims = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -1041,6 +1044,7 @@ async def apply_pending_migrations():
             await _pg_add_cols('gitleaks_findings', [
                 ('commit_hash', 'VARCHAR'), ('commit_author', 'VARCHAR'),
                 ('commit_date', 'TIMESTAMPTZ'), ('git_file_id', 'INTEGER'),
+                ('decoded_claims', 'TEXT'),
             ])
             await _pg_add_cols('git_repos', [
                 ('history_indexed', 'BOOLEAN DEFAULT FALSE'),

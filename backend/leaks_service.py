@@ -453,6 +453,21 @@ async def scan_directory_for_critical_files(
     return found_count
 
 
+def _jwt_claims_for(*candidates) -> Optional[str]:
+    """Se algum candidato (Secret/Match) for um JWT, devolve o texto dos claims
+    (header+payload) para indexação/busca; senão None."""
+    try:
+        import jwt_utils
+        for c in candidates:
+            if jwt_utils.looks_like_jwt(c):
+                txt = jwt_utils.jwt_search_text(c)
+                if txt:
+                    return txt
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
     """
     Salva um finding no banco de dados.
@@ -534,10 +549,11 @@ async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
                 share_name=finding.get('share_name'),
                 job_id=finding.get('job_id'),
                 server_id=finding.get('server_id'),
+                decoded_claims=_jwt_claims_for(finding.get('Secret'), finding.get('Match')),
                 scanned_at=datetime.fromisoformat(finding['scanned_at']) if finding.get('scanned_at') else None,
                 raw_data=finding
             )
-            
+
             db.add(db_finding)
             await db.commit()
             logger.info(f"Finding {fingerprint} salvo no banco")
@@ -603,6 +619,7 @@ async def load_findings_from_db() -> List[Dict[str, Any]]:
                     'commit_author': f.commit_author,
                     'commit_date': f.commit_date.isoformat() if f.commit_date else None,
                     'git_file_id': f.git_file_id,
+                    'decoded_claims': f.decoded_claims,
                     'scanned_at': f.scanned_at.isoformat() if f.scanned_at else None,
                     'is_false_positive': f.is_false_positive
                 })
@@ -1207,6 +1224,7 @@ class GitleaksService:
             'commit_author': finding.commit_author,
             'commit_date': finding.commit_date.isoformat() if finding.commit_date else None,
             'git_file_id': finding.git_file_id,
+            'decoded_claims': finding.decoded_claims,
         }
 
     def clear_findings(self) -> int:

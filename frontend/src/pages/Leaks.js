@@ -85,6 +85,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { ShieldKeyIcon } from '@/components/icons';
 import { Checkbox } from '@/components/ui/checkbox';
+import JwtDecoded, { looksLikeJwt } from '@/components/JwtDecoded';
 import { cn } from '@/lib/utils';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -499,7 +500,8 @@ const Leaks = () => {
             f.RuleID?.toLowerCase().includes(term) ||
             f.Description?.toLowerCase().includes(term) ||
             f.Secret?.toLowerCase().includes(term) ||
-            f.Fingerprint?.toLowerCase().includes(term);
+            f.Fingerprint?.toLowerCase().includes(term) ||
+            f.decoded_claims?.toLowerCase().includes(term);
           if (!match) return false;
         }
 
@@ -1418,7 +1420,13 @@ const Leaks = () => {
                     </code>
                   </div>
                 )}
-                
+
+                {/* JWT decodificado (header + claims + validade) */}
+                {(() => {
+                  const cand = [selectedFinding.Secret, selectedFinding.Match].find((x) => looksLikeJwt(x));
+                  return cand ? <JwtDecoded token={cand.trim()} /> : null;
+                })()}
+
                 {/* Match - só mostrar se for diferente do Secret */}
                 {selectedFinding.Match && selectedFinding.Match !== selectedFinding.Secret && (
                   <div className="border rounded-lg p-4">

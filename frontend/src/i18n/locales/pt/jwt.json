@@ -1,0 +1,13 @@
+{
+  "title": "JWT decodificado",
+  "header": "Header",
+  "claims": "Claims (payload)",
+  "valid": "Token válido",
+  "expired": "Token expirado",
+  "notYetValid": "Ainda não válido",
+  "noExpiration": "Sem data de expiração (claim exp ausente)",
+  "expiresAt": "expira em",
+  "validFrom": "válido a partir de",
+  "decodeError": "Falha ao decodificar o JWT",
+  "signatureNote": "A assinatura não é verificada (chave desconhecida); os valores acima são apenas decodificados."
+}

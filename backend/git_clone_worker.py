@@ -779,6 +779,9 @@ class GitCloneWorker:
         for fd in findings:
             abs_file = fd.get("File", "") or ""
             rel = os.path.relpath(abs_file, clone_dir) if abs_file.startswith(clone_dir) else abs_file
+            import jwt_utils
+            secret_val = fd.get("Secret") or fd.get("Match") or ""
+            decoded_claims = jwt_utils.jwt_search_text(secret_val) or None
             commit_hash = (fd.get("Commit") or "") or None
             # No modo 'git' o Fingerprint já inclui o commit; no 'dir' não.
             raw_fp = fd.get("Fingerprint") or f"{commit_hash or ''}:{rel}:{fd.get('RuleID')}:{fd.get('StartLine')}"
@@ -811,6 +814,7 @@ class GitCloneWorker:
                 commit_hash=commit_hash,
                 commit_author=(fd.get("Author") or fd.get("Email") or None),
                 commit_date=_parse_leak_date(fd.get("Date")),
+                decoded_claims=decoded_claims,
                 scanned_at=datetime.now(timezone.utc),
                 raw_data=fd,
             )
@@ -880,6 +884,16 @@ class GitCloneWorker:
             ctx["batch"] = []
 
     def _queue_index_doc(self, ctx, repo, gf, rel, name, ext, mimetype, size, content, extra=None):
+        # Se o conteúdo tiver JWTs, anexa os claims decodificados ao texto INDEXADO
+        # (não ao conteúdo salvo no DB), para permitir busca pelo conteúdo dos claims.
+        index_content = content
+        try:
+            import jwt_utils
+            claims = jwt_utils.extract_and_decode_claims_text(content)
+            if claims:
+                index_content = f"{content}\n\n[JWT CLAIMS]\n{claims}"
+        except Exception:  # noqa: BLE001
+            pass
         doc = {
             "_id": f"{repo.guid}:{gf.id}",
             "repo_id": repo.id,
@@ -891,7 +905,7 @@ class GitCloneWorker:
             "extension": ext or None,
             "mimetype": mimetype,
             "size": size,
-            "content": content,
+            "content": index_content,
         }
         if extra:
             doc.update(extra)
