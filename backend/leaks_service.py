@@ -453,6 +453,16 @@ async def scan_directory_for_critical_files(
     return found_count
 
 
+def _risk_for(rule_id, secret, match) -> Dict[str, Any]:
+    """Criticidade server-side (inclui rebaixamento de JWT expirado)."""
+    try:
+        import risk_utils
+        return risk_utils.compute_risk(rule_id, secret, match)
+    except Exception:  # noqa: BLE001
+        return {"score": 0, "level": "low", "critical": 0, "high": 0, "medium": 0, "low": 1,
+                "jwt_expired": False, "jwt_exp_days": None}
+
+
 def _jwt_claims_for(*candidates) -> Optional[str]:
     """Se algum candidato (Secret/Match) for um JWT, devolve o texto dos claims
     (header+payload) para indexação/busca; senão None."""
@@ -620,6 +630,7 @@ async def load_findings_from_db() -> List[Dict[str, Any]]:
                     'commit_date': f.commit_date.isoformat() if f.commit_date else None,
                     'git_file_id': f.git_file_id,
                     'decoded_claims': f.decoded_claims,
+                    'risk': _risk_for(f.rule_id, f.secret, f.match),
                     'scanned_at': f.scanned_at.isoformat() if f.scanned_at else None,
                     'is_false_positive': f.is_false_positive
                 })
@@ -1225,6 +1236,7 @@ class GitleaksService:
             'commit_date': finding.commit_date.isoformat() if finding.commit_date else None,
             'git_file_id': finding.git_file_id,
             'decoded_claims': finding.decoded_claims,
+            'risk': _risk_for(finding.rule_id, finding.secret, finding.match),
         }
 
     def clear_findings(self) -> int:

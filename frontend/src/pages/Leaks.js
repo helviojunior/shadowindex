@@ -570,33 +570,28 @@ const Leaks = () => {
 
   // Risk indicators coloridos (como na imagem do Sn1per)
   const getRiskIndicators = (finding) => {
-    // Aceita o finding inteiro (ou só o RuleID, por compatibilidade).
+    // Fonte única: usa o risco calculado no SERVIDOR quando disponível (inclui o
+    // rebaixamento graduado de JWT expirado). Fallback client-side só por robustez.
+    if (finding && typeof finding === 'object' && finding.risk) {
+      const r = finding.risk;
+      return {
+        critical: r.critical || 0, high: r.high || 0, medium: r.medium || 0, low: r.low || 0,
+        score: r.score ?? 0, jwtExpired: !!r.jwt_expired, jwtExpDays: r.jwt_exp_days ?? null,
+      };
+    }
     const ruleId = typeof finding === 'string' ? finding : finding?.RuleID;
     const rule = (ruleId || '').toLowerCase();
     let critical = 0, high = 0, medium = 0, low = 0;
-
-    if (['private-key', 'jwt', 'rsa'].some(s => rule.includes(s))) {
-      critical = 1;
-    } else if (['aws', 'stripe', 'github', 'ssh'].some(s => rule.includes(s))) {
-      high = 1;
-    } else if (['slack', 'webhook', 'password', 'token'].some(s => rule.includes(s))) {
-      medium = 1;
-    } else {
-      low = 1;
-    }
-
-    // JWT já EXPIRADO vale muito menos: rebaixa a criticidade para 'low'.
+    if (['private-key', 'jwt', 'rsa'].some(s => rule.includes(s))) critical = 1;
+    else if (['aws', 'stripe', 'github', 'ssh'].some(s => rule.includes(s))) high = 1;
+    else if (['slack', 'webhook', 'password', 'token'].some(s => rule.includes(s))) medium = 1;
+    else low = 1;
     let jwtExpired = false;
     if (rule.includes('jwt') && typeof finding === 'object' && finding) {
       const tok = [finding.Secret, finding.Match].find(x => looksLikeJwt(x));
-      if (tok && isJwtExpired(tok.trim())) {
-        jwtExpired = true;
-        critical = 0; high = 0; medium = 0; low = 1;
-      }
+      if (tok && isJwtExpired(tok.trim())) { jwtExpired = true; critical = 0; high = 0; medium = 0; low = 1; }
     }
-
     const score = critical * 100 + high * 50 + medium * 25 + low * 10;
-
     return { critical, high, medium, low, score, jwtExpired };
   };
 
@@ -878,10 +873,11 @@ const Leaks = () => {
                 <p className="text-sm text-muted-foreground">{t('stats.highSeverity')}</p>
                 <p className="text-2xl font-bold text-red-500">
                   {findings.filter(f => {
+                    // Fonte única: nível vindo do servidor; fallback por RuleID.
+                    if (f.risk) return f.risk.level === 'critical' || f.risk.level === 'high';
                     const rule = (f.RuleID || '').toLowerCase();
                     const isHigh = ['aws', 'private-key', 'github', 'jwt', 'stripe'].some(s => rule.includes(s));
                     if (!isHigh) return false;
-                    // JWT expirado não conta como alta severidade.
                     if (rule.includes('jwt')) {
                       const tok = [f.Secret, f.Match].find(x => looksLikeJwt(x));
                       if (tok && isJwtExpired(tok.trim())) return false;
