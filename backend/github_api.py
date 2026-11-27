@@ -142,6 +142,18 @@ class AsyncGithubSearcher:
             data = await self._request(client, url, params)
         return min(int(data.get("total_count", 0) or 0), self.max_results)
 
+    async def get_repo(self, full_name: str) -> Optional[Dict[str, Any]]:
+        """Metadados de um repositório (GET /repos/{full_name}); None se não encontrado."""
+        url = f"{API_URL}/repos/{full_name}"
+        async with httpx.AsyncClient() as client:
+            try:
+                data = await self._request(client, url, {})
+            except httpx.HTTPStatusError as e:  # 404, etc.
+                if e.response is not None and e.response.status_code == 404:
+                    return None
+                raise
+        return self._normalize(data)
+
     async def resolve(self, keyword: str, search_type: str = "repositories",
                       exact: bool = False, sort: str = "updated", order: str = "desc") -> List[Dict[str, Any]]:
         """Fully paginate a term and return unique normalized repos (deduped by full_name)."""

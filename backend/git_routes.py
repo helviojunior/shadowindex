@@ -10,12 +10,12 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func, or_, desc, asc
 
 from database import (
-    get_db, get_db_readonly,
+    get_db, get_db_readonly, AsyncSessionLocal,
     Credential, GitRepo, GitRepoFile, GitCloneJob, GitleaksFinding,
 )
 from github_api import AsyncGithubSearcher, GithubSearchError
@@ -272,6 +272,61 @@ async def search_enqueue(req: SearchEnqueueRequest, db=Depends(get_db)):
         raise HTTPException(status_code=400, detail="; ".join(f"{e['term']} ({e['type']}): {e['error']}" for e in errors))
 
     return {"queued": queued, "repos_found": repos_found, "errors": errors}
+
+
+# --------------------------------------------------------------------------
+# Backfill: preenche GitRepo.pushed_at (e size_kb) de repos antigos a partir do
+# GitHub, para que a ordem de prioridade do clone (atualização/tamanho) valha
+# também para a fila já enfileirada antes da feature.
+# --------------------------------------------------------------------------
+class BackfillRequest(BaseModel):
+    api_credential_id: int
+    limit: Optional[int] = None  # opcional: processa no máx. N repos nesta chamada
+
+
+async def _run_backfill(token: str, limit: Optional[int]):
+    searcher = AsyncGithubSearcher(token)
+    updated = 0
+    async with AsyncSessionLocal() as db:
+        q = select(GitRepo).where(GitRepo.pushed_at.is_(None))
+        if limit:
+            q = q.limit(int(limit))
+        repos = (await db.execute(q)).scalars().all()
+        batch = 0
+        for repo in repos:
+            try:
+                data = await searcher.get_repo(repo.full_name)
+            except GithubSearchError as e:
+                if e.status == 401:
+                    logger.error("[git backfill] token inválido (401); abortando")
+                    break
+                continue
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"[git backfill] falha em {repo.full_name}: {e}")
+                continue
+            if not data:
+                continue
+            repo.pushed_at = _parse_gh_datetime(data.get("pushed_at"))
+            if repo.size_kb is None and data.get("size_kb") is not None:
+                repo.size_kb = data.get("size_kb")
+            updated += 1
+            batch += 1
+            if batch >= 50:
+                await db.commit()
+                batch = 0
+        await db.commit()
+    logger.info(f"[git backfill] concluído: {updated} repositório(s) atualizados")
+
+
+@router.post("/backfill-pushed-at")
+async def backfill_pushed_at(req: BackfillRequest, background_tasks: BackgroundTasks, db=Depends(get_db)):
+    """Dispara, em background, o preenchimento de pushed_at/size dos repos antigos."""
+    token = await _get_token(db, req.api_credential_id)  # valida a credencial
+    pending = (await db.execute(
+        select(func.count(GitRepo.id)).where(GitRepo.pushed_at.is_(None))
+    )).scalar() or 0
+    background_tasks.add_task(_run_backfill, token, req.limit)
+    return {"started": True, "to_process": int(pending)}
 
 
 @router.get("/search/content")
