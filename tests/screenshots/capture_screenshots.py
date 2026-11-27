@@ -36,6 +36,10 @@ STATIC_PAGES = [
     ("09-leaks", "/leaks", "Leaks (GitLeaks)"),
     ("10-sql", "/sql", "SQL - conexões e enumerações"),
     ("11-configuracoes", "/settings", "Configurações Gerais"),
+    ("14-git-repos", "/git", "GIT - repositórios clonados"),
+    ("16-git-clone-jobs", "/jobs/git", "GIT - fila de clones"),
+    ("17-git-advanced-search", "/search?q=acme&tab=git",
+     "Busca avançada - aba Git (conteúdo indexado)"),
 ]
 
 
@@ -126,6 +130,36 @@ def act_sql_wizard(page):
         print(f"    (aviso: interação do wizard SQL falhou: {exc})")
 
 
+def act_git_search(page):
+    """Digita um termo de busca (vira um chip ao pressionar Enter)."""
+    try:
+        box = page.get_by_placeholder("Digite um termo e pressione Enter")
+        if not box.count():
+            box = page.locator("input[type='text']").first
+        box.first.fill("acme")
+        box.first.press("Enter")
+        page.wait_for_timeout(600)
+    except Exception as exc:  # noqa: BLE001
+        print(f"    (aviso: interação da busca Git falhou: {exc})")
+
+
+def act_git_browse(page):
+    """Expande uma pasta da árvore e abre um arquivo (abas Info/View)."""
+    try:
+        folder = page.get_by_test_id("git-tree-folder").first
+        folder.click(timeout=4000)
+        page.wait_for_timeout(600)
+    except Exception as exc:  # noqa: BLE001
+        print(f"    (aviso: expandir pasta Git falhou: {exc})")
+    try:
+        page.get_by_test_id("git-file-row").first.click(timeout=4000)
+        page.wait_for_timeout(1000)
+        _try_click(page, "Info", exact=True)
+        page.wait_for_timeout(800)
+    except Exception as exc:  # noqa: BLE001
+        print(f"    (aviso: abrir arquivo Git falhou: {exc})")
+
+
 def _api(base_url: str, path: str):
     url = base_url.rstrip("/") + "/api" + path
     req = urllib.request.Request(url, headers={"User-Agent": "shadowindex-shots"})
@@ -164,6 +198,24 @@ def resolve_pages(base_url: str):
     # Assistente (wizard) de conexão SQL
     pages.append(("12-sql-wizard", "/db-connections",
                   "SQL — assistente de conexão (wizard)", act_sql_wizard))
+
+    # GIT — busca no Github (chip de termo)
+    pages.append(("13-git-search", "/git/search",
+                  "GIT — busca no Github", act_git_search))
+
+    # GIT — navegação no repositório (árvore + abas Info/View). Repo com arquivos.
+    try:
+        data = _api(base_url, "/git/repos?limit=50")
+        repos = data.get("repos", data) if isinstance(data, dict) else data
+        repos = repos if isinstance(repos, list) else []
+        with_files = [r for r in repos if r.get("files_count", 0) > 0]
+        chosen = (with_files or repos or [None])[0]
+        if chosen and chosen.get("guid"):
+            pages.append(("15-git-browse", f"/git/{chosen['guid']}",
+                          f"GIT — navegação no repositório ({chosen.get('full_name', '')})",
+                          act_git_browse))
+    except Exception as exc:  # noqa: BLE001
+        print(f"(aviso: não foi possível resolver repositório Git: {exc})")
 
     # normaliza para 4-tuplas (slug, rota, desc, action|None)
     norm = [(p + (None,))[:4] for p in pages]

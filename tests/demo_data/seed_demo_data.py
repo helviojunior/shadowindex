@@ -59,6 +59,9 @@ from database import (  # noqa: E402
     DownloadedFile,
     FileVersion,
     GitleaksFinding,
+    GitRepo,
+    GitRepoFile,
+    GitCloneJob,
     DatabaseType,
     DatabaseConnection,
     SqlQueryHistory,
@@ -184,6 +187,7 @@ async def wipe(session):
     print("[seed] limpando dados anteriores...")
     for model in (
         SqlQueryHistory, DatabaseConnection,
+        GitCloneJob, GitRepoFile, GitRepo,
         GitleaksFinding,
         FileVersion, DownloadedFile, ServerItem, ServerShare, Server,
         AdGroupMember, AdObject, AdScanJob, AdDomain,
@@ -563,6 +567,319 @@ async def seed_leaks(session, servers, featured):
 
 
 # ===========================================================================
+# GIT — repositórios clonados, arquivos indexados, jobs e leaks
+# ===========================================================================
+_MIME_BY_EXT = {
+    ".md": "text/markdown", ".py": "text/x-python", ".tf": "text/plain",
+    ".yml": "text/yaml", ".yaml": "text/yaml", ".txt": "text/plain",
+    ".json": "application/json", ".sh": "text/x-shellscript",
+    ".cfg": "text/plain", ".ini": "text/plain", ".env": "text/plain",
+    ".example": "text/plain", ".toml": "text/plain", ".js": "text/javascript",
+}
+
+
+def _mime_for(name: str) -> str:
+    low = name.lower()
+    for ext, mt in _MIME_BY_EXT.items():
+        if low.endswith(ext):
+            return mt
+    return "text/plain"
+
+
+# Arquivos do repositório em destaque (acme-corp/portal-interno).
+# Conteúdo fictício; segredos obviamente falsos e mascarados.
+_FEATURED_FILES = {
+    "README.md": (
+        "# ACME Portal Interno\n\n"
+        "Portal interno da ACME Corp (ambiente de demonstracao tests.local).\n\n"
+        "## Stack\n- Python / FastAPI\n- PostgreSQL\n- Terraform + Docker\n\n"
+        "## Como rodar\n```bash\nmake up\n```\n\n"
+        "Veja `docs/arquitetura.md` para detalhes.\n"
+    ),
+    ".gitignore": "__pycache__/\n*.pyc\n.env\n.venv/\ndist/\n*.log\n",
+    "requirements.txt": "fastapi==0.110.0\nuvicorn==0.29.0\nsqlalchemy==2.0.29\npsycopg2-binary==2.9.9\n",
+    "Makefile": "up:\n\tdocker compose -f deploy/docker-compose.yml up -d\n\ndown:\n\tdocker compose -f deploy/docker-compose.yml down\n",
+    ".env.example": (
+        "# Exemplo de variaveis de ambiente (ACME portal)\n"
+        "APP_ENV=production\n"
+        "DATABASE_URL=postgresql://acme_app:Dem0!Pwd2026@db.tests.local:5432/portal\n"
+        "SECRET_KEY=Dem0_s3cr3t_k3y_********\n"
+        "AWS_ACCESS_KEY_ID=AKIA************DEMO\n"
+    ),
+    "src/app.py": (
+        "from fastapi import FastAPI\n"
+        "from src.api.routes import router\n\n"
+        "app = FastAPI(title='ACME Portal Interno')\n"
+        "app.include_router(router)\n\n"
+        "@app.get('/health')\n"
+        "def health():\n    return {'status': 'ok', 'service': 'acme-portal'}\n"
+    ),
+    "src/config/settings.py": (
+        "import os\n\n"
+        "# ATENCAO: segredo de demonstracao (fake). Nao usar em producao.\n"
+        "DB_PASSWORD = os.getenv('DB_PASSWORD', 'Dem0!Pwd2026')\n"
+        "GENERIC_API_KEY = 'acme_live_sk_0000DEMO0000MASKED0000'\n"
+        "DEBUG = os.getenv('APP_ENV') != 'production'\n"
+    ),
+    "src/db/connection.py": (
+        "from sqlalchemy import create_engine\n"
+        "from src.config.settings import DB_PASSWORD\n\n"
+        "DSN = f'postgresql://acme_app:{DB_PASSWORD}@db.tests.local:5432/portal'\n"
+        "engine = create_engine(DSN, pool_pre_ping=True)\n"
+    ),
+    "src/api/routes.py": (
+        "from fastapi import APIRouter\n\n"
+        "router = APIRouter(prefix='/api')\n\n"
+        "@router.get('/clientes')\n"
+        "def clientes():\n    return [{'id': 1, 'nome': 'ACME Matriz'}]\n"
+    ),
+    "src/utils/logger.py": (
+        "import logging\n\n"
+        "def get_logger(name: str) -> logging.Logger:\n"
+        "    logging.basicConfig(level=logging.INFO)\n"
+        "    return logging.getLogger(name)\n"
+    ),
+    "infra/terraform/main.tf": (
+        'terraform {\n  required_providers {\n    aws = { source = "hashicorp/aws", version = "~> 5.0" }\n  }\n}\n\n'
+        'provider "aws" {\n  region = "sa-east-1"\n}\n\n'
+        'resource "aws_s3_bucket" "portal" {\n  bucket = "acme-portal-interno-demo"\n}\n'
+    ),
+    "infra/terraform/variables.tf": (
+        '# Segredo de demonstracao (fake/mascarado)\n'
+        'variable "db_password" {\n  type    = string\n  default = "Dem0!Pwd2026"\n}\n\n'
+        'variable "aws_secret_access_key" {\n  type    = string\n  default = "****************************DEMO"\n}\n'
+    ),
+    ".github/workflows/ci.yml": (
+        "name: ci\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
+        "    steps:\n      - uses: actions/checkout@v4\n      - run: make test\n"
+    ),
+    "deploy/docker-compose.yml": (
+        "services:\n  db:\n    image: postgres:16\n    environment:\n"
+        "      POSTGRES_USER: acme_app\n      POSTGRES_PASSWORD: Dem0!Pwd2026\n"
+        "  app:\n    build: .\n    depends_on: [db]\n    ports: ['8000:8000']\n"
+    ),
+    "docs/arquitetura.md": (
+        "# Arquitetura — ACME Portal Interno\n\n"
+        "Aplicacao FastAPI com PostgreSQL, provisionada via Terraform na AWS (sa-east-1).\n\n"
+        "- `src/app.py`: entrypoint\n- `src/db/connection.py`: conexao com o banco\n"
+        "- `infra/terraform`: infraestrutura como codigo\n"
+    ),
+    "docs/runbook.md": (
+        "# Runbook operacional\n\n"
+        "## Deploy\n1. `make up`\n2. Validar `/health`\n\n"
+        "## Rotacao de credenciais\nAtualizar `DB_PASSWORD` no cofre e reiniciar os pods.\n"
+    ),
+    "tests/test_app.py": (
+        "from fastapi.testclient import TestClient\n"
+        "from src.app import app\n\n"
+        "def test_health():\n"
+        "    r = TestClient(app).get('/health')\n"
+        "    assert r.status_code == 200\n"
+    ),
+}
+
+
+async def seed_git(session):
+    """Repositórios Git clonados (fictícios), arquivos indexados, jobs e leaks."""
+    # --- Repositórios ---
+    featured = GitRepo(
+        guid=new_guid(), full_name="acme-corp/portal-interno",
+        owner="acme-corp", name="portal-interno",
+        html_url="https://github.com/acme-corp/portal-interno",
+        clone_url="https://github.com/acme-corp/portal-interno.git",
+        description="Portal interno da ACME Corp — FastAPI + PostgreSQL + Terraform.",
+        default_branch="main", stars=42, forks=7, language="Python",
+        topics=["fastapi", "internal", "acme", "terraform"],
+        size_kb=1840, is_private=False, source="github",
+        discovered_via="acme", search_type="repositories",
+        clone_status="cloned", local_path=None,
+        scan_status="completed", ocr_status="completed", index_status="completed",
+        leaks_count=0, files_count=len(_FEATURED_FILES),
+        cloned_at=ago(days=1), created_at=ago(days=1), updated_at=ago(hours=5),
+    )
+    featured.local_path = featured.guid
+
+    others = [
+        GitRepo(
+            guid=new_guid(), full_name="acme-corp/infra-terraform",
+            owner="acme-corp", name="infra-terraform",
+            html_url="https://github.com/acme-corp/infra-terraform",
+            clone_url="https://github.com/acme-corp/infra-terraform.git",
+            description="Infraestrutura como código (AWS) da ACME.",
+            default_branch="main", stars=18, forks=3, language="HCL",
+            topics=["terraform", "aws", "iac", "acme"],
+            size_kb=640, source="github", discovered_via="acme",
+            search_type="repositories", clone_status="cloned",
+            scan_status="completed", ocr_status="completed", index_status="completed",
+            leaks_count=0, files_count=54,
+            cloned_at=ago(days=2), created_at=ago(days=2), updated_at=ago(days=1),
+        ),
+        GitRepo(
+            guid=new_guid(), full_name="acme-corp/mobile-app",
+            owner="acme-corp", name="mobile-app",
+            html_url="https://github.com/acme-corp/mobile-app",
+            clone_url="https://github.com/acme-corp/mobile-app.git",
+            description="Aplicativo móvel da ACME (Flutter).",
+            default_branch="main", stars=73, forks=11, language="Dart",
+            topics=["flutter", "mobile", "acme"],
+            size_kb=5120, source="github", discovered_via="acme",
+            search_type="repositories", clone_status="cloned",
+            scan_status="completed", ocr_status="completed", index_status="completed",
+            leaks_count=0, files_count=312,
+            cloned_at=ago(days=3), created_at=ago(days=3), updated_at=ago(days=2),
+        ),
+        GitRepo(
+            guid=new_guid(), full_name="grupo-acme/legacy-scripts",
+            owner="grupo-acme", name="legacy-scripts",
+            html_url="https://github.com/grupo-acme/legacy-scripts",
+            clone_url="https://github.com/grupo-acme/legacy-scripts.git",
+            description="Scripts legados de automação (shell).",
+            default_branch="master", stars=4, forks=1, language="Shell",
+            topics=["bash", "legacy", "ops"],
+            size_kb=210, source="github", discovered_via="acme",
+            search_type="code", clone_status="cloned",
+            scan_status="completed", ocr_status="completed", index_status="completed",
+            leaks_count=0, files_count=28,
+            cloned_at=ago(days=4), created_at=ago(days=4), updated_at=ago(days=3),
+        ),
+    ]
+    session.add(featured)
+    session.add_all(others)
+    await session.flush()
+
+    # --- Arquivos do repositório em destaque ---
+    files = []
+    for rel_path, content in _FEATURED_FILES.items():
+        name = rel_path.rsplit("/", 1)[-1]
+        ext = ("." + name.rsplit(".", 1)[-1]) if "." in name else ""
+        data = content.encode("utf-8")
+        gf = GitRepoFile(
+            repo_id=featured.id, repo_guid=featured.guid, rel_path=rel_path,
+            name=name, extension=ext or None, size=len(data),
+            sha1=hashlib.sha1(data).hexdigest(), mimetype=_mime_for(name),
+            is_binary=False, content=content, content_extracted=True,
+            indexed=True, indexed_at=ago(hours=5), created_at=ago(days=1),
+        )
+        files.append(gf)
+    session.add_all(files)
+    await session.flush()
+
+    # --- Jobs de clone (vários estados) ---
+    jobs = [
+        GitCloneJob(
+            repo_id=featured.id, repo_url=featured.clone_url,
+            repo_full_name=featured.full_name, clone_auth="authenticated",
+            depth=None, status="completed", priority=0, current_step="done",
+            total_files=len(files), processed_files=len(files), leaks_found=4,
+            created_at=ago(days=1, hours=1), started_at=ago(days=1, hours=1),
+            completed_at=ago(days=1),
+        ),
+        GitCloneJob(
+            repo_id=others[0].id, repo_url=others[0].clone_url,
+            repo_full_name=others[0].full_name, clone_auth="anonymous",
+            depth=None, status="completed", priority=0, current_step="done",
+            total_files=54, processed_files=54, leaks_found=0,
+            created_at=ago(days=2, hours=1), started_at=ago(days=2, hours=1),
+            completed_at=ago(days=2),
+        ),
+        GitCloneJob(
+            repo_id=others[1].id, repo_url=others[1].clone_url,
+            repo_full_name=others[1].full_name, clone_auth="anonymous",
+            depth=1, status="running", priority=0, current_step="index",
+            total_files=312, processed_files=190, leaks_found=0,
+            created_at=ago(minutes=20), started_at=ago(minutes=18),
+        ),
+        # 'cancelled' (não 'pending'): o worker de clone, se estiver ativo,
+        # consumiria um job 'pending' e tentaria clonar o repo fictício (falha).
+        # Estado terminal mantém o screenshot estável/reproduzível.
+        GitCloneJob(
+            repo_id=others[2].id, repo_url=others[2].clone_url,
+            repo_full_name=others[2].full_name, clone_auth="anonymous",
+            depth=None, status="cancelled", priority=5, current_step="clone",
+            total_files=0, processed_files=0,
+            created_at=ago(minutes=12), started_at=ago(minutes=11),
+            completed_at=ago(minutes=10),
+        ),
+        GitCloneJob(
+            repo_id=None, repo_url="https://github.com/acme-corp/repo-privado.git",
+            repo_full_name="acme-corp/repo-privado", clone_auth="anonymous",
+            depth=None, status="failed", priority=0, current_step="clone",
+            total_files=0, processed_files=0,
+            error_message="repository not found or access denied (403)",
+            created_at=ago(hours=2), started_at=ago(hours=2),
+            completed_at=ago(hours=2),
+        ),
+    ]
+    session.add_all(jobs)
+    await session.flush()
+
+    # --- Leaks ligados ao repositório Git ---
+    by_path = {gf.rel_path: gf for gf in files}
+    git_leaks = [
+        dict(rel_path="src/config/settings.py", rule_id="generic-api-key",
+             description="Chave de API genérica", start_line=4, source="gitleaks"),
+        dict(rel_path="infra/terraform/variables.tf", rule_id="aws-secret-access-key",
+             description="AWS Secret Access Key", start_line=7, source="gitleaks"),
+        dict(rel_path="deploy/docker-compose.yml", rule_id="postgres-password",
+             description="Senha de banco em docker-compose", start_line=6, source="gitleaks"),
+        dict(rel_path=".env.example", rule_id="manual-credential",
+             description="Credencial identificada manualmente", start_line=4, source="manual"),
+    ]
+    added = 0
+    for i, lk in enumerate(git_leaks):
+        gf = by_path.get(lk["rel_path"])
+        if gf is None:
+            continue
+        session.add(GitleaksFinding(
+            fingerprint=f"git-demo-{i}-{uuid.uuid4().hex[:12]}",
+            rule_id=lk["rule_id"], description=lk["description"],
+            match="***** (mascarado na demo) *****", secret="*****",
+            start_line=lk["start_line"], end_line=lk["start_line"],
+            tags=["Git", "Demo"], file_name=gf.name, server_path=gf.rel_path,
+            file_path=gf.rel_path, original_file=gf.rel_path,
+            share_name=None,
+            server_name=featured.full_name, server_ip=None, server_id=None,
+            git_repo_id=featured.id, git_repo_guid=featured.guid,
+            detection_source=lk["source"],
+            scanned_at=ago(days=1), is_false_positive=False,
+            raw_data={"RuleID": lk["rule_id"], "demo": True},
+        ))
+        added += 1
+    featured.leaks_count = added
+    await session.flush()
+
+    # --- Indexação no OpenSearch (busca de conteúdo / aba Git do Advanced Search) ---
+    indexed = 0
+    try:
+        import opensearch_client  # lazy: só disponível no backend
+        if opensearch_client.is_enabled():
+            opensearch_client.ensure_index()
+            docs = [{
+                "_id": f"{featured.guid}:{gf.id}",
+                "repo_id": featured.id,
+                "repo_guid": featured.guid,
+                "repo_full_name": featured.full_name,
+                "file_id": gf.id,
+                "rel_path": gf.rel_path,
+                "name": gf.name,
+                "extension": gf.extension,
+                "mimetype": gf.mimetype,
+                "size": gf.size,
+                "content": gf.content,
+            } for gf in files]
+            indexed = opensearch_client.bulk_index(docs)
+        else:
+            print("[seed] git: OpenSearch desabilitado — pulando indexação (busca via ILIKE no banco)")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[seed] git: aviso — indexação no OpenSearch falhou ({exc}); busca via ILIKE no banco")
+
+    print(
+        f"[seed] git: {1 + len(others)} repositórios, {len(files)} arquivos, "
+        f"{len(jobs)} jobs, {added} leaks, {indexed} docs indexados"
+    )
+
+
+# ===========================================================================
 # SQL — conexões + histórico de enumerações
 # ===========================================================================
 async def seed_sql(session):
@@ -762,6 +1079,7 @@ async def main():
         await seed_credentials(session)
         servers, featured = await seed_servers(session, plugins)
         await seed_leaks(session, servers, featured)
+        await seed_git(session)
         await seed_sql(session)
         await seed_ad(session)
 
