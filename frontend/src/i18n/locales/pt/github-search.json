@@ -1,0 +1,64 @@
+{
+  "title": "Busca Github",
+  "subtitle": "Pesquise repositórios e código no GitHub e enfileire repositórios para clone, varredura e indexação.",
+  "terms": {
+    "label": "Termos de busca",
+    "placeholder": "Digite um termo e pressione Enter",
+    "empty": "Nenhum termo adicionado"
+  },
+  "types": {
+    "label": "Tipo de busca",
+    "code": "Código",
+    "repositories": "Repositórios"
+  },
+  "exact": {
+    "label": "Correspondência exata (--exact)",
+    "hint": "Coloca cada termo entre aspas para forçar correspondência literal/frase."
+  },
+  "apiToken": {
+    "label": "Token da API (busca)",
+    "placeholder": "Selecione uma credencial Token",
+    "none": "Nenhuma credencial Token encontrada — crie uma em Credenciais."
+  },
+  "cloneAuth": {
+    "label": "Modo de clone",
+    "anonymous": "Anônimo",
+    "authenticated": "Autenticado",
+    "tokenLabel": "Token de clone",
+    "tokenPlaceholder": "Selecione uma credencial Token"
+  },
+  "actions": {
+    "search": "Buscar",
+    "searching": "Buscando…",
+    "download": "Baixar selecionados",
+    "downloading": "Enfileirando…",
+    "goToJobs": "Ver jobs de clone",
+    "selectAll": "Selecionar todos"
+  },
+  "results": {
+    "title": "Resultados",
+    "term": "Termo",
+    "type": "Tipo",
+    "count": "Repositórios",
+    "status": "Status",
+    "empty": "Faça uma busca para ver os resultados aqui.",
+    "ok": "ok",
+    "error": "erro"
+  },
+  "indexNote": {
+    "disabled": "indexação de conteúdo desativada",
+    "available": "índice: {{status}}",
+    "unavailable": "índice indisponível"
+  },
+  "toast": {
+    "needTerm": "Adicione ao menos um termo de busca",
+    "needType": "Selecione ao menos um tipo de busca",
+    "needToken": "Selecione um token da API",
+    "needCloneToken": "Selecione um token de clone para o modo autenticado",
+    "searchError": "Falha na busca",
+    "noSelection": "Selecione ao menos uma condição para baixar",
+    "queued": "{{count}} job(s) de clone enfileirado(s)",
+    "enqueueError": "Falha ao enfileirar downloads",
+    "loadTokensError": "Falha ao carregar credenciais Token"
+  }
+}

@@ -29,7 +29,11 @@
     "scan-pools": "Scan Pool",
     "tools": "Tools",
     "soap-ops": "SOAP Operations",
-    "change-domain-password": "Change domain password"
+    "change-domain-password": "Change domain password",
+    "git": "GIT",
+    "github-search": "Github Search",
+    "github": "Github",
+    "git-clone": "Git Clones"
   },
   "header": {
     "online": "Online",

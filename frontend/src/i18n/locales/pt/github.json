@@ -1,0 +1,61 @@
+{
+  "title": "Repositórios Github",
+  "subtitle": "Repositórios clonados e indexados localmente para busca offline.",
+  "search": {
+    "placeholder": "Buscar por nome ou descrição…",
+    "run": "Buscar",
+    "contentTitle": "Busca de conteúdo",
+    "contentPlaceholder": "Buscar dentro do conteúdo dos arquivos…",
+    "contentEmpty": "Nenhuma correspondência.",
+    "backend": "backend"
+  },
+  "filters": {
+    "allStatus": "Todos os status",
+    "language": "Linguagem",
+    "allLanguages": "Todas as linguagens"
+  },
+  "stats": {
+    "total": "Total",
+    "pending": "Pendentes",
+    "cloning": "Clonando",
+    "cloned": "Clonados",
+    "failed": "Falhas"
+  },
+  "table": {
+    "repo": "Repositório",
+    "language": "Linguagem",
+    "stars": "Stars",
+    "forks": "Forks",
+    "topics": "Tags",
+    "status": "Status",
+    "leaks": "Leaks",
+    "files": "Arquivos",
+    "empty": "Nenhum repositório ainda. Use a Busca Github para enfileirar clones."
+  },
+  "cloneStatus": {
+    "pending": "Pendente",
+    "cloning": "Clonando",
+    "cloned": "Clonado",
+    "failed": "Falha"
+  },
+  "browser": {
+    "back": "Voltar aos repositórios",
+    "files": "Arquivos",
+    "content": "Conteúdo",
+    "selectFile": "Selecione um arquivo para ver o conteúdo",
+    "binary": "Arquivo binário (sem conteúdo de texto extraído)",
+    "noContent": "Sem conteúdo extraído para este arquivo.",
+    "searchFiles": "Filtrar arquivos por caminho…",
+    "indexed": "indexado",
+    "notIndexed": "não indexado",
+    "size": "Tamanho",
+    "loading": "Carregando…",
+    "openOnGithub": "Abrir no GitHub"
+  },
+  "toast": {
+    "loadError": "Falha ao carregar repositórios",
+    "loadRepoError": "Falha ao carregar repositório",
+    "loadFileError": "Falha ao carregar arquivo",
+    "searchError": "Falha na busca"
+  }
+}

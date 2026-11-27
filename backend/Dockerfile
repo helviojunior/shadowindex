@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     curl \
     jq \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Download e instalação da ÚLTIMA versão do GitLeaks (detecta arquitetura e versão automaticamente)

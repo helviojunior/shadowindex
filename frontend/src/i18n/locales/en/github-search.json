@@ -1,0 +1,64 @@
+{
+  "title": "Github Search",
+  "subtitle": "Search GitHub for repositories and code, then queue repositories for cloning, scanning and indexing.",
+  "terms": {
+    "label": "Search terms",
+    "placeholder": "Type a term and press Enter",
+    "empty": "No terms added yet"
+  },
+  "types": {
+    "label": "Search type",
+    "code": "Code",
+    "repositories": "Repositories"
+  },
+  "exact": {
+    "label": "Exact match (--exact)",
+    "hint": "Wraps each term in quotes to force a literal/phrase match."
+  },
+  "apiToken": {
+    "label": "API token (search)",
+    "placeholder": "Select a token credential",
+    "none": "No token credentials found — create one under Credentials."
+  },
+  "cloneAuth": {
+    "label": "Clone mode",
+    "anonymous": "Anonymous",
+    "authenticated": "Authenticated",
+    "tokenLabel": "Clone token",
+    "tokenPlaceholder": "Select a token credential"
+  },
+  "actions": {
+    "search": "Search",
+    "searching": "Searching…",
+    "download": "Download selected",
+    "downloading": "Queuing…",
+    "goToJobs": "View clone jobs",
+    "selectAll": "Select all"
+  },
+  "results": {
+    "title": "Results",
+    "term": "Term",
+    "type": "Type",
+    "count": "Repositories",
+    "status": "Status",
+    "empty": "Run a search to see results here.",
+    "ok": "ok",
+    "error": "error"
+  },
+  "indexNote": {
+    "disabled": "content indexing disabled",
+    "available": "index: {{status}}",
+    "unavailable": "index unavailable"
+  },
+  "toast": {
+    "needTerm": "Add at least one search term",
+    "needType": "Select at least one search type",
+    "needToken": "Select an API token",
+    "needCloneToken": "Select a clone token for authenticated mode",
+    "searchError": "Search failed",
+    "noSelection": "Select at least one condition to download",
+    "queued": "{{count}} clone job(s) queued",
+    "enqueueError": "Failed to queue downloads",
+    "loadTokensError": "Failed to load token credentials"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "title": "Github Repositories",
+  "subtitle": "Repositories cloned and indexed locally for offline search.",
+  "search": {
+    "placeholder": "Search by name or description…",
+    "run": "Search",
+    "contentTitle": "Content search",
+    "contentPlaceholder": "Search inside file contents…",
+    "contentEmpty": "No matches.",
+    "backend": "backend"
+  },
+  "filters": {
+    "allStatus": "All statuses",
+    "language": "Language",
+    "allLanguages": "All languages"
+  },
+  "stats": {
+    "total": "Total",
+    "pending": "Pending",
+    "cloning": "Cloning",
+    "cloned": "Cloned",
+    "failed": "Failed"
+  },
+  "table": {
+    "repo": "Repository",
+    "language": "Language",
+    "stars": "Stars",
+    "forks": "Forks",
+    "topics": "Topics",
+    "status": "Status",
+    "leaks": "Leaks",
+    "files": "Files",
+    "empty": "No repositories yet. Use Github Search to queue clones."
+  },
+  "cloneStatus": {
+    "pending": "Pending",
+    "cloning": "Cloning",
+    "cloned": "Cloned",
+    "failed": "Failed"
+  },
+  "browser": {
+    "back": "Back to repositories",
+    "files": "Files",
+    "content": "Content",
+    "selectFile": "Select a file to view its content",
+    "binary": "Binary file (no text content extracted)",
+    "noContent": "No extracted content for this file.",
+    "searchFiles": "Filter files by path…",
+    "indexed": "indexed",
+    "notIndexed": "not indexed",
+    "size": "Size",
+    "loading": "Loading…",
+    "openOnGithub": "Open on GitHub"
+  },
+  "toast": {
+    "loadError": "Failed to load repositories",
+    "loadRepoError": "Failed to load repository",
+    "loadFileError": "Failed to load file",
+    "searchError": "Search failed"
+  }
+}

@@ -54,6 +54,37 @@ services:
     networks:
       - shadowindex-net
 
+  opensearch:
+    image: opensearchproject/opensearch:2.17.1
+    container_name: shadowindex-opensearch-dev
+    restart: unless-stopped
+    environment:
+      TZ: "America/Sao_Paulo"
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks:
+      - shadowindex-net
+
   backend:
     build:
       context: ./backend
@@ -70,6 +101,7 @@ services:
       TZ: "America/Sao_Paulo"
       CORS_ORIGINS: "*"
       TIKA_SERVER_URL: "http://tika:9998"
+      OPENSEARCH_URL: "http://opensearch:9200"
       SOAP_MOCK_URL: "http://soap-mock:9999/Test.asmx"
       # PostgreSQL - Comentar para usar SQLite
       POSTGRES_URL: "postgresql://shadowindex:shadowindex@postgres:5432/shadowindex"
@@ -78,6 +110,8 @@ services:
       postgres:
         condition: service_healthy
       tika:
+        condition: service_healthy
+      opensearch:
         condition: service_healthy
       soap-mock:
         condition: service_started
@@ -109,3 +143,4 @@ networks:
 
 volumes:
   postgres_db:
+  opensearch_data:

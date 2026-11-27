@@ -607,26 +607,6 @@ const Credentials = () => {
                 </TabsContent>
 
                 <TabsContent value="token" className="space-y-4 mt-0">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="token_type">{t('form.token.typeLabel')}</Label>
-                      <Select 
-                        value={formData.token_type} 
-                        onValueChange={(value) => setFormData({ ...formData, token_type: value })}
-                      >
-                        <SelectTrigger data-testid="token-type-select">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bearer">Bearer Token</SelectItem>
-                          <SelectItem value="api_key">API Key</SelectItem>
-                          <SelectItem value="basic">Basic Auth</SelectItem>
-                          <SelectItem value="oauth">OAuth Token</SelectItem>
-                          <SelectItem value="custom">Custom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="token">{t('form.token.label')}</Label>
                     <Textarea
@@ -639,6 +619,7 @@ const Credentials = () => {
                       rows={3}
                       required={activeTab === 'token'}
                     />
+                    <p className="text-xs text-muted-foreground">{t('form.token.hint')}</p>
                   </div>
                 </TabsContent>
 

@@ -5371,6 +5371,10 @@ app.include_router(router_v2)
 from ad_routes import router as router_ad
 app.include_router(router_ad)
 
+# Módulo GIT (busca no GitHub, clone e pipeline de indexação)
+from git_routes import router as router_git
+app.include_router(router_git)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -5572,6 +5576,26 @@ async def startup_event():
     except Exception as e:
         print(f"=== STARTUP ERROR: Failed to start share scan worker: {e} ===", flush=True)
 
+    # Inicializar índice do OpenSearch (módulo GIT) - best effort
+    try:
+        import asyncio
+        import opensearch_client
+        if opensearch_client.is_enabled():
+            ok = await asyncio.to_thread(opensearch_client.ensure_index)
+            print(f"=== STARTUP: OpenSearch index ready: {ok} ===", flush=True)
+        else:
+            print("=== STARTUP: OpenSearch disabled (OPENSEARCH_URL not set) ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP WARNING: OpenSearch init error: {e} ===", flush=True)
+
+    # Iniciar worker de clone Git em background
+    try:
+        from git_clone_worker import start_git_clone_worker
+        await start_git_clone_worker()
+        print("=== STARTUP: Git clone worker started successfully ===", flush=True)
+    except Exception as e:
+        print(f"=== STARTUP ERROR: Failed to start git clone worker: {e} ===", flush=True)
+
     # Iniciar watchdog de banco de dados
     try:
         from db_watchdog import start_db_watchdog
@@ -5657,6 +5681,14 @@ async def shutdown_event():
         logging.info("Share scan worker stopped")
     except Exception as e:
         logging.warning(f"Error stopping share scan worker: {e}")
+
+    # Parar worker de clone Git
+    try:
+        from git_clone_worker import stop_git_clone_worker
+        await stop_git_clone_worker()
+        logging.info("Git clone worker stopped")
+    except Exception as e:
+        logging.warning(f"Error stopping git clone worker: {e}")
 
 if __name__ == "__main__":
     import uvicorn

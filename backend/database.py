@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Text, Boolean, ForeignKey, inspect, JSON, Float, event, Index
 from datetime import datetime, timezone
 import os
+import uuid
 import logging
 
 logger = logging.getLogger(__name__)
@@ -518,7 +519,12 @@ class GitleaksFinding(Base):
     # Dados adicionais
     raw_data = Column(JSON, nullable=True)  # JSON completo do finding original
     is_false_positive = Column(Boolean, default=False, nullable=False)  # Marcado como falso positivo
-    
+
+    # Vínculo com repositório Git (módulo GIT). Quando preenchido, o finding veio
+    # de um repositório clonado e não de um servidor SMB.
+    git_repo_id = Column(Integer, nullable=True, index=True)
+    git_repo_guid = Column(String, nullable=True, index=True)
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -704,6 +710,101 @@ class AdScanJob(Base):
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class GitRepo(Base):
+    """Repositório Git descoberto/clonado pelo módulo GIT."""
+    __tablename__ = "git_repos"
+    __table_args__ = (
+        Index('idx_git_repos_clone_status', 'clone_status'),
+        Index('idx_git_repos_full_name', 'full_name'),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    guid = Column(String, nullable=False, unique=True, index=True, default=lambda: uuid.uuid4().hex)
+    full_name = Column(String, nullable=False, index=True)  # owner/repo
+    owner = Column(String, nullable=True)
+    name = Column(String, nullable=True)
+    html_url = Column(String, nullable=True)
+    clone_url = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    default_branch = Column(String, nullable=True)
+    stars = Column(Integer, default=0)
+    forks = Column(Integer, default=0)
+    language = Column(String, nullable=True)
+    topics = Column(JSON, nullable=True)  # lista de tags/topics
+    size_kb = Column(BigInteger, nullable=True)
+    is_private = Column(Boolean, default=False)
+    source = Column(String, default="github")  # github, gitlab, ...
+    discovered_via = Column(String, nullable=True)  # termo de busca que encontrou o repo
+    search_type = Column(String, nullable=True)  # code, repositories
+    # Pipeline
+    clone_status = Column(String, default="pending")  # pending, cloning, cloned, failed
+    local_path = Column(String, nullable=True)  # caminho relativo sob gitclones/
+    clone_error = Column(Text, nullable=True)
+    scan_status = Column(String, default="pending")  # pending, running, completed, failed, skipped
+    ocr_status = Column(String, default="pending")
+    index_status = Column(String, default="pending")
+    leaks_count = Column(Integer, default=0)
+    files_count = Column(Integer, default=0)
+    cloned_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class GitRepoFile(Base):
+    """Arquivo pertencente a um repositório Git clonado."""
+    __tablename__ = "git_repo_files"
+    __table_args__ = (
+        Index('idx_git_repo_files_repo_id', 'repo_id'),
+        Index('idx_git_repo_files_repo_guid', 'repo_guid'),
+        Index('idx_git_repo_files_rel_path', 'rel_path'),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    repo_id = Column(Integer, ForeignKey("git_repos.id", ondelete="CASCADE"), nullable=False)
+    repo_guid = Column(String, nullable=True, index=True)
+    rel_path = Column(String, nullable=False)  # caminho relativo dentro do repo
+    name = Column(String, nullable=True)
+    extension = Column(String, nullable=True)
+    size = Column(BigInteger, nullable=True)
+    sha1 = Column(String, nullable=True)
+    mimetype = Column(String, nullable=True)
+    is_binary = Column(Boolean, default=False)
+    content = Column(Text, nullable=True)  # texto extraído (plain/OCR) para indexação
+    content_extracted = Column(Boolean, default=False)
+    content_error = Column(String, nullable=True)
+    indexed = Column(Boolean, default=False)  # indexado no OpenSearch
+    indexed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class GitCloneJob(Base):
+    """Jobs de clone de repositórios Git - processados em background pelo git_clone_worker."""
+    __tablename__ = "git_clone_jobs"
+    __table_args__ = (
+        Index('idx_git_clone_jobs_status', 'status'),
+        Index('idx_git_clone_jobs_status_priority_created', 'status', 'priority', 'created_at'),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    repo_id = Column(Integer, ForeignKey("git_repos.id", ondelete="SET NULL"), nullable=True)
+    repo_url = Column(String, nullable=False)  # https://github.com/owner/repo.git
+    repo_full_name = Column(String, nullable=True)  # owner/repo
+    clone_auth = Column(String, default="anonymous")  # anonymous, authenticated
+    credential_id = Column(Integer, ForeignKey("credentials.id", ondelete="SET NULL"), nullable=True)
+    depth = Column(Integer, nullable=True)  # git clone --depth
+    status = Column(String, default="pending")  # pending, running, completed, failed, cancelled
+    priority = Column(Integer, default=0)
+    current_step = Column(String, nullable=True)  # clone, gitleaks, ocr, index
+    total_files = Column(Integer, default=0)
+    processed_files = Column(Integer, default=0)
+    leaks_found = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
 # Configurações padrão
 DEFAULT_SETTINGS = {
     'max_simultaneous_downloads': ('3', 'Número máximo de downloads simultâneos'),
@@ -729,6 +830,11 @@ DEFAULT_SETTINGS = {
     'ui_logo_alignment': ('center', 'Alinhamento da logo no cabeçalho: left, center ou right'),
     'ui_sidebar_active_color': ('#34d399', 'Cor do item selecionado no menu lateral (sidebar)'),
     'ui_favicon_url': ('https://media.sec4us.com.br/icon/favicon.ico', 'URL do favicon (ícone da aba do navegador)'),
+    # Módulo GIT
+    'max_simultaneous_git_clones': ('2', 'Número máximo de clones Git simultâneos'),
+    'git_clone_depth': ('1', 'Profundidade padrão do git clone (--depth). 0/vazio = clone completo'),
+    'git_clone_auth_default': ('anonymous', 'Modo de autenticação padrão para clone: anonymous ou authenticated'),
+    'git_index_max_size_mb': ('2', 'Tamanho máximo (MB) de arquivo de repositório Git para extração/indexação de conteúdo'),
 }
 
 
@@ -847,6 +953,23 @@ async def apply_pending_migrations():
                         "ON ad_objects (domain_id, parent_dn)"
                     ))
                     logger.info("Migration applied: parent_dn added to ad_objects")
+
+            # Módulo GIT: colunas de vínculo em gitleaks_findings
+            result = await conn.execute(text(
+                "SELECT to_regclass('public.gitleaks_findings')"
+            ))
+            if result.scalar():
+                for col, coltype in (('git_repo_id', 'INTEGER'), ('git_repo_guid', 'VARCHAR')):
+                    result = await conn.execute(text(
+                        "SELECT column_name FROM information_schema.columns "
+                        f"WHERE table_name = 'gitleaks_findings' AND column_name = '{col}'"
+                    ))
+                    if not result.fetchone():
+                        logger.info(f"Applying migration: adding {col} to gitleaks_findings")
+                        await conn.execute(text(
+                            f"ALTER TABLE gitleaks_findings ADD COLUMN {col} {coltype}"
+                        ))
+                        logger.info(f"Migration applied: {col} added to gitleaks_findings")
         else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))
@@ -913,6 +1036,21 @@ async def apply_pending_migrations():
                     "ALTER TABLE credentials ADD COLUMN kdc_host VARCHAR"
                 ))
                 logger.info("Migration applied: kdc_host added to credentials")
+
+            # SQLite: Módulo GIT - colunas de vínculo em gitleaks_findings
+            result = await conn.execute(text("PRAGMA table_info(gitleaks_findings)"))
+            columns = [row[1] for row in result.fetchall()]
+            if columns:  # tabela existe
+                if 'git_repo_id' not in columns:
+                    logger.info("Applying migration: adding git_repo_id to gitleaks_findings")
+                    await conn.execute(text(
+                        "ALTER TABLE gitleaks_findings ADD COLUMN git_repo_id INTEGER"
+                    ))
+                if 'git_repo_guid' not in columns:
+                    logger.info("Applying migration: adding git_repo_guid to gitleaks_findings")
+                    await conn.execute(text(
+                        "ALTER TABLE gitleaks_findings ADD COLUMN git_repo_guid VARCHAR"
+                    ))
 
 
 async def init_db():

@@ -27,7 +27,8 @@ import {
   AlertTriangle,
   RefreshCw,
   X,
-  ListTodo
+  ListTodo,
+  GitBranch
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -68,6 +69,15 @@ const menuStructure = [
     ]
   },
   {
+    id: 'git',
+    icon: GitBranch,
+    label: 'GIT',
+    children: [
+      { id: 'github-search', path: '/git/search', label: 'Github Search' },
+      { id: 'github', path: '/git', label: 'Github' },
+    ]
+  },
+  {
     id: 'ad-explorer',
     icon: Network,
     label: 'AD Explorer',
@@ -102,6 +112,7 @@ const menuStructure = [
       { id: 'downloads', path: '/downloads', label: 'Downloads' },
       { id: 'ocr', path: '/ocr', label: 'OCR' },
       { id: 'share-scan-jobs', path: '/jobs/share-scan', label: 'Share Scan' },
+      { id: 'git-clone', path: '/jobs/git', label: 'Clones Git' },
     ]
   },
   { 

@@ -1,0 +1,46 @@
+{
+  "title": "Git Clone Jobs",
+  "subtitle": "Background pipeline for each repository: clone → gitleaks → extract → index.",
+  "stats": {
+    "total": "Total",
+    "pending": "Pending",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "table": {
+    "repo": "Repository",
+    "status": "Status",
+    "step": "Step",
+    "progress": "Files",
+    "leaks": "Leaks",
+    "created": "Created",
+    "actions": "Actions",
+    "empty": "No clone jobs yet."
+  },
+  "steps": {
+    "clone": "Cloning",
+    "gitleaks": "GitLeaks",
+    "ocr": "Extracting",
+    "index": "Indexing",
+    "done": "Done"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "prioritize": "Prioritize",
+    "cancelAll": "Cancel pending",
+    "retryFailed": "Retry failed",
+    "refresh": "Refresh"
+  },
+  "toast": {
+    "loadError": "Failed to load jobs",
+    "cancelled": "Job cancelled",
+    "retried": "Job re-queued",
+    "prioritized": "Priority raised",
+    "cancelAllDone": "Pending jobs cancelled",
+    "retryFailedDone": "Failed jobs re-queued",
+    "actionError": "Action failed"
+  }
+}

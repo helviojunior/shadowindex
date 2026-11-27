@@ -1,0 +1,46 @@
+{
+  "title": "Jobs de Clone Git",
+  "subtitle": "Pipeline em background para cada repositório: clone → gitleaks → extração → indexação.",
+  "stats": {
+    "total": "Total",
+    "pending": "Pendentes",
+    "running": "Em execução",
+    "completed": "Concluídos",
+    "failed": "Falhas",
+    "cancelled": "Cancelados"
+  },
+  "table": {
+    "repo": "Repositório",
+    "status": "Status",
+    "step": "Etapa",
+    "progress": "Arquivos",
+    "leaks": "Leaks",
+    "created": "Criado",
+    "actions": "Ações",
+    "empty": "Nenhum job de clone ainda."
+  },
+  "steps": {
+    "clone": "Clonando",
+    "gitleaks": "GitLeaks",
+    "ocr": "Extraindo",
+    "index": "Indexando",
+    "done": "Concluído"
+  },
+  "actions": {
+    "cancel": "Cancelar",
+    "retry": "Repetir",
+    "prioritize": "Priorizar",
+    "cancelAll": "Cancelar pendentes",
+    "retryFailed": "Repetir falhas",
+    "refresh": "Atualizar"
+  },
+  "toast": {
+    "loadError": "Falha ao carregar jobs",
+    "cancelled": "Job cancelado",
+    "retried": "Job re-enfileirado",
+    "prioritized": "Prioridade aumentada",
+    "cancelAllDone": "Jobs pendentes cancelados",
+    "retryFailedDone": "Jobs com falha re-enfileirados",
+    "actionError": "Falha na ação"
+  }
+}

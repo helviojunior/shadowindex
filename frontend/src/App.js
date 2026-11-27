@@ -29,6 +29,10 @@ import ShareScan from "@/pages/ShareScan";
 import ShareScanJobs from "@/pages/ShareScanJobs";
 import AdvancedSearch from "@/pages/AdvancedSearch";
 import ChangeDomainPassword from "@/pages/ChangeDomainPassword";
+import GithubSearch from "@/pages/GithubSearch";
+import Github from "@/pages/Github";
+import GitRepoBrowser from "@/pages/GitRepoBrowser";
+import GitCloneJobs from "@/pages/GitCloneJobs";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 import { UiSettingsProvider } from "@/contexts/UiSettingsContext";
@@ -71,6 +75,10 @@ function App() {
                     <Route path="/leaks" element={<Leaks />} />
                     <Route path="/ocr" element={<OCRJobs />} />
                     <Route path="/jobs/share-scan" element={<ShareScanJobs />} />
+                    <Route path="/jobs/git" element={<GitCloneJobs />} />
+                    <Route path="/git/search" element={<GithubSearch />} />
+                    <Route path="/git" element={<Github />} />
+                    <Route path="/git/:guid" element={<GitRepoBrowser />} />
                     <Route path="/credentials" element={<Credentials />} />
                     <Route path="/sql" element={<DatabaseConnections />} />
                     <Route path="/sql/presets" element={<SqlPresets />} />
