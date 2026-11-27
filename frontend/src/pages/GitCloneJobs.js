@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/tooltip';
 import {
   GitBranch, Clock, Loader2, CheckCircle, XCircle, StopCircle,
-  X, RotateCcw, ChevronUp, RefreshCw, AlertTriangle,
+  X, RotateCcw, ChevronUp, RefreshCw, AlertTriangle, DownloadCloud, Cpu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { dateLocale } from '@/lib/datetime';
@@ -23,19 +23,23 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 // Estilo dos cards de estatística (mesmo padrão da tela /downloads):
 // borda esquerda colorida, número grande, label em maiúsculo colorido e ícone.
 const STAT_STYLES = {
-  total:     { icon: GitBranch,   text: 'text-blue-500',   border: 'border-l-blue-500' },
-  pending:   { icon: Clock,       text: 'text-yellow-500', border: 'border-l-yellow-500' },
-  running:   { icon: Loader2,     text: 'text-blue-500',   border: 'border-l-blue-500', spin: true },
-  completed: { icon: CheckCircle, text: 'text-green-500',  border: 'border-l-green-500' },
-  failed:    { icon: XCircle,     text: 'text-red-500',    border: 'border-l-red-500' },
-  cancelled: { icon: X,           text: 'text-gray-500',   border: 'border-l-gray-500' },
+  total:      { icon: GitBranch,     text: 'text-blue-500',   border: 'border-l-blue-500' },
+  pending:    { icon: Clock,         text: 'text-yellow-500', border: 'border-l-yellow-500' },
+  cloning:    { icon: Loader2,       text: 'text-blue-500',   border: 'border-l-blue-500', spin: true },
+  cloned:     { icon: DownloadCloud, text: 'text-cyan-500',   border: 'border-l-cyan-500' },
+  processing: { icon: Cpu,           text: 'text-purple-500', border: 'border-l-purple-500', spin: true },
+  completed:  { icon: CheckCircle,   text: 'text-green-500',  border: 'border-l-green-500' },
+  failed:     { icon: XCircle,       text: 'text-red-500',    border: 'border-l-red-500' },
+  cancelled:  { icon: X,             text: 'text-gray-500',   border: 'border-l-gray-500' },
 };
 
 const ScanStatusBadge = ({ status }) => {
   const { t } = useTranslation('common');
   const variants = {
     pending: { icon: Clock, className: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50' },
-    running: { icon: Loader2, className: 'bg-blue-500/20 text-blue-500 border-blue-500/50', spin: true },
+    cloning: { icon: Loader2, className: 'bg-blue-500/20 text-blue-500 border-blue-500/50', spin: true },
+    cloned: { icon: DownloadCloud, className: 'bg-cyan-500/20 text-cyan-500 border-cyan-500/50' },
+    processing: { icon: Cpu, className: 'bg-purple-500/20 text-purple-500 border-purple-500/50', spin: true },
     completed: { icon: CheckCircle, className: 'bg-green-500/20 text-green-500 border-green-500/50' },
     failed: { icon: XCircle, className: 'bg-red-500/20 text-red-500 border-red-500/50' },
     cancelled: { icon: StopCircle, className: 'bg-orange-500/20 text-orange-500 border-orange-500/50' },
@@ -127,8 +131,8 @@ export default function GitCloneJobs() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {['total', 'pending', 'running', 'completed', 'failed', 'cancelled'].map(k => {
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          {['total', 'pending', 'cloning', 'cloned', 'processing', 'completed', 'failed', 'cancelled'].map(k => {
             const cfg = STAT_STYLES[k];
             const Icon = cfg.icon;
             const count = stats[k] ?? 0;
@@ -197,12 +201,12 @@ export default function GitCloneJobs() {
                   <TableCell className="text-sm text-muted-foreground">{fmtDate(j.created_at)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      {(j.status === 'pending' || j.status === 'running') && (
+                      {['pending', 'cloning', 'cloned', 'processing'].includes(j.status) && (
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => cancelJob(j.id)} title={t('actions.cancel')}>
                           <X className="w-4 h-4" />
                         </Button>
                       )}
-                      {j.status === 'pending' && (
+                      {(j.status === 'pending' || j.status === 'cloned') && (
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => prioritize(j.id)} title={t('actions.prioritize')}>
                           <ChevronUp className="w-4 h-4" />
                         </Button>

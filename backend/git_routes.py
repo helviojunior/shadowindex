@@ -569,13 +569,15 @@ async def list_jobs(
     offset: int = 0,
     db=Depends(get_db_readonly),
 ):
-    # Ordena EXATAMENTE na ordem de processamento do worker:
-    #   rank de status (running -> pending -> terminais), depois
-    #   priority desc, pushed_at desc (mais novo), size_kb asc (menor), created asc.
+    # Ordena EXATAMENTE na ordem de processamento das duas filas:
+    #   rank de status (cloning -> pending -> cloned -> processing -> terminais),
+    #   depois priority desc, pushed_at desc (mais novo), size_kb asc (menor), created asc.
     status_rank = case(
-        (GitCloneJob.status == "running", 0),
+        (GitCloneJob.status == "cloning", 0),
         (GitCloneJob.status == "pending", 1),
-        else_=2,
+        (GitCloneJob.status == "cloned", 2),
+        (GitCloneJob.status == "processing", 3),
+        else_=4,
     )
     stmt = select(GitCloneJob).outerjoin(GitRepo, GitRepo.id == GitCloneJob.repo_id)
     if status:
@@ -594,7 +596,7 @@ async def list_jobs(
 @router.get("/jobs/stats")
 async def jobs_stats(db=Depends(get_db_readonly)):
     stats = {}
-    for st in ["pending", "running", "completed", "failed", "cancelled"]:
+    for st in ["pending", "cloning", "cloned", "processing", "completed", "failed", "cancelled"]:
         c = (await db.execute(
             select(func.count(GitCloneJob.id)).where(GitCloneJob.status == st)
         )).scalar() or 0
@@ -608,7 +610,9 @@ async def cancel_job(job_id: int, db=Depends(get_db)):
     job = (await db.execute(select(GitCloneJob).where(GitCloneJob.id == job_id))).scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail="Job não encontrado")
-    if job.status in ("pending", "running"):
+    # Não-terminais (inclui as duas filas e seus estados de execução). O worker
+    # checa _is_cancelled e aborta o que estiver rodando.
+    if job.status in ("pending", "cloning", "cloned", "processing"):
         job.status = "cancelled"
         job.completed_at = datetime.now(timezone.utc)
         await db.commit()
@@ -617,8 +621,10 @@ async def cancel_job(job_id: int, db=Depends(get_db)):
 
 @router.post("/jobs/cancel-all")
 async def cancel_all_jobs(db=Depends(get_db)):
+    # Cancela os que ainda não estão rodando: aguardando clone (pending) e
+    # aguardando pós-processamento (cloned).
     jobs = (await db.execute(
-        select(GitCloneJob).where(GitCloneJob.status == "pending")
+        select(GitCloneJob).where(GitCloneJob.status.in_(["pending", "cloned"]))
     )).scalars().all()
     for j in jobs:
         j.status = "cancelled"

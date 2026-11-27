@@ -7,7 +7,10 @@
     "running": "Em execução",
     "completed": "Concluídos",
     "failed": "Falhas",
-    "cancelled": "Cancelados"
+    "cancelled": "Cancelados",
+    "cloning": "Clonando",
+    "cloned": "Clonado",
+    "processing": "Processando"
   },
   "table": {
     "repo": "Repositório",

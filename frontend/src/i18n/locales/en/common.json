@@ -79,7 +79,10 @@
     "running": "Running",
     "completed": "Completed",
     "failed": "Failed",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "cloning": "Cloning",
+    "cloned": "Cloned",
+    "processing": "Processing"
   },
   "fields": {
     "name": "Name",

@@ -71,103 +71,139 @@ _git_clone_worker: Optional["GitCloneWorker"] = None
 class GitCloneWorker:
     def __init__(self):
         self.running = False
-        self._task: Optional[asyncio.Task] = None
-        # Jobs em processamento: job_id -> {"task": asyncio.Task, "since": monotonic}
-        self._active: Dict[int, dict] = {}
-        self._last_watchdog: float = 0.0
+        # Duas filas independentes: CLONE (rede) e PÓS-PROCESSAMENTO (gitleaks/
+        # extração/indexação, CPU/disco). Cada uma com seu loop, concorrência,
+        # conjunto de tasks vivas, boot-reset e watchdog de progresso.
+        self._clone_task: Optional[asyncio.Task] = None
+        self._post_task: Optional[asyncio.Task] = None
+        self._active_clone: Dict[int, dict] = {}   # jobs clonando
+        self._active_post: Dict[int, dict] = {}    # jobs em pós-processamento
+        self._last_watchdog_clone: float = 0.0
+        self._last_watchdog_post: float = 0.0
 
     async def start(self):
         if self.running:
             return
         self.running = True
-        self._active.clear()
-        self._last_watchdog = 0.0
-        self._task = asyncio.create_task(self._run_loop())
-        logger.info("Git clone worker started")
+        self._active_clone.clear()
+        self._active_post.clear()
+        self._last_watchdog_clone = 0.0
+        self._last_watchdog_post = 0.0
+        self._clone_task = asyncio.create_task(self._run_loop("clone"))
+        self._post_task = asyncio.create_task(self._run_loop("post"))
+        logger.info("Git clone worker started (filas: clone + pos-processamento)")
 
     async def stop(self):
         self.running = False
-        if self._task:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
+        for t in (self._clone_task, self._post_task):
+            if t:
+                t.cancel()
+                try:
+                    await t
+                except asyncio.CancelledError:
+                    pass
         logger.info("Git clone worker stopped")
 
-    async def _run_loop(self):
-        from database import AsyncSessionLocal
+    # ------------------------------------------------------------------
+    # Configuração por fase (clone x pós-processamento)
+    # ------------------------------------------------------------------
+    def _phase_cfg(self, phase: str) -> dict:
+        if phase == "clone":
+            return {
+                "pick_status": "pending",     # fila: aguardando clone
+                "running_status": "cloning",  # em clone
+                "requeue_status": "pending",  # volta p/ cá se travar/reiniciar
+                "active": self._active_clone,
+                "last_wd_attr": "_last_watchdog_clone",
+                "concurrency": self._get_clone_concurrency,
+                "executor": self._execute_clone,
+            }
+        return {
+            "pick_status": "cloned",          # fila: clonado, aguardando pós
+            "running_status": "processing",   # em pós-processamento
+            "requeue_status": "cloned",       # volta p/ cá se travar/reiniciar
+            "active": self._active_post,
+            "last_wd_attr": "_last_watchdog_post",
+            "concurrency": self._get_post_concurrency,
+            "executor": self._execute_postprocess,
+        }
+
+    async def _run_loop(self, phase: str):
+        from database import AsyncSessionLocal, GitCloneJob
         from sqlalchemy.exc import OperationalError
 
-        # Reset de jobs 'running' presos ao reiniciar
+        cfg = self._phase_cfg(phase)
+
+        # Boot-reset: jobs presos no estado "em andamento" desta fase voltam p/ a fila.
         try:
             async with AsyncSessionLocal() as db:
-                from database import GitCloneJob
                 result = await db.execute(
                     update(GitCloneJob)
-                    .where(GitCloneJob.status == "running")
-                    .values(status="pending", started_at=None, current_step=None)
+                    .where(GitCloneJob.status == cfg["running_status"])
+                    .values(status=cfg["requeue_status"], started_at=None, current_step=None)
                 )
                 if result.rowcount > 0:
                     await db.commit()
-                    logger.info(f"Reset {result.rowcount} stale running git clone jobs to pending")
+                    logger.info(
+                        f"[git {phase}] reset {result.rowcount} job(s) presos em "
+                        f"'{cfg['running_status']}' -> '{cfg['requeue_status']}'"
+                    )
         except Exception as e:  # noqa: BLE001
-            logger.error(f"Error resetting stale git clone jobs on startup: {e}")
+            logger.error(f"[git {phase}] erro no reset de boot: {e}")
 
         while self.running:
             try:
                 async with AsyncSessionLocal() as db:
                     now = time.monotonic()
-                    if now - self._last_watchdog >= WATCHDOG_INTERVAL:
-                        await self._watchdog(db)
-                        self._last_watchdog = now
-                    await self._process_pending_jobs(db)
+                    last = getattr(self, cfg["last_wd_attr"])
+                    if now - last >= WATCHDOG_INTERVAL:
+                        await self._watchdog(db, phase)
+                        setattr(self, cfg["last_wd_attr"], time.monotonic())
+                    await self._process(db, phase)
             except OperationalError as e:
                 if "database is locked" in str(e):
                     await asyncio.sleep(5)
                 else:
-                    logger.error(f"Database error in git clone worker: {e}")
+                    logger.error(f"[git {phase}] erro de banco: {e}")
             except Exception as e:  # noqa: BLE001
-                logger.error(f"Error in git clone worker loop: {e}")
+                logger.error(f"[git {phase}] erro no loop: {e}")
             await asyncio.sleep(3)
 
-    async def _watchdog(self, db):
-        """Reconcilia os jobs 'running' do DB com as tasks realmente vivas.
+    async def _watchdog(self, db, phase: str):
+        """Reconcilia os jobs 'em andamento' desta fase com as tasks vivas.
 
-        - Jobs 'running' sem task viva (reboot/crash do worker) voltam a 'pending'.
-        - Jobs cuja task vive mas excede o timeout (git_clone_job_timeout_min) são travados:
-          a task é cancelada e o job volta a 'pending' para liberar o slot.
+        - Jobs no status de execução sem task viva (reboot/crash) voltam p/ a fila.
+        - Jobs vivos SEM progresso (bytes do clone / nº de GitRepoFile sem crescer)
+          por `git_clone_stall_min` são considerados travados: cancela e reenfileira.
+        - Backstop absoluto `git_clone_job_timeout_min` como última rede.
+        Cada fase só mexe no SEU status (nunca na outra fila).
         """
-        from database import GitCloneJob
+        from database import GitCloneJob, GitRepoFile
 
-        active_ids = set(self._active.keys())
-        stmt = update(GitCloneJob).where(GitCloneJob.status == "running")
+        cfg = self._phase_cfg(phase)
+        active = cfg["active"]
+
+        active_ids = set(active.keys())
+        stmt = update(GitCloneJob).where(GitCloneJob.status == cfg["running_status"])
         if active_ids:
             stmt = stmt.where(GitCloneJob.id.notin_(active_ids))
-        stmt = stmt.values(status="pending", started_at=None, current_step=None)
+        stmt = stmt.values(status=cfg["requeue_status"], started_at=None, current_step=None)
         result = await db.execute(stmt)
         if result.rowcount:
             await db.commit()
             logger.warning(
-                f"[git watchdog] {result.rowcount} clone(s) presos em 'running' sem task viva "
-                f"reenfileirados para 'pending'"
+                f"[git {phase} watchdog] {result.rowcount} job(s) em '{cfg['running_status']}' "
+                f"sem task viva -> '{cfg['requeue_status']}'"
             )
 
-        # Verificação de PROGRESSO: um job vivo só é "travado" se NÃO progride —
-        # bytes do clone crescendo (etapa clone) OU nº de GitRepoFile crescendo
-        # (etapa extração/index) — por uma janela (stall). Clones/indexações lentas
-        # mas SAUDÁVEIS (ex.: repos gigantes) continuam porque estão progredindo.
-        # Um backstop absoluto (max_seconds) permanece como última rede de segurança.
-        from database import GitRepoFile
         max_seconds = await self._get_job_timeout_seconds(db)   # backstop (0 = off)
         stall_seconds = await self._get_stall_seconds(db)       # janela sem progresso (0 = off)
         now = time.monotonic()
-        for jid, info in list(self._active.items()):
+        for jid, info in list(active.items()):
             clone_dir = info.get("clone_dir")
             repo_id = info.get("repo_id")
             reason = None
 
-            # 1) estagnação (sem crescimento de arquivos/bytes)
             if stall_seconds > 0 and clone_dir and repo_id is not None:
                 fcount = (await db.execute(
                     select(func.count(GitRepoFile.id)).where(GitRepoFile.repo_id == repo_id)
@@ -184,7 +220,6 @@ class GitCloneWorker:
                     info["progress_ts"] = now
                     progressed = True
                 else:
-                    # arquivos não cresceram -> confere bytes do diretório (etapa de clone)
                     dbytes = await asyncio.to_thread(_dir_size, clone_dir)
                     if dbytes > prev[0]:
                         info["progress"] = (dbytes, fcount)
@@ -193,7 +228,6 @@ class GitCloneWorker:
                 if not progressed and (now - info.get("progress_ts", info["since"])) > stall_seconds:
                     reason = f"sem progresso há {stall_seconds // 60}min"
 
-            # 2) backstop absoluto de tempo total
             if reason is None and max_seconds > 0 and (now - info["since"]) > max_seconds:
                 reason = f"excedeu {max_seconds // 60}min (backstop)"
 
@@ -203,28 +237,36 @@ class GitCloneWorker:
             task = info.get("task")
             if task and not task.done():
                 task.cancel()
-            self._active.pop(jid, None)
+            active.pop(jid, None)
             try:
                 await db.execute(
                     update(GitCloneJob)
-                    .where(GitCloneJob.id == jid, GitCloneJob.status == "running")
-                    .values(status="pending", started_at=None, current_step=None)
+                    .where(GitCloneJob.id == jid, GitCloneJob.status == cfg["running_status"])
+                    .values(status=cfg["requeue_status"], started_at=None, current_step=None)
                 )
                 await db.commit()
             except Exception:  # noqa: BLE001
                 pass
-            logger.warning(f"[git watchdog] clone job {jid} travado ({reason}); cancelado e reenfileirado")
+            logger.warning(
+                f"[git {phase} watchdog] job {jid} travado ({reason}); "
+                f"cancelado e reenfileirado p/ '{cfg['requeue_status']}'"
+            )
 
-    async def _get_max_concurrency(self, db) -> int:
+    async def _get_setting_int(self, db, key: str, default: int) -> int:
         from database import AppSettings
         try:
-            result = await db.execute(
-                select(AppSettings.value).where(AppSettings.key == "max_simultaneous_git_clones")
-            )
-            val = result.scalar()
-            return max(1, int(val)) if val else 2
+            val = (await db.execute(
+                select(AppSettings.value).where(AppSettings.key == key)
+            )).scalar()
+            return max(1, int(val)) if val not in (None, "") else default
         except Exception:  # noqa: BLE001
-            return 2
+            return default
+
+    async def _get_clone_concurrency(self, db) -> int:
+        return await self._get_setting_int(db, "max_simultaneous_git_clones", 2)
+
+    async def _get_post_concurrency(self, db) -> int:
+        return await self._get_setting_int(db, "max_simultaneous_git_postprocess", 2)
 
     async def _get_job_timeout_seconds(self, db) -> int:
         """Limite (s) p/ o watchdog considerar um job travado. 0 = desativado."""
@@ -250,44 +292,51 @@ class GitCloneWorker:
         except Exception:  # noqa: BLE001
             return STALL_SECONDS_DEFAULT
 
-    async def _process_pending_jobs(self, db):
+    async def _process(self, db, phase: str):
         from database import GitCloneJob, GitRepo
 
-        max_conc = await self._get_max_concurrency(db)
+        cfg = self._phase_cfg(phase)
+        active = cfg["active"]
+        max_conc = await cfg["concurrency"](db)
 
-        # Concorrência baseada nas tasks REALMENTE vivas no worker (não no count do
-        # DB), evitando spawn duplicado e refletindo o estado real de execução.
-        slots = max_conc - len(self._active)
+        # Concorrência pelas tasks REALMENTE vivas (não pelo count do DB).
+        slots = max_conc - len(active)
         if slots <= 0:
             return
 
-        # Ordem de prioridade do processamento:
-        #   1) priority (override manual de "priorizar")
-        #   2) data de atualização do repo (pushed_at) — mais novo primeiro
-        #   3) tamanho do repo (size_kb) — menor primeiro
-        #   4) created_at — desempate
-        result = await db.execute(
+        stmt = (
             select(GitCloneJob)
             .outerjoin(GitRepo, GitRepo.id == GitCloneJob.repo_id)
-            .where(GitCloneJob.status == "pending")
-            .order_by(
+            .where(GitCloneJob.status == cfg["pick_status"])
+        )
+        if phase == "clone":
+            # 1) priority, 2) pushed_at desc (mais novo), 3) size asc (menor), 4) created asc
+            stmt = stmt.order_by(
                 GitCloneJob.priority.desc(),
                 nullslast(GitRepo.pushed_at.desc()),
                 nullslast(GitRepo.size_kb.asc()),
                 GitCloneJob.created_at.asc(),
             )
-            .limit(slots)
-        )
-        pending = result.scalars().all()
-        for job in pending:
-            if job.id in self._active:
+        else:
+            # pós-processa na ordem em que ficaram prontos (mais antigo primeiro)
+            stmt = stmt.order_by(
+                GitCloneJob.priority.desc(),
+                GitCloneJob.created_at.asc(),
+            )
+        stmt = stmt.limit(slots)
+
+        jobs = (await db.execute(stmt)).scalars().all()
+        for job in jobs:
+            if job.id in active:
                 continue
-            task = asyncio.create_task(self._execute_job(job.id))
-            self._active[job.id] = {"task": task, "since": time.monotonic()}
+            task = asyncio.create_task(cfg["executor"](job.id))
+            active[job.id] = {"task": task, "since": time.monotonic()}
 
     # ------------------------------------------------------------------
-    async def _execute_job(self, job_id: int):
-        from database import AsyncSessionLocal, GitCloneJob, GitRepo
+    # Fase 1: CLONE (rede) -> ao terminar, status 'cloned' (handoff)
+    # ------------------------------------------------------------------
+    async def _execute_clone(self, job_id: int):
+        from database import AsyncSessionLocal, GitCloneJob
 
         try:
             async with AsyncSessionLocal() as db:
@@ -297,12 +346,11 @@ class GitCloneWorker:
                 if not job or job.status != "pending":
                     return
 
-                job.status = "running"
+                job.status = "cloning"
                 job.started_at = datetime.now(timezone.utc)
                 job.current_step = "clone"
                 await db.commit()
 
-                # Resolver/garantir GitRepo
                 repo = await self._ensure_repo(db, job)
                 if repo is None:
                     job.status = "failed"
@@ -312,13 +360,11 @@ class GitCloneWorker:
                     return
 
                 clone_dir = os.path.join(GITCLONES_BASE, repo.guid)
-                # Dá ao watchdog o caminho/repo p/ medir progresso (bytes/arquivos).
-                info = self._active.get(job_id)
+                info = self._active_clone.get(job_id)
                 if info is not None:
                     info["clone_dir"] = clone_dir
                     info["repo_id"] = repo.id
 
-                # 1) CLONE
                 ok, err = await self._do_clone(db, job, repo, clone_dir)
                 if not ok:
                     job.status = "failed"
@@ -333,9 +379,68 @@ class GitCloneWorker:
                 if await self._is_cancelled(db, job_id):
                     return
 
-                # 2) GITLEAKS
+                # HANDOFF -> fila de pós-processamento (gitleaks/extração/index)
+                job.status = "cloned"
+                job.current_step = "queued"
+                repo.clone_status = "cloned"
+                repo.cloned_at = datetime.now(timezone.utc)
+                await db.commit()
+                logger.info(f"[git clone] job {job_id} clonado -> pos-processamento ({repo.full_name})")
+
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Fatal error in git clone job {job_id}: {e}\n{traceback.format_exc()}")
+            try:
+                async with AsyncSessionLocal() as db2:
+                    job = (await db2.execute(
+                        select(GitCloneJob).where(GitCloneJob.id == job_id)
+                    )).scalar_one_or_none()
+                    if job and job.status == "cloning":
+                        job.status = "failed"
+                        job.error_message = str(e)[:1000]
+                        job.completed_at = datetime.now(timezone.utc)
+                        await db2.commit()
+            except Exception:  # noqa: BLE001
+                pass
+        finally:
+            self._active_clone.pop(job_id, None)
+
+    # ------------------------------------------------------------------
+    # Fase 2: PÓS-PROCESSAMENTO (gitleaks -> extração -> indexação)
+    # ------------------------------------------------------------------
+    async def _execute_postprocess(self, job_id: int):
+        from database import AsyncSessionLocal, GitCloneJob
+
+        try:
+            async with AsyncSessionLocal() as db:
+                job = (await db.execute(
+                    select(GitCloneJob).where(GitCloneJob.id == job_id)
+                )).scalar_one_or_none()
+                if not job or job.status != "cloned":
+                    return
+
+                repo = await self._ensure_repo(db, job)
+                if repo is None:
+                    job.status = "failed"
+                    job.error_message = "Repositório associado não encontrado"
+                    job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+                    return
+
+                clone_dir = os.path.join(GITCLONES_BASE, repo.guid)
+                info = self._active_post.get(job_id)
+                if info is not None:
+                    info["clone_dir"] = clone_dir
+                    info["repo_id"] = repo.id
+
+                job.status = "processing"
+                job.started_at = datetime.now(timezone.utc)
                 job.current_step = "gitleaks"
                 await db.commit()
+
+                if await self._is_cancelled(db, job_id):
+                    return
+
+                # 1) GITLEAKS
                 try:
                     leaks = await self._run_gitleaks(db, repo, clone_dir)
                     job.leaks_found = leaks
@@ -349,7 +454,7 @@ class GitCloneWorker:
                 if await self._is_cancelled(db, job_id):
                     return
 
-                # 3) EXTRAÇÃO + 4) INDEX
+                # 2) EXTRAÇÃO + 3) INDEX
                 job.current_step = "ocr"
                 repo.ocr_status = "running"
                 await db.commit()
@@ -370,19 +475,17 @@ class GitCloneWorker:
                 job.status = "completed"
                 job.current_step = "done"
                 job.completed_at = datetime.now(timezone.utc)
-                repo.clone_status = "cloned"
-                repo.cloned_at = datetime.now(timezone.utc)
                 await db.commit()
-                logger.info(f"[git] job {job_id} completed for {repo.full_name}")
+                logger.info(f"[git post] job {job_id} concluido ({repo.full_name})")
 
         except Exception as e:  # noqa: BLE001
-            logger.error(f"Fatal error in git clone job {job_id}: {e}\n{traceback.format_exc()}")
+            logger.error(f"Fatal error in git post-process job {job_id}: {e}\n{traceback.format_exc()}")
             try:
                 async with AsyncSessionLocal() as db2:
                     job = (await db2.execute(
                         select(GitCloneJob).where(GitCloneJob.id == job_id)
                     )).scalar_one_or_none()
-                    if job and job.status == "running":
+                    if job and job.status == "processing":
                         job.status = "failed"
                         job.error_message = str(e)[:1000]
                         job.completed_at = datetime.now(timezone.utc)
@@ -390,8 +493,7 @@ class GitCloneWorker:
             except Exception:  # noqa: BLE001
                 pass
         finally:
-            # Libera o slot no watchdog, independentemente do desfecho.
-            self._active.pop(job_id, None)
+            self._active_post.pop(job_id, None)
 
     async def _ensure_repo(self, db, job):
         from database import GitRepo
