@@ -781,12 +781,25 @@ export default function GitRepoBrowser() {
                       <InfoRow label={t('info.commit')} value={fileContent.commit_short} valueClassName="font-mono text-xs"
                         onCopy={() => copyToClipboard(fileContent.commit_hash, 'commit')} copied={copiedField === 'commit'} />
                     </div>
-                    {fileContent.commit_url && (
-                      <a href={fileContent.commit_url} target="_blank" rel="noreferrer"
-                        className="text-xs text-blue-500 inline-flex items-center gap-1 -mt-1">
-                        <ExternalLink className="w-3 h-3" /> {t('info.viewCommit')}
-                      </a>
-                    )}
+                    <div className="flex items-center gap-3 flex-wrap -mt-1">
+                      {fileContent.commit_hash && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => enterCommitTree(fileContent.commit_hash, fileContent.rel_path)}
+                          data-testid="git-view-tree-at-commit"
+                        >
+                          <GitCommit className="w-3.5 h-3.5 mr-1" /> {t('commits.browseTree')}
+                        </Button>
+                      )}
+                      {fileContent.commit_url && (
+                        <a href={fileContent.commit_url} target="_blank" rel="noreferrer"
+                          className="text-xs text-blue-500 inline-flex items-center gap-1">
+                          <ExternalLink className="w-3 h-3" /> {t('info.viewCommit')}
+                        </a>
+                      )}
+                    </div>
                     <InfoRow label={t('info.branch')} value={fileContent.branch || '—'} valueClassName="font-mono text-xs" />
                     <InfoRow label={t('info.author')} value={fileContent.author || '—'} />
                     <InfoRow label={t('info.commitDate')} value={fmtDate(fileContent.commit_date)} />
