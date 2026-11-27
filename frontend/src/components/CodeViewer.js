@@ -197,17 +197,19 @@ export default function CodeViewer({
               <div key={n} data-line={n}
                 className={`group flex items-start ${isHi ? 'bg-yellow-400/10' : 'hover:bg-white/5'}`}>
                 {/* Gutter: botão "..." + número */}
-                <div className="relative flex-shrink-0 w-[62px] pr-2 select-none text-right text-gray-500">
+                <div className="relative flex-shrink-0 w-[78px] pr-3 select-none text-right text-gray-500">
                   <button
                     onClick={(e) => openMenu(e, n)}
                     onMouseDown={(e) => e.stopPropagation()}
-                    className="absolute left-0.5 top-0 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white rounded hover:bg-white/10 px-0.5"
+                    className={`absolute left-1 top-0 h-5 w-6 flex items-center justify-center rounded hover:bg-white/15 text-gray-300 hover:text-white transition-opacity ${
+                      isHi || (menu && menu.line === n) ? 'opacity-100 text-amber-400' : 'opacity-0 group-hover:opacity-100'
+                    }`}
                     aria-label="line menu"
                     data-testid="git-line-menu-btn"
                   >
-                    <MoreHorizontal className="w-3.5 h-3.5" />
+                    <MoreHorizontal className="w-4 h-4" />
                   </button>
-                  <span className={`pl-5 ${isHi ? 'text-yellow-500' : ''}`}>{n}</span>
+                  <span className={`inline-block h-5 leading-5 pl-7 ${isHi ? 'text-amber-400 font-medium' : ''}`}>{n}</span>
                 </div>
                 {/* Código da linha */}
                 <div className="flex-1 pl-3 pr-4"
