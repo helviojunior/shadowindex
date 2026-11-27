@@ -1196,7 +1196,11 @@ const Leaks = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => window.open(`/git/${finding.git_repo_guid}?from=/leaks`, '_blank')}
+                                  onClick={() => {
+                                    const relPath = finding.server_path || finding.File || finding.file_name;
+                                    const q = relPath ? `?file=${encodeURIComponent(relPath)}&from=/leaks` : '?from=/leaks';
+                                    window.open(`/git/${finding.git_repo_guid}${q}`, '_blank');
+                                  }}
                                   title={t('actions.openFile')}
                                 >
                                   <ExternalLink className="w-4 h-4" />
@@ -1364,7 +1368,11 @@ const Leaks = () => {
                       variant="outline"
                       size="sm"
                       className="w-full mt-2"
-                      onClick={() => window.open(`/git/${selectedFinding.git_repo_guid}?from=/leaks`, '_blank')}
+                      onClick={() => {
+                        const relPath = selectedFinding.server_path || selectedFinding.File || selectedFinding.file_name;
+                        const q = relPath ? `?file=${encodeURIComponent(relPath)}&from=/leaks` : '?from=/leaks';
+                        window.open(`/git/${selectedFinding.git_repo_guid}${q}`, '_blank');
+                      }}
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
                       {t('detail.openFile')}

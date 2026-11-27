@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -94,8 +94,11 @@ export default function GitRepoBrowser() {
   const { t } = useTranslation('github');
   const { guid } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fileParam = searchParams.get('file'); // rel_path a abrir (deep-link, ex.: vindo de /leaks)
 
   const [repo, setRepo] = useState(null);
+  const [autoOpened, setAutoOpened] = useState(false);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState({});
@@ -195,6 +198,16 @@ export default function GitRepoBrowser() {
       setLoadingContent(false);
     }
   }, [guid, t]);
+
+  // Deep-link: abre automaticamente o arquivo indicado por ?file=<rel_path> (ex.: vindo de /leaks).
+  useEffect(() => {
+    if (autoOpened || !fileParam || files.length === 0) return;
+    const target = files.find((f) => f.rel_path === fileParam);
+    if (target) {
+      openFile(target);
+      setAutoOpened(true);
+    }
+  }, [files, fileParam, autoOpened, openFile]);
 
   // Seleciona uma PASTA (mostra os Objetos no painel direito) e a expande.
   const selectDir = useCallback((path) => {
