@@ -11,6 +11,9 @@ services:
       POSTGRES_USER: shadowindex
       POSTGRES_PASSWORD: shadowindex
       POSTGRES_DB: shadowindex
+      # PGDATA em subdir do mount: faz o bind-mount funcionar no Linux e no
+      # Docker Desktop macOS/Windows (ver docker-compose.yml).
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       # Bind-mount no host (compartilhado com docker-compose.yml — não rode os dois juntos).
       - ./shadowindex_data/postgres:/var/lib/postgresql/data

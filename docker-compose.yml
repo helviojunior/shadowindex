@@ -8,9 +8,13 @@ services:
       POSTGRES_USER: shadowindex
       POSTGRES_PASSWORD: shadowindex
       POSTGRES_DB: shadowindex
+      # PGDATA aponta para um SUBdiretório do bind-mount. O check de ownership do
+      # Postgres recai sobre esse subdir (criado dentro do container, dono correto),
+      # o que faz o bind-mount funcionar tanto no Linux quanto no Docker Desktop
+      # macOS/Windows (onde o mount raiz teria "wrong ownership" via virtiofs).
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      # Bind-mount no host. O entrypoint oficial do Postgres ajusta o ownership
-      # do PGDATA durante o init, então não precisa de chown prévio.
+      # Bind-mount no host (dados ficam em ./shadowindex_data/postgres/pgdata).
       - ./shadowindex_data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U shadowindex -d shadowindex"]
