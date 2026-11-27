@@ -46,8 +46,8 @@ OCR_MAX_BYTES = 25 * 1024 * 1024  # 25MB cap p/ docs enviados ao Tika
 # Watchdog: periodicamente reconcilia os jobs marcados 'running' no DB com as
 # tasks realmente vivas no worker. Jobs 'running' sem task viva (reboot/crash) ou
 # presos além do tempo máximo são reenfileirados ('pending') para não travar a fila.
-WATCHDOG_INTERVAL = 30          # segundos entre verificações
-MAX_JOB_SECONDS = 3600          # tempo máx. de um job 'running' antes de ser considerado travado
+WATCHDOG_INTERVAL = 30          # segundos entre verificações (NÃO é um timeout)
+MAX_JOB_SECONDS_DEFAULT = 7200  # fallback (2h) do limite p/ considerar um job travado (setting: git_clone_job_timeout_min)
 
 _git_clone_worker: Optional["GitCloneWorker"] = None
 
@@ -119,7 +119,7 @@ class GitCloneWorker:
         """Reconcilia os jobs 'running' do DB com as tasks realmente vivas.
 
         - Jobs 'running' sem task viva (reboot/crash do worker) voltam a 'pending'.
-        - Jobs cuja task vive mas excede MAX_JOB_SECONDS são considerados travados:
+        - Jobs cuja task vive mas excede o timeout (git_clone_job_timeout_min) são travados:
           a task é cancelada e o job volta a 'pending' para liberar o slot.
         """
         from database import GitCloneJob
@@ -138,9 +138,14 @@ class GitCloneWorker:
             )
 
         # Tasks vivas rodando além do limite -> travadas: cancela e reenfileira.
+        # O limite é FOLGADO (default 2h, configurável) e NÃO afeta clones saudáveis:
+        # só serve de rede de segurança para gitleaks/OCR/indexação pendurados.
+        max_seconds = await self._get_job_timeout_seconds(db)
+        if max_seconds <= 0:
+            return
         now = time.monotonic()
         for jid, info in list(self._active.items()):
-            if now - info["since"] <= MAX_JOB_SECONDS:
+            if now - info["since"] <= max_seconds:
                 continue
             task = info.get("task")
             if task and not task.done():
@@ -156,7 +161,7 @@ class GitCloneWorker:
             except Exception:  # noqa: BLE001
                 pass
             logger.warning(
-                f"[git watchdog] clone job {jid} excedeu {MAX_JOB_SECONDS // 60}min; "
+                f"[git watchdog] clone job {jid} excedeu {max_seconds // 60}min; "
                 f"cancelado e reenfileirado"
             )
 
@@ -170,6 +175,18 @@ class GitCloneWorker:
             return max(1, int(val)) if val else 2
         except Exception:  # noqa: BLE001
             return 2
+
+    async def _get_job_timeout_seconds(self, db) -> int:
+        """Limite (s) p/ o watchdog considerar um job travado. 0 = desativado."""
+        from database import AppSettings
+        try:
+            val = (await db.execute(
+                select(AppSettings.value).where(AppSettings.key == "git_clone_job_timeout_min")
+            )).scalar()
+            minutes = int(val) if val not in (None, "") else (MAX_JOB_SECONDS_DEFAULT // 60)
+            return max(0, minutes) * 60
+        except Exception:  # noqa: BLE001
+            return MAX_JOB_SECONDS_DEFAULT
 
     async def _process_pending_jobs(self, db):
         from database import GitCloneJob

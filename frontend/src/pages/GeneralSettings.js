@@ -58,6 +58,7 @@ const GeneralSettings = () => {
     git_clone_large_repo_mb: '100',
     max_simultaneous_git_clones: '2',
     git_index_max_size_mb: '2',
+    git_clone_job_timeout_min: '120',
     // Aparência / UI
     ui_logo_url: 'https://media.sec4us.com.br/logo/sec4us-dark-mode.svg',
     ui_logo_alignment: 'center',
@@ -627,6 +628,26 @@ const GeneralSettings = () => {
               />
               <p className="text-xs text-muted-foreground">
                 {t('git.indexMaxSizeHelp')}
+              </p>
+            </div>
+
+            {/* Timeout do job de clone (watchdog) */}
+            <div className="space-y-2">
+              <Label htmlFor="git_clone_job_timeout_min" className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                {t('git.jobTimeoutLabel')}
+              </Label>
+              <Input
+                id="git_clone_job_timeout_min"
+                type="number"
+                min="0"
+                max="1440"
+                value={settings.git_clone_job_timeout_min}
+                onChange={(e) => handleChange('git_clone_job_timeout_min', e.target.value)}
+                data-testid="git-job-timeout-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('git.jobTimeoutHelp')}
               </p>
             </div>
           </div>

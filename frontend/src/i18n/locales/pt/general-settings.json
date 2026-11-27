@@ -156,6 +156,8 @@
     "simultaneousClonesLabel": "Clones Git simultâneos",
     "simultaneousClonesHelp": "Quantos jobs de clone de repositório rodam em paralelo.",
     "indexMaxSizeLabel": "Tamanho máx. de arquivo para indexação (MB)",
-    "indexMaxSizeHelp": "Arquivos maiores que isto não têm texto extraído/indexado para busca de conteúdo."
+    "indexMaxSizeHelp": "Arquivos maiores que isto não têm texto extraído/indexado para busca de conteúdo.",
+    "jobTimeoutLabel": "Timeout do job de clone (min)",
+    "jobTimeoutHelp": "O watchdog reenfileira um job de clone em execução que passe disto (gitleaks/OCR/indexação travados). Mantenha folgado — um clone pode levar ~1h. 0 = desativa o cancelamento por tempo."
   }
 }

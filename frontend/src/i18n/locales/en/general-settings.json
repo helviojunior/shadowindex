@@ -156,6 +156,8 @@
     "simultaneousClonesLabel": "Simultaneous Git clones",
     "simultaneousClonesHelp": "How many repository clone jobs run in parallel.",
     "indexMaxSizeLabel": "Max file size for indexing (MB)",
-    "indexMaxSizeHelp": "Files larger than this are not text-extracted/indexed for content search."
+    "indexMaxSizeHelp": "Files larger than this are not text-extracted/indexed for content search.",
+    "jobTimeoutLabel": "Clone job timeout (min)",
+    "jobTimeoutHelp": "The watchdog re-queues a running clone job that exceeds this (stuck gitleaks/OCR/indexing). Keep it generous — a clone can take ~1h. 0 = disable time-based cancel."
   }
 }
