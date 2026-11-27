@@ -9,10 +9,9 @@ services:
       POSTGRES_PASSWORD: shadowindex
       POSTGRES_DB: shadowindex
     volumes:
-      # Volume nomeado (gerenciado pelo Docker) evita problema de ownership
-      # do bind mount do host no Docker Desktop (macOS/Windows), que impedia
-      # a criação do banco durante o init do Postgres.
-      - postgres_db:/var/lib/postgresql/data
+      # Bind-mount no host. O entrypoint oficial do Postgres ajusta o ownership
+      # do PGDATA durante o init, então não precisa de chown prévio.
+      - ./shadowindex_data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U shadowindex -d shadowindex"]
       interval: 5s
@@ -38,10 +37,24 @@ services:
     networks:
       - shadowindex-net
 
+  # Ajusta o ownership do bind-mount do OpenSearch (roda como uid 1000 e não faz
+  # chown do data dir). Roda uma vez e sai; o opensearch espera sua conclusão.
+  opensearch-init:
+    image: busybox:1.36
+    container_name: shadowindex-opensearch-init
+    command: ["sh", "-c", "mkdir -p /data && chown -R 1000:1000 /data"]
+    volumes:
+      - ./shadowindex_data/opensearch:/data
+    networks:
+      - shadowindex-net
+
   opensearch:
     image: opensearchproject/opensearch:2.17.1
     container_name: shadowindex-opensearch
     restart: unless-stopped
+    depends_on:
+      opensearch-init:
+        condition: service_completed_successfully
     environment:
       TZ: "America/Sao_Paulo"
       discovery.type: single-node
@@ -57,8 +70,8 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      # Volume nomeado (como o postgres) evita problemas de ownership de bind mount.
-      - opensearch_data:/usr/share/opensearch/data
+      # Bind-mount no host. O ownership é ajustado pelo serviço opensearch-init.
+      - ./shadowindex_data/opensearch:/usr/share/opensearch/data
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9200/_cluster/health || exit 1"]
       interval: 10s
@@ -116,7 +129,3 @@ services:
 networks:
   shadowindex-net:
     driver: bridge
-
-volumes:
-  postgres_db:
-  opensearch_data:

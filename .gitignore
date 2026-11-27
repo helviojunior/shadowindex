@@ -135,3 +135,6 @@ temp/
 tests/screenshots/out/
 tests/screenshots/.venv/
 tests/demo_data/.cache/
+
+# override local de dev (macOS: postgres em volume nomeado)
+docker-compose.override.yml
