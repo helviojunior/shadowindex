@@ -21,12 +21,13 @@ import {
   ResizableHandle,
 } from '@/components/ui/resizable';
 import {
-  ArrowLeft, FileText, FileCode, FileCheck, File, Star, GitFork, AlertTriangle,
+  ArrowLeft, FileText, FileCheck, File, Star, GitFork, AlertTriangle,
   Loader2, ExternalLink, FileX, ChevronRight, ChevronDown, Folder, FolderOpen, X, Code,
   Copy, Check, ShieldAlert, ScanText, GitCommit, History,
 } from 'lucide-react';
 import { ShieldKeyIcon } from '@/components/icons';
 import CodeViewer from '@/components/CodeViewer';
+import OriginLogo from '@/components/OriginLogo';
 import { cn } from '@/lib/utils';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -1004,7 +1005,7 @@ export default function GitRepoBrowser() {
           {repo && (
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <FileCode className="w-5 h-5 flex-shrink-0" />
+                <OriginLogo repo={repo} className="w-5 h-5 flex-shrink-0" />
                 <h1 className="text-xl font-semibold truncate" title={repo.full_name}>{repo.full_name}</h1>
               </div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">

@@ -14,9 +14,11 @@ import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from '@/components/ui/table';
 import {
-  Github as GithubIcon, Search, Star, AlertTriangle, FileText,
+  Library, Search, Star, AlertTriangle, FileText,
   Loader2, Clock, CheckCircle, XCircle, RefreshCw, ExternalLink,
+  GitBranch, DownloadCloud,
 } from 'lucide-react';
+import OriginLogo from '@/components/OriginLogo';
 import { cn } from '@/lib/utils';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -26,6 +28,15 @@ const STATUS_META = {
   cloning: { icon: Loader2, className: 'bg-blue-500/20 text-blue-500 border-blue-500/50', spin: true },
   cloned: { icon: CheckCircle, className: 'bg-green-500/20 text-green-500 border-green-500/50' },
   failed: { icon: XCircle, className: 'bg-red-500/20 text-red-500 border-red-500/50' },
+};
+
+// Cards de estatística no mesmo padrão das outras telas (borda colorida à esquerda).
+const STAT_STYLES = {
+  total:   { icon: GitBranch,     text: 'text-blue-500',   border: 'border-l-blue-500' },
+  pending: { icon: Clock,         text: 'text-yellow-500', border: 'border-l-yellow-500' },
+  cloning: { icon: Loader2,       text: 'text-blue-500',   border: 'border-l-blue-500', spin: true },
+  cloned:  { icon: DownloadCloud, text: 'text-cyan-500',   border: 'border-l-cyan-500' },
+  failed:  { icon: XCircle,       text: 'text-red-500',    border: 'border-l-red-500' },
 };
 
 export default function Github() {
@@ -101,7 +112,7 @@ export default function Github() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <GithubIcon className="w-7 h-7" />
+        <Library className="w-7 h-7" />
         <div>
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-muted-foreground text-sm">{t('subtitle')}</p>
@@ -110,12 +121,24 @@ export default function Github() {
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {['total', 'pending', 'cloning', 'cloned', 'failed'].map(k => (
-            <Card key={k}><CardContent className="pt-4">
-              <div className="text-2xl font-bold">{stats[k] ?? 0}</div>
-              <div className="text-xs text-muted-foreground">{t(`stats.${k}`)}</div>
-            </CardContent></Card>
-          ))}
+          {['total', 'pending', 'cloning', 'cloned', 'failed'].map(k => {
+            const cfg = STAT_STYLES[k];
+            const Icon = cfg.icon;
+            const count = stats[k] ?? 0;
+            return (
+              <Card key={k} className={cn('border-l-4 border border-transparent', cfg.border)}>
+                <CardContent className="pt-4 pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className={cn('text-xs uppercase', cfg.text)}>{t(`stats.${k}`)}</p>
+                    </div>
+                    <Icon className={cn('w-6 h-6 opacity-60', cfg.text, cfg.spin && count > 0 && 'animate-spin')} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -206,8 +229,11 @@ export default function Github() {
                 <TableRow key={r.guid} className="cursor-pointer" data-testid="git-repo-row"
                           onClick={() => navigate(`/git/${r.guid}`)}>
                   <TableCell>
-                    <div className="font-medium">{r.full_name}</div>
-                    {r.description && <div className="text-xs text-muted-foreground line-clamp-1 max-w-md">{r.description}</div>}
+                    <div className="font-medium flex items-center gap-2">
+                      <OriginLogo repo={r} className="w-4 h-4 flex-shrink-0" />
+                      <span>{r.full_name}</span>
+                    </div>
+                    {r.description && <div className="text-xs text-muted-foreground line-clamp-1 max-w-md ml-6">{r.description}</div>}
                     {(r.topics || []).length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {(r.topics || []).slice(0, 5).map(tp => (
