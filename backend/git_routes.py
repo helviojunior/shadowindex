@@ -602,6 +602,10 @@ async def jobs_stats(db=Depends(get_db_readonly)):
         )).scalar() or 0
         stats[st] = c
     stats["total"] = sum(stats.values())
+    # "cloned" = TODOS os repositórios clonados com sucesso, independente de já
+    # terem sido processados (inclui os que estão em pós-processamento e os
+    # concluídos). O card CLONADO mostra o acumulado da fase de clone.
+    stats["cloned"] = stats["cloned"] + stats["processing"] + stats["completed"]
     return stats
 
 
