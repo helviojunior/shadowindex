@@ -1,20 +1,66 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
+import {
   ArrowLeft, Search, FileText, FileCode, Star, GitFork, AlertTriangle,
-  Loader2, ExternalLink, FileX,
+  Loader2, ExternalLink, FileX, ChevronRight, ChevronDown, Folder, FolderOpen, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// ---------------------------------------------------------------------------
+// Monta uma árvore de diretórios a partir da lista plana de arquivos (rel_path).
+// Nós de diretório são sintéticos; arquivos são folhas.
+// ---------------------------------------------------------------------------
+function buildTree(files) {
+  const root = { name: '', path: '', type: 'dir', children: new Map() };
+  for (const f of files) {
+    const rel = f.rel_path || f.name || '';
+    const parts = rel.split('/').filter(Boolean);
+    let node = root;
+    let acc = '';
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      acc = acc ? `${acc}/${part}` : part;
+      const isLeaf = i === parts.length - 1;
+      if (isLeaf) {
+        node.children.set(`f:${part}`, { name: part, path: acc, type: 'file', file: f });
+      } else {
+        const key = `d:${part}`;
+        let child = node.children.get(key);
+        if (!child) {
+          child = { name: part, path: acc, type: 'dir', children: new Map() };
+          node.children.set(key, child);
+        }
+        node = child;
+      }
+    }
+  }
+  return root;
+}
+
+// Ordena: diretórios primeiro, depois alfabético (case-insensitive) — estilo Explorer.
+function sortedChildren(node) {
+  const arr = Array.from(node.children.values());
+  arr.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+    return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+  });
+  return arr;
+}
 
 export default function GitRepoBrowser() {
   const { t } = useTranslation('github');
@@ -23,8 +69,10 @@ export default function GitRepoBrowser() {
 
   const [repo, setRepo] = useState(null);
   const [files, setFiles] = useState([]);
-  const [fileQ, setFileQ] = useState('');
   const [loading, setLoading] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState({});
+  const [filterQuery, setFilterQuery] = useState('');
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
@@ -37,8 +85,7 @@ export default function GitRepoBrowser() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (fileQ) params.set('q', fileQ);
-      params.set('limit', '2000');
+      params.set('limit', '5000');
       const res = await axios.get(`${API}/git/repos/${guid}/files?${params.toString()}`);
       setRepo(res.data?.repo || null);
       setFiles(res.data?.files || []);
@@ -48,14 +95,40 @@ export default function GitRepoBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [guid, fileQ, t]);
+  }, [guid, t]);
 
   useEffect(() => { loadFiles(); /* eslint-disable-next-line */ }, [guid]);
 
-  const openFile = async (f) => {
+  const filterActive = filterQuery.trim() !== '';
+
+  // Lista filtrada client-side por caminho; a árvore é remontada sobre ela.
+  const visibleFiles = useMemo(() => {
+    if (!filterActive) return files;
+    const q = filterQuery.trim().toLowerCase();
+    return files.filter(f => (f.rel_path || '').toLowerCase().includes(q));
+  }, [files, filterQuery, filterActive]);
+
+  const tree = useMemo(() => buildTree(visibleFiles), [visibleFiles]);
+
+  const toggleNode = (path) => {
+    setExpandedNodes(prev => ({ ...prev, [path]: !prev[path] }));
+  };
+
+  const openFile = useCallback(async (f) => {
     setSelectedFile(f);
     setFileContent(null);
     setLoadingContent(true);
+    // Expandir diretórios ancestrais para o arquivo ficar visível na árvore.
+    const parts = (f.rel_path || '').split('/').filter(Boolean);
+    if (parts.length > 1) {
+      const anc = {};
+      let acc = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        acc = acc ? `${acc}/${parts[i]}` : parts[i];
+        anc[acc] = true;
+      }
+      setExpandedNodes(prev => ({ ...prev, ...anc }));
+    }
     try {
       const res = await axios.get(`${API}/git/repos/${guid}/files/${f.id}`);
       setFileContent(res.data);
@@ -65,7 +138,7 @@ export default function GitRepoBrowser() {
     } finally {
       setLoadingContent(false);
     }
-  };
+  }, [guid, t]);
 
   const runContentSearch = async () => {
     const term = contentQ.trim();
@@ -89,8 +162,120 @@ export default function GitRepoBrowser() {
     return `${(n / 1024 / 1024).toFixed(1)} MB`;
   };
 
+  // -------------------------------------------------------------------------
+  // Renderização recursiva da árvore — mesmo visual do ServerBrowser:
+  // linhas-guia por profundidade, chevron, ícone de pasta/arquivo, hover/seleção.
+  // -------------------------------------------------------------------------
+  const renderTreeNode = (node, depth = 0, isLastChild = true, parentLines = []) => {
+    if (depth > 60) return null;
+    const isDirectory = node.type === 'dir';
+    const isExpanded = filterActive || !!expandedNodes[node.path];
+    const f = node.file;
+    const isSelected = !isDirectory && selectedFile?.id === f?.id;
+    const children = isDirectory ? sortedChildren(node) : [];
+
+    const handleClick = () => {
+      if (isDirectory) {
+        toggleNode(node.path);
+      } else if (f) {
+        openFile(f);
+      }
+    };
+
+    return (
+      <div key={`${node.type}:${node.path}`}>
+        <div
+          className={cn(
+            'group flex items-center cursor-pointer hover:bg-muted/50 rounded transition-colors',
+            isSelected ? 'bg-primary/10 text-primary' : ''
+          )}
+          style={{ paddingLeft: '8px', paddingRight: '8px', minHeight: '32px' }}
+          onClick={handleClick}
+          data-testid={isDirectory ? 'git-tree-folder' : 'git-file-row'}
+          data-item-path={node.path}
+        >
+          {/* Linhas-guia da árvore */}
+          {depth > 0 && (
+            <div className="flex items-stretch" style={{ height: '32px' }}>
+              {parentLines.map((showLine, idx) => (
+                <div key={idx} className="w-4 flex justify-center">
+                  {showLine && <div className="w-px bg-border/60" style={{ height: '100%' }} />}
+                </div>
+              ))}
+              <div className="w-4 flex items-center relative">
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 w-px bg-border/60"
+                  style={{ top: 0, height: isLastChild ? '50%' : '100%' }}
+                />
+                <div
+                  className="absolute bg-border/60"
+                  style={{ left: '50%', width: isDirectory ? '50%' : 'calc(50% + 20px)', height: '1px', top: '50%' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Chevron expand/collapse */}
+          {isDirectory ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleNode(node.path); }}
+              className="p-0.5 hover:bg-muted rounded flex-shrink-0"
+            >
+              {isExpanded
+                ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            </button>
+          ) : (
+            <span className="w-5 flex-shrink-0" />
+          )}
+
+          {/* Ícone */}
+          <div className="mx-1 flex-shrink-0">
+            {isDirectory ? (
+              isExpanded
+                ? <FolderOpen className="w-4 h-4 text-blue-500" />
+                : <Folder className="w-4 h-4 text-blue-500" />
+            ) : f?.is_binary ? (
+              <FileX className="w-4 h-4 text-gray-500" />
+            ) : (
+              <FileText className="w-4 h-4 text-gray-500" />
+            )}
+          </div>
+
+          {/* Nome */}
+          <span
+            className={cn('text-sm truncate flex-1 font-mono', isDirectory ? 'text-blue-400' : '')}
+            title={node.path}
+          >
+            {node.name}
+          </span>
+
+          {/* Badge indexado (somente arquivos) */}
+          {!isDirectory && f?.indexed && (
+            <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-1 flex-shrink-0">
+              {t('browser.indexed')}
+            </Badge>
+          )}
+        </div>
+
+        {/* Filhos */}
+        {isDirectory && isExpanded && children.length > 0 && (
+          <div>
+            {children.map((child, index, arr) => {
+              const isLast = index === arr.length - 1;
+              const newParentLines = [...parentLines, !isLastChild];
+              return renderTreeNode(child, depth + 1, isLast, newParentLines);
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const rootChildren = sortedChildren(tree);
+
   return (
-    <div className="p-6 space-y-4 max-w-7xl mx-auto">
+    <div className="p-6 space-y-4 w-full">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate('/git')}>
           <ArrowLeft className="w-4 h-4 mr-2" />{t('browser.back')}
@@ -120,7 +305,7 @@ export default function GitRepoBrowser() {
         </div>
       )}
 
-      {/* Content search */}
+      {/* Busca de conteúdo */}
       <Card>
         <CardContent className="pt-6 space-y-3">
           <div className="flex gap-2">
@@ -159,72 +344,106 @@ export default function GitRepoBrowser() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* File list */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t('browser.files')}</CardTitle>
-            <div className="flex gap-2 pt-2">
-              <Input
-                value={fileQ}
-                onChange={(e) => setFileQ(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') loadFiles(); }}
-                placeholder={t('browser.searchFiles')}
-                className="h-8"
-              />
-              <Button size="sm" variant="outline" onClick={loadFiles} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[520px]">
-              <div className="px-2 pb-2">
-                {files.map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => openFile(f)}
-                    className={cn(
-                      'w-full text-left px-2 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-muted/60',
-                      selectedFile?.id === f.id && 'bg-muted'
+      {/* Split view: árvore à esquerda, conteúdo à direita (igual ao ServerBrowser) */}
+      <div className="rounded-lg border border-border overflow-hidden h-[calc(100vh-320px)] min-h-[480px]">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          {/* Painel esquerdo - Árvore */}
+          <ResizablePanel defaultSize={30} minSize={18} maxSize={55}>
+            <div className="h-full border-r border-border bg-card flex flex-col">
+              {/* Filtro */}
+              <div className="p-3 border-b border-border">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={t('browser.searchFiles')}
+                    value={filterQuery}
+                    onChange={(e) => setFilterQuery(e.target.value)}
+                    className="w-full px-3 py-2 pr-10 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    data-testid="git-file-filter"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {loading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                    {filterQuery && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFilterQuery('')}>
+                        <X className="w-3 h-3" />
+                      </Button>
                     )}
-                    data-testid="git-file-row"
-                  >
-                    {f.is_binary ? <FileX className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                 : <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                    <span className="font-mono text-xs truncate flex-1">{f.rel_path}</span>
-                    {f.indexed && <Badge variant="secondary" className="text-[9px] px-1 py-0">{t('browser.indexed')}</Badge>}
-                  </button>
-                ))}
+                  </div>
+                </div>
               </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
 
-        {/* Content viewer */}
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center justify-between">
-              <span className="font-mono text-xs truncate">{selectedFile?.rel_path || t('browser.content')}</span>
-              {selectedFile && <span className="text-xs text-muted-foreground">{t('browser.size')}: {fmtSize(selectedFile.size)}</span>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!selectedFile ? (
-              <p className="text-sm text-muted-foreground py-16 text-center">{t('browser.selectFile')}</p>
-            ) : loadingContent ? (
-              <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
-            ) : fileContent?.is_binary ? (
-              <p className="text-sm text-muted-foreground py-16 text-center">{t('browser.binary')}</p>
-            ) : !fileContent?.content ? (
-              <p className="text-sm text-muted-foreground py-16 text-center">{t('browser.noContent')}</p>
-            ) : (
-              <ScrollArea className="h-[480px]">
-                <pre className="text-xs font-mono whitespace-pre-wrap break-words p-2" data-testid="git-file-content">{fileContent.content}</pre>
+              {/* Cabeçalho da árvore */}
+              <div className="p-3 border-b border-border flex items-center justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  {t('browser.files')}
+                  {filterActive && (
+                    <span className="ml-2 text-xs text-primary">{visibleFiles.length}</span>
+                  )}
+                </h3>
+              </div>
+
+              {/* Árvore */}
+              <ScrollArea className="flex-1 tree-scroll-area">
+                <div className="py-2 pr-3">
+                  {loading && files.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  ) : rootChildren.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-muted-foreground">{t('browser.noContent')}</p>
+                    </div>
+                  ) : (
+                    rootChildren.map((child, index, arr) =>
+                      renderTreeNode(child, 0, index === arr.length - 1, [])
+                    )
+                  )}
+                </div>
               </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* Painel direito - Conteúdo */}
+          <ResizablePanel defaultSize={70}>
+            <div className="h-full bg-background flex flex-col">
+              <div className="p-3 border-b border-border flex items-center justify-between gap-2">
+                <span className="font-mono text-xs truncate">
+                  {selectedFile?.rel_path || t('browser.content')}
+                </span>
+                {selectedFile && (
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {t('browser.size')}: {fmtSize(selectedFile.size)}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {!selectedFile ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p className="text-sm">{t('browser.selectFile')}</p>
+                  </div>
+                ) : loadingContent ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : fileContent?.is_binary ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p className="text-sm">{t('browser.binary')}</p>
+                  </div>
+                ) : !fileContent?.content ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p className="text-sm">{t('browser.noContent')}</p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-full">
+                    <pre className="text-xs font-mono whitespace-pre-wrap break-words p-3" data-testid="git-file-content">{fileContent.content}</pre>
+                  </ScrollArea>
+                )}
+              </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </div>
   );

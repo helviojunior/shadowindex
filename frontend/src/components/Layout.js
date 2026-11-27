@@ -64,6 +64,7 @@ const menuStructure = [
     label: 'Servidores',
     children: [
       { id: 'servers-list', path: '/servers', label: 'Servidores' },
+      { id: 'navigation', path: '/files/browse', label: 'Navegação' },
       { id: 'servers-import', path: '/servers/import', label: 'Importar Servidores' },
       { id: 'share-scan', path: '/servers/share-scan', label: 'Share Scan' },
     ]
@@ -90,7 +91,6 @@ const menuStructure = [
     icon: FolderTree,
     label: 'Arquivos',
     children: [
-      { id: 'navigation', path: '/files/browse', label: 'Navegação' },
       { id: 'advanced-search', path: '/search', label: 'Search' },
       { id: 'leaks', path: '/leaks', label: 'Leaks' },
     ]
