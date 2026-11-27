@@ -1269,14 +1269,14 @@ const Leaks = () => {
 
       {/* Finding Detail Modal */}
       <Dialog open={!!selectedFinding} onOpenChange={() => setSelectedFinding(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" />
               {t('detail.title')}
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedFinding && (() => {
             // Extrair informações do arquivo
             const fullPath = selectedFinding.server_path || selectedFinding.original_file || selectedFinding.File || '';
@@ -1286,7 +1286,7 @@ const Leaks = () => {
             const directoryPath = pathParts.length > 1 ? pathParts.slice(startIndex, -1).join('\\') : '';
             
             return (
-              <div className="space-y-6">
+              <div className="space-y-6 overflow-y-auto flex-1 pr-2 -mr-2">
                 {/* Header com informações principais */}
                 <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4">
                   <div className="flex items-start justify-between">
