@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, or_, desc, asc
+from sqlalchemy import select, func, or_, desc, asc, case, nullslast
 
 from database import (
     get_db, get_db_readonly, AsyncSessionLocal,
@@ -569,10 +569,24 @@ async def list_jobs(
     offset: int = 0,
     db=Depends(get_db_readonly),
 ):
-    stmt = select(GitCloneJob)
+    # Ordena EXATAMENTE na ordem de processamento do worker:
+    #   rank de status (running -> pending -> terminais), depois
+    #   priority desc, pushed_at desc (mais novo), size_kb asc (menor), created asc.
+    status_rank = case(
+        (GitCloneJob.status == "running", 0),
+        (GitCloneJob.status == "pending", 1),
+        else_=2,
+    )
+    stmt = select(GitCloneJob).outerjoin(GitRepo, GitRepo.id == GitCloneJob.repo_id)
     if status:
         stmt = stmt.where(GitCloneJob.status == status)
-    stmt = stmt.order_by(desc(GitCloneJob.created_at)).limit(limit).offset(offset)
+    stmt = stmt.order_by(
+        status_rank.asc(),
+        GitCloneJob.priority.desc(),
+        nullslast(GitRepo.pushed_at.desc()),
+        nullslast(GitRepo.size_kb.asc()),
+        GitCloneJob.created_at.asc(),
+    ).limit(limit).offset(offset)
     jobs = (await db.execute(stmt)).scalars().all()
     return {"jobs": [_job_dict(j) for j in jobs]}
 
