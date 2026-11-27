@@ -843,6 +843,22 @@ export default function GitRepoBrowser() {
                         </a>
                       )}
                     </div>
+                    {/* Arquivo removido: abrir a árvore no commit anterior (onde ainda existia) */}
+                    {fileContent.change_type === 'D' && fileContent.parent_commit && (
+                      <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs flex items-center gap-2 flex-wrap">
+                        <span className="text-amber-600 dark:text-amber-400">{t('info.deletedHint')}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => enterCommitTree(fileContent.parent_commit, fileContent.rel_path)}
+                          data-testid="git-view-tree-parent-commit"
+                        >
+                          <GitCommit className="w-3.5 h-3.5 mr-1" />
+                          {t('info.viewParentTree', { short: fileContent.parent_short })}
+                        </Button>
+                      </div>
+                    )}
                     <InfoRow label={t('info.branch')} value={fileContent.branch || '—'} valueClassName="font-mono text-xs" />
                     <InfoRow label={t('info.author')} value={fileContent.author || '—'} />
                     <InfoRow label={t('info.commitDate')} value={fmtDate(fileContent.commit_date)} />

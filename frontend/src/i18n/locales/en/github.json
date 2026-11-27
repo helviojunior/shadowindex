@@ -97,7 +97,9 @@
     "commitDate": "Commit date",
     "changeType": "Change type",
     "isHead": "Current version (HEAD)",
-    "versions": "Versions"
+    "versions": "Versions",
+    "deletedHint": "File removed in this commit.",
+    "viewParentTree": "View tree at previous commit ({{short}})"
   },
   "actions": {
     "open": "Open",

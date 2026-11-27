@@ -799,6 +799,23 @@ async def get_repo_file(guid: str, file_id: int, db=Depends(get_db_readonly)):
     )).scalar() or 1
     html_url = repo.html_url if repo else None
     commit_url = f"{html_url}/commit/{f.commit_hash}" if (html_url and f.commit_hash) else None
+
+    # Para arquivos REMOVIDOS (change_type 'D'), o arquivo não existe na árvore
+    # deste commit — ele existia no commit ANTERIOR (pai). Resolvemos o pai para
+    # a UI poder abrir a árvore onde o arquivo ainda estava presente.
+    parent_commit = None
+    parent_short = None
+    if f.change_type == "D" and f.commit_hash and repo:
+        try:
+            from git_clone_worker import GITCLONES_BASE
+            clone_dir = os.path.join(GITCLONES_BASE, repo.guid)
+            if os.path.isdir(os.path.join(clone_dir, ".git")):
+                out = await _git_output(clone_dir, ["rev-parse", "--verify", "-q", f"{f.commit_hash}^"])
+                parent_commit = out.decode("utf-8", "replace").strip() or None
+                parent_short = parent_commit[:7] if parent_commit else None
+        except Exception:  # noqa: BLE001
+            parent_commit = None
+
     return {
         "id": f.id, "rel_path": f.rel_path, "name": f.name, "extension": f.extension,
         "size": f.size, "mimetype": f.mimetype, "is_binary": f.is_binary,
@@ -812,6 +829,7 @@ async def get_repo_file(guid: str, file_id: int, db=Depends(get_db_readonly)):
         "commit_date": f.commit_date.isoformat() if f.commit_date else None,
         "change_type": f.change_type, "versions_count": versions_count,
         "commit_url": commit_url,
+        "parent_commit": parent_commit, "parent_short": parent_short,
     }
 
 
