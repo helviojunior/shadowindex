@@ -1,5 +1,5 @@
 {
-  "title": "Git Instances",
+  "title": "Instâncias Git",
   "subtitle": "Instâncias de plataformas Git (GitHub, GitLab, Gitea, Bitbucket, Azure DevOps). Liste e clone os projetos.",
   "list": {
     "title": "Instâncias",
@@ -16,7 +16,7 @@
     "failed": "Falha"
   },
   "actions": {
-    "add": "Add Instance",
+    "add": "Adicionar instância",
     "test": "Testar acesso",
     "save": "Salvar instância",
     "back": "Voltar",
