@@ -67,6 +67,17 @@ export default function GitInstanceDetail() {
     } finally { setLoading(false); }
   }, [guid, t]);
 
+  // Ao abrir: carrega a listagem JÁ persistida (buscada previamente). Se existir,
+  // exibe-a e mantém os botões "Listar projetos"/"Retestar acesso" ocultos.
+  useEffect(() => {
+    (async () => {
+      const data = await loadProjects(0, '');
+      if (data && (data.refreshed_at || (data.total || 0) > 0)) {
+        setListed(true);
+      }
+    })();
+  }, [loadProjects]);
+
   // "Listar projetos": SEMPRE busca fresh na plataforma (sem cache). A paginação
   // e o filtro usam a cópia persistida no DB, mas o clique aqui sempre re-consulta.
   const onListProjects = async () => {
@@ -108,12 +119,20 @@ export default function GitInstanceDetail() {
     setSelected(next);
   };
 
+  // Monta o toast de enfileiramento, informando os pulados por dedup (já baixados
+  // ou em andamento — inclusive vindos de outra instância do mesmo servidor).
+  const queuedMsg = (res) => {
+    const q = res.data?.queued ?? 0;
+    const s = res.data?.skipped ?? 0;
+    return s > 0 ? t('toast.queuedDedup', { count: q, skipped: s }) : t('toast.queued', { count: q });
+  };
+
   const cloneSelected = async () => {
     if (selectedNames.length === 0) return;
     setCloning(true);
     try {
       const res = await axios.post(`${API}/git/instances/${guid}/clone`, { full_names: selectedNames });
-      toast.success(t('toast.queued', { count: res.data?.queued ?? 0 }), {
+      toast.success(queuedMsg(res), {
         action: { label: t('actions.goToJobs'), onClick: () => navigate('/jobs/git') },
       });
       setSelected({});
@@ -125,7 +144,7 @@ export default function GitInstanceDetail() {
     setCloning(true);
     try {
       const res = await axios.post(`${API}/git/instances/${guid}/clone`, { all: true, q: query || null });
-      toast.success(t('toast.queued', { count: res.data?.queued ?? 0 }), {
+      toast.success(queuedMsg(res), {
         action: { label: t('actions.goToJobs'), onClick: () => navigate('/jobs/git') },
       });
     } catch (e) { toast.error(e.response?.data?.detail || e.message); }
@@ -144,6 +163,9 @@ export default function GitInstanceDetail() {
 
   const page = Math.floor(offset / PAGE) + 1;
   const pages = Math.max(1, Math.ceil(total / PAGE));
+  // Já existe uma listagem persistida? Então exibimos a lista e ocultamos os
+  // botões "Listar projetos" / "Retestar acesso".
+  const hasListing = !!refreshedAt || total > 0;
 
   return (
     <div className="space-y-6">
@@ -173,18 +195,20 @@ export default function GitInstanceDetail() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={onListProjects} disabled={loading} data-testid="instance-list-projects">
-          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ListTree className="w-4 h-4 mr-2" />}
-          {t('detail.listProjects')}
-        </Button>
-        <Button variant="outline" onClick={retest} disabled={retesting}>
-          {retesting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-          {t('detail.retest')}
-        </Button>
-      </div>
+      {!hasListing && (
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={onListProjects} disabled={loading} data-testid="instance-list-projects">
+            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ListTree className="w-4 h-4 mr-2" />}
+            {t('detail.listProjects')}
+          </Button>
+          <Button variant="outline" onClick={retest} disabled={retesting}>
+            {retesting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            {t('detail.retest')}
+          </Button>
+        </div>
+      )}
 
-      {listed && (
+      {(listed || hasListing) && (
         <Card>
           <CardHeader className="flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
             <CardTitle className="text-lg">

@@ -75,7 +75,8 @@
     "noSelection": "Select at least one project",
     "queued": "{{count}} clone(s) queued",
     "refreshed": "{{count}} project(s) listed",
-    "duplicated": "Configuration duplicated"
+    "duplicated": "Configuration duplicated",
+    "queuedDedup": "{{count}} queued · {{skipped}} already downloaded/duplicate skipped"
   },
   "deleteConfirm": {
     "title": "Delete instance?",

@@ -75,7 +75,8 @@
     "noSelection": "Selecione ao menos um projeto",
     "queued": "{{count}} clone(s) enfileirado(s)",
     "refreshed": "{{count}} projeto(s) listados",
-    "duplicated": "Configuração duplicada"
+    "duplicated": "Configuração duplicada",
+    "queuedDedup": "{{count}} enfileirado(s) · {{skipped}} já baixado(s)/duplicado(s) ignorado(s)"
   },
   "deleteConfirm": {
     "title": "Excluir instância?",

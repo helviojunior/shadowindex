@@ -2,6 +2,7 @@
 API das "Git Instances" (Git -> Instances): cadastro de instâncias de plataformas
 Git, teste de acesso (fingerprint + whoami), listagem e clone de projetos.
 """
+import os
 import logging
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
@@ -9,7 +10,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, or_
 
 from database import (
     get_db, get_db_readonly, Credential, GitInstance, GitInstanceProject,
@@ -292,6 +293,38 @@ async def list_instance_projects(guid: str, q: Optional[str] = None,
     }
 
 
+def _norm_clone_target(url: str) -> str:
+    """Chave canônica do ALVO de clone (host+caminho), ignorando esquema, credenciais
+    embutidas (user:pass@), porta, '.git' e barra final. Dois clone_urls que apontam
+    para o MESMO repositório no MESMO servidor geram a mesma chave — mesmo que venham
+    de instâncias/credenciais diferentes. Servidores distintos geram chaves distintas."""
+    u = (url or "").strip()
+    if not u:
+        return ""
+    # Esquema
+    if "://" in u:
+        u = u.split("://", 1)[1]
+    # Credenciais embutidas no host: user[:pass]@host -> host
+    if "@" in u.split("/", 1)[0]:
+        u = u.split("@", 1)[1]
+    # Trata porta (host:8080/...) e forma scp (host:grupo/projeto).
+    first = u.split("/", 1)[0]
+    rest_path = u.split("/", 1)[1] if "/" in u else ""
+    if ":" in first:
+        host, _, after_colon = first.partition(":")
+        if after_colon.isdigit():
+            # porta -> descarta, mantém o caminho
+            u = host + (f"/{rest_path}" if rest_path else "")
+        else:
+            # scp 'host:grupo[/projeto...]' -> 'host/grupo[/projeto...]'
+            tail = after_colon + (f"/{rest_path}" if rest_path else "")
+            u = f"{host}/{tail}"
+    u = u.rstrip("/")
+    if u.endswith(".git"):
+        u = u[:-4]
+    return u.lower()
+
+
 async def _enqueue_project(db, inst, full_name, clone_url, name=None, html_url=None,
                            description=None, default_branch=None, size_kb=None) -> bool:
     full_name = (full_name or "").strip()
@@ -300,8 +333,22 @@ async def _enqueue_project(db, inst, full_name, clone_url, name=None, html_url=N
         return False
     if not full_name:
         full_name = clone_url.rsplit("/", 1)[-1].replace(".git", "")
-    repo = (await db.execute(select(GitRepo).where(GitRepo.full_name == full_name))).scalar_one_or_none()
-    if not repo:
+
+    # Dedup por ALVO de clone: o mesmo repositório (host+caminho) acessível por duas
+    # instâncias (credenciais diferentes) deve mapear para UM único GitRepo, para não
+    # baixar duas vezes. Busca candidatos por clone_url OU full_name e escolhe o que
+    # tem o mesmo alvo canônico; só então cai no full_name (compat. com o legado).
+    target = _norm_clone_target(clone_url)
+    cands = (await db.execute(
+        select(GitRepo).where(or_(GitRepo.clone_url == clone_url,
+                                  GitRepo.full_name == full_name))
+    )).scalars().all()
+    repo = next((c for c in cands if _norm_clone_target(c.clone_url) == target), None)
+    if repo is None:
+        repo = next((c for c in cands if c.full_name == full_name), None)
+
+    is_new = repo is None
+    if is_new:
         repo = GitRepo(full_name=full_name)
         db.add(repo)
     owner, _, nm = full_name.partition("/")
@@ -314,17 +361,26 @@ async def _enqueue_project(db, inst, full_name, clone_url, name=None, html_url=N
     repo.size_kb = size_kb
     repo.source = inst.platform
     repo.discovered_via = f"instance:{inst.name or inst.base_url}"
-    if repo.clone_status not in ("cloning",):
-        repo.clone_status = "pending"
     await db.flush()
+
+    # Dedup de DOWNLOAD: não reenfileira se o repo já está baixado, em andamento ou
+    # com job ativo (independe de qual instância/credencial o descobriu).
     active = (await db.execute(
         select(GitCloneJob.id).where(
             GitCloneJob.repo_id == repo.id,
             GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]),
         )
     )).scalar()
-    if active:
+    try:
+        from git_clone_worker import GITCLONES_BASE
+        has_full_clone = os.path.isdir(os.path.join(GITCLONES_BASE, repo.guid, ".git"))
+    except Exception:  # noqa: BLE001
+        has_full_clone = False
+    if active or has_full_clone or (repo.clone_status in ("cloned", "cloning", "processing")):
         return False
+
+    # Só agora marca como pendente (não mexe no status de um repo já clonado).
+    repo.clone_status = "pending"
     db.add(GitCloneJob(
         repo_id=repo.id, repo_url=clone_url, repo_full_name=full_name,
         clone_auth=inst.clone_auth,
@@ -343,6 +399,7 @@ async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(
         raise HTTPException(status_code=404, detail="Instância não encontrada")
 
     queued = 0
+    total = 0
     if req.all or req.full_names:
         base = select(GitInstanceProject).where(GitInstanceProject.instance_id == inst.id)
         if req.full_names:
@@ -352,6 +409,7 @@ async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(
         rows = (await db.execute(base.order_by(GitInstanceProject.full_name))).scalars().all()
         if not rows:
             raise HTTPException(status_code=400, detail="Nenhum projeto para clonar (liste/atualize primeiro)")
+        total = len(rows)
         for i, p in enumerate(rows, 1):
             if await _enqueue_project(db, inst, p.full_name, p.clone_url, p.name, p.html_url,
                                       p.description, p.default_branch, p.size_kb):
@@ -359,6 +417,7 @@ async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(
             if i % 200 == 0:
                 await db.commit()  # commit em lotes p/ milhares
     elif req.repos:
+        total = len(req.repos)
         for r in req.repos:
             if await _enqueue_project(db, inst, r.get("full_name"), r.get("clone_url"),
                                       r.get("name"), r.get("html_url"), r.get("description"),
@@ -368,4 +427,5 @@ async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(
         raise HTTPException(status_code=400, detail="Nenhum projeto selecionado")
 
     await db.commit()
-    return {"queued": queued}
+    # skipped = já baixados / em andamento / duplicados (dedup por alvo de clone).
+    return {"queued": queued, "skipped": max(0, total - queued), "total": total}

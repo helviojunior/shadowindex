@@ -163,15 +163,19 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
             except Exception:  # noqa: BLE001
                 pass
         try:
-            rlist = await c.get(gurl + "objects/pack/")
+            # Listagem do diretório de packs (quando há index of). audit=False: é área
+            # de objetos — a descoberta de packs já fica registrada via objects/info/packs.
+            rlist = await c.get(gurl + "objects/pack/", audit=False)
             if rlist.status_code == 200:
                 for m in re.finditer(rb"pack-([0-9a-f]{40})\.pack", rlist.content):
                     pack_names.add(m.group(1).decode())
         except Exception:  # noqa: BLE001
             pass
+        # Os PACKS e os OBJETOS soltos são os "objetos em si": NÃO auditados (poluiriam
+        # a trilha com milhares de GETs). Apenas a descoberta (HEAD/refs/info) é auditada.
         for name in pack_names:
-            await fetch(f"objects/pack/pack-{name}.pack", audit=True)
-            await fetch(f"objects/pack/pack-{name}.idx", audit=True)
+            await fetch(f"objects/pack/pack-{name}.pack", audit=False)
+            await fetch(f"objects/pack/pack-{name}.idx", audit=False)
 
         if not objects and not pack_names:
             return False, "nenhum objeto/ref encontrado no .git exposto (talvez bloqueado ou vazio)"
