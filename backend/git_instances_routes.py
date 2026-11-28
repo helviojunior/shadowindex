@@ -42,6 +42,13 @@ class InstanceDetectRequest(BaseModel):
     credential_id: Optional[int] = None   # opcional (ajuda alguns fingerprints)
 
 
+class InstanceUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    clone_auth: Optional[str] = None       # anonymous | authenticated
+    credential_id: Optional[int] = None
+    proxy_id: Optional[int] = None
+
+
 class CloneReposRequest(BaseModel):
     repos: Optional[List[Dict[str, Any]]] = None   # projetos específicos (seleção)
     full_names: Optional[List[str]] = None         # ou por full_name (seleção)
@@ -175,6 +182,48 @@ async def get_instance(guid: str, db=Depends(get_db_readonly)):
     inst = (await db.execute(select(GitInstance).where(GitInstance.guid == guid))).scalar_one_or_none()
     if not inst:
         raise HTTPException(status_code=404, detail="Instância não encontrada")
+    return _instance_dict(inst)
+
+
+@router.put("/{guid}")
+async def update_instance(guid: str, req: InstanceUpdateRequest, db=Depends(get_db)):
+    """Edita a instância: Nome e/ou modo de autenticação (token/proxy). NÃO altera a
+    URL nem a plataforma (para isso, recadastre). Reexecuta o teste de acesso quando
+    auth/token/proxy mudam, atualizando whoami/status."""
+    inst = (await db.execute(select(GitInstance).where(GitInstance.guid == guid))).scalar_one_or_none()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Instância não encontrada")
+
+    if req.name is not None:
+        inst.name = req.name.strip() or None
+
+    auth_changed = False
+    if req.clone_auth is not None and req.clone_auth != inst.clone_auth:
+        inst.clone_auth = req.clone_auth
+        auth_changed = True
+    # credential_id/proxy_id: só aplica quando o campo foi enviado (exclude_unset).
+    fields_sent = req.model_dump(exclude_unset=True)
+    if "credential_id" in fields_sent and req.credential_id != inst.credential_id:
+        inst.credential_id = req.credential_id
+        auth_changed = True
+    if "proxy_id" in fields_sent and req.proxy_id != inst.proxy_id:
+        inst.proxy_id = req.proxy_id
+        auth_changed = True
+    # Anônimo não usa credencial.
+    if inst.clone_auth == "anonymous":
+        inst.credential_id = None
+
+    if auth_changed:
+        res = await _run_test(db, inst.base_url, inst.clone_auth, inst.credential_id,
+                              inst.proxy_id, inst.platform)
+        inst.api_url = res.get("api_url") or inst.api_url
+        inst.whoami = res.get("whoami")
+        inst.status = "ok" if res["ok"] else "failed"
+        inst.error = res.get("error")
+        inst.last_tested_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(inst)
     return _instance_dict(inst)
 
 

@@ -22,7 +22,8 @@
     "back": "Voltar",
     "goToJobs": "Ver jobs",
     "duplicate": "Duplicar",
-    "remove": "Excluir"
+    "remove": "Excluir",
+    "edit": "Editar"
   },
   "auth": {
     "label": "Modo de autenticação",
@@ -89,5 +90,11 @@
     "description": "A instância \"{{name}}\" e os projetos listados por ela serão removidos. Esta ação não pode ser desfeita.",
     "cancel": "Cancelar",
     "confirm": "Excluir"
+  },
+  "edit": {
+    "title": "Editar instância",
+    "description": "Altere o nome e/ou o modo de autenticação. A URL e a plataforma não mudam.",
+    "name": "Nome",
+    "retestHint": "Ao alterar a autenticação, o acesso é testado novamente ao salvar."
   }
 }

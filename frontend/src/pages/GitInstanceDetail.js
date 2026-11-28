@@ -6,14 +6,22 @@ import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from '@/components/ui/select';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from '@/components/ui/table';
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import {
   ArrowLeft, Loader2, DownloadCloud, ListTree, RefreshCw, User, Lock, Search,
-  CheckCircle, XCircle, ChevronLeft, ChevronRight, UserX,
+  CheckCircle, XCircle, ChevronLeft, ChevronRight, UserX, Pencil, Save,
 } from 'lucide-react';
 import OriginLogo from '@/components/OriginLogo';
 import { logoPlatform } from './GitInstances';
@@ -41,6 +49,16 @@ export default function GitInstanceDetail() {
   const [retesting, setRetesting] = useState(false);
   const [selected, setSelected] = useState({});    // full_name -> bool (página atual)
 
+  // Edição da instância (Nome / modo de autenticação)
+  const [editOpen, setEditOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [tokens, setTokens] = useState([]);
+  const [proxies, setProxies] = useState([]);
+  const [eName, setEName] = useState('');
+  const [eAuth, setEAuth] = useState('authenticated');
+  const [eCredId, setECredId] = useState('');
+  const [eProxyId, setEProxyId] = useState('none');
+
   const loadInstance = useCallback(async () => {
     try {
       const res = await axios.get(`${API}/git/instances/${guid}`);
@@ -48,6 +66,47 @@ export default function GitInstanceDetail() {
     } catch (e) { toast.error(t('toast.loadError')); }
   }, [guid, t]);
   useEffect(() => { loadInstance(); }, [loadInstance]);
+
+  // Abre o diálogo de edição com os valores atuais da instância.
+  const openEdit = async () => {
+    setEName(inst?.name || '');
+    setEAuth(inst?.clone_auth || 'authenticated');
+    setECredId(inst?.credential_id ? String(inst.credential_id) : '');
+    setEProxyId(inst?.proxy_id ? String(inst.proxy_id) : 'none');
+    setEditOpen(true);
+    // Carrega tokens/proxies para os seletores (apenas na primeira abertura).
+    if (tokens.length === 0 && proxies.length === 0) {
+      const [tk, px] = await Promise.all([
+        axios.get(`${API}/credentials/by-type/token`).catch(() => ({ data: [] })),
+        axios.get(`${API}/proxy-servers`).catch(() => ({ data: [] })),
+      ]);
+      setTokens(tk.data || []);
+      setProxies(px.data || []);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (eAuth === 'authenticated' && !eCredId) {
+      toast.error(t('auth.tokenPlaceholder'));
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await axios.put(`${API}/git/instances/${guid}`, {
+        name: eName.trim() || null,
+        clone_auth: eAuth,
+        credential_id: eAuth === 'authenticated' ? parseInt(eCredId, 10) : null,
+        proxy_id: eProxyId && eProxyId !== 'none' ? parseInt(eProxyId, 10) : null,
+      });
+      toast.success(t('toast.saved'));
+      setEditOpen(false);
+      loadInstance();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const loadProjects = useCallback(async (off = 0, q = '') => {
     setLoading(true);
@@ -178,6 +237,9 @@ export default function GitInstanceDetail() {
           <h1 className="text-xl font-semibold truncate">{inst.name || inst.platform_label}</h1>
           <p className="text-xs text-muted-foreground font-mono truncate">{inst.base_url}</p>
         </div>
+        <Button variant="outline" size="sm" className="ml-auto" onClick={openEdit} data-testid="instance-edit">
+          <Pencil className="w-4 h-4 mr-2" />{t('actions.edit')}
+        </Button>
       </div>
 
       <Card>
@@ -291,6 +353,70 @@ export default function GitInstanceDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Edição: Nome e/ou modo de autenticação */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('edit.title')}</DialogTitle>
+            <DialogDescription>{t('edit.description')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t('edit.name')}</Label>
+              <Input value={eName} onChange={(e) => setEName(e.target.value)}
+                placeholder={inst.platform_label} data-testid="instance-edit-name" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t('auth.label')}</Label>
+              <RadioGroup value={eAuth} onValueChange={setEAuth} className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="anonymous" id="e-anon" />
+                  <span className="text-sm">{t('auth.anonymous')}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="authenticated" id="e-auth" />
+                  <span className="text-sm">{t('auth.authenticated')}</span>
+                </label>
+              </RadioGroup>
+              {eAuth === 'authenticated' && (
+                <div className="mt-1">
+                  <Select value={eCredId} onValueChange={setECredId}>
+                    <SelectTrigger data-testid="instance-edit-token"><SelectValue placeholder={t('auth.tokenPlaceholder')} /></SelectTrigger>
+                    <SelectContent>
+                      {tokens.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name || `Token #${c.id}`}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {tokens.length === 0 && <p className="text-xs text-amber-500 mt-1">{t('auth.noTokens')}</p>}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t('fields.proxy')}</Label>
+              <Select value={eProxyId} onValueChange={setEProxyId}>
+                <SelectTrigger data-testid="instance-edit-proxy"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('proxy.none')}</SelectItem>
+                  {proxies.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.proxy_type || 'http'} · {p.ip}:{p.port})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <p className="text-xs text-muted-foreground">{t('edit.retestHint')}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={savingEdit}>{t('deleteConfirm.cancel')}</Button>
+            <Button onClick={saveEdit} disabled={savingEdit} data-testid="instance-edit-save">
+              {savingEdit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              {t('actions.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

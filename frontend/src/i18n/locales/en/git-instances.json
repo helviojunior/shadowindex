@@ -22,7 +22,8 @@
     "back": "Back",
     "goToJobs": "View jobs",
     "duplicate": "Duplicate",
-    "remove": "Delete"
+    "remove": "Delete",
+    "edit": "Edit"
   },
   "auth": {
     "label": "Authentication mode",
@@ -89,5 +90,11 @@
     "description": "The instance \"{{name}}\" and the projects it listed will be removed. This action cannot be undone.",
     "cancel": "Cancel",
     "confirm": "Delete"
+  },
+  "edit": {
+    "title": "Edit instance",
+    "description": "Change the name and/or the authentication mode. URL and platform stay the same.",
+    "name": "Name",
+    "retestHint": "Changing authentication re-tests access on save."
   }
 }
