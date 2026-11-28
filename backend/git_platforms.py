@@ -252,23 +252,62 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
     out: List[Dict[str, Any]] = []
     async with _client(proxy, platform, 'projects') as c:
         if platform in ("github", "github_enterprise"):
+            # Dedup por full_name: /user/repos cobre os repos com afiliação direta,
+            # mas pode NÃO trazer todos os repos das organizações. Então também
+            # enumeramos as orgs (/user/orgs) e listamos /orgs/{org}/repos?type=all.
+            seen = set()
+
+            def _add(d):
+                fn = d.get("full_name")
+                if not fn or fn in seen:
+                    return
+                seen.add(fn)
+                out.append(_repo(fn, d.get("clone_url"), d.get("html_url"),
+                                 d.get("description"), d.get("default_branch"),
+                                 d.get("private"), d.get("size")))
+
+            # 1) Repos do usuário (owner/colaborador/membro).
             page = 1
             while len(out) < MAX_PROJECTS:
                 r = await c.get(api + "/user/repos",
-                                params={"per_page": PAGE_SIZE, "page": page, "affiliation": "owner,collaborator,organization_member"},
+                                params={"per_page": PAGE_SIZE, "page": page,
+                                        "affiliation": "owner,collaborator,organization_member"},
                                 headers=h)
                 if not _check_list_status(r, len(out)):
                     break
                 data = r.json() or []
-                if not data:
-                    break
                 for d in data:
-                    out.append(_repo(d.get("full_name"), d.get("clone_url"), d.get("html_url"),
-                                     d.get("description"), d.get("default_branch"), d.get("private"),
-                                     d.get("size")))
+                    _add(d)
                 if len(data) < PAGE_SIZE:
                     break
                 page += 1
+
+            # 2) Organizações a que o usuário pertence -> TODOS os repos de cada org.
+            orgs, opage = [], 1
+            while True:
+                orr = await c.get(api + "/user/orgs",
+                                  params={"per_page": PAGE_SIZE, "page": opage}, headers=h)
+                if orr.status_code != 200:
+                    break
+                od = orr.json() or []
+                orgs.extend([o.get("login") for o in od if o.get("login")])
+                if len(od) < PAGE_SIZE:
+                    break
+                opage += 1
+            for org_login in orgs:
+                opg = 1
+                while len(out) < MAX_PROJECTS:
+                    rr = await c.get(api + f"/orgs/{org_login}/repos",
+                                     params={"per_page": PAGE_SIZE, "page": opg, "type": "all"},
+                                     headers=h)
+                    if rr.status_code != 200:
+                        break
+                    rd = rr.json() or []
+                    for d in rd:
+                        _add(d)
+                    if len(rd) < PAGE_SIZE:
+                        break
+                    opg += 1
 
         elif platform == "gitlab":
             page = 1
