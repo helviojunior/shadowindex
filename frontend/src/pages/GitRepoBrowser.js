@@ -28,6 +28,7 @@ import {
 import { ShieldKeyIcon } from '@/components/icons';
 import CodeViewer from '@/components/CodeViewer';
 import OriginLogo from '@/components/OriginLogo';
+import { formatDateTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -447,13 +448,7 @@ export default function GitRepoBrowser() {
     return `${(n / 1024 / 1024).toFixed(1)} MB`;
   };
 
-  const fmtDate = (s) => {
-    if (!s) return '—';
-    try {
-      const d = new Date(s);
-      return d.toLocaleString();
-    } catch (e) { return s; }
-  };
+  const fmtDate = (s) => formatDateTime(s);
 
   const changeTypeLabel = (ct) => {
     const map = { A: t('changeType.added'), M: t('changeType.modified'), D: t('changeType.deleted'), R: t('changeType.renamed') };

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import OriginLogo from '@/components/OriginLogo';
 import { logoPlatform } from './GitInstances';
+import { formatDateTime } from '@/lib/datetime';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const PAGE = 200;
@@ -190,7 +191,7 @@ export default function GitInstanceDetail() {
           <CardHeader className="flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
             <CardTitle className="text-lg">
               {t('detail.projects')} · {total}
-              {refreshedAt && <span className="ml-2 text-xs text-muted-foreground font-normal">{t('detail.refreshedAt')}: {new Date(refreshedAt).toLocaleString()}</span>}
+              {refreshedAt && <span className="ml-2 text-xs text-muted-foreground font-normal">{t('detail.refreshedAt')}: {formatDateTime(refreshedAt)}</span>}
             </CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="relative">

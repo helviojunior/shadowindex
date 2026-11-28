@@ -13,6 +13,7 @@ import {
 import {
   Radio, RefreshCw, Search, ChevronRight, ChevronDown, ChevronLeft, AlertTriangle,
 } from 'lucide-react';
+import { formatDateTime } from '@/lib/datetime';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const PAGE = 100;
@@ -127,7 +128,7 @@ export default function ExternalCalls() {
                 return [
                   <TableRow key={c.id} className="cursor-pointer" onClick={() => setExpanded(s => ({ ...s, [c.id]: !s[c.id] }))} data-testid="external-call-row">
                     <TableCell>{open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}</TableCell>
-                    <TableCell className="whitespace-nowrap text-xs">{c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">{formatDateTime(c.created_at)}</TableCell>
                     <TableCell className="font-medium">{c.provider || '—'}</TableCell>
                     <TableCell className="text-muted-foreground">{c.context || '—'}</TableCell>
                     <TableCell className={`font-mono font-medium ${methodColor(c.method)}`}>{c.method}</TableCell>

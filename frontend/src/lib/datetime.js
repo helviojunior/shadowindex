@@ -1,12 +1,29 @@
 import i18n from '@/i18n';
 
-/**
- * Retorna o locale BCP-47 de data/hora correspondente ao idioma ativo da
- * interface (ex.: 'pt' -> 'pt-BR', 'en' -> 'en-US'). Usar com
- * Date.prototype.toLocaleString / toLocaleDateString / toLocaleTimeString para
- * que as datas sigam o idioma selecionado pelo usuário.
- */
-export function dateLocale() {
-  const lng = (i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
-  return lng === 'pt' ? 'pt-BR' : 'en-US';
+// Mapeia a linguagem do i18n para um locale completo do Intl.
+function currentLocale() {
+  const lng = (i18n?.language || 'pt').toLowerCase();
+  if (lng.startsWith('pt')) return 'pt-BR';
+  if (lng.startsWith('en')) return 'en-US';
+  return lng;
+}
+
+// Data + hora formatadas conforme a linguagem atual do usuário.
+export function formatDateTime(value, opts) {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString(currentLocale(), opts);
+  } catch (e) {
+    return String(value);
+  }
+}
+
+// Apenas a data.
+export function formatDate(value, opts) {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleDateString(currentLocale(), opts);
+  } catch (e) {
+    return String(value);
+  }
 }
