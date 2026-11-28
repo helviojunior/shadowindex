@@ -1,0 +1,16 @@
+{
+  "external": {
+    "title": "Chamadas externas",
+    "subtitle": "Toda chamada HTTP que NÓS fazemos a APIs/URLs de terceiros, registrada para auditoria.",
+    "notice": "Os corpos aparecem na íntegra — segredos (Authorization, api_key, token) são mascarados. Os registros são mantidos permanentemente.",
+    "refresh": "Atualizar",
+    "searchPlaceholder": "Buscar por URL, provedor ou contexto",
+    "errorsOnly": "Só erros (status ≥ 400 ou falha)",
+    "when": "Quando", "provider": "Provedor", "context": "Contexto", "method": "Método",
+    "status": "Status", "duration": "Duração (ms)", "failed": "FALHA",
+    "empty": "Nenhuma chamada registrada",
+    "reqHeaders": "Request · Headers", "reqBody": "Request · Body",
+    "respBody": "Response · Body", "error": "Erro",
+    "pageOf": "Página {{page}} de {{pages}}"
+  }
+}

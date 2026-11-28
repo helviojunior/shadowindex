@@ -161,5 +161,12 @@
     "jobTimeoutHelp": "The watchdog re-queues a running clone job that exceeds this (stuck gitleaks/OCR/indexing). Keep it generous — a clone can take ~1h. 0 = disable time-based cancel.",
     "stallLabel": "No-progress window (min)",
     "stallHelp": "Watchdog: minutes with NO progress (clone bytes / indexed files not growing) before a job is considered stuck and re-queued. Healthy slow clones keep going. 0 = disable stall detection."
+  },
+  "http": {
+    "title": "External HTTP",
+    "description": "Global User-Agent applied to all external HTTP requests.",
+    "userAgent": "User-Agent",
+    "userAgentHint": "{VERSION} is replaced by the current ShadowIndex version.",
+    "preview": "Preview"
   }
 }

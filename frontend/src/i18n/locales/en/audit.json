@@ -1,0 +1,16 @@
+{
+  "external": {
+    "title": "External calls",
+    "subtitle": "Every HTTP call WE make to third-party APIs/URLs, logged for auditing.",
+    "notice": "Bodies are shown in full — secrets (Authorization, api_key, token) are masked. Records are kept permanently.",
+    "refresh": "Refresh",
+    "searchPlaceholder": "Search by URL, provider or context",
+    "errorsOnly": "Errors only (status ≥ 400 or failure)",
+    "when": "When", "provider": "Provider", "context": "Context", "method": "Method",
+    "status": "Status", "duration": "Duration (ms)", "failed": "FAILED",
+    "empty": "No calls logged",
+    "reqHeaders": "Request · Headers", "reqBody": "Request · Body",
+    "respBody": "Response · Body", "error": "Error",
+    "pageOf": "Page {{page}} of {{pages}}"
+  }
+}

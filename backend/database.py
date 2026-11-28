@@ -246,6 +246,31 @@ class ProxyServer(Base):
     password = Column(String, nullable=True)  # Deprecated - use credential_id
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+class ExternalApiCall(Base):
+    """Toda chamada HTTP que NÓS fazemos a uma API/URL externa (OUTBOUND),
+    registrada pelo helper único `external_http.ExternalClient`. Segredos
+    (Authorization, api_key, token) vão mascarados. Sem retenção (eterno)."""
+    __tablename__ = "external_api_calls"
+    __table_args__ = (
+        Index('idx_extcall_created', 'created_at'),
+        Index('idx_extcall_provider', 'provider', 'created_at'),
+        Index('idx_extcall_status', 'status_code', 'created_at'),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    provider = Column(String, nullable=True, index=True)    # ex.: github, gitlab, git-dump
+    context = Column(String, nullable=True)                 # ex.: search, whoami, projects
+    method = Column(String, nullable=True)
+    url = Column(String, nullable=True)                     # api_key mascarado
+    status_code = Column(Integer, nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+    request_headers = Column(JSON, nullable=True)           # Authorization mascarado
+    request_payload = Column(JSON, nullable=True)
+    response_payload = Column(JSON, nullable=True)          # truncado/mascarado
+    error = Column(Text, nullable=True)                     # quando a req nem completou
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+
 class DnsOverride(Base):
     """Override de resolução DNS (hostname -> IP), estilo "Hostname resolution
     overrides" do Burp. Aplicado no /etc/hosts do container para valer em todo o
@@ -944,6 +969,10 @@ DEFAULT_SETTINGS = {
     'git_index_history': ('true', 'Indexa TODO o histórico de commits/branches (cada versão de cada arquivo), não apenas o HEAD. Requer clone completo'),
     'git_history_max_commits': ('5000', 'Máximo de commits percorridos por repositório ao indexar histórico (0 = ilimitado). Protege contra repos gigantes'),
     'git_history_max_versions_per_file': ('100', 'Máximo de versões (commits distintos) indexadas por arquivo (0 = ilimitado)'),
+    # User-Agent global aplicado a TODA chamada HTTP externa. {VERSION} é substituído
+    # pela versão atual do ShadowIndex.
+    'http_user_agent': ('Mozilla/5.0 (ShadowIndex {VERSION} x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/146.0.0.0 Safari/537.36',
+                        'User-Agent usado em todas as requisições HTTP externas. {VERSION} vira a versão do ShadowIndex'),
 }
 
 

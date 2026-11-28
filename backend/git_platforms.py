@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any, List, Tuple
 from urllib.parse import urlparse
 
 import httpx
+import external_http
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +41,10 @@ def normalize_base(url: str) -> str:
     return url.rstrip("/")
 
 
-def _client(proxy: Optional[str] = None) -> httpx.AsyncClient:
-    return httpx.AsyncClient(proxy=proxy, verify=False, timeout=TIMEOUT, follow_redirects=True)
+def _client(proxy: Optional[str] = None, provider: str = "git", context: str = ""):
+    """Cliente externo instrumentado (auditado) para as chamadas de plataforma."""
+    return external_http.ExternalClient(provider, proxy=proxy, verify=False,
+                                        timeout=TIMEOUT, context=context)
 
 
 def auth_headers(platform: str, token: Optional[str]) -> Dict[str, str]:
@@ -100,7 +103,7 @@ async def detect_platform(base_url: str, token: Optional[str] = None,
         return {"platform": "gitea", "api_url": base + "/api/v1", "web_url": base}
 
     # On-prem: probing.
-    async with _client(proxy) as c:
+    async with _client(proxy, 'git-detect', 'detect') as c:
         # GitLab
         try:
             r = await c.get(base + "/api/v4/version", headers=auth_headers("gitlab", token))
@@ -149,7 +152,7 @@ async def whoami(platform: str, api_url: Optional[str], token: Optional[str],
         return None
     api = api_url.rstrip("/")
     h = auth_headers(platform, token)
-    async with _client(proxy) as c:
+    async with _client(proxy, platform, 'whoami') as c:
         try:
             if platform in ("github", "github_enterprise"):
                 r = await c.get(api + "/user", headers=h)
@@ -212,7 +215,7 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
     api = (api_url or "").rstrip("/")
     h = auth_headers(platform, token)
     out: List[Dict[str, Any]] = []
-    async with _client(proxy) as c:
+    async with _client(proxy, platform, 'projects') as c:
         if platform in ("github", "github_enterprise"):
             page = 1
             while len(out) < MAX_PROJECTS:

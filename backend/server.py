@@ -4990,7 +4990,15 @@ async def update_multiple_settings(request: UpdateMultipleSettingsRequest, db: A
         import asyncio
         worker = get_worker()
         worker.semaphore = asyncio.Semaphore(int(request.settings['max_simultaneous_downloads']))
-    
+
+    # User-Agent global mudou -> invalida o cache do helper HTTP externo.
+    if 'http_user_agent' in request.settings:
+        try:
+            import external_http
+            external_http.invalidate_ua_cache()
+        except Exception:  # noqa: BLE001
+            pass
+
     return {"success": True}
 
 
@@ -5382,6 +5390,10 @@ app.include_router(router_dns)
 # Git Instances (plataformas Git: fingerprint, whoami, listagem/clone de projetos)
 from git_instances_routes import router as router_git_instances
 app.include_router(router_git_instances)
+
+# Auditoria de chamadas externas (OUTBOUND)
+from audit_routes import router as router_audit
+app.include_router(router_audit)
 
 # CORS
 app.add_middleware(

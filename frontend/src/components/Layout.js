@@ -21,6 +21,7 @@ import {
   Download,
   Settings,
   Wrench,
+  Radio,
   FileCode,
   Network,
   Plug,
@@ -139,7 +140,15 @@ const menuStructure = [
       { id: 'scan-pools', path: '/settings/scan-pools', label: 'Scan Pool' },
     ]
   },
-  { 
+  {
+    id: 'audit',
+    icon: Radio,
+    label: 'Auditoria',
+    children: [
+      { id: 'external-calls', path: '/audit/external-calls', label: 'Chamadas externas' },
+    ]
+  },
+  {
     id: 'tools',
     icon: Wrench, 
     label: 'Tools',

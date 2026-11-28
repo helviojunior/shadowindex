@@ -18,6 +18,7 @@ import logging
 from typing import List, Dict, Any, Optional
 
 import httpx
+import external_http
 
 logger = logging.getLogger(__name__)
 
@@ -167,14 +168,14 @@ class AsyncGithubSearcher:
         if endpoint == "repositories":
             params["order"] = "desc"
             params["sort"] = "updated"
-        async with httpx.AsyncClient(proxy=self.proxy, verify=False) as client:
+        async with external_http.ExternalClient('github', proxy=self.proxy, verify=False, context='search') as client:
             data = await self._request(client, url, params)
         return min(int(data.get("total_count", 0) or 0), self.max_results)
 
     async def get_repo(self, full_name: str) -> Optional[Dict[str, Any]]:
         """Metadados de um repositório (GET /repos/{full_name}); None se não encontrado."""
         url = f"{API_URL}/repos/{full_name}"
-        async with httpx.AsyncClient(proxy=self.proxy, verify=False) as client:
+        async with external_http.ExternalClient('github', proxy=self.proxy, verify=False, context='search') as client:
             try:
                 data = await self._request(client, url, {})
             except httpx.HTTPStatusError as e:  # 404, etc.
@@ -203,7 +204,7 @@ class AsyncGithubSearcher:
         base_params = {"per_page": PER_PAGE, "order": order}
         if sort and sort != "best-match":
             base_params["sort"] = sort
-        async with httpx.AsyncClient(proxy=self.proxy, verify=False) as client:
+        async with external_http.ExternalClient('github', proxy=self.proxy, verify=False, context='search') as client:
             while True:
                 data = await self._request(client, url, dict(base_params, q=query, page=page))
                 if total_count is None:
@@ -225,7 +226,7 @@ class AsyncGithubSearcher:
         page = 1
         total_count = None
         query = self._exact_query(keyword) if exact else keyword
-        async with httpx.AsyncClient(proxy=self.proxy, verify=False) as client:
+        async with external_http.ExternalClient('github', proxy=self.proxy, verify=False, context='search') as client:
             while True:
                 data = await self._request(client, url, {"q": query, "per_page": PER_PAGE, "page": page})
                 if total_count is None:

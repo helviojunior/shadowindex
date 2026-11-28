@@ -161,5 +161,12 @@
     "jobTimeoutHelp": "O watchdog reenfileira um job de clone em execução que passe disto (gitleaks/OCR/indexação travados). Mantenha folgado — um clone pode levar ~1h. 0 = desativa o cancelamento por tempo.",
     "stallLabel": "Janela sem progresso (min)",
     "stallHelp": "Watchdog: minutos SEM progresso (bytes do clone / arquivos indexados sem crescer) antes de um job ser considerado travado e reenfileirado. Clones lentos mas saudáveis continuam. 0 = desativa a detecção de estagnação."
+  },
+  "http": {
+    "title": "HTTP externo",
+    "description": "User-Agent global aplicado a todas as requisições HTTP externas do sistema.",
+    "userAgent": "User-Agent",
+    "userAgentHint": "{VERSION} é substituído pela versão atual do ShadowIndex.",
+    "preview": "Prévia"
   }
 }

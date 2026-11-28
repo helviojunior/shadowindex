@@ -60,6 +60,8 @@ const GeneralSettings = () => {
     git_index_max_size_mb: '2',
     git_clone_job_timeout_min: '120',
     git_clone_stall_min: '10',
+    // HTTP externo
+    http_user_agent: 'Mozilla/5.0 (ShadowIndex {VERSION} x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/146.0.0.0 Safari/537.36',
     // Aparência / UI
     ui_logo_url: 'https://media.sec4us.com.br/logo/sec4us-dark-mode.svg',
     ui_logo_alignment: 'center',
@@ -671,6 +673,29 @@ const GeneralSettings = () => {
                 {t('git.stallHelp')}
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* HTTP externo / User-Agent */}
+      <Card data-testid="http-settings-card">
+        <CardHeader>
+          <CardTitle>{t('http.title')}</CardTitle>
+          <CardDescription>{t('http.description')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="http_user_agent">{t('http.userAgent')}</Label>
+            <Input
+              id="http_user_agent"
+              value={settings.http_user_agent}
+              onChange={(e) => handleChange('http_user_agent', e.target.value)}
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">{t('http.userAgentHint')}</p>
+            <p className="text-xs text-muted-foreground">
+              {t('http.preview')}: <span className="font-mono text-foreground/80">{(settings.http_user_agent || '').replace('{VERSION}', '1.0.42')}</span>
+            </p>
           </div>
         </CardContent>
       </Card>

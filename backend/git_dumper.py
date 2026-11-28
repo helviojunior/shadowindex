@@ -15,7 +15,7 @@ import logging
 from typing import Optional, Dict, Any, Set, Tuple
 from urllib.parse import urlparse
 
-import httpx
+import external_http
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,11 @@ def git_base(url: str) -> str:
     return u + "/.git/"
 
 
-def _client(proxy: Optional[str] = None) -> httpx.AsyncClient:
-    return httpx.AsyncClient(proxy=proxy, verify=False, timeout=TIMEOUT, follow_redirects=True)
+def _client(proxy: Optional[str] = None):
+    """Cliente externo instrumentado (auditado) p/ o dump. As milhares de chamadas
+    de objeto usam audit=False; só o probe/known-files são auditados."""
+    return external_http.ExternalClient("git-dump", proxy=proxy, verify=False,
+                                        timeout=TIMEOUT, context="dump")
 
 
 async def probe_exposed_git(url: str, proxy: Optional[str] = None) -> Dict[str, Any]:
@@ -62,7 +65,7 @@ async def probe_exposed_git(url: str, proxy: Optional[str] = None) -> Dict[str, 
         return {"exposed": False, "error": "URL inválida"}
     async with _client(proxy) as c:
         try:
-            r = await c.get(gurl + "HEAD")
+            r = await c.get(gurl + "HEAD", context="probe")
         except Exception as e:  # noqa: BLE001
             return {"exposed": False, "git_url": gurl, "error": str(e)[:200]}
         if r.status_code != 200:
@@ -96,7 +99,7 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
             fetched.add(rel)
             async with sem:
                 try:
-                    r = await c.get(gurl + rel)
+                    r = await c.get(gurl + rel, audit=False)
                 except Exception:  # noqa: BLE001
                     return None
             if r.status_code != 200 or not r.content:
