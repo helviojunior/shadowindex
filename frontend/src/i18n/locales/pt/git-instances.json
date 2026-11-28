@@ -77,7 +77,9 @@
     "pipelinesSelected": "Coletar pipelines ({{count}})",
     "pipelinesAll": "Coletar pipelines de TODOS ({{count}})",
     "secretsSelected": "Coletar secrets ({{count}})",
-    "secretsAll": "Coletar secrets de TODOS ({{count}})"
+    "secretsAll": "Coletar secrets de TODOS ({{count}})",
+    "privateOnly": "Somente privados",
+    "privateOnlyHint": "Mostrar apenas repositórios privados"
   },
   "toast": {
     "loadError": "Erro ao carregar",

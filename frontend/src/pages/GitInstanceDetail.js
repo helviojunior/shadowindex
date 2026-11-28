@@ -51,6 +51,7 @@ export default function GitInstanceDetail() {
   const [retesting, setRetesting] = useState(false);
   const [selected, setSelected] = useState({});    // full_name -> bool (página atual)
   const [task, setTask] = useState('clone');       // clone | pipelines | secrets
+  const [privateOnly, setPrivateOnly] = useState(false); // filtro: só repos privados
 
   // Edição da instância (Nome / modo de autenticação)
   const [editOpen, setEditOpen] = useState(false);
@@ -111,11 +112,12 @@ export default function GitInstanceDetail() {
     }
   };
 
-  const loadProjects = useCallback(async (off = 0, q = '') => {
+  const loadProjects = useCallback(async (off = 0, q = '', priv = privateOnly) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: String(PAGE), offset: String(off) });
       if (q) params.set('q', q);
+      if (priv) params.set('private_only', 'true');
       const res = await axios.get(`${API}/git/instances/${guid}/projects?${params.toString()}`);
       setProjects(res.data?.projects || []);
       setTotal(res.data?.total || 0);
@@ -127,7 +129,14 @@ export default function GitInstanceDetail() {
       toast.error(e.response?.data?.detail || t('toast.projectsError'));
       return null;
     } finally { setLoading(false); }
-  }, [guid, t]);
+  }, [guid, t, privateOnly]);
+
+  // Alterna "somente privados" e recarrega a primeira página.
+  const togglePrivateOnly = () => {
+    const next = !privateOnly;
+    setPrivateOnly(next);
+    loadProjects(0, query, next);
+  };
 
   // Ao abrir: carrega a listagem JÁ persistida (buscada previamente). Se existir,
   // exibe-a e mantém os botões "Listar projetos"/"Retestar acesso" ocultos.
@@ -205,7 +214,7 @@ export default function GitInstanceDetail() {
   const cloneAll = async () => {
     setCloning(true);
     try {
-      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { all: true, q: query || null, task });
+      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { all: true, q: query || null, task, private_only: privateOnly });
       toast.success(queuedMsg(res), {
         action: { label: t('actions.goToJobs'), onClick: () => navigate('/jobs/git') },
       });
@@ -297,6 +306,14 @@ export default function GitInstanceDetail() {
                   onChange={(e) => setFilterInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') applyFilter(); }} />
               </div>
+              <Button
+                variant={privateOnly ? 'default' : 'outline'}
+                onClick={togglePrivateOnly}
+                className={privateOnly ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}
+                title={t('detail.privateOnlyHint')}
+                data-testid="instance-private-only">
+                <Lock className="w-4 h-4 mr-2" />{t('detail.privateOnly')}
+              </Button>
               <Button variant="outline" onClick={doRefresh} disabled={refreshing} title={t('detail.refreshHint')}>
                 {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                 {t('detail.refresh')}

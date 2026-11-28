@@ -54,6 +54,7 @@ class CloneReposRequest(BaseModel):
     full_names: Optional[List[str]] = None         # ou por full_name (seleção)
     all: bool = False                              # ou TODOS os projetos listados da instância
     q: Optional[str] = None                        # filtro (quando all=true)
+    private_only: bool = False                     # só projetos privados (quando all=true)
     task: str = "clone"                            # clone | pipelines | secrets
     limit: Optional[int] = None                    # pipelines: lote desta rodada
     offset: Optional[int] = None                   # pipelines: quantos já foram pegos
@@ -348,6 +349,7 @@ async def refresh_instance_projects(guid: str, db=Depends(get_db)):
 
 @router.get("/{guid}/projects")
 async def list_instance_projects(guid: str, q: Optional[str] = None,
+                                  private_only: bool = False,
                                   limit: int = 200, offset: int = 0,
                                   db=Depends(get_db_readonly)):
     """Lista os projetos PERSISTIDOS da instância (sem bater na API). Paginado p/
@@ -361,6 +363,9 @@ async def list_instance_projects(guid: str, q: Optional[str] = None,
         like = f"%{q.strip()}%"
         base = base.where(GitInstanceProject.full_name.ilike(like))
         cnt = cnt.where(GitInstanceProject.full_name.ilike(like))
+    if private_only:
+        base = base.where(GitInstanceProject.is_private.is_(True))
+        cnt = cnt.where(GitInstanceProject.is_private.is_(True))
     total = (await db.execute(cnt)).scalar() or 0
     rows = (await db.execute(
         base.order_by(GitInstanceProject.full_name).limit(min(limit, 2000)).offset(offset)
@@ -514,6 +519,8 @@ async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(
             base = base.where(GitInstanceProject.full_name.in_(req.full_names))
         elif req.q and req.q.strip():
             base = base.where(GitInstanceProject.full_name.ilike(f"%{req.q.strip()}%"))
+        if req.private_only and not req.full_names:
+            base = base.where(GitInstanceProject.is_private.is_(True))
         rows = (await db.execute(base.order_by(GitInstanceProject.full_name))).scalars().all()
         if not rows:
             raise HTTPException(status_code=400, detail="Nenhum projeto (liste/atualize primeiro)")

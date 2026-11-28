@@ -77,7 +77,9 @@
     "pipelinesSelected": "Collect pipelines ({{count}})",
     "pipelinesAll": "Collect pipelines of ALL ({{count}})",
     "secretsSelected": "Collect secrets ({{count}})",
-    "secretsAll": "Collect secrets of ALL ({{count}})"
+    "secretsAll": "Collect secrets of ALL ({{count}})",
+    "privateOnly": "Private only",
+    "privateOnlyHint": "Show only private repositories"
   },
   "toast": {
     "loadError": "Failed to load",
