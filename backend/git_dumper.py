@@ -101,9 +101,11 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
                     return None
             if r.status_code != 200 or not r.content:
                 return None
-            # Evita salvar páginas HTML de erro (404 custom com 200).
-            ctype = (r.headers.get("content-type", "") or "").lower()
-            if "text/html" in ctype and not rel.endswith("HEAD"):
+            # Rejeita páginas HTML (404 custom com 200 / index de diretório). Objetos
+            # git começam com 0x78 (zlib), refs com hex, packs com 'PACK' — nunca '<'.
+            # NÃO confiar no Content-Type (muitos servers servem arquivos sem extensão
+            # como text/html, o que faria o dump descartar objetos/refs válidos).
+            if r.content.lstrip()[:1] == b"<":
                 return None
             path = os.path.join(git_dir, rel.replace("/", os.sep))
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -121,22 +123,53 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
             if d:
                 collect_shas(d)
 
-        # 1b) packed-refs/logs já vieram; info/packs -> baixa os packs.
-        packs_data = None
+        # 1a) Descobre as refs reais: a branch do HEAD simbólico + refs em
+        # packed-refs/info/refs. Baixa cada ref (loose) e seu log.
+        ref_paths: Set[str] = set()
+        for src in ("HEAD", "packed-refs", "info/refs", "FETCH_HEAD"):
+            fp = os.path.join(git_dir, src.replace("/", os.sep))
+            if not os.path.exists(fp):
+                continue
+            try:
+                data = open(fp, "rb").read()
+            except Exception:  # noqa: BLE001
+                continue
+            for m in re.finditer(rb"refs/[\w./*-]+", data):
+                rp = m.group(0).decode()
+                if "*" not in rp:
+                    ref_paths.add(rp)
+        for rp in list(ref_paths):
+            d = await fetch(rp)
+            if d:
+                collect_shas(d)
+            dl = await fetch("logs/" + rp)
+            if dl:
+                collect_shas(dl)
+
+        # 1b) Packs: via objects/info/packs e, como fallback, via listing do
+        # diretório objects/pack/ (repos com gc/empacotados costumam não ter os
+        # objetos soltos).
+        pack_names: Set[str] = set()
         pth = os.path.join(git_dir, "objects", "info", "packs")
         if os.path.exists(pth):
             try:
-                packs_data = open(pth, "rb").read()
+                for m in re.finditer(rb"pack-([0-9a-f]{40})\.pack", open(pth, "rb").read()):
+                    pack_names.add(m.group(1).decode())
             except Exception:  # noqa: BLE001
-                packs_data = None
-        if packs_data:
-            for m in re.finditer(rb"pack-([0-9a-f]{40})\.pack", packs_data):
-                name = m.group(1).decode()
-                await fetch(f"objects/pack/pack-{name}.pack")
-                await fetch(f"objects/pack/pack-{name}.idx")
+                pass
+        try:
+            rlist = await c.get(gurl + "objects/pack/")
+            if rlist.status_code == 200:
+                for m in re.finditer(rb"pack-([0-9a-f]{40})\.pack", rlist.content):
+                    pack_names.add(m.group(1).decode())
+        except Exception:  # noqa: BLE001
+            pass
+        for name in pack_names:
+            await fetch(f"objects/pack/pack-{name}.pack")
+            await fetch(f"objects/pack/pack-{name}.idx")
 
-        if not objects and not packs_data:
-            return False, "nenhum objeto/ref encontrado no .git exposto"
+        if not objects and not pack_names:
+            return False, "nenhum objeto/ref encontrado no .git exposto (talvez bloqueado ou vazio)"
 
         # 2) BFS sobre objetos soltos.
         async def fetch_object(sha: str) -> Optional[bytes]:
@@ -192,15 +225,19 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
                 parse_object(s)  # pode adicionar novos SHAs a `objects`
                 count += 1
 
-        # 3) Restaura a árvore de trabalho.
+        logger.info(f"[git_dumper] {len(processed)} objeto(s) processados, "
+                    f"{len(pack_names)} pack(s), {len(ref_paths)} ref(s) de {gurl}")
+
+        # 3) Restaura a árvore de trabalho a partir do HEAD.
         ok_checkout = await _git_restore(dest_dir)
         if not ok_checkout:
-            # Mesmo sem checkout perfeito, o .git foi reconstruído (histórico indexável).
-            logger.warning(f"[git_dumper] checkout parcial em {dest_dir}")
+            logger.warning(f"[git_dumper] checkout parcial em {dest_dir} (histórico ainda indexável)")
 
-        # Valida que há um .git minimamente utilizável.
-        if not os.path.exists(os.path.join(git_dir, "HEAD")):
-            return False, "dump incompleto (HEAD ausente)"
+        # Valida: HEAD deve resolver para um commit (senão o repo não tem conteúdo).
+        rc, _ = await _run_git(["-C", dest_dir, "rev-parse", "--verify", "-q", "HEAD"])
+        if rc != 0 and not pack_names:
+            return False, ("dump incompleto: não foi possível reconstruir o HEAD "
+                           "(objetos ausentes/empacotados sem listagem)")
         return True, None
 
 
@@ -217,14 +254,15 @@ async def _run_git(args, cwd=None) -> Tuple[int, str]:
 
 
 async def _git_restore(dest_dir: str) -> bool:
-    """Restaura a working tree a partir do .git reconstruído."""
-    # Garante que o git reconheça o repo (index pode estar ausente).
+    """Restaura a working tree a partir do HEAD do .git reconstruído."""
+    # Garante que o git reconheça o repo como não-bare (index pode estar ausente).
     await _run_git(["-C", dest_dir, "config", "--local", "core.bare", "false"])
-    rc, _ = await _run_git(["-C", dest_dir, "checkout", "--", "."])
+    # reset --hard reconstrói index + working tree a partir do HEAD (ideal p/ dump).
+    rc, _ = await _run_git(["-C", dest_dir, "reset", "--hard", "HEAD"])
     if rc == 0:
         return True
     rc, _ = await _run_git(["-C", dest_dir, "checkout", "-f", "HEAD", "--", "."])
     if rc == 0:
         return True
-    rc, _ = await _run_git(["-C", dest_dir, "reset", "--hard"])
+    rc, _ = await _run_git(["-C", dest_dir, "checkout", "--", "."])
     return rc == 0

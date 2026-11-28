@@ -51,10 +51,7 @@ export default function GitInstances() {
     return () => window.removeEventListener('focus', onFocus);
   }, [load]);
 
-  const openAdd = () => {
-    const w = window.open('/git/instances/new', 'add-git-instance', 'width=960,height=860');
-    if (!w) navigate('/git/instances/new');
-  };
+  const openAdd = () => navigate('/git/instances/new');
 
   const remove = async (e, guid) => {
     e.stopPropagation();

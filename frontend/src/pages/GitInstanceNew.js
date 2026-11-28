@@ -89,12 +89,7 @@ export default function GitInstanceNew() {
     try {
       const res = await axios.post(`${API}/git/instances`, payload());
       toast.success(t('toast.saved'));
-      // Fecha a janela (se for popup) ou vai p/ o detalhe.
-      if (window.opener && !window.opener.closed) {
-        window.close();
-      } else {
-        navigate(`/git/instances/${res.data?.guid}`);
-      }
+      navigate(`/git/instances/${res.data?.guid}`);
     } catch (e) {
       toast.error(e.response?.data?.detail || e.message);
     } finally {
