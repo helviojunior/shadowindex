@@ -52,10 +52,15 @@ MAX_JOB_SECONDS_DEFAULT = 7200  # backstop absoluto (2h) — setting: git_clone_
 STALL_SECONDS_DEFAULT = 600     # sem progresso (bytes/arquivos) por este tempo => travado (setting: git_clone_stall_min)
 
 
-def _inject_token(url: str, token: str) -> str:
-    """Injeta um token numa URL https de clone, de forma host-aware.
-    GitHub usa x-access-token, GitLab usa oauth2, demais hosts usam o token como
-    usuário. URLs não-https são retornadas inalteradas."""
+def _inject_token(url: str, token: str, platform: str = None) -> str:
+    """Injeta um token numa URL https de clone, de forma host-aware (com dica
+    opcional de plataforma p/ hosts self-hosted cujo nome não denuncia a plataforma):
+      - GitHub/GHE:   x-access-token:<token>   (token como senha)
+      - GitLab:       oauth2:<token>
+      - Bitbucket:    x-token-auth:<token>
+      - Azure DevOps: pat:<token>              (usuário ignorado, PAT é a senha)
+      - Gitea/outros: <token>                  (token como usuário)
+    URLs não-https são retornadas inalteradas."""
     if not token:
         return url
     try:
@@ -64,10 +69,15 @@ def _inject_token(url: str, token: str) -> str:
         if p.scheme != "https" or not p.hostname:
             return url
         host = p.hostname.lower()
-        if "github" in host:
+        plat = (platform or "").lower()
+        if "github" in host or plat in ("github", "github_enterprise"):
             userinfo = f"x-access-token:{token}"
-        elif "gitlab" in host:
+        elif "gitlab" in host or plat == "gitlab":
             userinfo = f"oauth2:{token}"
+        elif "bitbucket" in host or plat == "bitbucket":
+            userinfo = f"x-token-auth:{token}"
+        elif "dev.azure.com" in host or "visualstudio.com" in host or plat == "azure_devops":
+            userinfo = f"pat:{token}"
         else:
             userinfo = token
         netloc = f"{userinfo}@{p.hostname}" + (f":{p.port}" if p.port else "")
@@ -627,7 +637,7 @@ class GitCloneWorker:
             )).scalar_one_or_none()
             token = (cred.token if cred else None) or ""
             if token:
-                url = _inject_token(base_url, token)
+                url = _inject_token(base_url, token, getattr(repo, "source", None))
 
         # Estratégia: clone COMPLETO por padrão; raso (--depth) só para repositórios
         # grandes (pelo size_kb da API do GitHub) ou se o completo estourar o timeout.
