@@ -27,7 +27,8 @@
     "fail": "Falha no acesso",
     "repo": "Repositório",
     "defaultBranch": "Branch padrão",
-    "refs": "Referências"
+    "refs": "Referências",
+    "dumpDetected": "Diretório .git exposto detectado — o repositório será reconstruído via dump (download completo da estrutura e git checkout)."
   },
   "toast": {
     "loadTokensError": "Erro ao carregar tokens",

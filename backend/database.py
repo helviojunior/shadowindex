@@ -866,6 +866,7 @@ class GitCloneJob(Base):
     clone_auth = Column(String, default="anonymous")  # anonymous, authenticated
     credential_id = Column(Integer, ForeignKey("credentials.id", ondelete="SET NULL"), nullable=True)
     proxy_id = Column(Integer, nullable=True)  # ProxyServer p/ clone (None = sem proxy)
+    clone_mode = Column(String, default="clone")  # clone | dump (.git exposto na web)
     depth = Column(Integer, nullable=True)  # git clone --depth
     status = Column(String, default="pending")  # pending, running, completed, failed, cancelled
     priority = Column(Integer, default=0)
@@ -1093,7 +1094,10 @@ async def apply_pending_migrations():
                 ('history_indexed', 'BOOLEAN DEFAULT FALSE'),
                 ('commits_count', 'INTEGER'), ('branches_count', 'INTEGER'),
             ])
-            await _pg_add_cols('git_clone_jobs', [('proxy_id', 'INTEGER')])
+            await _pg_add_cols('git_clone_jobs', [
+                ('proxy_id', 'INTEGER'),
+                ("clone_mode", "VARCHAR DEFAULT 'clone'"),
+            ])
             await conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_git_repo_files_repo_path_date "
                 "ON git_repo_files (repo_id, rel_path, commit_date)"

@@ -27,7 +27,8 @@
     "fail": "Access failed",
     "repo": "Repository",
     "defaultBranch": "Default branch",
-    "refs": "References"
+    "refs": "References",
+    "dumpDetected": "Exposed .git directory detected — the repository will be reconstructed via dump (full structure download + git checkout)."
   },
   "toast": {
     "loadTokensError": "Failed to load tokens",

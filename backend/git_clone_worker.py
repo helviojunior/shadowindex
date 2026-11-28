@@ -626,6 +626,25 @@ class GitCloneWorker:
             shutil.rmtree(clone_dir, ignore_errors=True)
         os.makedirs(os.path.dirname(clone_dir), exist_ok=True)
 
+        # Proxy (string) resolvido uma vez — usado no git e no dump.
+        proxy_url = None
+        if getattr(job, "proxy_id", None):
+            try:
+                from github_api import resolve_proxy_url
+                proxy_url = await resolve_proxy_url(db, job.proxy_id)
+            except Exception:  # noqa: BLE001
+                proxy_url = None
+
+        # Modo DUMP: reconstrói o repo a partir de um .git EXPOSTO na web.
+        if getattr(job, "clone_mode", "clone") == "dump":
+            site_url = repo.clone_url or job.repo_url
+            ok, err = await self._do_dump(clone_dir, site_url, proxy_url)
+            if ok:
+                repo.local_path = repo.guid
+                repo.default_branch = repo.default_branch or await self._detect_branch(clone_dir)
+                return True, None
+            return False, f"git dump: {err}"
+
         full_name = repo.full_name
         # URL base: funciona p/ QUALQUER host (github, gitlab, bitbucket, self-hosted),
         # não só github.com. Prioriza o clone_url do repo / a URL do job.
@@ -652,16 +671,10 @@ class GitCloneWorker:
 
         # Proxy (opcional) por job: git usa curl, que respeita estas variáveis
         # (socks5 via ALL_PROXY). None = sem proxy.
-        if getattr(job, "proxy_id", None):
-            try:
-                from github_api import resolve_proxy_url
-                proxy_url = await resolve_proxy_url(db, job.proxy_id)
-                if proxy_url:
-                    env["HTTP_PROXY"] = proxy_url
-                    env["HTTPS_PROXY"] = proxy_url
-                    env["ALL_PROXY"] = proxy_url
-            except Exception as e:  # noqa: BLE001
-                logger.warning(f"[git {full_name}] falha ao resolver proxy {job.proxy_id}: {e}")
+        if proxy_url:
+            env["HTTP_PROXY"] = proxy_url
+            env["HTTPS_PROXY"] = proxy_url
+            env["ALL_PROXY"] = proxy_url
 
         # 1ª tentativa: completa (a menos que o repo já seja sabidamente grande,
         # ou que o job force uma profundidade explícita).
@@ -691,6 +704,21 @@ class GitCloneWorker:
                 return True, None
 
         return False, err
+
+    async def _do_dump(self, clone_dir, site_url, proxy_url) -> Tuple[bool, Optional[str]]:
+        """Reconstrói um repositório a partir de um .git EXPOSTO na web (git-dumper).
+        Resultado é um repo git válido em clone_dir, indexável pelo pipeline normal."""
+        if not site_url:
+            return False, "URL ausente para dump"
+        try:
+            import git_dumper
+        except Exception as e:  # noqa: BLE001
+            return False, f"git_dumper indisponível: {e}"
+        try:
+            logger.info(f"[git dump] reconstruindo a partir de {site_url}")
+            return await git_dumper.dump_git(site_url, clone_dir, proxy_url)
+        except Exception as e:  # noqa: BLE001
+            return False, str(e)[:500]
 
     async def _run_clone(self, url, clone_dir, env, depth, safe_url=None) -> Tuple[bool, Optional[str], bool]:
         """Executa `git clone`. depth>0 => clone raso. Retorna (ok, err, timed_out).

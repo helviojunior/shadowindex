@@ -88,7 +88,9 @@ export default function RequestClone() {
     if (!accessOk) return;
     setEnqueuing(true);
     try {
-      const res = await axios.post(`${API}/git/clone/enqueue-url`, payload());
+      const res = await axios.post(`${API}/git/clone/enqueue-url`, {
+        ...payload(), clone_mode: testResult?.mode || 'clone',
+      });
       if (res.data?.reprioritized) {
         toast.success(t('toast.reprioritized', { priority: res.data.priority }));
       } else {
@@ -227,6 +229,12 @@ export default function RequestClone() {
                   <div className="flex items-center gap-2 text-green-500 font-medium">
                     <CheckCircle className="h-4 w-4" /> {t('result.ok')}
                   </div>
+                  {testResult.mode === 'dump' && (
+                    <div className="mt-1 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400 text-xs">
+                      {t('result.dumpDetected')}
+                      {testResult.git_url && <div className="font-mono mt-1 break-all">{testResult.git_url}</div>}
+                    </div>
+                  )}
                   {testResult.repo?.full_name && (
                     <p><span className="text-muted-foreground">{t('result.repo')}:</span> <span className="font-mono">{testResult.repo.full_name}</span></p>
                   )}

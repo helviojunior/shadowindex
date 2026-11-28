@@ -81,6 +81,7 @@ class CloneUrlRequest(BaseModel):
 
 class CloneEnqueueUrlRequest(CloneUrlRequest):
     depth: Optional[int] = None             # opcional: força clone raso nessa profundidade
+    clone_mode: Optional[str] = "clone"     # clone | dump (.git exposto na web)
 
 
 # --------------------------------------------------------------------------
@@ -1005,8 +1006,29 @@ async def clone_test_access(req: CloneUrlRequest, db=Depends(get_db_readonly)):
         token = await _get_token(db, req.credential_id)
     proxy_url = await resolve_proxy_url(db, req.proxy_id)
     result = await _git_ls_remote(info["clone_url"], token, proxy_url)
-    return {**result, "repo": {"full_name": info["full_name"], "host": info["host"],
-                               "clone_url": info["clone_url"]}}
+    mode = "clone"
+
+    # Se NÃO é um remote git normal, tenta detectar um .git EXPOSTO na web
+    # (ex.: URL apontando para um site) para reconstruir via dump.
+    if not result.get("ok"):
+        try:
+            import git_dumper
+            probe = await git_dumper.probe_exposed_git(req.repo_url, proxy_url)
+            if probe.get("exposed"):
+                mode = "dump"
+                result = {
+                    "ok": True, "mode": "dump",
+                    "git_url": probe.get("git_url"),
+                    "head": probe.get("head"),
+                    "default_branch": None, "ref_count": None,
+                    "error": None,
+                }
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[git] probe .git falhou: {e}")
+
+    return {**result, "mode": mode,
+            "repo": {"full_name": info["full_name"], "host": info["host"],
+                     "clone_url": info["clone_url"]}}
 
 
 @router.post("/clone/enqueue-url")
@@ -1026,6 +1048,10 @@ async def clone_enqueue_url(req: CloneEnqueueUrlRequest, db=Depends(get_db)):
     )).scalar()
     priority = (max_prio or 0) + 1
 
+    # Modo dump: usa a URL ORIGINAL do site (o dumper acrescenta o /.git/).
+    is_dump = (req.clone_mode or "clone") == "dump"
+    effective_url = req.repo_url.strip() if is_dump else info["clone_url"]
+
     # Repo (cria/atualiza por full_name)
     repo = (await db.execute(
         select(GitRepo).where(GitRepo.full_name == info["full_name"])
@@ -1035,9 +1061,10 @@ async def clone_enqueue_url(req: CloneEnqueueUrlRequest, db=Depends(get_db)):
         db.add(repo)
     repo.owner = info["owner"]
     repo.name = info["name"]
-    repo.clone_url = info["clone_url"]
+    repo.clone_url = effective_url
     repo.html_url = info["html_url"]
-    repo.source = "github" if "github" in (info["host"] or "") else (info["host"] or "git")
+    repo.source = ("git-dump" if is_dump else
+                  ("github" if "github" in (info["host"] or "") else (info["host"] or "git")))
     repo.discovered_via = "request-clone"
     if repo.clone_status not in ("cloning",):
         repo.clone_status = "pending"
@@ -1061,19 +1088,21 @@ async def clone_enqueue_url(req: CloneEnqueueUrlRequest, db=Depends(get_db)):
 
     job = GitCloneJob(
         repo_id=repo.id,
-        repo_url=info["clone_url"],
+        repo_url=effective_url,
         repo_full_name=info["full_name"],
         clone_auth=req.clone_auth,
         credential_id=req.credential_id if req.clone_auth == "authenticated" else None,
         depth=req.depth,
         proxy_id=req.proxy_id,
+        clone_mode="dump" if is_dump else "clone",
         status="pending",
         priority=priority,
     )
     db.add(job)
     await db.commit()
     await db.refresh(job)
-    return {"queued": True, "job_id": job.id, "priority": priority, "repo_guid": repo.guid}
+    return {"queued": True, "job_id": job.id, "priority": priority,
+            "repo_guid": repo.guid, "mode": job.clone_mode}
 
 
 @router.post("/repos/{guid}/reindex")
