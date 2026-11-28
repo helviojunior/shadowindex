@@ -956,6 +956,19 @@ class GitCloneWorker:
         items = res.get("items") or []
 
         pdir = os.path.join(clone_dir, "__pipelines__")
+        # Coleta FRESCA (não "baixar mais"): limpa os logs de pipeline anteriores do
+        # repo (inclui o esquema antigo de nome plano) para a árvore
+        # <pipeline>/<step>/<arquivo> substituir tudo sem órfãos. "Baixar mais"
+        # (offset>0) preserva e acumula.
+        if not offset:
+            await db.execute(delete(GitRepoFile).where(
+                GitRepoFile.repo_id == repo.id, GitRepoFile.source == "pipeline"))
+            await db.commit()
+            try:
+                if os.path.isdir(pdir):
+                    shutil.rmtree(pdir, ignore_errors=True)
+            except Exception:  # noqa: BLE001
+                pass
         os.makedirs(pdir, exist_ok=True)
         max_text_bytes = await self._get_index_max_bytes(db)
         ctx = self._new_idx_ctx()
