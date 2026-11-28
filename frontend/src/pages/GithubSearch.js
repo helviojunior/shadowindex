@@ -40,6 +40,8 @@ export default function GithubSearch() {
   const [apiCredId, setApiCredId] = useState('');
   const [cloneAuth, setCloneAuth] = useState('anonymous');
   const [cloneCredId, setCloneCredId] = useState('');
+  const [proxies, setProxies] = useState([]);
+  const [proxyId, setProxyId] = useState('none');
 
   const [searching, setSearching] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -57,7 +59,14 @@ export default function GithubSearch() {
     }
   }, [t]);
 
-  useEffect(() => { loadTokens(); }, [loadTokens]);
+  const loadProxies = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/proxy-servers`);
+      setProxies(res.data || []);
+    } catch (e) { setProxies([]); }
+  }, []);
+
+  useEffect(() => { loadTokens(); loadProxies(); }, [loadTokens, loadProxies]);
 
   useEffect(() => {
     axios.get(`${API}/git/status`).then(r => setIndexStatus(r.data?.opensearch)).catch(() => {});
@@ -97,6 +106,7 @@ export default function GithubSearch() {
     try {
       const res = await axios.post(`${API}/git/search/count`, {
         terms, types, exact, api_credential_id: parseInt(apiCredId, 10),
+        proxy_id: proxyId && proxyId !== 'none' ? parseInt(proxyId, 10) : null,
       });
       setResults(res.data);
       // preselect all ok rows with count>0
@@ -129,6 +139,7 @@ export default function GithubSearch() {
         clone_auth: cloneAuth,
         clone_credential_id: cloneAuth === 'authenticated' ? parseInt(cloneCredId, 10) : null,
         depth: null,
+        proxy_id: proxyId && proxyId !== 'none' ? parseInt(proxyId, 10) : null,
       });
       const queued = res.data?.queued ?? 0;
       toast.success(t('toast.queued', { count: queued }), {
@@ -256,6 +267,23 @@ export default function GithubSearch() {
                     </SelectContent>
                   </Select>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('proxy.label')}</Label>
+                <Select value={proxyId} onValueChange={setProxyId}>
+                  <SelectTrigger data-testid="git-proxy">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('proxy.none')}</SelectItem>
+                    {proxies.map(p => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name} ({p.proxy_type || 'http'} · {p.ip}:{p.port})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

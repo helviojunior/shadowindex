@@ -637,6 +637,19 @@ class GitCloneWorker:
         history_enabled = await self._git_index_history_enabled(db)
         env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true"}
 
+        # Proxy (opcional) por job: git usa curl, que respeita estas variáveis
+        # (socks5 via ALL_PROXY). None = sem proxy.
+        if getattr(job, "proxy_id", None):
+            try:
+                from github_api import resolve_proxy_url
+                proxy_url = await resolve_proxy_url(db, job.proxy_id)
+                if proxy_url:
+                    env["HTTP_PROXY"] = proxy_url
+                    env["HTTPS_PROXY"] = proxy_url
+                    env["ALL_PROXY"] = proxy_url
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"[git {full_name}] falha ao resolver proxy {job.proxy_id}: {e}")
+
         # 1ª tentativa: completa (a menos que o repo já seja sabidamente grande,
         # ou que o job force uma profundidade explícita).
         forced_depth = job.depth is not None and int(job.depth) > 0

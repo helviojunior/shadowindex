@@ -35,5 +35,9 @@
     "testFail": "Não foi possível acessar o repositório",
     "enqueued": "Clone enfileirado com prioridade {{priority}}",
     "reprioritized": "Já havia um clone na fila para este repositório — repriorizado para {{priority}}"
+  },
+  "proxy": {
+    "label": "Proxy",
+    "none": "Sem proxy"
   }
 }

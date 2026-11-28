@@ -26,6 +26,8 @@ export default function RequestClone() {
   const [cloneAuth, setCloneAuth] = useState('anonymous');
   const [tokens, setTokens] = useState([]);
   const [credId, setCredId] = useState('');
+  const [proxies, setProxies] = useState([]);
+  const [proxyId, setProxyId] = useState('none');
 
   const [testing, setTesting] = useState(false);
   const [enqueuing, setEnqueuing] = useState(false);
@@ -41,7 +43,14 @@ export default function RequestClone() {
     }
   }, [t]);
 
-  useEffect(() => { loadTokens(); }, [loadTokens]);
+  const loadProxies = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/proxy-servers`);
+      setProxies(res.data || []);
+    } catch (e) { setProxies([]); }
+  }, []);
+
+  useEffect(() => { loadTokens(); loadProxies(); }, [loadTokens, loadProxies]);
 
   // Qualquer alteração nos parâmetros invalida o teste anterior.
   const resetTest = () => setTestResult(null);
@@ -54,6 +63,7 @@ export default function RequestClone() {
     repo_url: url.trim(),
     clone_auth: cloneAuth,
     credential_id: cloneAuth === 'authenticated' ? parseInt(credId, 10) : null,
+    proxy_id: proxyId && proxyId !== 'none' ? parseInt(proxyId, 10) : null,
   });
 
   const handleTest = async () => {
@@ -154,6 +164,26 @@ export default function RequestClone() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Proxy */}
+          <div className="space-y-2">
+            <Label>{t('proxy.label')}</Label>
+            <div className="max-w-md">
+              <Select value={proxyId} onValueChange={(v) => { setProxyId(v); resetTest(); }}>
+                <SelectTrigger data-testid="request-clone-proxy">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('proxy.none')}</SelectItem>
+                  {proxies.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name} ({p.proxy_type || 'http'} · {p.ip}:{p.port})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Ações */}

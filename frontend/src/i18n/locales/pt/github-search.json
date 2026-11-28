@@ -60,5 +60,9 @@
     "queued": "{{count}} job(s) de clone enfileirado(s)",
     "enqueueError": "Falha ao enfileirar downloads",
     "loadTokensError": "Falha ao carregar credenciais Token"
+  },
+  "proxy": {
+    "label": "Proxy",
+    "none": "Sem proxy"
   }
 }

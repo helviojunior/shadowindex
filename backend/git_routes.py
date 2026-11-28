@@ -20,7 +20,7 @@ from database import (
     get_db, get_db_readonly, AsyncSessionLocal,
     Credential, GitRepo, GitRepoFile, GitCloneJob, GitleaksFinding,
 )
-from github_api import AsyncGithubSearcher, GithubSearchError
+from github_api import AsyncGithubSearcher, GithubSearchError, resolve_proxy_url
 
 
 def _parse_gh_datetime(s):
@@ -47,6 +47,7 @@ class SearchCountRequest(BaseModel):
     types: List[str] = Field(default_factory=lambda: ["repositories"])
     exact: bool = False
     api_credential_id: int
+    proxy_id: Optional[int] = None
 
 
 class SearchCondition(BaseModel):
@@ -61,6 +62,7 @@ class SearchEnqueueRequest(BaseModel):
     clone_auth: str = "anonymous"  # anonymous | authenticated
     clone_credential_id: Optional[int] = None
     depth: Optional[int] = None
+    proxy_id: Optional[int] = None
 
 
 class GitManualLeakRequest(BaseModel):
@@ -74,6 +76,7 @@ class CloneUrlRequest(BaseModel):
     repo_url: str
     clone_auth: str = "anonymous"           # anonymous | authenticated
     credential_id: Optional[int] = None     # token (quando autenticado)
+    proxy_id: Optional[int] = None          # ProxyServer (None = sem proxy)
 
 
 class CloneEnqueueUrlRequest(CloneUrlRequest):
@@ -159,7 +162,8 @@ async def search_count(req: SearchCountRequest, db=Depends(get_db_readonly)):
         raise HTTPException(status_code=400, detail="Informe ao menos um termo de busca")
 
     token = await _get_token(db, req.api_credential_id)
-    searcher = AsyncGithubSearcher(token)
+    proxy = await resolve_proxy_url(db, req.proxy_id)
+    searcher = AsyncGithubSearcher(token, proxy=proxy)
 
     results = []
     for term in terms:
@@ -194,7 +198,8 @@ async def search_enqueue(req: SearchEnqueueRequest, db=Depends(get_db)):
         await _get_token(db, req.clone_credential_id)
 
     token = await _get_token(db, req.api_credential_id)
-    searcher = AsyncGithubSearcher(token)
+    proxy = await resolve_proxy_url(db, req.proxy_id)
+    searcher = AsyncGithubSearcher(token, proxy=proxy)
 
     # Estratégia: inserir os jobs no DB em LOTES, commitando conforme são criados.
     # Assim os workers já começam a pegar do DB enquanto o restante é inserido, e
@@ -264,6 +269,7 @@ async def search_enqueue(req: SearchEnqueueRequest, db=Depends(get_db)):
                 clone_auth=req.clone_auth,
                 credential_id=req.clone_credential_id if req.clone_auth == "authenticated" else None,
                 depth=req.depth,
+                proxy_id=req.proxy_id,
                 status="pending",
             ))
             queued += 1
@@ -941,13 +947,17 @@ def _normalize_repo_url(raw: str) -> Dict[str, Optional[str]]:
             "clone_url": clone_url, "html_url": f"https://{host}/{full_name}"}
 
 
-async def _git_ls_remote(clone_url: str, token: Optional[str]) -> Dict[str, Any]:
+async def _git_ls_remote(clone_url: str, token: Optional[str], proxy_url: Optional[str] = None) -> Dict[str, Any]:
     """Testa acesso via `git ls-remote --symref`. Retorna {ok, default_branch, ref_count, error}."""
     import asyncio as _asyncio
     from git_clone_worker import _inject_token
 
     url = _inject_token(clone_url, token) if token else clone_url
     env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true"}
+    if proxy_url:
+        env["HTTP_PROXY"] = proxy_url
+        env["HTTPS_PROXY"] = proxy_url
+        env["ALL_PROXY"] = proxy_url
     try:
         proc = await _asyncio.create_subprocess_exec(
             "git", "ls-remote", "--symref", url, "HEAD",
@@ -991,7 +1001,8 @@ async def clone_test_access(req: CloneUrlRequest, db=Depends(get_db_readonly)):
         if not req.credential_id:
             raise HTTPException(status_code=400, detail="Token é obrigatório para clone autenticado")
         token = await _get_token(db, req.credential_id)
-    result = await _git_ls_remote(info["clone_url"], token)
+    proxy_url = await resolve_proxy_url(db, req.proxy_id)
+    result = await _git_ls_remote(info["clone_url"], token, proxy_url)
     return {**result, "repo": {"full_name": info["full_name"], "host": info["host"],
                                "clone_url": info["clone_url"]}}
 
@@ -1053,6 +1064,7 @@ async def clone_enqueue_url(req: CloneEnqueueUrlRequest, db=Depends(get_db)):
         clone_auth=req.clone_auth,
         credential_id=req.credential_id if req.clone_auth == "authenticated" else None,
         depth=req.depth,
+        proxy_id=req.proxy_id,
         status="pending",
         priority=priority,
     )

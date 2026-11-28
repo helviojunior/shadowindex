@@ -34,11 +34,40 @@ class GithubSearchError(Exception):
         self.status = status
 
 
+async def resolve_proxy_url(db, proxy_id) -> Optional[str]:
+    """Resolve o proxy_id para uma URL completa (com credenciais, se houver).
+    Retorna None quando não há proxy. Reaproveita o builder dos plugins."""
+    if not proxy_id:
+        return None
+    try:
+        from plugins.factory import get_proxy_config_by_id
+        cfg = await get_proxy_config_by_id(db, int(proxy_id))
+    except Exception:  # noqa: BLE001
+        return None
+    if not cfg or not cfg.get("proxy_url"):
+        return None
+    base = cfg["proxy_url"]  # http://ip:port ou socks5://ip:port
+    user = cfg.get("proxy_user")
+    pw = cfg.get("proxy_pass")
+    if user:
+        try:
+            from urllib.parse import quote
+            scheme, rest = base.split("://", 1)
+            auth = quote(str(user), safe="")
+            if pw:
+                auth += ":" + quote(str(pw), safe="")
+            return f"{scheme}://{auth}@{rest}"
+        except Exception:  # noqa: BLE001
+            return base
+    return base
+
+
 class AsyncGithubSearcher:
-    def __init__(self, token: str, max_results: int = MAX_RESULTS):
+    def __init__(self, token: str, max_results: int = MAX_RESULTS, proxy: Optional[str] = None):
         if not token:
             raise GithubSearchError("GitHub token is required for the Search API")
         self.token = token
+        self.proxy = proxy
         self.max_results = max(1, min(max_results, MAX_RESULTS))
         self.headers = {
             "Authorization": f"Bearer {token}",
@@ -138,14 +167,14 @@ class AsyncGithubSearcher:
         if endpoint == "repositories":
             params["order"] = "desc"
             params["sort"] = "updated"
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(proxy=self.proxy) as client:
             data = await self._request(client, url, params)
         return min(int(data.get("total_count", 0) or 0), self.max_results)
 
     async def get_repo(self, full_name: str) -> Optional[Dict[str, Any]]:
         """Metadados de um repositório (GET /repos/{full_name}); None se não encontrado."""
         url = f"{API_URL}/repos/{full_name}"
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(proxy=self.proxy) as client:
             try:
                 data = await self._request(client, url, {})
             except httpx.HTTPStatusError as e:  # 404, etc.
@@ -174,7 +203,7 @@ class AsyncGithubSearcher:
         base_params = {"per_page": PER_PAGE, "order": order}
         if sort and sort != "best-match":
             base_params["sort"] = sort
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(proxy=self.proxy) as client:
             while True:
                 data = await self._request(client, url, dict(base_params, q=query, page=page))
                 if total_count is None:
@@ -196,7 +225,7 @@ class AsyncGithubSearcher:
         page = 1
         total_count = None
         query = self._exact_query(keyword) if exact else keyword
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(proxy=self.proxy) as client:
             while True:
                 data = await self._request(client, url, {"q": query, "per_page": PER_PAGE, "page": page})
                 if total_count is None:

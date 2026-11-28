@@ -60,5 +60,9 @@
     "queued": "{{count}} clone job(s) queued",
     "enqueueError": "Failed to queue downloads",
     "loadTokensError": "Failed to load token credentials"
+  },
+  "proxy": {
+    "label": "Proxy",
+    "none": "No proxy"
   }
 }
