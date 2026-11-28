@@ -948,6 +948,26 @@ def _normalize_repo_url(raw: str) -> Dict[str, Optional[str]]:
             "clone_url": clone_url, "html_url": f"https://{host}/{full_name}"}
 
 
+def _derive_full_name(url: str) -> Dict[str, Optional[str]]:
+    """Deriva host/full_name de uma URL QUALQUER (mesmo que não seja um repo git),
+    para uso no modo dump (.git exposto). Nunca levanta exceção."""
+    from urllib.parse import urlparse
+    u = (url or "").strip()
+    if not u.startswith("http://") and not u.startswith("https://"):
+        u = "https://" + u
+    p = urlparse(u)
+    host = p.hostname or "site"
+    path = (p.path or "").strip("/")
+    if path.endswith(".git"):
+        path = path[:-4]
+    path = path.strip("/")
+    full_name = f"{host}/{path}" if path else host
+    segs = [s for s in path.split("/") if s]
+    return {"host": host, "full_name": full_name,
+            "owner": host, "name": segs[-1] if segs else host,
+            "clone_url": u.rstrip("/"), "html_url": u.rstrip("/")}
+
+
 async def _git_ls_remote(clone_url: str, token: Optional[str], proxy_url: Optional[str] = None) -> Dict[str, Any]:
     """Testa acesso via `git ls-remote --symref`. Retorna {ok, default_branch, ref_count, error}."""
     import asyncio as _asyncio
@@ -997,44 +1017,63 @@ async def _git_ls_remote(clone_url: str, token: Optional[str], proxy_url: Option
 
 @router.post("/clone/test-access")
 async def clone_test_access(req: CloneUrlRequest, db=Depends(get_db_readonly)):
-    """Valida se a URL informada é acessível (e autenticável, se for o caso)."""
-    info = _normalize_repo_url(req.repo_url)
+    """Valida se a URL informada é acessível. Se não for um remote git normal (ou a
+    URL nem for um repo válido), tenta detectar um .git EXPOSTO na web (probe de
+    /.git/HEAD) para reconstruir via dump."""
     token = None
     if req.clone_auth == "authenticated":
         if not req.credential_id:
             raise HTTPException(status_code=400, detail="Token é obrigatório para clone autenticado")
         token = await _get_token(db, req.credential_id)
     proxy_url = await resolve_proxy_url(db, req.proxy_id)
-    result = await _git_ls_remote(info["clone_url"], token, proxy_url)
-    mode = "clone"
 
-    # Se NÃO é um remote git normal, tenta detectar um .git EXPOSTO na web
-    # (ex.: URL apontando para um site) para reconstruir via dump.
-    if not result.get("ok"):
+    # A URL pode nem ser um repo git válido (ex.: site inteiro) — não falhar aqui.
+    info = None
+    try:
+        info = _normalize_repo_url(req.repo_url)
+    except HTTPException:
+        info = None
+
+    result = None
+    if info:
+        result = await _git_ls_remote(info["clone_url"], token, proxy_url)
+
+    mode = "clone"
+    if not info or not (result and result.get("ok")):
+        # Probe de .git exposto na URL ORIGINAL.
         try:
             import git_dumper
             probe = await git_dumper.probe_exposed_git(req.repo_url, proxy_url)
-            if probe.get("exposed"):
-                mode = "dump"
-                result = {
-                    "ok": True, "mode": "dump",
-                    "git_url": probe.get("git_url"),
-                    "head": probe.get("head"),
-                    "default_branch": None, "ref_count": None,
-                    "error": None,
-                }
         except Exception as e:  # noqa: BLE001
             logger.warning(f"[git] probe .git falhou: {e}")
+            probe = {"exposed": False}
+        if probe.get("exposed"):
+            mode = "dump"
+            result = {
+                "ok": True, "mode": "dump",
+                "git_url": probe.get("git_url"), "head": probe.get("head"),
+                "default_branch": None, "ref_count": None, "error": None,
+            }
+        elif not info:
+            # Nem repo válido nem .git exposto.
+            result = {"ok": False, "error": "URL de repositório inválida e nenhum .git exposto encontrado"}
 
+    repo_info = info or _derive_full_name(req.repo_url)
     return {**result, "mode": mode,
-            "repo": {"full_name": info["full_name"], "host": info["host"],
-                     "clone_url": info["clone_url"]}}
+            "repo": {"full_name": repo_info["full_name"], "host": repo_info["host"],
+                     "clone_url": repo_info["clone_url"]}}
 
 
 @router.post("/clone/enqueue-url")
 async def clone_enqueue_url(req: CloneEnqueueUrlRequest, db=Depends(get_db)):
     """Enfileira o clone de uma URL arbitrária com PRIORIDADE ALTA (fura a fila)."""
-    info = _normalize_repo_url(req.repo_url)
+    is_dump = (req.clone_mode or "clone") == "dump"
+    try:
+        info = _normalize_repo_url(req.repo_url)
+    except HTTPException:
+        if not is_dump:
+            raise
+        info = _derive_full_name(req.repo_url)  # modo dump: aceita qualquer URL
     if req.clone_auth == "authenticated":
         if not req.credential_id:
             raise HTTPException(status_code=400, detail="Token é obrigatório para clone autenticado")
@@ -1049,7 +1088,6 @@ async def clone_enqueue_url(req: CloneEnqueueUrlRequest, db=Depends(get_db)):
     priority = (max_prio or 0) + 1
 
     # Modo dump: usa a URL ORIGINAL do site (o dumper acrescenta o /.git/).
-    is_dump = (req.clone_mode or "clone") == "dump"
     effective_url = req.repo_url.strip() if is_dump else info["clone_url"]
 
     # Repo (cria/atualiza por full_name)
