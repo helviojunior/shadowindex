@@ -9,6 +9,7 @@ import os
 import re
 import time
 import json
+import uuid
 import shutil
 import hashlib
 import asyncio
@@ -1003,10 +1004,18 @@ class GitCloneWorker:
 
         saved = 0
         for it in items:
-            # Estrutura em árvore: <id do pipeline>/<step>/<arquivo de build>
-            pipeline_seg = _seg(it.get("pipeline") or it.get("ref"), f"pipeline-{saved}")
+            # ID do pipeline (rótulo legível, p/ exibição e contagem).
+            pl_label = str(it.get("pipeline") or it.get("ref") or f"pipeline-{saved}")
+            # Pasta no disco/DB usa um UUID INTERNO determinístico (instância+plataforma+
+            # pipeline), evitando conflito quando o MESMO repo é coletado de instâncias
+            # diferentes (IDs de pipeline podem coincidir entre plataformas). A UI relê
+            # o rótulo via pipeline_ref para exibir o ID real na árvore.
+            pl_uuid = uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"{getattr(job, 'instance_id', '') or ''}:{platform}:{pl_label}"
+            ).hex
             step_seg = _seg(it.get("step"), f"step-{saved}")
-            rel = f"__pipelines__/{pipeline_seg}/{step_seg}/{step_seg}.log"
+            rel = f"__pipelines__/{pl_uuid}/{step_seg}/{step_seg}.log"
             fpath = os.path.join(clone_dir, rel)
             text = it.get("text") or ""
             try:
@@ -1028,7 +1037,7 @@ class GitCloneWorker:
                 extension=".log", size=len(text.encode("utf-8", "replace")),
                 mimetype="text/plain", is_binary=False, content=content,
                 content_extracted=bool(content), is_head=True,
-                source="pipeline", pipeline_ref=it.get("ref"), branch=it.get("status"),
+                source="pipeline", pipeline_ref=pl_label, branch=it.get("status"),
             )
             db.add(gf)
             await db.flush()

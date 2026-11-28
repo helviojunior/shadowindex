@@ -1389,7 +1389,13 @@ export default function GitRepoBrowser() {
                       <p className="text-sm text-muted-foreground text-center py-6">{t('ci.pipelinesEmpty')}</p>
                     ) : (
                       <PipeTreeNode
-                        node={buildTree((pfiles || []).map((f) => ({ ...f, rel_path: (f.rel_path || '').replace(/^__pipelines__\//, '') })))}
+                        node={buildTree((pfiles || []).map((f) => {
+                          // Caminho de EXIBIÇÃO: troca o UUID interno (1º segmento) pelo
+                          // ID real do pipeline (pipeline_ref). O conteúdo abre por f.id.
+                          const parts = (f.rel_path || '').replace(/^__pipelines__\//, '').split('/').filter(Boolean);
+                          if (parts.length && f.pipeline_ref) parts[0] = f.pipeline_ref;
+                          return { ...f, rel_path: parts.join('/') };
+                        }))}
                         expanded={pExpanded}
                         toggle={(p) => setPExpanded((e) => ({ ...e, [p]: e[p] === false ? true : false }))}
                         onOpen={(f) => { setSelectedFile({ rel_path: f.rel_path, name: f.name, id: f.id }); setSelectedKind('file'); setActiveTab('view'); loadVersionContent(f.id); }}
