@@ -1272,6 +1272,18 @@ async def apply_pending_migrations():
                 "CREATE INDEX IF NOT EXISTS idx_git_repo_files_repo_head "
                 "ON git_repo_files (repo_id, is_head)"
             ))
+            # Corrige contadores de CI desatualizados (ex.: logs de pipeline apagados
+            # por um clone/reindex anterior deixaram pipelines_count "preso"). Recalcula
+            # a partir das linhas reais (barato; indexado por repo_id+source).
+            if await conn.scalar(text("SELECT to_regclass('public.git_repo_files')")):
+                await conn.execute(text(
+                    "UPDATE git_repos r SET "
+                    "pipeline_files_count = COALESCE((SELECT count(*) FROM git_repo_files f "
+                    "  WHERE f.repo_id = r.id AND f.source = 'pipeline'), 0), "
+                    "pipelines_count = COALESCE((SELECT count(DISTINCT f.pipeline_ref) FROM git_repo_files f "
+                    "  WHERE f.repo_id = r.id AND f.source = 'pipeline' AND f.pipeline_ref IS NOT NULL), 0) "
+                    "WHERE r.pipeline_files_count IS NOT NULL OR r.pipelines_count IS NOT NULL"
+                ))
             # Falso positivo retroativo: findings da regra 'curl-auth-user' cuja
             # "senha" é um placeholder de template/variável (ex.: curl -u admin:{{PASS}}
             # ou admin:${PASS}) não são credenciais reais. Idempotente: só marca

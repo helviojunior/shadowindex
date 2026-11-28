@@ -1285,7 +1285,11 @@ class GitCloneWorker:
         # Re-processamento idempotente: remove arquivos/índice de uma execução
         # anterior deste repo (ex.: job reenfileirado pelo watchdog/reboot) para
         # não acumular linhas duplicadas no DB nem docs duplicados no OpenSearch.
-        await db.execute(delete(GitRepoFile).where(GitRepoFile.repo_id == repo.id))
+        # PRESERVA os logs de pipeline (source='pipeline') — eles têm coleta própria
+        # e NÃO devem ser apagados por um clone/reindex do repositório.
+        await db.execute(delete(GitRepoFile).where(
+            GitRepoFile.repo_id == repo.id,
+            or_(GitRepoFile.source.is_(None), GitRepoFile.source != "pipeline")))
         await db.commit()
         try:
             await asyncio.to_thread(opensearch_client.delete_repo, repo.guid)
@@ -1300,8 +1304,10 @@ class GitCloneWorker:
                     f"[git {repo.full_name}] falha ao indexar histórico ({e}); "
                     f"caindo para indexação do HEAD\n{traceback.format_exc()}"
                 )
-                # Limpa parcial e cai para o HEAD snapshot
-                await db.execute(delete(GitRepoFile).where(GitRepoFile.repo_id == repo.id))
+                # Limpa parcial e cai para o HEAD snapshot (preserva pipeline).
+                await db.execute(delete(GitRepoFile).where(
+                    GitRepoFile.repo_id == repo.id,
+                    or_(GitRepoFile.source.is_(None), GitRepoFile.source != "pipeline")))
                 await db.commit()
                 try:
                     await asyncio.to_thread(opensearch_client.delete_repo, repo.guid)
