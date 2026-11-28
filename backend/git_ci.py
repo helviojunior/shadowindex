@@ -170,18 +170,31 @@ async def list_pipeline_logs(platform: str, api_url: Optional[str], token: Optio
     out: List[Dict[str, Any]] = []
     try:
         async with _client(proxy, platform, "pipelines") as c:
+            res = None
             if platform == "gitlab":
-                return await _gitlab_pipelines(c, api, h, full_name, limit, offset)
-            if platform in ("github", "github_enterprise"):
-                return await _github_pipelines(c, api, h, full_name, limit, offset)
-            if platform == "bitbucket" and variant != "server":
-                return await _bitbucket_pipelines(c, h, full_name, limit, offset)
-            if platform == "gitea":
-                return await _gitea_pipelines(c, api, h, full_name, limit, offset)
-            if platform == "azure_devops":
-                return await _azure_pipelines(c, h, full_name, org, web_url, limit, offset)
-        return {"supported": False, "note": f"Pipelines não suportados para '{platform}'.",
-                "items": out, "total_available": None}
+                res = await _gitlab_pipelines(c, api, h, full_name, limit, offset)
+            elif platform in ("github", "github_enterprise"):
+                res = await _github_pipelines(c, api, h, full_name, limit, offset)
+            elif platform == "bitbucket" and variant != "server":
+                res = await _bitbucket_pipelines(c, h, full_name, limit, offset)
+            elif platform == "gitea":
+                res = await _gitea_pipelines(c, api, h, full_name, limit, offset)
+            elif platform == "azure_devops":
+                res = await _azure_pipelines(c, h, full_name, org, web_url, limit, offset)
+            if res is None:
+                return {"supported": False, "note": f"Pipelines não suportados para '{platform}'.",
+                        "items": out, "total_available": None}
+            # Sem itens e sem nota -> explica o motivo provável (p/ o usuário ver).
+            if res.get("supported") and not res.get("items") and not res.get("note"):
+                ta = res.get("total_available")
+                if ta:
+                    res["note"] = (f"{ta} execução(ões) de CI existe(m), mas não foi possível "
+                                   f"obter os logs dos jobs (logs expirados ou sem permissão de "
+                                   f"Actions/CI no token). Veja Auditoria → Chamadas externas.")
+                else:
+                    res["note"] = ("Nenhuma execução/pipeline de CI encontrada para este projeto "
+                                   "(ou o token não tem permissão de ler Actions/CI).")
+            return res
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[git_ci] list_pipeline_logs {platform} {full_name}: {e}")
         return {"supported": False, "note": f"Falha ao coletar pipelines: {str(e)[:200]}",

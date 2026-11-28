@@ -1010,9 +1010,13 @@ class GitCloneWorker:
             fpath = os.path.join(clone_dir, rel)
             text = it.get("text") or ""
             try:
+                # Cria as SUBPASTAS (<pipeline>/<step>) antes de gravar — senão o open
+                # falha e o item é descartado (causa de "coletou mas ficou vazio").
+                os.makedirs(os.path.dirname(fpath), exist_ok=True)
                 with open(fpath, "w", errors="replace") as f:
                     f.write(text)
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"[git pipelines] falha ao gravar {rel}: {e}")
                 continue
             # Substitui a versão anterior deste mesmo log, se houver.
             await db.execute(delete(GitRepoFile).where(

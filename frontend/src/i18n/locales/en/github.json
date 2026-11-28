@@ -198,6 +198,8 @@
     "pipelinesEmpty": "No pipeline logs collected. Click \"Collect\".",
     "valuesHidden": "This platform does not expose values — names only.",
     "notExposed": "(value not exposed by the platform)",
-    "obtainedWith": "Collected with"
+    "obtainedWith": "Collected with",
+    "collectRunning": "Collection in progress…",
+    "collectFailed": "Last collection failed"
   }
 }

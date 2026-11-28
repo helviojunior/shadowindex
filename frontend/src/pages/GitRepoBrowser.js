@@ -250,23 +250,34 @@ export default function GitRepoBrowser() {
     }
   }, [guid, t]);
 
+  // Monta a nota a exibir: estado do último job (em andamento/falha) tem prioridade
+  // sobre a nota da coleta, para o usuário entender por que está vazio.
+  const jobNote = (data, fallbackNote) => {
+    const lj = data?.last_job;
+    if (lj?.running) return t('ci.collectRunning');
+    if (lj?.status === 'failed') return `${t('ci.collectFailed')}: ${lj.error || ''}`;
+    return fallbackNote || null;
+  };
+
   // --- CI: Secrets e Pipelines deste repo ---
   const loadSecrets = useCallback(async () => {
     try {
       const res = await axios.get(`${API}/git/repos/${guid}/secrets`);
       setSecrets(res.data?.secrets || []);
-      setSecretsNote(res.data?.note || null);
+      setSecretsNote(jobNote(res.data, res.data?.note));
       setSecretsExposes(!!res.data?.exposes_values);
     } catch (e) { setSecrets([]); }
-  }, [guid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guid, t]);
 
   const loadPipelineFiles = useCallback(async () => {
     try {
       const res = await axios.get(`${API}/git/repos/${guid}/pipeline-files`);
       setPfiles(res.data?.files || []);
-      setPnote(res.data?.note || null);
+      setPnote(jobNote(res.data, res.data?.note));
     } catch (e) { setPfiles([]); }
-  }, [guid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guid, t]);
 
   const collect = useCallback(async (taskKind, more = false) => {
     setCollecting(true);

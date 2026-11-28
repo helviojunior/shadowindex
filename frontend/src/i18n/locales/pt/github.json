@@ -198,6 +198,8 @@
     "pipelinesEmpty": "Nenhum log de pipeline coletado. Clique em \"Coletar\".",
     "valuesHidden": "Esta plataforma não expõe os valores — apenas os nomes.",
     "notExposed": "(valor não exposto pela plataforma)",
-    "obtainedWith": "Coletado com"
+    "obtainedWith": "Coletado com",
+    "collectRunning": "Coleta em andamento…",
+    "collectFailed": "Última coleta falhou"
   }
 }

@@ -1230,7 +1230,28 @@ async def list_repo_secrets(guid: str, db=Depends(get_db_readonly)):
         "total": len(rows),
         "note": repo.ci_secrets_note,
         "exposes_values": exposes,
+        "last_job": await _last_ci_job(db, repo.id, "secrets"),
         "secrets": [_secret_dict(r) for r in rows],
+    }
+
+
+async def _last_ci_job(db, repo_id: int, task_type: str) -> Optional[Dict[str, Any]]:
+    """Resumo do último job de CI (p/ a UI explicar o estado da coleta)."""
+    j = (await db.execute(
+        select(GitCloneJob).where(GitCloneJob.repo_id == repo_id,
+                                  GitCloneJob.task_type == task_type)
+        .order_by(GitCloneJob.created_at.desc()).limit(1)
+    )).scalar_one_or_none()
+    if not j:
+        return None
+    # Em andamento quando ainda na fila/execução.
+    running = j.status in ("pending", "cloning", "processing")
+    return {
+        "status": j.status,
+        "running": running,
+        "error": j.error_message,
+        "created_at": j.created_at.isoformat() if j.created_at else None,
+        "completed_at": j.completed_at.isoformat() if j.completed_at else None,
     }
 
 
@@ -1247,6 +1268,7 @@ async def list_repo_pipeline_files(guid: str, db=Depends(get_db_readonly)):
     return {
         "total": len(rows),
         "note": repo.ci_pipelines_note,
+        "last_job": await _last_ci_job(db, repo.id, "pipelines"),
         "files": [{
             "id": f.id, "rel_path": f.rel_path, "name": f.name, "size": f.size,
             "pipeline_ref": f.pipeline_ref, "status": f.branch,
