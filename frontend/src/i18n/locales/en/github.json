@@ -36,7 +36,9 @@
     "commits": "Commits",
     "viewLeaks": "View Leaks",
     "retry": "Retry",
-    "retryFailed": "Retry failed"
+    "retryFailed": "Retry failed",
+    "secrets": "Secrets",
+    "pipelines": "Pipelines"
   },
   "cloneStatus": {
     "pending": "Pending",

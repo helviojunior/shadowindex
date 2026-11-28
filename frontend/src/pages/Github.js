@@ -16,7 +16,7 @@ import {
 import {
   Library, Search, Star, AlertTriangle, FileText,
   Loader2, Clock, CheckCircle, XCircle, RefreshCw, ExternalLink,
-  GitBranch, GitCommit, DownloadCloud, MinusCircle,
+  GitBranch, GitCommit, DownloadCloud, MinusCircle, KeyRound, Workflow,
 } from 'lucide-react';
 import OriginLogo from '@/components/OriginLogo';
 import { cn } from '@/lib/utils';
@@ -260,6 +260,8 @@ export default function Github() {
                 <TableHead className="text-right">{t('table.commits')}</TableHead>
                 <TableHead className="text-right">{t('table.stars')}</TableHead>
                 <TableHead className="text-right">{t('table.files')}</TableHead>
+                <TableHead className="text-right">{t('table.secrets')}</TableHead>
+                <TableHead className="text-right">{t('table.pipelines')}</TableHead>
                 <TableHead className="text-right">{t('table.leaks')}</TableHead>
                 <TableHead>{t('table.status')}</TableHead>
                 <TableHead className="w-10"></TableHead>
@@ -267,7 +269,7 @@ export default function Github() {
             </TableHeader>
             <TableBody>
               {repos.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{t('table.empty')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">{t('table.empty')}</TableCell></TableRow>
               ) : repos.map(r => (
                 <TableRow key={r.guid} className="cursor-pointer" data-testid="git-repo-row"
                           onClick={() => navigate(`/git/${r.guid}`)}>
@@ -297,6 +299,16 @@ export default function Github() {
                   </TableCell>
                   <TableCell className="text-right">
                     <span className="inline-flex items-center gap-1"><FileText className="w-3 h-3" />{r.files_count ?? 0}</span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {r.secrets_count > 0
+                      ? <span className="inline-flex items-center gap-1 text-amber-500"><KeyRound className="w-3 h-3" />{r.secrets_count}</span>
+                      : <span className="text-muted-foreground">0</span>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {r.pipelines_count > 0
+                      ? <span className="inline-flex items-center gap-1 text-indigo-400"><Workflow className="w-3 h-3" />{r.pipelines_count}</span>
+                      : <span className="text-muted-foreground">0</span>}
                   </TableCell>
                   <TableCell className="text-right">
                     {r.leaks_count > 0

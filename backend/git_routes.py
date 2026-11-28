@@ -126,6 +126,9 @@ def _repo_dict(r: GitRepo) -> Dict[str, Any]:
         "history_indexed": bool(getattr(r, "history_indexed", False)),
         "commits_count": getattr(r, "commits_count", None),
         "branches_count": getattr(r, "branches_count", None),
+        "secrets_count": getattr(r, "secrets_count", None),
+        "pipelines_count": getattr(r, "pipelines_count", None),
+        "pipeline_files_count": getattr(r, "pipeline_files_count", None),
         "cloned_at": r.cloned_at.isoformat() if r.cloned_at else None,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
@@ -1293,11 +1296,19 @@ async def collect_repo_ci(guid: str, req: _CollectRequest, db=Depends(get_db)):
     # "baixar mais": pula os PIPELINES já coletados (não os arquivos/steps).
     offset = (repo.pipelines_count or 0) if (task == "pipelines" and req.more) else 0
     cred_id = inst.credential_id if inst.clone_auth == "authenticated" else None
+    # Coleta acionada manualmente neste repo -> prioridade alta (fura a fila de
+    # clones em massa, que costuma ter centenas pendentes).
+    max_prio = (await db.execute(
+        select(func.max(GitCloneJob.priority)).where(
+            GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]))
+    )).scalar()
+    priority = (max_prio or 0) + 1
     job = GitCloneJob(
         repo_id=repo.id, repo_url=repo.clone_url or repo.html_url or repo.full_name,
         repo_full_name=repo.full_name, clone_auth=inst.clone_auth,
         credential_id=cred_id, proxy_id=inst.proxy_id, status="pending",
         task_type=task, task_limit=req.limit, task_offset=offset, instance_id=inst.id,
+        priority=priority,
     )
     db.add(job)
     await db.commit()

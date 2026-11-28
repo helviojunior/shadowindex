@@ -272,17 +272,32 @@ export default function GitRepoBrowser() {
     setCollecting(true);
     try {
       const res = await axios.post(`${API}/git/repos/${guid}/collect`, { task: taskKind, more });
-      if (res.data?.queued) toast.success(t('ci.collectQueued'));
-      else toast.message(res.data?.reason || t('ci.collectBusy'));
+      if (res.data?.queued) {
+        toast.success(t('ci.collectQueued'));
+        // A coleta roda em BACKGROUND — faz polling para refletir o resultado assim
+        // que o job terminar (sem precisar recarregar a página).
+        const reload = taskKind === 'secrets' ? loadSecrets : loadPipelineFiles;
+        let n = 0;
+        const iv = setInterval(async () => {
+          n += 1;
+          await reload();
+          if (n >= 18) clearInterval(iv); // ~90s (18 x 5s)
+        }, 5000);
+      } else {
+        toast.message(res.data?.reason || t('ci.collectBusy'));
+      }
     } catch (e) {
       toast.error(e.response?.data?.detail || e.message);
     } finally { setCollecting(false); }
-  }, [guid, t]);
+  }, [guid, t, loadSecrets, loadPipelineFiles]);
 
+  // Recarrega SEMPRE que a aba é aberta (não só na 1ª vez) — para refletir coletas
+  // em background feitas desde a última visita.
   useEffect(() => {
-    if (leftTab === 'secrets' && secrets === null) loadSecrets();
-    if (leftTab === 'pipeline' && pfiles === null) loadPipelineFiles();
-  }, [leftTab, secrets, pfiles, loadSecrets, loadPipelineFiles]);
+    if (leftTab === 'secrets') loadSecrets();
+    if (leftTab === 'pipeline') loadPipelineFiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leftTab]);
 
   // Conteúdo de um blob que não foi indexado como versão (ex.: binário/grande),
   // lido direto do clone no commit indicado.
