@@ -36,6 +36,12 @@ class InstanceCreateRequest(InstanceTestRequest):
     name: Optional[str] = None
 
 
+class InstanceDetectRequest(BaseModel):
+    base_url: str
+    proxy_id: Optional[int] = None
+    credential_id: Optional[int] = None   # opcional (ajuda alguns fingerprints)
+
+
 class CloneReposRequest(BaseModel):
     repos: Optional[List[Dict[str, Any]]] = None   # projetos específicos (seleção)
     full_names: Optional[List[str]] = None         # ou por full_name (seleção)
@@ -101,6 +107,28 @@ async def _run_test(db, base_url: str, clone_auth: str, credential_id, proxy_id,
         "platform": plat, "platform_label": gp.PLATFORM_LABELS.get(plat, plat),
         "api_url": api_url, "web_url": det.get("web_url", base), "variant": variant, "org": org,
         "whoami": wa,
+    }
+
+
+@router.post("/detect")
+async def detect_instance(req: InstanceDetectRequest, db=Depends(get_db_readonly)):
+    """Detecta SOMENTE a plataforma a partir da URL (hosts públicos conhecidos ou
+    fingerprint on-prem). Não exige token/auth. Retorna platform='unknown' quando
+    não identificada (o front então exibe o seletor manual)."""
+    if not (req.base_url or "").strip():
+        raise HTTPException(status_code=400, detail="URL é obrigatória")
+    token = await _get_token(db, req.credential_id) if req.credential_id else None
+    proxy = await resolve_proxy_url(db, req.proxy_id)
+    det = await gp.detect_platform(req.base_url, token, proxy)
+    plat = det.get("platform") or "unknown"
+    return {
+        "detected": plat != "unknown",
+        "platform": plat,
+        "platform_label": gp.PLATFORM_LABELS.get(plat, plat),
+        "api_url": det.get("api_url"),
+        "web_url": det.get("web_url"),
+        "variant": det.get("variant"),
+        "org": det.get("org"),
     }
 
 

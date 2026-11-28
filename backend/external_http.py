@@ -194,8 +194,11 @@ class ExternalClient:
         from database import AsyncSessionLocal, ExternalApiCall
 
         req_payload = {}
+        # `params` do httpx vão para a QUERY STRING da URL (não é corpo da requisição;
+        # GET/HEAD não têm body). Registramos sob a chave 'query' para deixar isso claro.
         if kwargs.get("params"):
-            req_payload["params"] = _mask_params(kwargs["params"])
+            req_payload["query"] = _mask_params(kwargs["params"])
+        # Corpo real da requisição (json/data) — normalmente só em POST/PUT/PATCH.
         body = kwargs.get("json")
         if body is None and kwargs.get("data") is not None:
             body = kwargs["data"]

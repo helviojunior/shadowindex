@@ -11,12 +11,14 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select';
-import { ShieldCheck, Loader2, CheckCircle, XCircle, Save, User } from 'lucide-react';
+import { ShieldCheck, Loader2, CheckCircle, XCircle, Save, User, Search, RefreshCw } from 'lucide-react';
+import OriginLogo from '@/components/OriginLogo';
+import { logoPlatform } from './GitInstances';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Plataformas para seleção MANUAL (quando a detecção automática não identifica).
 const PLATFORMS = [
-  { v: 'auto', k: 'auto' },
   { v: 'github', k: 'GitHub' },
   { v: 'github_enterprise', k: 'GitHub Enterprise' },
   { v: 'gitlab', k: 'GitLab' },
@@ -35,8 +37,10 @@ export default function GitInstanceNew() {
   const [credId, setCredId] = useState('');
   const [proxies, setProxies] = useState([]);
   const [proxyId, setProxyId] = useState('none');
-  const [platform, setPlatform] = useState('auto');
+  const [platform, setPlatform] = useState('');
 
+  const [detecting, setDetecting] = useState(false);
+  const [detectInfo, setDetectInfo] = useState(null); // {detected, platform, platform_label, api_url, ...}
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
@@ -54,17 +58,43 @@ export default function GitInstanceNew() {
   useEffect(() => { load(); }, [load]);
 
   const resetTest = () => setResult(null);
+  // Alterar a URL invalida a detecção anterior (volta a esconder os campos).
+  const onUrlChange = (v) => { setUrl(v); setResult(null); setDetectInfo(null); setPlatform(''); };
   const tokenLabel = (c) => c.name || `Token #${c.id}`;
   const canTest = url.trim() && (auth === 'anonymous' || credId);
   const accessOk = result && result.ok;
+  const detectDone = detectInfo !== null;          // detecção já executada
+  const proxyNum = proxyId && proxyId !== 'none' ? parseInt(proxyId, 10) : null;
 
   const payload = () => ({
     base_url: url.trim(),
     clone_auth: auth,
     credential_id: auth === 'authenticated' ? parseInt(credId, 10) : null,
-    proxy_id: proxyId && proxyId !== 'none' ? parseInt(proxyId, 10) : null,
-    platform: platform === 'auto' ? null : platform,
+    proxy_id: proxyNum,
+    platform: platform || null,
   });
+
+  const handleDetect = async () => {
+    if (!url.trim()) return;
+    setDetecting(true); setResult(null);
+    try {
+      const res = await axios.post(`${API}/git/instances/detect`, {
+        base_url: url.trim(), proxy_id: proxyNum,
+      });
+      setDetectInfo(res.data);
+      if (res.data?.detected) {
+        setPlatform(res.data.platform);
+        toast.success(t('new.detectedPlatform', { name: res.data.platform_label }));
+      } else {
+        setPlatform('');
+        toast.message(t('new.notDetected'));
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message);
+    } finally {
+      setDetecting(false);
+    }
+  };
 
   const handleTest = async () => {
     if (!canTest) return;
@@ -115,26 +145,63 @@ export default function GitInstanceNew() {
             <Input
               placeholder="https://gitlab.interno.local  ·  https://dev.azure.com/org  ·  https://gitea.example.com"
               value={url}
-              onChange={(e) => { setUrl(e.target.value); resetTest(); }}
+              onChange={(e) => onUrlChange(e.target.value)}
               data-testid="instance-url"
             />
             <p className="text-xs text-muted-foreground">{t('new.urlHint')}</p>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t('fields.platform')}</Label>
-            <div className="max-w-xs">
-              <Select value={platform} onValueChange={(v) => { setPlatform(v); resetTest(); }}>
-                <SelectTrigger data-testid="instance-platform"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PLATFORMS.map(p => (
-                    <SelectItem key={p.v} value={p.v}>{p.v === 'auto' ? t('new.autodetect') : p.k}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Passo 1: detectar a plataforma. Enquanto não detectar, o resto fica oculto. */}
+          {!detectDone && (
+            <div>
+              <Button onClick={handleDetect} disabled={!url.trim() || detecting} data-testid="instance-detect">
+                {detecting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                {t('new.detectPlatform')}
+              </Button>
             </div>
-          </div>
+          )}
 
+          {/* Passo 2: plataforma detectada (logo + nome) ou seletor manual se não identificada. */}
+          {detectDone && (
+            <div className="space-y-2">
+              <Label>{t('fields.platform')}</Label>
+              {detectInfo.detected ? (
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-green-500/40 bg-green-500/5 px-3 py-2">
+                    <OriginLogo platform={logoPlatform(detectInfo.platform)} className="w-5 h-5" />
+                    <span className="font-medium">{detectInfo.platform_label}</span>
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={handleDetect} disabled={detecting} data-testid="instance-redetect">
+                    {detecting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                    {t('new.redetect')}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-amber-500">{t('new.notDetectedSelect')}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="max-w-xs w-full">
+                      <Select value={platform} onValueChange={(v) => { setPlatform(v); resetTest(); }}>
+                        <SelectTrigger data-testid="instance-platform"><SelectValue placeholder={t('new.selectPlatform')} /></SelectTrigger>
+                        <SelectContent>
+                          {PLATFORMS.map(p => (
+                            <SelectItem key={p.v} value={p.v}>{p.k}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={handleDetect} disabled={detecting} data-testid="instance-redetect">
+                      {detecting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                      {t('new.redetect')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {detectDone && (<>
           <div className="space-y-2">
             <Label>{t('auth.label')}</Label>
             <RadioGroup value={auth} onValueChange={(v) => { setAuth(v); resetTest(); }} className="flex flex-col gap-2">
@@ -205,6 +272,7 @@ export default function GitInstanceNew() {
               )}
             </div>
           )}
+          </>)}
         </CardContent>
       </Card>
     </div>

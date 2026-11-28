@@ -144,8 +144,32 @@ export default function ExternalCalls() {
                           <div className="space-y-2">
                             <div className="text-xs font-semibold text-muted-foreground">{t('external.reqHeaders')}</div>
                             <Json data={c.request_headers} />
-                            <div className="text-xs font-semibold text-muted-foreground">{t('external.reqBody')}</div>
-                            <Json data={c.request_payload} />
+                            {(() => {
+                              const rp = c.request_payload || null;
+                              // 'query' (ou 'params' de registros antigos) = query string.
+                              const query = rp?.query ?? rp?.params ?? null;
+                              const body = rp?.body ?? null;
+                              // Registro legado sem a estrutura query/body: mostra como corpo.
+                              const legacy = rp && query == null && body == null ? rp : null;
+                              return (<>
+                                {query != null && (<>
+                                  <div className="text-xs font-semibold text-muted-foreground">{t('external.reqQuery')}</div>
+                                  <Json data={query} />
+                                </>)}
+                                {body != null && (<>
+                                  <div className="text-xs font-semibold text-muted-foreground">{t('external.reqBody')}</div>
+                                  <Json data={body} />
+                                </>)}
+                                {legacy != null && (<>
+                                  <div className="text-xs font-semibold text-muted-foreground">{t('external.reqBody')}</div>
+                                  <Json data={legacy} />
+                                </>)}
+                                {query == null && body == null && legacy == null && (<>
+                                  <div className="text-xs font-semibold text-muted-foreground">{t('external.reqBody')}</div>
+                                  <Json data={null} />
+                                </>)}
+                              </>);
+                            })()}
                           </div>
                           <div className="space-y-2">
                             <div className="text-xs font-semibold text-muted-foreground">{t('external.respBody')}</div>

@@ -42,7 +42,13 @@
     "urlHint": "e.g. GitHub Enterprise, self-hosted GitLab, Gitea, Bitbucket Server, Azure DevOps.",
     "autodetect": "Auto-detect",
     "detected": "Access confirmed",
-    "failed": "Access failed"
+    "failed": "Access failed",
+    "detectPlatform": "Detect platform",
+    "detectedPlatform": "Platform detected: {{name}}",
+    "notDetected": "Platform not identified — select it manually",
+    "notDetectedSelect": "Could not identify the platform. Select it manually:",
+    "selectPlatform": "Select the platform",
+    "redetect": "Detect again"
   },
   "detail": {
     "info": "Information",

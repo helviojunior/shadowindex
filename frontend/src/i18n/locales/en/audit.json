@@ -19,6 +19,7 @@
     "respBody": "Response · Body",
     "error": "Error",
     "pageOf": "Page {{page}} of {{pages}}",
-    "remoteIp": "Remote IP"
+    "remoteIp": "Remote IP",
+    "reqQuery": "Request · Query string"
   }
 }
