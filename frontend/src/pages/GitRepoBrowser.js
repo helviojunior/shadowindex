@@ -23,7 +23,7 @@ import {
 import {
   ArrowLeft, FileText, FileCheck, File, Star, GitFork, AlertTriangle,
   Loader2, ExternalLink, FileX, ChevronRight, ChevronDown, Folder, FolderOpen, X, Code,
-  Copy, Check, ShieldAlert, ScanText, GitCommit, History,
+  Copy, Check, ShieldAlert, ScanText, GitCommit, History, Files, KeyRound, Workflow, RefreshCw,
 } from 'lucide-react';
 import { ShieldKeyIcon } from '@/components/icons';
 import CodeViewer from '@/components/CodeViewer';
@@ -140,6 +140,15 @@ export default function GitRepoBrowser() {
   const [searchingContent, setSearchingContent] = useState(false);
   const [searchMode, setSearchMode] = useState('filter'); // 'filter' | 'content'
 
+  // Abas do painel esquerdo: Arquivos | Secrets | Pipeline
+  const [leftTab, setLeftTab] = useState('files');
+  const [secrets, setSecrets] = useState(null);
+  const [secretsNote, setSecretsNote] = useState(null);
+  const [secretsExposes, setSecretsExposes] = useState(false);
+  const [pfiles, setPfiles] = useState(null);
+  const [pnote, setPnote] = useState(null);
+  const [collecting, setCollecting] = useState(false);
+
   // Modal "Identificar credencial vazada".
   const [showLeakModal, setShowLeakModal] = useState(false);
   const [leakTypes, setLeakTypes] = useState([]);
@@ -206,6 +215,40 @@ export default function GitRepoBrowser() {
       setLoadingContent(false);
     }
   }, [guid, t]);
+
+  // --- CI: Secrets e Pipelines deste repo ---
+  const loadSecrets = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/git/repos/${guid}/secrets`);
+      setSecrets(res.data?.secrets || []);
+      setSecretsNote(res.data?.note || null);
+      setSecretsExposes(!!res.data?.exposes_values);
+    } catch (e) { setSecrets([]); }
+  }, [guid]);
+
+  const loadPipelineFiles = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/git/repos/${guid}/pipeline-files`);
+      setPfiles(res.data?.files || []);
+      setPnote(res.data?.note || null);
+    } catch (e) { setPfiles([]); }
+  }, [guid]);
+
+  const collect = useCallback(async (taskKind, more = false) => {
+    setCollecting(true);
+    try {
+      const res = await axios.post(`${API}/git/repos/${guid}/collect`, { task: taskKind, more });
+      if (res.data?.queued) toast.success(t('ci.collectQueued'));
+      else toast.message(res.data?.reason || t('ci.collectBusy'));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message);
+    } finally { setCollecting(false); }
+  }, [guid, t]);
+
+  useEffect(() => {
+    if (leftTab === 'secrets' && secrets === null) loadSecrets();
+    if (leftTab === 'pipeline' && pfiles === null) loadPipelineFiles();
+  }, [leftTab, secrets, pfiles, loadSecrets, loadPipelineFiles]);
 
   // Conteúdo de um blob que não foi indexado como versão (ex.: binário/grande),
   // lido direto do clone no commit indicado.
@@ -1098,6 +1141,19 @@ export default function GitRepoBrowser() {
           {/* Painel esquerdo - Árvore */}
           <ResizablePanel defaultSize={30} minSize={18} maxSize={55}>
             <div className="h-full border-r border-border bg-card flex flex-col">
+              {/* Abas: Arquivos | Secrets | Pipeline */}
+              <div className="p-2 border-b border-border flex items-center gap-1">
+                {[['files', t('ci.tabFiles'), Files], ['secrets', t('ci.tabSecrets'), KeyRound], ['pipeline', t('ci.tabPipeline'), Workflow]].map(([k, label, Icon]) => (
+                  <button key={k} onClick={() => setLeftTab(k)}
+                    data-testid={`repo-tab-${k}`}
+                    className={cn('flex-1 inline-flex items-center justify-center gap-1 text-xs px-2 py-1.5 rounded transition-colors',
+                      leftTab === k ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground')}>
+                    <Icon className="w-3.5 h-3.5" />{label}
+                  </button>
+                ))}
+              </div>
+
+              {leftTab === 'files' && (<>
               {/* Busca: filtra por caminho OU busca no conteúdo (toggle <>) */}
               <div className="p-3 border-b border-border">
                 <div className="relative">
@@ -1219,6 +1275,68 @@ export default function GitRepoBrowser() {
                   )}
                 </div>
               </ScrollArea>
+              </>)}
+
+              {/* Aba SECRETS */}
+              {leftTab === 'secrets' && (
+                <ScrollArea className="flex-1">
+                  <div className="p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">{t('ci.secretsTitle')} · {secrets?.length || 0}</span>
+                      <Button size="sm" variant="outline" disabled={collecting} onClick={() => collect('secrets')} data-testid="collect-secrets">
+                        {collecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}{t('ci.collect')}
+                      </Button>
+                    </div>
+                    {secretsNote && <div className="text-xs text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded p-2">{secretsNote}</div>}
+                    {!secretsExposes && (secrets?.length > 0) && <div className="text-xs text-muted-foreground">{t('ci.valuesHidden')}</div>}
+                    {(secrets || []).length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">{t('ci.secretsEmpty')}</p>
+                    ) : secrets.map((s) => (
+                      <div key={s.guid} className="border rounded p-2 text-sm">
+                        <div className="font-mono text-xs text-blue-500 break-all flex items-center gap-1.5 flex-wrap">
+                          {s.name}
+                          {s.is_jwt && <Badge variant="outline" className="text-[10px]">JWT</Badge>}
+                          {s.protected && <Badge variant="outline" className="text-[10px]">protected</Badge>}
+                        </div>
+                        <div className="font-mono text-xs break-all mt-1">
+                          {s.value_exposed ? (s.value || '""') : <span className="text-muted-foreground italic">{t('ci.notExposed')}</span>}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-1">{t('ci.obtainedWith')}: {s.obtained_with || '—'}{s.scope ? ` · ${s.scope}` : ''}</div>
+                        {s.decoded_claims && <pre className="text-[10px] bg-muted/40 rounded p-1 mt-1 whitespace-pre-wrap break-all">{s.decoded_claims}</pre>}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+
+              {/* Aba PIPELINE */}
+              {leftTab === 'pipeline' && (
+                <ScrollArea className="flex-1">
+                  <div className="p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">{t('ci.pipelinesTitle')} · {pfiles?.length || 0}</span>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" disabled={collecting} onClick={() => collect('pipelines')} data-testid="collect-pipelines">
+                          {collecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}{t('ci.collect')}
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={collecting} onClick={() => collect('pipelines', true)} title={t('ci.collectMoreHint')}>
+                          {t('ci.collectMore')}
+                        </Button>
+                      </div>
+                    </div>
+                    {pnote && <div className="text-xs text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded p-2">{pnote}</div>}
+                    {(pfiles || []).length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">{t('ci.pipelinesEmpty')}</p>
+                    ) : pfiles.map((f) => (
+                      <div key={f.id} className="border rounded p-2 text-sm cursor-pointer hover:bg-muted/50"
+                        onClick={() => { setSelectedFile({ rel_path: f.rel_path, name: f.name, id: f.id }); setSelectedKind('file'); setActiveTab('view'); loadVersionContent(f.id); }}>
+                        <div className="font-mono text-xs text-blue-500 break-all">{f.name}</div>
+                        <div className="text-[10px] text-muted-foreground">{f.pipeline_ref || ''}{f.status ? ` · ${f.status}` : ''}</div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </div>
           </ResizablePanel>
 

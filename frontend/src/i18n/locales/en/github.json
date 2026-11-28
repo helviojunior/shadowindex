@@ -179,5 +179,22 @@
     "copyUrl": "Copy URL",
     "viewOrigin": "View on {{platform}}",
     "urlCopied": "URL copied"
+  },
+  "ci": {
+    "tabFiles": "Files",
+    "tabSecrets": "Secrets",
+    "tabPipeline": "Pipeline",
+    "secretsTitle": "Secrets",
+    "pipelinesTitle": "Pipelines",
+    "collect": "Collect",
+    "collectMore": "Load more",
+    "collectMoreHint": "Collect the next batch of pipelines",
+    "collectQueued": "Collection queued",
+    "collectBusy": "A collection is already running",
+    "secretsEmpty": "No secrets collected. Click \"Collect\" (token needs permission).",
+    "pipelinesEmpty": "No pipeline logs collected. Click \"Collect\".",
+    "valuesHidden": "This platform does not expose values — names only.",
+    "notExposed": "(value not exposed by the platform)",
+    "obtainedWith": "Collected with"
   }
 }

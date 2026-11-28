@@ -54,6 +54,9 @@ class CloneReposRequest(BaseModel):
     full_names: Optional[List[str]] = None         # ou por full_name (seleção)
     all: bool = False                              # ou TODOS os projetos listados da instância
     q: Optional[str] = None                        # filtro (quando all=true)
+    task: str = "clone"                            # clone | pipelines | secrets
+    limit: Optional[int] = None                    # pipelines: lote desta rodada
+    offset: Optional[int] = None                   # pipelines: quantos já foram pegos
 
 
 async def _get_token(db, credential_id: Optional[int]) -> Optional[str]:
@@ -403,13 +406,14 @@ def _norm_clone_target(url: str) -> str:
 
 
 async def _enqueue_project(db, inst, full_name, clone_url, name=None, html_url=None,
-                           description=None, default_branch=None, size_kb=None) -> bool:
+                           description=None, default_branch=None, size_kb=None,
+                           task="clone", task_limit=None, task_offset=None) -> bool:
     full_name = (full_name or "").strip()
     clone_url = (clone_url or "").strip()
-    if not clone_url:
+    if not clone_url and task == "clone":
         return False
     if not full_name:
-        full_name = clone_url.rsplit("/", 1)[-1].replace(".git", "")
+        full_name = (clone_url or "").rsplit("/", 1)[-1].replace(".git", "") or "projeto"
 
     # Dedup por ALVO de clone: o mesmo repositório (host+caminho) acessível por duas
     # instâncias (credenciais diferentes) deve mapear para UM único GitRepo, para não
@@ -440,11 +444,36 @@ async def _enqueue_project(db, inst, full_name, clone_url, name=None, html_url=N
     repo.discovered_via = f"instance:{inst.name or inst.base_url}"
     await db.flush()
 
-    # Dedup de DOWNLOAD: não reenfileira se o repo já está baixado, em andamento ou
-    # com job ativo (independe de qual instância/credencial o descobriu).
+    cred_id = inst.credential_id if inst.clone_auth == "authenticated" else None
+
+    # Tarefas de CI (secrets/pipelines): não envolvem clone/working-tree. Só dedup
+    # contra um job ATIVO da MESMA tarefa (evita enfileirar duplicado); re-coleta é
+    # permitida (idempotente). Não mexe no clone_status do repo.
+    if task in ("secrets", "pipelines"):
+        active_task = (await db.execute(
+            select(GitCloneJob.id).where(
+                GitCloneJob.repo_id == repo.id,
+                GitCloneJob.task_type == task,
+                GitCloneJob.status.in_(["pending", "cloning", "processing"]),
+            )
+        )).scalar()
+        if active_task:
+            return False
+        db.add(GitCloneJob(
+            repo_id=repo.id, repo_url=clone_url or repo.html_url or full_name,
+            repo_full_name=full_name, clone_auth=inst.clone_auth,
+            credential_id=cred_id, proxy_id=inst.proxy_id,
+            status="pending", task_type=task, task_limit=task_limit,
+            task_offset=task_offset, instance_id=inst.id,
+        ))
+        return True
+
+    # Dedup de DOWNLOAD (clone): não reenfileira se o repo já está baixado, em
+    # andamento ou com job ativo (independe de qual instância/credencial o descobriu).
     active = (await db.execute(
         select(GitCloneJob.id).where(
             GitCloneJob.repo_id == repo.id,
+            GitCloneJob.task_type == "clone",
             GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]),
         )
     )).scalar()
@@ -460,20 +489,22 @@ async def _enqueue_project(db, inst, full_name, clone_url, name=None, html_url=N
     repo.clone_status = "pending"
     db.add(GitCloneJob(
         repo_id=repo.id, repo_url=clone_url, repo_full_name=full_name,
-        clone_auth=inst.clone_auth,
-        credential_id=inst.credential_id if inst.clone_auth == "authenticated" else None,
-        proxy_id=inst.proxy_id, status="pending",
+        clone_auth=inst.clone_auth, credential_id=cred_id,
+        proxy_id=inst.proxy_id, status="pending", task_type="clone",
+        instance_id=inst.id,
     ))
     return True
 
 
 @router.post("/{guid}/clone")
 async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(get_db)):
-    """Enfileira o clone. Modos: `repos` (objetos), `full_names` (ids) ou `all=true`
-    (TODOS os projetos listados da instância — suporta milhares, direto do banco)."""
+    """Enfileira uma tarefa por projeto. `task`: clone (git clone), pipelines (logs de
+    CI) ou secrets (variáveis/secrets). Seleção: `repos`, `full_names` ou `all=true`."""
     inst = (await db.execute(select(GitInstance).where(GitInstance.guid == guid))).scalar_one_or_none()
     if not inst:
         raise HTTPException(status_code=404, detail="Instância não encontrada")
+
+    task = req.task if req.task in ("clone", "pipelines", "secrets") else "clone"
 
     queued = 0
     total = 0
@@ -485,11 +516,12 @@ async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(
             base = base.where(GitInstanceProject.full_name.ilike(f"%{req.q.strip()}%"))
         rows = (await db.execute(base.order_by(GitInstanceProject.full_name))).scalars().all()
         if not rows:
-            raise HTTPException(status_code=400, detail="Nenhum projeto para clonar (liste/atualize primeiro)")
+            raise HTTPException(status_code=400, detail="Nenhum projeto (liste/atualize primeiro)")
         total = len(rows)
         for i, p in enumerate(rows, 1):
             if await _enqueue_project(db, inst, p.full_name, p.clone_url, p.name, p.html_url,
-                                      p.description, p.default_branch, p.size_kb):
+                                      p.description, p.default_branch, p.size_kb,
+                                      task=task, task_limit=req.limit, task_offset=req.offset):
                 queued += 1
             if i % 200 == 0:
                 await db.commit()  # commit em lotes p/ milhares
@@ -498,11 +530,12 @@ async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(
         for r in req.repos:
             if await _enqueue_project(db, inst, r.get("full_name"), r.get("clone_url"),
                                       r.get("name"), r.get("html_url"), r.get("description"),
-                                      r.get("default_branch"), r.get("size_kb")):
+                                      r.get("default_branch"), r.get("size_kb"),
+                                      task=task, task_limit=req.limit, task_offset=req.offset):
                 queued += 1
     else:
         raise HTTPException(status_code=400, detail="Nenhum projeto selecionado")
 
     await db.commit()
-    # skipped = já baixados / em andamento / duplicados (dedup por alvo de clone).
-    return {"queued": queued, "skipped": max(0, total - queued), "total": total}
+    # skipped = já baixados / em andamento / duplicados (dedup).
+    return {"queued": queued, "skipped": max(0, total - queued), "total": total, "task": task}

@@ -819,6 +819,46 @@ class GitInstanceProject(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
 
 
+class GitProjectSecret(Base):
+    """Secret/variável de CI coletada de um projeto (GitLab variables, GitHub/Gitea
+    Actions secrets, Bitbucket pipeline variables, Azure variable groups).
+
+    O campo `obtained_with` é GRAVADO EM TEXTO (hard-coded) com a identificação do
+    token/usuário usado na coleta — assim a exclusão/alteração da credencial no
+    sistema NÃO apaga o rastreamento para relatório/auditoria. Cada secret também
+    vira um GitleaksFinding (leak), e JWTs têm os claims decodificados."""
+    __tablename__ = "git_project_secrets"
+    __table_args__ = (
+        Index('idx_gps_repo', 'repo_id'),
+        Index('idx_gps_repo_guid', 'repo_guid'),
+        Index('idx_gps_repo_name', 'repo_id', 'name', unique=False),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    guid = Column(String, nullable=False, unique=True, index=True, default=lambda: uuid.uuid4().hex)
+    repo_id = Column(Integer, ForeignKey("git_repos.id", ondelete="CASCADE"), nullable=True)
+    repo_guid = Column(String, nullable=True, index=True)
+    repo_full_name = Column(String, nullable=True)
+    instance_id = Column(Integer, nullable=True)
+    platform = Column(String, nullable=True)        # gitlab, github, ...
+    scope = Column(String, nullable=True)           # project | group | org | environment
+    name = Column(String, nullable=False)           # nome da variável/secret
+    value = Column(Text, nullable=True)             # valor (pode ser vazio/None quando a plataforma não expõe)
+    value_exposed = Column(Boolean, default=False)  # a plataforma retornou o valor?
+    is_protected = Column(Boolean, nullable=True)
+    is_masked = Column(Boolean, nullable=True)
+    # JWT: mesmo tratamento dos leaks.
+    is_jwt = Column(Boolean, default=False)
+    decoded_claims = Column(Text, nullable=True)
+    # Rastreamento (hard-coded) de quem coletou — sobrevive à exclusão da credencial.
+    obtained_with = Column(String, nullable=True)   # ex.: "token: <nome> (helvio)" ou "anônimo"
+    obtained_credential_id = Column(Integer, nullable=True)  # referência fraca (pode sumir)
+    finding_fingerprint = Column(String, nullable=True, index=True)  # leak gerado
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+
 class GitRepo(Base):
     """Repositório Git descoberto/clonado pelo módulo GIT."""
     __tablename__ = "git_repos"
@@ -857,6 +897,11 @@ class GitRepo(Base):
     files_count = Column(Integer, default=0)
     history_indexed = Column(Boolean, default=False)  # True = histórico de commits indexado (clone completo)
     commits_count = Column(Integer, nullable=True)     # nº de commits percorridos
+    # CI/CD: contadores e notas das últimas coletas (p/ abas Secrets/Pipeline).
+    secrets_count = Column(Integer, nullable=True)
+    pipeline_files_count = Column(Integer, nullable=True)
+    ci_secrets_note = Column(Text, nullable=True)
+    ci_pipelines_note = Column(Text, nullable=True)
     branches_count = Column(Integer, nullable=True)    # nº de branches percorridas
     cloned_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -905,6 +950,10 @@ class GitRepoFile(Base):
     commit_date = Column(DateTime(timezone=True), nullable=True, index=True)
     change_type = Column(String, nullable=True)             # A / M / D / R
     is_head = Column(Boolean, default=False, index=True)    # versão atual (working tree)
+    # Origem do arquivo: 'repo' (conteúdo do repositório) ou 'pipeline' (log/output
+    # de um job de CI, armazenado como arquivo para gitleaks + indexação).
+    source = Column(String, default="repo", index=True)     # repo | pipeline
+    pipeline_ref = Column(String, nullable=True)            # id/ref do pipeline/job (quando source=pipeline)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
@@ -924,6 +973,12 @@ class GitCloneJob(Base):
     credential_id = Column(Integer, ForeignKey("credentials.id", ondelete="SET NULL"), nullable=True)
     proxy_id = Column(Integer, nullable=True)  # ProxyServer p/ clone (None = sem proxy)
     clone_mode = Column(String, default="clone")  # clone | dump (.git exposto na web)
+    # Tipo de tarefa: clone (padrão), pipelines (coletar logs/outputs de CI) ou
+    # secrets (coletar variáveis/secrets de CI do projeto). Cada um tem seu fluxo.
+    task_type = Column(String, default="clone")   # clone | pipelines | secrets
+    task_limit = Column(Integer, nullable=True)    # pipelines: quantos pegar nesta rodada
+    task_offset = Column(Integer, nullable=True)   # pipelines: quantos já foram pegos (p/ "mais N")
+    instance_id = Column(Integer, nullable=True)   # Git Instance de origem (p/ secrets/pipelines)
     depth = Column(Integer, nullable=True)  # git clone --depth
     status = Column(String, default="pending")  # pending, running, completed, failed, cancelled
     priority = Column(Integer, default=0)
@@ -976,6 +1031,7 @@ DEFAULT_SETTINGS = {
     'git_history_max_commits': ('5000', 'Máximo de commits percorridos por repositório ao indexar histórico (0 = ilimitado). Protege contra repos gigantes'),
     'git_history_max_versions_per_file': ('100', 'Máximo de versões (commits distintos) indexadas por arquivo (0 = ilimitado)'),
     'git_dump_max_objects': ('1000000', 'Git Dump: número máximo de objetos (commits/trees/blobs) baixados de um .git EXPOSTO na web. Protege contra repositórios gigantes; 0 = ilimitado'),
+    'git_pipelines_fetch_count': ('20', 'Quantidade de pipelines/execuções de CI mais recentes cujos logs são coletados por projeto a cada enfileiramento (o botão "Baixar mais" pega outro lote deste tamanho)'),
     # User-Agent global aplicado a TODA chamada HTTP externa. {VERSION} é substituído
     # pela versão atual do ShadowIndex.
     'http_user_agent': ('Mozilla/5.0 (ShadowIndex {VERSION} x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/146.0.0.0 Safari/537.36',
@@ -1179,10 +1235,20 @@ async def apply_pending_migrations():
             await _pg_add_cols('git_repos', [
                 ('history_indexed', 'BOOLEAN DEFAULT FALSE'),
                 ('commits_count', 'INTEGER'), ('branches_count', 'INTEGER'),
+                ('secrets_count', 'INTEGER'), ('pipeline_files_count', 'INTEGER'),
+                ('ci_secrets_note', 'TEXT'), ('ci_pipelines_note', 'TEXT'),
             ])
             await _pg_add_cols('git_clone_jobs', [
                 ('proxy_id', 'INTEGER'),
                 ("clone_mode", "VARCHAR DEFAULT 'clone'"),
+                ("task_type", "VARCHAR DEFAULT 'clone'"),
+                ('task_limit', 'INTEGER'),
+                ('task_offset', 'INTEGER'),
+                ('instance_id', 'INTEGER'),
+            ])
+            await _pg_add_cols('git_repo_files', [
+                ("source", "VARCHAR DEFAULT 'repo'"),
+                ('pipeline_ref', 'VARCHAR'),
             ])
             await _pg_add_cols('git_instances', [
                 ('projects_count', 'INTEGER'),

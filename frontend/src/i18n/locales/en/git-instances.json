@@ -70,7 +70,14 @@
     "public": "Public",
     "cloneAll": "Download ALL ({{count}})",
     "pageOf": "Page {{page}} of {{pages}}",
-    "anon": "Anonymous access"
+    "anon": "Anonymous access",
+    "tabProjects": "Projects",
+    "tabPipelines": "Pipelines",
+    "tabSecrets": "Secrets",
+    "pipelinesSelected": "Collect pipelines ({{count}})",
+    "pipelinesAll": "Collect pipelines of ALL ({{count}})",
+    "secretsSelected": "Collect secrets ({{count}})",
+    "secretsAll": "Collect secrets of ALL ({{count}})"
   },
   "toast": {
     "loadError": "Failed to load",

@@ -19,6 +19,7 @@ from sqlalchemy.orm import aliased
 from database import (
     get_db, get_db_readonly, AsyncSessionLocal,
     Credential, GitRepo, GitRepoFile, GitCloneJob, GitleaksFinding,
+    GitProjectSecret, GitInstance,
 )
 from github_api import AsyncGithubSearcher, GithubSearchError, resolve_proxy_url
 
@@ -522,6 +523,10 @@ async def list_repo_files(
         stmt = select(GitRepoFile).where(
             GitRepoFile.repo_id == repo.id, GitRepoFile.is_head.is_(True)
         )
+
+    # Exclui os logs de pipeline (source='pipeline') da árvore de arquivos do repo —
+    # eles têm aba própria (Pipeline).
+    stmt = stmt.where(or_(GitRepoFile.source.is_(None), GitRepoFile.source != "pipeline"))
 
     if q:
         stmt = stmt.where(GitRepoFile.rel_path.ilike(f"%{q}%"))
@@ -1192,6 +1197,111 @@ async def reindex_repo(guid: str, db=Depends(get_db)):
     await db.refresh(job)
     return {"job_id": job.id, "mode": "postprocess" if has_full_clone else "reclone",
             "priority": priority}
+
+
+# --------------------------------------------------------------------------
+# CI/CD por repositório: Secrets e Pipelines
+# --------------------------------------------------------------------------
+def _secret_dict(s: GitProjectSecret) -> Dict[str, Any]:
+    return {
+        "guid": s.guid, "name": s.name, "value": s.value, "value_exposed": s.value_exposed,
+        "scope": s.scope, "protected": s.is_protected, "masked": s.is_masked,
+        "is_jwt": s.is_jwt, "decoded_claims": s.decoded_claims,
+        "obtained_with": s.obtained_with, "platform": s.platform,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+    }
+
+
+@router.get("/repos/{guid}/secrets")
+async def list_repo_secrets(guid: str, db=Depends(get_db_readonly)):
+    """Secrets/variáveis de CI coletados do repositório + nota da última coleta."""
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+    rows = (await db.execute(
+        select(GitProjectSecret).where(GitProjectSecret.repo_id == repo.id)
+        .order_by(GitProjectSecret.name)
+    )).scalars().all()
+    exposes = any(bool(r.value_exposed) for r in rows)
+    return {
+        "total": len(rows),
+        "note": repo.ci_secrets_note,
+        "exposes_values": exposes,
+        "secrets": [_secret_dict(r) for r in rows],
+    }
+
+
+@router.get("/repos/{guid}/pipeline-files")
+async def list_repo_pipeline_files(guid: str, db=Depends(get_db_readonly)):
+    """Logs/outputs de pipelines coletados (armazenados como arquivos indexados)."""
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+    rows = (await db.execute(
+        select(GitRepoFile).where(GitRepoFile.repo_id == repo.id, GitRepoFile.source == "pipeline")
+        .order_by(GitRepoFile.rel_path)
+    )).scalars().all()
+    return {
+        "total": len(rows),
+        "note": repo.ci_pipelines_note,
+        "files": [{
+            "id": f.id, "rel_path": f.rel_path, "name": f.name, "size": f.size,
+            "pipeline_ref": f.pipeline_ref, "status": f.branch,
+            "indexed": f.indexed, "created_at": f.created_at.isoformat() if f.created_at else None,
+        } for f in rows],
+    }
+
+
+class _CollectRequest(BaseModel):
+    task: str = "secrets"          # secrets | pipelines
+    limit: Optional[int] = None    # pipelines: lote
+    more: bool = False             # pipelines: "baixar mais" (offset = já coletados)
+
+
+@router.post("/repos/{guid}/collect")
+async def collect_repo_ci(guid: str, req: _CollectRequest, db=Depends(get_db)):
+    """Enfileira a coleta de CI (secrets/pipelines) para ESTE repositório, usando a
+    instância/credencial com que ele foi descoberto (via o último job)."""
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+    task = req.task if req.task in ("secrets", "pipelines") else "secrets"
+
+    # Instância de origem: pega do job mais recente com instance_id.
+    last = (await db.execute(
+        select(GitCloneJob).where(GitCloneJob.repo_id == repo.id,
+                                  GitCloneJob.instance_id.isnot(None))
+        .order_by(GitCloneJob.created_at.desc()).limit(1)
+    )).scalar_one_or_none()
+    inst = None
+    if last and last.instance_id:
+        inst = (await db.execute(
+            select(GitInstance).where(GitInstance.id == last.instance_id))).scalar_one_or_none()
+    if not inst:
+        raise HTTPException(status_code=400,
+                            detail="Sem instância de origem para este repo — colete pela tela da instância.")
+
+    # Evita duplicar job ativo da mesma tarefa.
+    active = (await db.execute(
+        select(GitCloneJob.id).where(GitCloneJob.repo_id == repo.id,
+                                     GitCloneJob.task_type == task,
+                                     GitCloneJob.status.in_(["pending", "cloning", "processing"]))
+    )).scalar()
+    if active:
+        return {"queued": False, "reason": "já há uma coleta em andamento"}
+
+    offset = (repo.pipeline_files_count or 0) if (task == "pipelines" and req.more) else 0
+    cred_id = inst.credential_id if inst.clone_auth == "authenticated" else None
+    job = GitCloneJob(
+        repo_id=repo.id, repo_url=repo.clone_url or repo.html_url or repo.full_name,
+        repo_full_name=repo.full_name, clone_auth=inst.clone_auth,
+        credential_id=cred_id, proxy_id=inst.proxy_id, status="pending",
+        task_type=task, task_limit=req.limit, task_offset=offset, instance_id=inst.id,
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+    return {"queued": True, "job_id": job.id, "task": task, "offset": offset}
 
 
 @router.post("/repos/reindex-all")

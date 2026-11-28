@@ -19,9 +19,11 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft, Loader2, DownloadCloud, ListTree, RefreshCw, User, Lock, Search,
   CheckCircle, XCircle, ChevronLeft, ChevronRight, UserX, Pencil, Save,
+  GitBranch, Workflow, KeyRound,
 } from 'lucide-react';
 import OriginLogo from '@/components/OriginLogo';
 import { logoPlatform } from './GitInstances';
@@ -48,6 +50,7 @@ export default function GitInstanceDetail() {
   const [cloning, setCloning] = useState(false);
   const [retesting, setRetesting] = useState(false);
   const [selected, setSelected] = useState({});    // full_name -> bool (página atual)
+  const [task, setTask] = useState('clone');       // clone | pipelines | secrets
 
   // Edição da instância (Nome / modo de autenticação)
   const [editOpen, setEditOpen] = useState(false);
@@ -190,7 +193,7 @@ export default function GitInstanceDetail() {
     if (selectedNames.length === 0) return;
     setCloning(true);
     try {
-      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { full_names: selectedNames });
+      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { full_names: selectedNames, task });
       toast.success(queuedMsg(res), {
         action: { label: t('actions.goToJobs'), onClick: () => navigate('/jobs/git') },
       });
@@ -202,7 +205,7 @@ export default function GitInstanceDetail() {
   const cloneAll = async () => {
     setCloning(true);
     try {
-      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { all: true, q: query || null });
+      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { all: true, q: query || null, task });
       toast.success(queuedMsg(res), {
         action: { label: t('actions.goToJobs'), onClick: () => navigate('/jobs/git') },
       });
@@ -271,6 +274,16 @@ export default function GitInstanceDetail() {
       )}
 
       {(listed || hasListing) && (
+        <Tabs value={task} onValueChange={setTask}>
+          <TabsList>
+            <TabsTrigger value="clone" data-testid="tab-projects"><GitBranch className="w-4 h-4 mr-1.5" />{t('detail.tabProjects')}</TabsTrigger>
+            <TabsTrigger value="pipelines" data-testid="tab-pipelines"><Workflow className="w-4 h-4 mr-1.5" />{t('detail.tabPipelines')}</TabsTrigger>
+            <TabsTrigger value="secrets" data-testid="tab-secrets"><KeyRound className="w-4 h-4 mr-1.5" />{t('detail.tabSecrets')}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
+      {(listed || hasListing) && (
         <Card>
           <CardHeader className="flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
             <CardTitle className="text-lg">
@@ -289,11 +302,11 @@ export default function GitInstanceDetail() {
                 {t('detail.refresh')}
               </Button>
               <Button variant="outline" onClick={cloneSelected} disabled={cloning || selectedNames.length === 0}>
-                <DownloadCloud className="w-4 h-4 mr-2" />{t('detail.cloneSelected', { count: selectedNames.length })}
+                <DownloadCloud className="w-4 h-4 mr-2" />{t(`detail.${task}Selected`, { count: selectedNames.length })}
               </Button>
               <Button onClick={cloneAll} disabled={cloning || total === 0} data-testid="instance-clone-all">
                 {cloning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DownloadCloud className="w-4 h-4 mr-2" />}
-                {t('detail.cloneAll', { count: total })}
+                {t(`detail.${task}All`, { count: total })}
               </Button>
             </div>
           </CardHeader>

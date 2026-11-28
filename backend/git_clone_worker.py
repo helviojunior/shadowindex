@@ -471,6 +471,35 @@ class GitCloneWorker:
                     info["clone_dir"] = clone_dir
                     info["repo_id"] = repo.id
 
+                # Tarefas de CI (secrets/pipelines): fluxo próprio, isolado do clone.
+                # Concluem o job aqui mesmo (não passam pelo pós-processamento do clone).
+                task_type = getattr(job, "task_type", "clone") or "clone"
+                if task_type in ("secrets", "pipelines"):
+                    # Mantém o status na fase de CLONE ('cloning' já definido) para o
+                    # watchdog reconciliar corretamente (cloning->pending), já que este
+                    # job roda no loop de clone (não no de pós-processamento).
+                    job.current_step = task_type
+                    await db.commit()
+                    try:
+                        if task_type == "secrets":
+                            n, note = await self._do_secrets(db, job, repo)
+                        else:
+                            n, note = await self._do_pipelines(db, job, repo, clone_dir)
+                        job.status = "completed"
+                        job.current_step = "done"
+                        job.processed_files = n or 0
+                        job.total_files = n or 0
+                        job.completed_at = datetime.now(timezone.utc)
+                        await db.commit()
+                        logger.info(f"[git {task_type}] job {job_id} concluído ({repo.full_name}): {n} item(ns)")
+                    except Exception as e:  # noqa: BLE001
+                        logger.error(f"[git {task_type}] job {job_id} erro: {e}\n{traceback.format_exc()}")
+                        job.status = "failed"
+                        job.error_message = str(e)[:1000]
+                        job.completed_at = datetime.now(timezone.utc)
+                        await db.commit()
+                    return
+
                 ok, err = await self._do_clone(db, job, repo, clone_dir)
                 if not ok:
                     job.status = "failed"
@@ -749,6 +778,173 @@ class GitCloneWorker:
             return await git_dumper.dump_git(site_url, clone_dir, proxy_url, max_objects=max_objects)
         except Exception as e:  # noqa: BLE001
             return False, str(e)[:500]
+
+    # ------------------------------------------------------------------
+    # CI/CD: contexto da instância + coleta de SECRETS e PIPELINES
+    # ------------------------------------------------------------------
+    async def _resolve_instance_ctx(self, db, job):
+        """Resolve (platform, api_url, token, proxy_url, variant, org, web_url,
+        obtained_with, cred_id) p/ uma tarefa de CI. `obtained_with` é hard-coded
+        com o token/usuário usado, para auditoria mesmo se a credencial sumir."""
+        from database import GitInstance, Credential
+        inst = None
+        if getattr(job, "instance_id", None):
+            inst = (await db.execute(
+                select(GitInstance).where(GitInstance.id == job.instance_id))).scalar_one_or_none()
+        platform = (inst.platform if inst else None) or "gitlab"
+        api_url = inst.api_url if inst else None
+        variant = inst.variant if inst else None
+        org = inst.org if inst else None
+        web_url = inst.web_url if inst else None
+        token, obtained, cred_id = None, "anônimo", getattr(job, "credential_id", None)
+        if cred_id:
+            cred = (await db.execute(
+                select(Credential).where(Credential.id == cred_id))).scalar_one_or_none()
+            if cred:
+                token = cred.token
+                label = cred.name or getattr(cred, "username", None) or f"#{cred.id}"
+                obtained = f"token: {label}"
+        proxy_url = None
+        if getattr(job, "proxy_id", None):
+            try:
+                from github_api import resolve_proxy_url
+                proxy_url = await resolve_proxy_url(db, job.proxy_id)
+            except Exception:  # noqa: BLE001
+                proxy_url = None
+        return platform, api_url, token, proxy_url, variant, org, web_url, obtained, cred_id
+
+    async def _do_secrets(self, db, job, repo) -> Tuple[int, Optional[str]]:
+        """Coleta variáveis/secrets de CI do projeto, armazena em GitProjectSecret,
+        decodifica JWTs e cria um leak por secret. Idempotente por repo."""
+        import git_ci, jwt_utils
+        from database import GitProjectSecret, GitleaksFinding
+        (platform, api_url, token, proxy_url, variant, org, web_url,
+         obtained, cred_id) = await self._resolve_instance_ctx(db, job)
+        res = await git_ci.list_secrets(platform, api_url, token, repo.full_name,
+                                        proxy_url, variant, org, web_url)
+        note = res.get("note")
+        items = res.get("items") or []
+
+        # Reprocesso idempotente: limpa secrets e leaks de CI anteriores deste repo.
+        await db.execute(delete(GitProjectSecret).where(GitProjectSecret.repo_id == repo.id))
+        await db.execute(delete(GitleaksFinding).where(
+            GitleaksFinding.git_repo_id == repo.id, GitleaksFinding.rule_id == "ci-secret"))
+        await db.flush()
+
+        saved = 0
+        for it in items:
+            name = (it.get("name") or "").strip()
+            if not name:
+                continue
+            value = it.get("value")
+            exposed = value is not None
+            is_jwt = bool(value) and jwt_utils.looks_like_jwt(value)
+            claims = jwt_utils.jwt_search_text(value) if value else None
+            scope = it.get("scope") or "project"
+            fp = f"ci-secret:{repo.guid}:{scope}:{name}"
+            db.add(GitProjectSecret(
+                repo_id=repo.id, repo_guid=repo.guid, repo_full_name=repo.full_name,
+                instance_id=getattr(job, "instance_id", None), platform=platform,
+                scope=scope, name=name, value=value, value_exposed=exposed,
+                is_protected=it.get("protected"), is_masked=it.get("masked"),
+                is_jwt=is_jwt, decoded_claims=claims,
+                obtained_with=obtained, obtained_credential_id=cred_id,
+                finding_fingerprint=fp,
+            ))
+            # Cada secret também vira um leak.
+            db.add(GitleaksFinding(
+                fingerprint=fp, rule_id="ci-secret",
+                description=f"CI/CD secret '{name}' coletado de {platform} ({obtained})",
+                match=f"{name}={'' if value is None else value}",
+                secret=(value if value else name),
+                file_path=f"__ci_secrets__/{name}", original_file=f"__ci_secrets__/{name}",
+                server_path=f"__ci_secrets__/{name}", file_name=name,
+                server_name=repo.full_name, share_name=repo.full_name,
+                git_repo_id=repo.id, git_repo_guid=repo.guid,
+                decoded_claims=claims, tags=["ci-secret", platform],
+                leak_date=datetime.now(timezone.utc), scanned_at=datetime.now(timezone.utc),
+                raw_data={"source": "ci-secret", "name": name, "scope": scope,
+                          "obtained_with": obtained, "value_exposed": exposed},
+            ))
+            saved += 1
+
+        repo.secrets_count = saved
+        repo.ci_secrets_note = note
+        await db.flush()
+        repo.leaks_count = (await db.execute(
+            select(func.count(GitleaksFinding.id)).where(GitleaksFinding.git_repo_id == repo.id)
+        )).scalar() or 0
+        await db.commit()
+        return saved, note
+
+    async def _do_pipelines(self, db, job, repo, clone_dir) -> Tuple[int, Optional[str]]:
+        """Coleta os logs dos jobs dos pipelines mais recentes, grava como arquivos,
+        passa pelo gitleaks e indexa (source='pipeline'). Acumula com rodadas anteriores."""
+        import git_ci, opensearch_client
+        from database import GitRepoFile, GitleaksFinding
+        (platform, api_url, token, proxy_url, variant, org, web_url,
+         _obtained, _cred) = await self._resolve_instance_ctx(db, job)
+        default_n = await self._get_setting_int(db, "git_pipelines_fetch_count", 20)
+        limit = job.task_limit or default_n
+        offset = job.task_offset or 0
+        res = await git_ci.list_pipeline_logs(platform, api_url, token, repo.full_name,
+                                              proxy_url, variant, org, web_url, limit, offset)
+        note = res.get("note")
+        items = res.get("items") or []
+
+        pdir = os.path.join(clone_dir, "__pipelines__")
+        os.makedirs(pdir, exist_ok=True)
+        max_text_bytes = await self._get_index_max_bytes(db)
+        ctx = self._new_idx_ctx()
+        saved = 0
+        for it in items:
+            safe = (it.get("name") or f"log-{saved}").replace("/", "_").replace("\\", "_")
+            rel = f"__pipelines__/{safe}.log"
+            fpath = os.path.join(clone_dir, rel)
+            text = it.get("text") or ""
+            try:
+                with open(fpath, "w", errors="replace") as f:
+                    f.write(text)
+            except Exception:  # noqa: BLE001
+                continue
+            # Substitui a versão anterior deste mesmo log, se houver.
+            await db.execute(delete(GitRepoFile).where(
+                GitRepoFile.repo_id == repo.id, GitRepoFile.rel_path == rel,
+                GitRepoFile.source == "pipeline"))
+            content = text[:max_text_bytes] if text else None
+            gf = GitRepoFile(
+                repo_id=repo.id, repo_guid=repo.guid, rel_path=rel, name=f"{safe}.log",
+                extension=".log", size=len(text.encode("utf-8", "replace")),
+                mimetype="text/plain", is_binary=False, content=content,
+                content_extracted=bool(content), is_head=True,
+                source="pipeline", pipeline_ref=it.get("ref"), branch=it.get("status"),
+            )
+            db.add(gf)
+            await db.flush()
+            if content:
+                self._queue_index_doc(ctx, repo, gf, rel, gf.name, ".log", "text/plain",
+                                      gf.size, content, extra={"source": "pipeline"})
+            saved += 1
+        await self._flush_index(ctx)
+
+        # gitleaks dir-mode sobre a pasta de pipelines (cada achado vira leak do repo).
+        try:
+            if saved:
+                await self._run_gitleaks(db, repo, pdir, has_history=False)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[git pipelines] gitleaks falhou: {e}")
+
+        # Acumula contadores (rodadas "baixar mais" somam).
+        repo.pipeline_files_count = (await db.execute(
+            select(func.count(GitRepoFile.id)).where(
+                GitRepoFile.repo_id == repo.id, GitRepoFile.source == "pipeline")
+        )).scalar() or 0
+        repo.ci_pipelines_note = note
+        repo.leaks_count = (await db.execute(
+            select(func.count(GitleaksFinding.id)).where(GitleaksFinding.git_repo_id == repo.id)
+        )).scalar() or 0
+        await db.commit()
+        return saved, note
 
     async def _run_clone(self, url, clone_dir, env, depth, safe_url=None) -> Tuple[bool, Optional[str], bool]:
         """Executa `git clone`. depth>0 => clone raso. Retorna (ok, err, timed_out).

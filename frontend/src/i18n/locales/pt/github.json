@@ -179,5 +179,22 @@
     "copyUrl": "Copiar URL",
     "viewOrigin": "Ver em {{platform}}",
     "urlCopied": "URL copiada"
+  },
+  "ci": {
+    "tabFiles": "Arquivos",
+    "tabSecrets": "Secrets",
+    "tabPipeline": "Pipeline",
+    "secretsTitle": "Secrets",
+    "pipelinesTitle": "Pipelines",
+    "collect": "Coletar",
+    "collectMore": "Baixar mais",
+    "collectMoreHint": "Coleta o próximo lote de pipelines",
+    "collectQueued": "Coleta enfileirada",
+    "collectBusy": "Já há uma coleta em andamento",
+    "secretsEmpty": "Nenhum secret coletado. Clique em \"Coletar\" (precisa de permissão no token).",
+    "pipelinesEmpty": "Nenhum log de pipeline coletado. Clique em \"Coletar\".",
+    "valuesHidden": "Esta plataforma não expõe os valores — apenas os nomes.",
+    "notExposed": "(valor não exposto pela plataforma)",
+    "obtainedWith": "Coletado com"
   }
 }
