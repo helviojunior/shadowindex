@@ -42,7 +42,8 @@
     "pending": "Pending",
     "cloning": "Cloning",
     "cloned": "Cloned",
-    "failed": "Failed"
+    "failed": "Failed",
+    "not_cloned": "Not cloned"
   },
   "browser": {
     "back": "Back to repositories",

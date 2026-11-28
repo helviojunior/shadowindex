@@ -453,8 +453,11 @@ async def _enqueue_project(db, inst, full_name, clone_url, name=None, html_url=N
 
     # Tarefas de CI (secrets/pipelines): não envolvem clone/working-tree. Só dedup
     # contra um job ATIVO da MESMA tarefa (evita enfileirar duplicado); re-coleta é
-    # permitida (idempotente). Não mexe no clone_status do repo.
+    # permitida (idempotente). O repo não foi solicitado p/ clone -> 'not_cloned'
+    # (não aparece como "Pendente" de clone), a menos que já tenha sido clonado.
     if task in ("secrets", "pipelines"):
+        if is_new:
+            repo.clone_status = "not_cloned"
         active_task = (await db.execute(
             select(GitCloneJob.id).where(
                 GitCloneJob.repo_id == repo.id,

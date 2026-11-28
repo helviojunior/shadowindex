@@ -16,7 +16,7 @@ import {
 import {
   Library, Search, Star, AlertTriangle, FileText,
   Loader2, Clock, CheckCircle, XCircle, RefreshCw, ExternalLink,
-  GitBranch, GitCommit, DownloadCloud,
+  GitBranch, GitCommit, DownloadCloud, MinusCircle,
 } from 'lucide-react';
 import OriginLogo from '@/components/OriginLogo';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,7 @@ const STATUS_META = {
   cloning: { icon: Loader2, className: 'bg-blue-500/20 text-blue-500 border-blue-500/50', spin: true },
   cloned: { icon: CheckCircle, className: 'bg-green-500/20 text-green-500 border-green-500/50' },
   failed: { icon: XCircle, className: 'bg-red-500/20 text-red-500 border-red-500/50' },
+  not_cloned: { icon: MinusCircle, className: 'bg-muted/40 text-muted-foreground border-border' },
 };
 
 // Cards de estatística no mesmo padrão das outras telas (borda colorida à esquerda).
@@ -232,6 +233,7 @@ export default function Github() {
                 <SelectItem value="pending">{t('cloneStatus.pending')}</SelectItem>
                 <SelectItem value="cloning">{t('cloneStatus.cloning')}</SelectItem>
                 <SelectItem value="cloned">{t('cloneStatus.cloned')}</SelectItem>
+                <SelectItem value="not_cloned">{t('cloneStatus.not_cloned')}</SelectItem>
                 <SelectItem value="failed">{t('cloneStatus.failed')}</SelectItem>
               </SelectContent>
             </Select>

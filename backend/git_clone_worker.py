@@ -409,6 +409,30 @@ class GitCloneWorker:
                     f"[git watchdog] {rf.rowcount} repo(s) com conteúdo e sem job ativo "
                     f"-> 'cloned'"
                 )
+
+            # Repos que só têm tarefa de CI (pipelines/secrets) e NUNCA foram pedidos
+            # para clone ficam presos em 'pending'. Sem job de CLONE e sem conteúdo
+            # -> 'not_cloned' (não contam como pendentes de clone).
+            clone_job_repos = (
+                select(GitCloneJob.repo_id)
+                .where(GitCloneJob.task_type == "clone", GitCloneJob.repo_id.isnot(None))
+                .distinct()
+            )
+            notcloned_fix = (
+                update(GitRepo)
+                .where(GitRepo.clone_status == "pending",
+                       or_(GitRepo.files_count == 0, GitRepo.files_count.is_(None)),
+                       GitRepo.cloned_at.is_(None),
+                       GitRepo.id.notin_(clone_job_repos))
+                .values(clone_status="not_cloned")
+            )
+            nf = await db.execute(notcloned_fix)
+            if nf.rowcount:
+                await db.commit()
+                logger.warning(
+                    f"[git watchdog] {nf.rowcount} repo(s) sem pedido de clone "
+                    f"-> 'not_cloned'"
+                )
         except Exception as e:  # noqa: BLE001
             logger.warning(f"[git watchdog] correção de status de repo falhou: {e}")
             try:
