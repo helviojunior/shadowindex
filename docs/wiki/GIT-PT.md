@@ -139,6 +139,12 @@ intitle:"index of" ".gitignore"
 inurl:git
 ```
 
+E com o **Shodan**, para encontrar servidores que expõem o diretório `.git`:
+
+```text
+http.title:"index of /.git"
+```
+
 Depois de encontrar um candidato (ex.: `https://alvo.exemplo/.git/`), basta
 passar a URL do site em **Request Clone** — o sistema sonda o `.git/HEAD` e, se
 exposto, reconstrói o repositório (veja abaixo). Lembre: o dump funciona mesmo
