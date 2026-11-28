@@ -87,6 +87,12 @@ function findNode(root, path) {
   return node || null;
 }
 
+// Remove sequências ANSI (cores/controle) de logs de CI — para exibir limpo mesmo
+// em logs coletados antes do strip no backend.
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-_]|\r/g;
+const stripAnsi = (s) => (s || '').replace(ANSI_RE, '');
+
 // Árvore dos logs de pipeline: <id do pipeline>/<step>/<arquivo>.
 function PipeTreeNode({ node, expanded, toggle, onOpen, depth = 0 }) {
   return (
@@ -147,6 +153,7 @@ export default function GitRepoBrowser() {
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
+  const [selectedSecret, setSelectedSecret] = useState(null); // secret aberto no painel direito
   const [loadingContent, setLoadingContent] = useState(false);
   const [viewerLine, setViewerLine] = useState(null); // linha a destacar no viewer (deep-link de leak)
   // Versionamento por commit: todas as versões do caminho aberto + a versão atual.
@@ -309,6 +316,11 @@ export default function GitRepoBrowser() {
     if (leftTab === 'pipeline') loadPipelineFiles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leftTab]);
+
+  // Abrir um arquivo/pasta fecha o painel de secret (e vice-versa).
+  useEffect(() => {
+    if (selectedFile || selectedPath) setSelectedSecret(null);
+  }, [selectedFile, selectedPath]);
 
   // Conteúdo de um blob que não foi indexado como versão (ex.: binário/grande),
   // lido direto do clone no commit indicado.
@@ -730,6 +742,48 @@ export default function GitRepoBrowser() {
   //  - arquivo selecionado -> abas Info / View / OCR + ações
   // -------------------------------------------------------------------------
   const renderDetailPanel = () => {
+    // --- Secret selecionado: "View" do secret ---
+    if (selectedSecret) {
+      const s = selectedSecret;
+      return (
+        <div className="h-full flex flex-col" data-testid="secret-detail">
+          <div className="flex items-center gap-2 p-4 border-b border-border">
+            <KeyRound className="w-5 h-5 text-amber-500 flex-shrink-0" />
+            <h2 className="text-lg font-semibold truncate font-mono" title={s.name}>{s.name}</h2>
+            {s.is_jwt && <Badge variant="outline">JWT</Badge>}
+            {s.protected && <Badge variant="outline">protected</Badge>}
+            {s.masked && <Badge variant="outline">masked</Badge>}
+            {s.value_exposed && (
+              <Button variant="outline" size="sm" className="ml-auto"
+                onClick={async () => { try { await navigator.clipboard.writeText(s.value || ''); toast.success(t('toast.copied', { defaultValue: 'Copiado' })); } catch (e) {} }}>
+                <Copy className="w-3.5 h-3.5 mr-1" />{t('detail.copy', { defaultValue: 'Copiar' })}
+              </Button>
+            )}
+          </div>
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-4 text-sm">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">{t('ci.secretValue')}</div>
+                {s.value_exposed
+                  ? <code className="block bg-muted/40 p-3 rounded font-mono break-all whitespace-pre-wrap">{s.value || '""'}</code>
+                  : <div className="text-muted-foreground italic">{t('ci.notExposed')}</div>}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><div className="text-xs text-muted-foreground">{t('ci.scope', { defaultValue: 'Escopo' })}</div><div className="break-all">{s.scope || '—'}</div></div>
+                <div><div className="text-xs text-muted-foreground">{t('ci.obtainedWith')}</div><div className="break-all">{s.obtained_with || '—'}</div></div>
+              </div>
+              {s.decoded_claims && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">JWT</div>
+                  <pre className="text-xs bg-muted/40 rounded p-3 whitespace-pre-wrap break-all">{s.decoded_claims}</pre>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      );
+    }
+
     if (!selectedPath && !selectedFile) {
       return (
         <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -988,7 +1042,7 @@ export default function GitRepoBrowser() {
                 <div className="flex items-center justify-center h-full text-muted-foreground"><p className="text-sm">{t('browser.noContent')}</p></div>
               ) : (
                 <CodeViewer
-                  content={fileContent.content}
+                  content={(selectedFile?.rel_path || '').includes('__pipelines__') ? stripAnsi(fileContent.content) : fileContent.content}
                   filename={selectedFile?.name || fileContent?.name}
                   highlightLine={viewerLine}
                   copyLabel={t('view.copy')}
@@ -1352,17 +1406,15 @@ export default function GitRepoBrowser() {
                     {(secrets || []).length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">{t('ci.secretsEmpty')}</p>
                     ) : secrets.map((s) => (
-                      <div key={s.guid} className="border rounded p-2 text-sm">
-                        <div className="font-mono text-xs text-blue-500 break-all flex items-center gap-1.5 flex-wrap">
-                          {s.name}
-                          {s.is_jwt && <Badge variant="outline" className="text-[10px]">JWT</Badge>}
-                          {s.protected && <Badge variant="outline" className="text-[10px]">protected</Badge>}
-                        </div>
-                        <div className="font-mono text-xs break-all mt-1">
-                          {s.value_exposed ? (s.value || '""') : <span className="text-muted-foreground italic">{t('ci.notExposed')}</span>}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground mt-1">{t('ci.obtainedWith')}: {s.obtained_with || '—'}{s.scope ? ` · ${s.scope}` : ''}</div>
-                        {s.decoded_claims && <pre className="text-[10px] bg-muted/40 rounded p-1 mt-1 whitespace-pre-wrap break-all">{s.decoded_claims}</pre>}
+                      <div key={s.guid}
+                        className={cn('border rounded px-2 py-1.5 text-sm cursor-pointer hover:bg-muted/50 flex items-center gap-2',
+                          selectedSecret?.guid === s.guid && 'border-primary ring-1 ring-primary/40')}
+                        onClick={() => { setSelectedFile(null); setSelectedPath(null); setSelectedSecret(s); setActiveTab('view'); }}
+                        data-testid="secret-item">
+                        <KeyRound className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                        <span className="font-mono text-xs text-blue-500 break-all flex-1">{s.name}</span>
+                        {s.is_jwt && <Badge variant="outline" className="text-[10px]">JWT</Badge>}
+                        {s.protected && <Badge variant="outline" className="text-[10px]">protected</Badge>}
                       </div>
                     ))}
                   </div>

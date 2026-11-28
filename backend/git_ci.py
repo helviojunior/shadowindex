@@ -10,6 +10,7 @@ Cada função retorna um dicionário com:
 Chamadas de LISTAGEM (variáveis/pipelines/jobs) são auditadas; o conteúdo bruto
 dos logs (volumoso) usa audit=False, como os objetos do git-dump.
 """
+import re
 import logging
 from typing import Optional, Dict, Any, List
 from urllib.parse import quote
@@ -18,6 +19,10 @@ import external_http
 from git_platforms import auth_headers, _azure_org
 
 logger = logging.getLogger(__name__)
+
+# Sequências ANSI (cores/controle) comuns em logs de CI — removidas para deixar o
+# texto limpo (melhor p/ leitura, indexação e detecção de segredos pelo gitleaks).
+_ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-_]|[\r\x00]")
 
 TIMEOUT = 60
 MAX_LOG_BYTES = 2_000_000   # teto por log de job (2 MB)
@@ -35,7 +40,7 @@ def _gl_pid(full_name: str) -> str:
 
 
 def _trim(text: Optional[str]) -> str:
-    t = text or ""
+    t = _ANSI_RE.sub("", text or "")   # remove ANSI/controle
     if len(t) > MAX_LOG_BYTES:
         t = t[:MAX_LOG_BYTES] + "\n...[truncado]..."
     return t

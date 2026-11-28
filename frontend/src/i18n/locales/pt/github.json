@@ -200,6 +200,7 @@
     "notExposed": "(valor não exposto pela plataforma)",
     "obtainedWith": "Coletado com",
     "collectRunning": "Coleta em andamento…",
-    "collectFailed": "Última coleta falhou"
+    "collectFailed": "Última coleta falhou",
+    "secretValue": "Valor"
   }
 }

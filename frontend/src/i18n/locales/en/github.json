@@ -200,6 +200,7 @@
     "notExposed": "(value not exposed by the platform)",
     "obtainedWith": "Collected with",
     "collectRunning": "Collection in progress…",
-    "collectFailed": "Last collection failed"
+    "collectFailed": "Last collection failed",
+    "secretValue": "Value"
   }
 }
