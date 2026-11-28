@@ -1,0 +1,47 @@
+{
+  "title": "Git Instances",
+  "subtitle": "Git platform instances (GitHub, GitLab, Gitea, Bitbucket, Azure DevOps). List and clone projects.",
+  "list": { "title": "Instances", "empty": "No instances registered" },
+  "fields": { "platform": "Platform", "url": "URL", "user": "User", "status": "Status", "proxy": "Proxy" },
+  "status": { "failed": "Failed" },
+  "actions": { "add": "Add Instance", "test": "Test access", "save": "Save instance", "back": "Back", "goToJobs": "View jobs" },
+  "auth": {
+    "label": "Authentication mode",
+    "anonymous": "Anonymous",
+    "authenticated": "Authenticated (token)",
+    "tokenPlaceholder": "Select a token",
+    "noTokens": "No tokens registered. Add a token-type credential."
+  },
+  "proxy": { "none": "No proxy" },
+  "new": {
+    "title": "Add Git instance",
+    "subtitle": "Enter the URL, authenticate and test access. For on-premises the platform is auto-detected.",
+    "cardTitle": "New instance",
+    "cardDescription": "Known public URLs go straight to standard APIs; on-premises are fingerprinted against known platform APIs.",
+    "urlHint": "e.g. GitHub Enterprise, self-hosted GitLab, Gitea, Bitbucket Server, Azure DevOps.",
+    "autodetect": "Auto-detect",
+    "detected": "Access confirmed",
+    "failed": "Access failed"
+  },
+  "detail": {
+    "info": "Information",
+    "admin": "Privilege",
+    "listProjects": "List and download projects",
+    "retest": "Re-test access",
+    "projects": "Projects",
+    "filter": "Filter projects...",
+    "selectAll": "Select all",
+    "cloneSelected": "Enqueue clone ({{count}})",
+    "noProjects": "No projects found"
+  },
+  "toast": {
+    "loadError": "Failed to load",
+    "removed": "Instance removed",
+    "testOk": "Access confirmed",
+    "testFail": "Access failed",
+    "saved": "Instance saved",
+    "projectsError": "Failed to list projects",
+    "noSelection": "Select at least one project",
+    "queued": "{{count}} clone(s) queued"
+  }
+}

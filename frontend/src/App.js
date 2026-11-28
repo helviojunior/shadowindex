@@ -35,6 +35,9 @@ import Github from "@/pages/Github";
 import GitRepoBrowser from "@/pages/GitRepoBrowser";
 import GitCloneJobs from "@/pages/GitCloneJobs";
 import RequestClone from "@/pages/RequestClone";
+import GitInstances from "@/pages/GitInstances";
+import GitInstanceNew from "@/pages/GitInstanceNew";
+import GitInstanceDetail from "@/pages/GitInstanceDetail";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "@/contexts/AppContext";
 import { UiSettingsProvider } from "@/contexts/UiSettingsContext";
@@ -80,6 +83,9 @@ function App() {
                     <Route path="/jobs/git" element={<GitCloneJobs />} />
                     <Route path="/git/search" element={<GithubSearch />} />
                     <Route path="/git/request" element={<RequestClone />} />
+                    <Route path="/git/instances" element={<GitInstances />} />
+                    <Route path="/git/instances/new" element={<GitInstanceNew />} />
+                    <Route path="/git/instances/:guid" element={<GitInstanceDetail />} />
                     <Route path="/git" element={<Github />} />
                     <Route path="/git/:guid" element={<GitRepoBrowser />} />
                     <Route path="/credentials" element={<Credentials />} />

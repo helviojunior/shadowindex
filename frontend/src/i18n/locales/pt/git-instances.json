@@ -1,0 +1,47 @@
+{
+  "title": "Git Instances",
+  "subtitle": "Instâncias de plataformas Git (GitHub, GitLab, Gitea, Bitbucket, Azure DevOps). Liste e clone os projetos.",
+  "list": { "title": "Instâncias", "empty": "Nenhuma instância cadastrada" },
+  "fields": { "platform": "Plataforma", "url": "URL", "user": "Usuário", "status": "Status", "proxy": "Proxy" },
+  "status": { "failed": "Falha" },
+  "actions": { "add": "Add Instance", "test": "Testar acesso", "save": "Salvar instância", "back": "Voltar", "goToJobs": "Ver jobs" },
+  "auth": {
+    "label": "Modo de autenticação",
+    "anonymous": "Anônimo",
+    "authenticated": "Autenticado (token)",
+    "tokenPlaceholder": "Selecione um token",
+    "noTokens": "Nenhum token cadastrado. Cadastre uma credencial do tipo token."
+  },
+  "proxy": { "none": "Sem proxy" },
+  "new": {
+    "title": "Adicionar instância Git",
+    "subtitle": "Informe a URL, autentique e teste o acesso. Em on-premises o sistema identifica a plataforma automaticamente.",
+    "cardTitle": "Nova instância",
+    "cardDescription": "Para URLs públicas conhecidas vai direto às APIs padrão; para on-premises faz o fingerprint das APIs conhecidas.",
+    "urlHint": "Ex.: GitHub Enterprise, GitLab self-hosted, Gitea, Bitbucket Server, Azure DevOps.",
+    "autodetect": "Auto-detectar",
+    "detected": "Acesso confirmado",
+    "failed": "Falha no acesso"
+  },
+  "detail": {
+    "info": "Informações",
+    "admin": "Privilégio",
+    "listProjects": "Listar e baixar projetos",
+    "retest": "Retestar acesso",
+    "projects": "Projetos",
+    "filter": "Filtrar projetos...",
+    "selectAll": "Selecionar todos",
+    "cloneSelected": "Enfileirar clone ({{count}})",
+    "noProjects": "Nenhum projeto encontrado"
+  },
+  "toast": {
+    "loadError": "Erro ao carregar",
+    "removed": "Instância removida",
+    "testOk": "Acesso confirmado",
+    "testFail": "Falha no acesso",
+    "saved": "Instância salva",
+    "projectsError": "Falha ao listar projetos",
+    "noSelection": "Selecione ao menos um projeto",
+    "queued": "{{count}} clone(s) enfileirado(s)"
+  }
+}

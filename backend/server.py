@@ -5379,6 +5379,10 @@ app.include_router(router_git)
 from dns_routes import router as router_dns
 app.include_router(router_dns)
 
+# Git Instances (plataformas Git: fingerprint, whoami, listagem/clone de projetos)
+from git_instances_routes import router as router_git_instances
+app.include_router(router_git_instances)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,

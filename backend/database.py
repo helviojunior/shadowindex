@@ -736,6 +736,32 @@ class AdScanJob(Base):
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class GitInstance(Base):
+    """Instância de uma plataforma Git (GitHub/GHE, GitLab, Gitea, Bitbucket,
+    Azure DevOps). Guarda plataforma, URL, token (Credential) e o whoami."""
+    __tablename__ = "git_instances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    guid = Column(String, nullable=False, unique=True, index=True, default=lambda: uuid.uuid4().hex)
+    name = Column(String, nullable=True)            # rótulo (host por padrão)
+    platform = Column(String, nullable=False)       # github, github_enterprise, gitlab, gitea, bitbucket, azure_devops
+    base_url = Column(String, nullable=False)       # URL informada (normalizada)
+    api_url = Column(String, nullable=True)         # base da API resolvida
+    web_url = Column(String, nullable=True)
+    variant = Column(String, nullable=True)         # bitbucket: cloud|server
+    org = Column(String, nullable=True)             # azure devops: organização
+    clone_auth = Column(String, default="authenticated")  # anonymous|authenticated
+    credential_id = Column(Integer, ForeignKey("credentials.id", ondelete="SET NULL"), nullable=True)
+    proxy_id = Column(Integer, nullable=True)
+    whoami = Column(JSON, nullable=True)            # info read-only do usuário autenticado
+    status = Column(String, default="unknown")      # ok|failed|unknown
+    error = Column(Text, nullable=True)
+    last_tested_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+
 class GitRepo(Base):
     """Repositório Git descoberto/clonado pelo módulo GIT."""
     __tablename__ = "git_repos"
