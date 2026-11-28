@@ -635,7 +635,10 @@ class GitCloneWorker:
         # (o raso descartaria o histórico); o raso fica apenas como fallback de timeout.
         shallow_depth, is_large = await self._resolve_shallow_depth(db, job, repo)
         history_enabled = await self._git_index_history_enabled(db)
-        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true"}
+        # GIT_SSL_NO_VERIFY: ignora falhas de certificado em TODO cenário de clone
+        # (hosts self-hosted/MITM/proxy com cert próprio).
+        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true",
+               "GIT_SSL_NO_VERIFY": "true"}
 
         # Proxy (opcional) por job: git usa curl, que respeita estas variáveis
         # (socks5 via ALL_PROXY). None = sem proxy.

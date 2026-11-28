@@ -953,7 +953,9 @@ async def _git_ls_remote(clone_url: str, token: Optional[str], proxy_url: Option
     from git_clone_worker import _inject_token
 
     url = _inject_token(clone_url, token) if token else clone_url
-    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true"}
+    # Ignora falhas de certificado (mesmo critério do clone).
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/true",
+           "GIT_SSL_NO_VERIFY": "true"}
     if proxy_url:
         env["HTTP_PROXY"] = proxy_url
         env["HTTPS_PROXY"] = proxy_url
