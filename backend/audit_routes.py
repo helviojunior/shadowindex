@@ -18,6 +18,7 @@ def _call_dict(c: ExternalApiCall) -> Dict[str, Any]:
         "context": c.context,
         "method": c.method,
         "url": c.url,
+        "remote_ip": c.remote_ip,
         "status_code": c.status_code,
         "duration_ms": c.duration_ms,
         "request_headers": c.request_headers,

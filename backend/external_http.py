@@ -72,6 +72,19 @@ def _mask_body(value):
     return value
 
 
+def _resolve_ip(url: str) -> Optional[str]:
+    """Resolve o IP do host da URL (reflete /etc/hosts / DNS override). Best-effort."""
+    try:
+        import socket
+        from urllib.parse import urlparse
+        host = urlparse(url).hostname
+        if not host:
+            return None
+        return socket.gethostbyname(host)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _mask_url(url: str) -> str:
     u = _SECRET_URL_RE.sub(lambda m: f"{m.group(1)}={_MASK}", url or "")
     # Mascara credenciais embutidas (user:pass@host).
@@ -192,7 +205,7 @@ class ExternalClient:
             except Exception:  # noqa: BLE001
                 req_payload["body"] = str(body)[:_MAX_BODY]
 
-        resp_payload = {}
+        resp_payload = None
         status = None
         if resp is not None:
             status = resp.status_code
@@ -206,17 +219,19 @@ class ExternalClient:
                 else:
                     resp_payload = {"_binary": len(resp.content)}
             except Exception:  # noqa: BLE001
-                resp_payload = {}
+                resp_payload = None
+
+        remote_ip = _resolve_ip(url)
 
         try:
             async with AsyncSessionLocal() as db:
                 db.add(ExternalApiCall(
                     provider=self.provider, context=context or None,
-                    method=method, url=_mask_url(url),
+                    method=method, url=_mask_url(url), remote_ip=remote_ip,
                     status_code=status, duration_ms=duration_ms,
                     request_headers=_mask_headers(headers),
                     request_payload=req_payload or None,
-                    response_payload=resp_payload or None,
+                    response_payload=resp_payload,
                     error=error or None,
                 ))
                 await db.commit()

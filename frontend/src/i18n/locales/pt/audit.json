@@ -6,11 +6,19 @@
     "refresh": "Atualizar",
     "searchPlaceholder": "Buscar por URL, provedor ou contexto",
     "errorsOnly": "Só erros (status ≥ 400 ou falha)",
-    "when": "Quando", "provider": "Provedor", "context": "Contexto", "method": "Método",
-    "status": "Status", "duration": "Duração (ms)", "failed": "FALHA",
+    "when": "Quando",
+    "provider": "Provedor",
+    "context": "Contexto",
+    "method": "Método",
+    "status": "Status",
+    "duration": "Duração (ms)",
+    "failed": "FALHA",
     "empty": "Nenhuma chamada registrada",
-    "reqHeaders": "Request · Headers", "reqBody": "Request · Body",
-    "respBody": "Response · Body", "error": "Erro",
-    "pageOf": "Página {{page}} de {{pages}}"
+    "reqHeaders": "Request · Headers",
+    "reqBody": "Request · Body",
+    "respBody": "Response · Body",
+    "error": "Erro",
+    "pageOf": "Página {{page}} de {{pages}}",
+    "remoteIp": "IP remoto"
   }
 }

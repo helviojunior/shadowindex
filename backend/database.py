@@ -262,6 +262,7 @@ class ExternalApiCall(Base):
     context = Column(String, nullable=True)                 # ex.: search, whoami, projects
     method = Column(String, nullable=True)
     url = Column(String, nullable=True)                     # api_key mascarado
+    remote_ip = Column(String, nullable=True)               # IP do host remoto (DNS/hosts)
     status_code = Column(Integer, nullable=True)
     duration_ms = Column(Integer, nullable=True)
     request_headers = Column(JSON, nullable=True)           # Authorization mascarado
@@ -1157,6 +1158,7 @@ async def apply_pending_migrations():
                 ('projects_count', 'INTEGER'),
                 ('projects_refreshed_at', 'TIMESTAMPTZ'),
             ])
+            await _pg_add_cols('external_api_calls', [('remote_ip', 'VARCHAR')])
             await conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_git_repo_files_repo_path_date "
                 "ON git_repo_files (repo_id, rel_path, commit_date)"

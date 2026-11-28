@@ -238,9 +238,11 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
         elif platform == "gitlab":
             page = 1
             while len(out) < MAX_PROJECTS:
+                # Sem membership=true: lista TODOS os projetos visíveis ao token
+                # (grupos/subgrupos, públicos/internos). Admin vê tudo.
                 r = await c.get(api + "/projects",
-                                params={"membership": "true", "per_page": PAGE_SIZE, "page": page,
-                                        "order_by": "last_activity_at", "simple": "true"},
+                                params={"per_page": PAGE_SIZE, "page": page,
+                                        "order_by": "id", "sort": "asc", "simple": "true"},
                                 headers=h)
                 if r.status_code != 200:
                     break

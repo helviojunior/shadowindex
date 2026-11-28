@@ -114,13 +114,14 @@ export default function ExternalCalls() {
                 <TableHead>{t('external.context')}</TableHead>
                 <TableHead>{t('external.method')}</TableHead>
                 <TableHead>URL</TableHead>
+                <TableHead>{t('external.remoteIp')}</TableHead>
                 <TableHead className="text-right">{t('external.status')}</TableHead>
                 <TableHead className="text-right">{t('external.duration')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{t('external.empty')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{t('external.empty')}</TableCell></TableRow>
               ) : rows.map((c) => {
                 const open = !!expanded[c.id];
                 return [
@@ -130,13 +131,14 @@ export default function ExternalCalls() {
                     <TableCell className="font-medium">{c.provider || '—'}</TableCell>
                     <TableCell className="text-muted-foreground">{c.context || '—'}</TableCell>
                     <TableCell className={`font-mono font-medium ${methodColor(c.method)}`}>{c.method}</TableCell>
-                    <TableCell className="font-mono text-xs max-w-xl truncate" title={c.url}>{c.url}</TableCell>
+                    <TableCell className="font-mono text-xs max-w-md truncate" title={c.url}>{c.url}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{c.remote_ip || '—'}</TableCell>
                     <TableCell className={`text-right font-mono ${statusColor(c.status_code, c.error)}`}>{c.error ? t('external.failed') : (c.status_code ?? '—')}</TableCell>
                     <TableCell className="text-right font-mono text-xs">{c.duration_ms != null ? c.duration_ms : '—'}</TableCell>
                   </TableRow>,
                   open && (
                     <TableRow key={`${c.id}-d`} className="bg-muted/20">
-                      <TableCell colSpan={8}>
+                      <TableCell colSpan={9}>
                         <div className="grid md:grid-cols-2 gap-4 p-2">
                           <div className="space-y-2">
                             <div className="text-xs font-semibold text-muted-foreground">{t('external.reqHeaders')}</div>
