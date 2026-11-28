@@ -40,7 +40,9 @@ def _gl_pid(full_name: str) -> str:
 
 
 def _trim(text: Optional[str]) -> str:
-    t = _ANSI_RE.sub("", text or "")   # remove ANSI/controle
+    # Mantém as sequências ANSI (cores) p/ renderização no visualizador; só remove
+    # NUL e \r (atrapalham a exibição). A limpeza p/ gitleaks/índice é feita no worker.
+    t = (text or "").replace("\x00", "").replace("\r", "")
     if len(t) > MAX_LOG_BYTES:
         t = t[:MAX_LOG_BYTES] + "\n...[truncado]..."
     return t

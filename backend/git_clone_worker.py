@@ -48,6 +48,10 @@ OCR_MAX_BYTES = 25 * 1024 * 1024  # 25MB cap p/ docs enviados ao Tika
 # Watchdog: periodicamente reconcilia os jobs marcados 'running' no DB com as
 # tasks realmente vivas no worker. Jobs 'running' sem task viva (reboot/crash) ou
 # presos além do tempo máximo são reenfileirados ('pending') para não travar a fila.
+# Sequências ANSI (cores/controle) — removidas do conteúdo indexado e do arquivo
+# varrido pelo gitleaks (o RAW com cores é mantido só p/ exibição).
+_ANSI_STRIP = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-_]|\r")
+
 WATCHDOG_INTERVAL = 30          # segundos entre verificações (NÃO é um timeout)
 HEARTBEAT_TIMEOUT = 180         # s sem heartbeat => job órfão (processo morto) -> reenfileira
 MAX_JOB_ATTEMPTS = 6            # tentativas antes de desistir (evita reprocesso infinito)
@@ -1017,13 +1021,15 @@ class GitCloneWorker:
             step_seg = _seg(it.get("step"), f"step-{saved}")
             rel = f"__pipelines__/{pl_uuid}/{step_seg}/{step_seg}.log"
             fpath = os.path.join(clone_dir, rel)
-            text = it.get("text") or ""
+            raw = it.get("text") or ""          # com ANSI -> exibição com cores
+            clean = _ANSI_STRIP.sub("", raw)    # sem ANSI -> gitleaks + índice
             try:
                 # Cria as SUBPASTAS (<pipeline>/<step>) antes de gravar — senão o open
                 # falha e o item é descartado (causa de "coletou mas ficou vazio").
                 os.makedirs(os.path.dirname(fpath), exist_ok=True)
+                # No disco grava LIMPO (o gitleaks varre esta pasta).
                 with open(fpath, "w", errors="replace") as f:
-                    f.write(text)
+                    f.write(clean)
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"[git pipelines] falha ao gravar {rel}: {e}")
                 continue
@@ -1031,19 +1037,21 @@ class GitCloneWorker:
             await db.execute(delete(GitRepoFile).where(
                 GitRepoFile.repo_id == repo.id, GitRepoFile.rel_path == rel,
                 GitRepoFile.source == "pipeline"))
-            content = text[:max_text_bytes] if text else None
+            # content = RAW (com ANSI) p/ o visualizador renderizar as cores.
+            content = raw[:max_text_bytes] if raw else None
+            index_content = clean[:max_text_bytes] if clean else None
             gf = GitRepoFile(
                 repo_id=repo.id, repo_guid=repo.guid, rel_path=rel, name=f"{step_seg}.log",
-                extension=".log", size=len(text.encode("utf-8", "replace")),
+                extension=".log", size=len(raw.encode("utf-8", "replace")),
                 mimetype="text/plain", is_binary=False, content=content,
                 content_extracted=bool(content), is_head=True,
                 source="pipeline", pipeline_ref=pl_label, branch=it.get("status"),
             )
             db.add(gf)
             await db.flush()
-            if content:
+            if index_content:
                 self._queue_index_doc(ctx, repo, gf, rel, gf.name, ".log", "text/plain",
-                                      gf.size, content, extra={"source": "pipeline"})
+                                      gf.size, index_content, extra={"source": "pipeline"})
             saved += 1
         await self._flush_index(ctx)
 

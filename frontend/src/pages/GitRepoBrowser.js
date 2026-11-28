@@ -87,11 +87,55 @@ function findNode(root, path) {
   return node || null;
 }
 
-// Remove sequências ANSI (cores/controle) de logs de CI — para exibir limpo mesmo
-// em logs coletados antes do strip no backend.
+// --- Renderização de logs de CI com cores ANSI ---------------------------------
 // eslint-disable-next-line no-control-regex
-const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-_]|\r/g;
-const stripAnsi = (s) => (s || '').replace(ANSI_RE, '');
+const CSI_RE = /\x1b\[([0-9;?]*)([ -/]*[@-~])/g;      // CSI (cores 'm' + outros)
+const ANSI_COLORS = {
+  30: '#2e3436', 31: '#e06c75', 32: '#98c379', 33: '#e5c07b', 34: '#61afef',
+  35: '#c678dd', 36: '#56b6c2', 37: '#abb2bf',
+  90: '#5c6370', 91: '#e06c75', 92: '#98c379', 93: '#e5c07b', 94: '#61afef',
+  95: '#c678dd', 96: '#56b6c2', 97: '#ffffff',
+};
+// Converte uma linha com ANSI em segmentos {text, style}. CSI não-SGR (ex.: [0K) é removido.
+function ansiLineToSpans(line) {
+  const out = [];
+  let style = {};
+  let last = 0; let m;
+  CSI_RE.lastIndex = 0;
+  while ((m = CSI_RE.exec(line)) !== null) {
+    if (m.index > last) out.push({ text: line.slice(last, m.index), style: { ...style } });
+    if (m[2].slice(-1) === 'm') {
+      const parts = (m[1] || '').split(';').filter((x) => x !== '').map(Number);
+      if (parts.length === 0) style = {};
+      for (const p of parts) {
+        if (p === 0) style = {};
+        else if (p === 1) style.fontWeight = 'bold';
+        else if (p === 22) delete style.fontWeight;
+        else if (p === 39) delete style.color;
+        else if (ANSI_COLORS[p]) style.color = ANSI_COLORS[p];
+      }
+    }
+    last = CSI_RE.lastIndex;
+  }
+  if (last < line.length) out.push({ text: line.slice(last), style: { ...style } });
+  return out.length ? out : [{ text: '', style: {} }];
+}
+
+function AnsiLog({ text, highlightLine }) {
+  const lines = (text || '').split('\n');
+  return (
+    <pre className="text-xs font-mono leading-relaxed p-3 m-0 overflow-auto">
+      {lines.map((ln, idx) => (
+        <div key={idx} className={cn('flex', (highlightLine === idx + 1) && 'bg-primary/10 -mx-3 px-3')}>
+          <span className="select-none text-muted-foreground/60 pr-4 text-right flex-shrink-0" style={{ minWidth: '3ch' }}>{idx + 1}</span>
+          <span className="whitespace-pre-wrap break-all flex-1">
+            {ansiLineToSpans(ln).map((s, j) => <span key={j} style={s.style}>{s.text}</span>)}
+          </span>
+        </div>
+      ))}
+    </pre>
+  );
+}
 
 // Árvore dos logs de pipeline: <id do pipeline>/<step>/<arquivo>.
 function PipeTreeNode({ node, expanded, toggle, onOpen, depth = 0 }) {
@@ -1041,8 +1085,11 @@ export default function GitRepoBrowser() {
               ) : !fileContent?.content ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground"><p className="text-sm">{t('browser.noContent')}</p></div>
               ) : (
+                (selectedFile?.rel_path || '').includes('__pipelines__') ? (
+                <AnsiLog text={fileContent.content} highlightLine={viewerLine} />
+                ) : (
                 <CodeViewer
-                  content={(selectedFile?.rel_path || '').includes('__pipelines__') ? stripAnsi(fileContent.content) : fileContent.content}
+                  content={fileContent.content}
                   filename={selectedFile?.name || fileContent?.name}
                   highlightLine={viewerLine}
                   copyLabel={t('view.copy')}
@@ -1057,6 +1104,7 @@ export default function GitRepoBrowser() {
                   getOriginUrl={buildOriginUrl}
                   originLabel={originInfo.label}
                 />
+                )
               )}
             </div>
           )}
