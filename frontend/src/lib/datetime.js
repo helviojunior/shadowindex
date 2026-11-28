@@ -1,7 +1,7 @@
 import i18n from '@/i18n';
 
-// Mapeia a linguagem do i18n para um locale completo do Intl.
-function currentLocale() {
+// Locale completo do Intl a partir da linguagem atual do i18n.
+export function dateLocale() {
   const lng = (i18n?.language || 'pt').toLowerCase();
   if (lng.startsWith('pt')) return 'pt-BR';
   if (lng.startsWith('en')) return 'en-US';
@@ -12,7 +12,7 @@ function currentLocale() {
 export function formatDateTime(value, opts) {
   if (!value) return '—';
   try {
-    return new Date(value).toLocaleString(currentLocale(), opts);
+    return new Date(value).toLocaleString(dateLocale(), opts);
   } catch (e) {
     return String(value);
   }
@@ -22,7 +22,7 @@ export function formatDateTime(value, opts) {
 export function formatDate(value, opts) {
   if (!value) return '—';
   try {
-    return new Date(value).toLocaleDateString(currentLocale(), opts);
+    return new Date(value).toLocaleDateString(dateLocale(), opts);
   } catch (e) {
     return String(value);
   }
