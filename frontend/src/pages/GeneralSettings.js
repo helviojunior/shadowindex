@@ -578,7 +578,7 @@ const GeneralSettings = () => {
             />
             <p className="text-xs text-muted-foreground">{t('http.userAgentHint')}</p>
             <p className="text-xs text-muted-foreground">
-              {t('http.preview')}: <span className="font-mono text-foreground/80">{(settings.http_user_agent || '').replace('{VERSION}', '1.0.42')}</span>
+              {t('http.preview')}: <span className="font-mono text-foreground/80">{(settings.http_user_agent || '').replace('{VERSION}', '2.0.0')}</span>
             </p>
           </div>
         </CardContent>
