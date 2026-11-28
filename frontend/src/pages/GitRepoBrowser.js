@@ -1085,7 +1085,7 @@ export default function GitRepoBrowser() {
               ) : !fileContent?.content ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground"><p className="text-sm">{t('browser.noContent')}</p></div>
               ) : (
-                (selectedFile?.rel_path || '').includes('__pipelines__') ? (
+                (selectedFile?.isPipeline || (selectedFile?.rel_path || '').includes('__pipelines__')) ? (
                 <AnsiLog text={fileContent.content} highlightLine={viewerLine} />
                 ) : (
                 <CodeViewer
@@ -1498,7 +1498,7 @@ export default function GitRepoBrowser() {
                         }))}
                         expanded={pExpanded}
                         toggle={(p) => setPExpanded((e) => ({ ...e, [p]: e[p] === false ? true : false }))}
-                        onOpen={(f) => { setSelectedFile({ rel_path: f.rel_path, name: f.name, id: f.id }); setSelectedKind('file'); setActiveTab('view'); loadVersionContent(f.id); }}
+                        onOpen={(f) => { setSelectedFile({ rel_path: f.rel_path, name: f.name, id: f.id, isPipeline: true }); setSelectedKind('file'); setActiveTab('view'); loadVersionContent(f.id); }}
                       />
                     )}
                   </div>
