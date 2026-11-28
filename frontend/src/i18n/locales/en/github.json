@@ -34,7 +34,9 @@
     "empty": "No repositories yet. Use Github Search to queue clones.",
     "branches": "Branches",
     "commits": "Commits",
-    "viewLeaks": "View Leaks"
+    "viewLeaks": "View Leaks",
+    "retry": "Retry",
+    "retryFailed": "Retry failed"
   },
   "cloneStatus": {
     "pending": "Pending",
@@ -67,7 +69,10 @@
     "reindexQueued": "Reprocessing queued with high priority",
     "reindexReclone": "Full re-clone queued (no history on disk) with high priority",
     "loadCommitsError": "Failed to load commits",
-    "loadTreeError": "Failed to load commit tree"
+    "loadTreeError": "Failed to load commit tree",
+    "retryQueued": "Clone re-queued",
+    "retryFailedQueued": "{{count}} failed repository(ies) re-queued",
+    "retryError": "Failed to re-queue the clone"
   },
   "tabs": {
     "objects": "Objects",

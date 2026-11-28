@@ -21,6 +21,7 @@ import SqlPresets from "@/pages/SqlPresets";
 import Downloads from "@/pages/Downloads";
 import OCRJobs from "@/pages/OCRJobs";
 import GeneralSettings from "@/pages/GeneralSettings";
+import GitSettings from "@/pages/GitSettings";
 import DnsOverrides from "@/pages/DnsOverrides";
 import ExternalCalls from "@/pages/ExternalCalls";
 import CriticalSearchSettings from "@/pages/CriticalSearchSettings";
@@ -99,6 +100,7 @@ function App() {
                     <Route path="/soap-operations" element={<SoapOperations />} />
                     <Route path="/tools/change-password" element={<ChangeDomainPassword />} />
                     <Route path="/settings" element={<GeneralSettings />} />
+                    <Route path="/settings/git" element={<GitSettings />} />
                     <Route path="/settings/dns" element={<DnsOverrides />} />
                     <Route path="/audit/external-calls" element={<ExternalCalls />} />
                     <Route path="/settings/critical-search" element={<CriticalSearchSettings />} />

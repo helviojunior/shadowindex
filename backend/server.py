@@ -638,6 +638,84 @@ async def get_credentials(db: AsyncSession = Depends(get_db_readonly)):
     result = await db.execute(select(Credential))
     return result.scalars().all()
 
+
+# Regras do gitleaks cujo segredo é usuário:senha (gera credencial user_password).
+# Demais regras com segredo geram credencial 'token'.
+_USER_PASSWORD_LEAK_RULES = {
+    "curl-auth-user",
+}
+
+
+def _map_leak_to_credential(rule_id: str, secret: str):
+    """Mapeia um leak (regra + segredo) para (credential_type, campos, nome genérico).
+
+    - Regras usuário:senha (ex.: curl-auth-user) -> credencial 'user_password'.
+    - Demais regras (gitlab-pat, aws-secret-access-key, generic-api-key, ...) -> 'token'.
+    Retorna (None, None, None) quando não há segredo aproveitável.
+    """
+    rule = (rule_id or "").strip().lower()
+    sec = (secret or "").strip()
+    if not sec:
+        return None, None, None
+
+    is_user_pass = rule in _USER_PASSWORD_LEAK_RULES or (rule.startswith("curl-auth") and ":" in sec)
+    if is_user_pass:
+        if ":" in sec:
+            username, password = sec.split(":", 1)
+        else:
+            username, password = "", sec
+        username = username.strip()
+        password = password.strip()
+        if not password:
+            return None, None, None
+        name = f"{username or rule or 'leak'} (leak)"
+        return "user_password", {"username": username or None, "password": password}, name
+
+    # token: bearer p/ PATs/OAuth, api_key p/ o restante.
+    token_type = "bearer" if any(k in rule for k in ("pat", "bearer", "oauth", "jwt")) else "api_key"
+    name = f"{rule or 'token'} (leak)"
+    return "token", {"token": sec, "token_type": token_type}, name
+
+
+@api_router.post("/credentials/from-leak")
+async def create_credential_from_leak(payload: dict, db: AsyncSession = Depends(get_db)):
+    """Cria (ou localiza) uma credencial a partir de um leak do gitleaks.
+
+    Verifica se já existe uma credencial com o MESMO segredo; se existir, retorna
+    exists=True com o nome. Caso contrário cria com nome genérico e retorna o id
+    para a tela de edição abrir."""
+    rule_id = payload.get("rule_id") or payload.get("RuleID") or ""
+    secret = payload.get("secret") or payload.get("Secret") or ""
+    cred_type, fields, name = _map_leak_to_credential(rule_id, secret)
+    if not cred_type:
+        raise HTTPException(status_code=422, detail="Leak sem segredo aproveitável para credencial")
+
+    # Deduplicação pelo valor do segredo.
+    if cred_type == "token":
+        q = select(Credential).where(
+            Credential.credential_type == "token",
+            Credential.token == fields["token"],
+        )
+    else:
+        conds = [Credential.credential_type == "user_password",
+                 Credential.password == fields["password"]]
+        if fields.get("username") is None:
+            conds.append(Credential.username.is_(None))
+        else:
+            conds.append(Credential.username == fields["username"])
+        q = select(Credential).where(*conds)
+
+    existing = (await db.execute(q)).scalars().first()
+    if existing:
+        return {"exists": True, "credential_id": existing.id,
+                "name": existing.name or f"#{existing.id}", "credential_type": cred_type}
+
+    cred = Credential(name=name, credential_type=cred_type, **fields)
+    db.add(cred)
+    await db.commit()
+    await db.refresh(cred)
+    return {"exists": False, "credential_id": cred.id, "name": name, "credential_type": cred_type}
+
 @api_router.delete("/credentials/{credential_id}")
 async def delete_credential(credential_id: int, db: AsyncSession = Depends(get_db)):
     await db.execute(delete(Credential).where(Credential.id == credential_id))

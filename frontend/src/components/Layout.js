@@ -133,6 +133,7 @@ const menuStructure = [
     label: 'Configuração',
     children: [
       { id: 'general', path: '/settings', label: 'Gerais' },
+      { id: 'git-settings', path: '/settings/git', label: 'Git' },
       { id: 'dns', path: '/settings/dns', label: 'DNS' },
       { id: 'critical-search', path: '/settings/critical-search', label: 'Busca Crítica' },
       { id: 'proxy', path: '/proxy-servers', label: 'Proxy Servers' },

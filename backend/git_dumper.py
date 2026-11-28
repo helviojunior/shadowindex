@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 _SHA_RE = re.compile(rb"[0-9a-f]{40}")
 TIMEOUT = 30
 CONCURRENCY = 12
-MAX_OBJECTS = 100000
+MAX_OBJECTS = 1000000  # teto padrão de objetos (setting: git_dump_max_objects)
 
 KNOWN_FILES = [
     "HEAD", "ORIG_HEAD", "FETCH_HEAD", "config", "packed-refs", "description",
@@ -221,7 +221,7 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
         count = 0
         while True:
             pending = [s for s in list(objects) if s not in processed]
-            if not pending or count >= max_objects:
+            if not pending or (max_objects > 0 and count >= max_objects):
                 break
             # Baixa em lote (bounded pela semaphore).
             await asyncio.gather(*[fetch_object(s) for s in pending[:500]])
@@ -230,20 +230,70 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
                 parse_object(s)  # pode adicionar novos SHAs a `objects`
                 count += 1
 
-        logger.info(f"[git_dumper] {len(processed)} objeto(s) processados, "
-                    f"{len(pack_names)} pack(s), {len(ref_paths)} ref(s) de {gurl}")
+        # Contagem REAL de objetos gravados no disco (independe do BFS, que pode ter
+        # sido interrompido por reinício do servidor / falha de rede no meio).
+        loose_on_disk, pack_files = _disk_object_stats(git_dir)
+        total_on_disk = loose_on_disk + len(pack_files)
+        logger.info(f"[git_dumper] {len(processed)} objeto(s) processados; disco: "
+                    f"{loose_on_disk} solto(s) + {len(pack_files)} pack(s); "
+                    f"{len(ref_paths)} ref(s) de {gurl}")
 
-        # 3) Restaura a árvore de trabalho a partir do HEAD.
+        # Guard-rail nº1: um .git EXPOSTO real praticamente nunca tem zero objetos.
+        # Se nada foi coletado, o dump foi interrompido/incompleto — NÃO é sucesso.
+        if total_on_disk == 0:
+            return False, (
+                "dump incompleto: nenhum objeto git foi coletado do .git exposto "
+                "(provável interrupção no meio do download — reinício do servidor ou "
+                "falha de rede). Um .git real praticamente nunca tem zero objetos; "
+                "reenfileire o clone."
+            )
+
+        # 3) Restaura a árvore de trabalho a partir do HEAD (indexando packs se preciso).
         ok_checkout = await _git_restore(dest_dir)
         if not ok_checkout:
             logger.warning(f"[git_dumper] checkout parcial em {dest_dir} (histórico ainda indexável)")
 
-        # Valida: HEAD deve resolver para um commit (senão o repo não tem conteúdo).
+        # Valida: HEAD deve resolver OU a working tree deve ter arquivos restaurados.
         rc, _ = await _run_git(["-C", dest_dir, "rev-parse", "--verify", "-q", "HEAD"])
-        if rc != 0 and not pack_names:
-            return False, ("dump incompleto: não foi possível reconstruir o HEAD "
-                           "(objetos ausentes/empacotados sem listagem)")
+        head_ok = (rc == 0)
+        wt_files = _worktree_file_count(dest_dir)
+
+        # Guard-rail nº2: coletamos objetos, mas não conseguimos materializar nada
+        # (pack corrompido/parcial, objetos ausentes). Também é falha clara.
+        if not head_ok and wt_files == 0:
+            return False, (
+                "dump incompleto: objetos coletados, mas não foi possível reconstruir "
+                "o HEAD nem restaurar arquivos (pack parcial/corrompido ou objetos "
+                "ausentes). Reenfileire o clone."
+            )
         return True, None
+
+
+def _disk_object_stats(git_dir: str) -> Tuple[int, list]:
+    """Conta objetos git realmente gravados em .git/objects: soltos (xx/<38 hex>)
+    e packs (*.pack). Fonte de verdade p/ decidir se o dump coletou algo."""
+    objdir = os.path.join(git_dir, "objects")
+    loose = 0
+    if os.path.isdir(objdir):
+        for name in os.listdir(objdir):
+            if name in ("pack", "info"):
+                continue
+            sub = os.path.join(objdir, name)
+            if os.path.isdir(sub):
+                loose += sum(1 for _ in os.scandir(sub))
+    packdir = os.path.join(objdir, "pack")
+    packs = [f for f in os.listdir(packdir) if f.endswith(".pack")] if os.path.isdir(packdir) else []
+    return loose, packs
+
+
+def _worktree_file_count(dest_dir: str) -> int:
+    """Quantidade de arquivos restaurados na working tree (ignora o .git)."""
+    count = 0
+    for root, dirs, files in os.walk(dest_dir):
+        if ".git" in dirs:
+            dirs.remove(".git")
+        count += len(files)
+    return count
 
 
 async def _run_git(args, cwd=None) -> Tuple[int, str]:
@@ -258,10 +308,28 @@ async def _run_git(args, cwd=None) -> Tuple[int, str]:
         return 1, str(e)
 
 
+async def _ensure_packs_indexed(dest_dir: str) -> None:
+    """Gera o .idx para cada .pack sem índice (git não lê um pack sem .idx).
+    Comum quando o servidor serve o .pack mas não o .idx (ou o download parou)."""
+    packdir = os.path.join(dest_dir, ".git", "objects", "pack")
+    if not os.path.isdir(packdir):
+        return
+    for name in os.listdir(packdir):
+        if not name.endswith(".pack"):
+            continue
+        idx = os.path.join(packdir, name[:-5] + ".idx")
+        if os.path.exists(idx):
+            continue
+        # index-pack cria o .idx ao lado do .pack a partir do próprio conteúdo.
+        await _run_git(["-C", dest_dir, "index-pack", os.path.join(packdir, name)])
+
+
 async def _git_restore(dest_dir: str) -> bool:
     """Restaura a working tree a partir do HEAD do .git reconstruído."""
     # Garante que o git reconheça o repo como não-bare (index pode estar ausente).
     await _run_git(["-C", dest_dir, "config", "--local", "core.bare", "false"])
+    # Packs sem .idx são inúteis p/ o git — gera os índices antes de restaurar.
+    await _ensure_packs_indexed(dest_dir)
     # reset --hard reconstrói index + working tree a partir do HEAD (ideal p/ dump).
     rc, _ = await _run_git(["-C", dest_dir, "reset", "--hard", "HEAD"])
     if rc == 0:

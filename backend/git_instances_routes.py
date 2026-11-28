@@ -194,6 +194,11 @@ async def refresh_instance_projects(guid: str, db=Depends(get_db)):
     try:
         repos = await gp.list_projects(inst.platform, inst.api_url, token, proxy,
                                        inst.variant, inst.org, inst.web_url)
+    except gp.GitPlatformError as e:
+        # Acesso negado / erro da plataforma: propaga status e mensagem claros
+        # (NÃO persiste "0 projetos" como se fosse sucesso).
+        code = 403 if e.status in (401, 403) else 502
+        raise HTTPException(status_code=code, detail=e.message)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Falha ao listar projetos: {str(e)[:300]}")
 

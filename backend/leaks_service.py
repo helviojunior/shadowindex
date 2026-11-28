@@ -478,6 +478,38 @@ def _jwt_claims_for(*candidates) -> Optional[str]:
     return None
 
 
+# Marcadores de template/variável: uma "senha" assim NÃO é uma credencial real,
+# e sim um placeholder que será substituído (ex.: curl -u admin:{{PASSWORD}} ou
+# admin:${PASS}). Usado para auto-marcar findings da regra 'curl-auth-user'.
+_PLACEHOLDER_SECRET_RE = re.compile(
+    r"\{\{|\}\}|\$\{|\$\(|%\w|<[\w .-]*>|\$[A-Za-z_]\w*|__[A-Za-z]"
+)
+
+
+def _looks_like_placeholder(value: Optional[str]) -> bool:
+    """True se o valor estiver vazio ou for um placeholder de template/variável."""
+    v = (value or "").strip()
+    if not v:
+        return True
+    return bool(_PLACEHOLDER_SECRET_RE.search(v))
+
+
+def _auto_false_positive(rule_id: Optional[str], secret: Optional[str], match: Optional[str]) -> bool:
+    """Heurística de falso positivo aplicada na ingestão.
+
+    Regra 'curl-auth-user' (gitleaks) captura `curl -u user:senha`. Quando a senha
+    é um placeholder de template (ex.: `{{`, `${VAR}`, `<pass>`) ou está vazia, não
+    é uma credencial real → marca como falso positivo automaticamente.
+    """
+    rule = (rule_id or "").lower()
+    if rule != "curl-auth-user":
+        return False
+    sec = (secret or "").strip()
+    # curl -u user:senha → a senha é a parte após o primeiro ':'.
+    pwd = sec.split(":", 1)[1] if ":" in sec else sec
+    return _looks_like_placeholder(pwd) or _looks_like_placeholder(match)
+
+
 async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
     """
     Salva um finding no banco de dados.
@@ -560,6 +592,9 @@ async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
                 job_id=finding.get('job_id'),
                 server_id=finding.get('server_id'),
                 decoded_claims=_jwt_claims_for(finding.get('Secret'), finding.get('Match')),
+                is_false_positive=_auto_false_positive(
+                    finding.get('RuleID', ''), finding.get('Secret'), finding.get('Match')
+                ),
                 scanned_at=datetime.fromisoformat(finding['scanned_at']) if finding.get('scanned_at') else None,
                 raw_data=finding
             )

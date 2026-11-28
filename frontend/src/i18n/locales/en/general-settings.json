@@ -168,5 +168,29 @@
     "userAgent": "User-Agent",
     "userAgentHint": "{VERSION} is replaced by the current ShadowIndex version.",
     "preview": "Preview"
+  },
+  "gitPage": {
+    "title": "Git — Settings",
+    "subtitle": "Clone, history indexing and Git Dump (exposed .git) for the Git module.",
+    "history": {
+      "title": "Commit history",
+      "description": "Index every version of every file across the whole history (all branches), not just HEAD. Requires a full clone.",
+      "toggleLabel": "Index the whole commit history",
+      "toggleHelp": "When on, every version of every file (including deleted files) is scanned by GitLeaks and indexed — that's where secrets are often forgotten.",
+      "maxCommitsLabel": "Max commits per repository",
+      "maxCommitsHelp": "Cap on commits walked while indexing history. 0 = unlimited. Guards against huge repos.",
+      "maxVersionsLabel": "Max versions per file",
+      "maxVersionsHelp": "How many versions (distinct commits) are indexed per file. 0 = unlimited."
+    },
+    "dump": {
+      "title": "Git Dump (exposed .git)",
+      "description": "Rebuild a repository from a web-exposed .git directory (via Request Clone).",
+      "maxObjectsLabel": "Max objects collected",
+      "maxObjectsHelp": "Cap on objects (commits/trees/blobs) downloaded from an exposed .git. 0 = unlimited. Guards against huge repos.",
+      "preview": "Current limit",
+      "unlimited": "unlimited",
+      "info1": "The download follows Git's predictable layout (HEAD → refs → objects/packs), so it does not rely on directory listing.",
+      "info2": "Raise this limit to capture large repos in full; 0 removes the cap."
+    }
   }
 }

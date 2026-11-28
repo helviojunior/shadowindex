@@ -108,6 +108,7 @@ const Leaks = () => {
   const [refreshing, setRefreshing] = useState(false); // Estado para indicar refresh sem bloquear UI
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFinding, setSelectedFinding] = useState(null);
+  const [creatingCred, setCreatingCred] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // State para GitLeaks Jobs
@@ -492,6 +493,30 @@ const Leaks = () => {
       toast.success(t('toast.copied'));
     } catch (error) {
       toast.error(t('toast.copyError'));
+    }
+  };
+
+  // Cria (ou localiza) uma credencial a partir do leak. Se já existir, avisa;
+  // senão cria com nome genérico e abre a edição numa nova janela.
+  const createCredentialFromLeak = async (finding) => {
+    if (!finding?.Secret) return;
+    setCreatingCred(true);
+    try {
+      const res = await axios.post(`${BACKEND_URL}/api/credentials/from-leak`, {
+        rule_id: finding.RuleID,
+        secret: finding.Secret,
+      });
+      if (res.data?.exists) {
+        toast.info(t('credFromLeak.exists', { name: res.data.name }));
+      } else {
+        toast.success(t('credFromLeak.created', { name: res.data.name }));
+        window.open(`/credentials?edit=${res.data.credential_id}`, '_blank');
+      }
+    } catch (e) {
+      const msg = e.response?.data?.detail;
+      toast.error(typeof msg === 'string' ? msg : t('credFromLeak.error'));
+    } finally {
+      setCreatingCred(false);
     }
   };
 
@@ -1484,6 +1509,18 @@ const Leaks = () => {
                     <code className="block text-sm bg-black/30 p-3 rounded font-mono break-all text-red-300 border border-red-500/20">
                       {selectedFinding.Secret}
                     </code>
+                    {/* Atalho: criar credencial a partir deste leak */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-3"
+                      disabled={creatingCred}
+                      onClick={() => createCredentialFromLeak(selectedFinding)}
+                      data-testid="create-credential-from-leak"
+                    >
+                      {creatingCred ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Key className="w-4 h-4 mr-2" />}
+                      {t('credFromLeak.button')}
+                    </Button>
                   </div>
                 )}
 

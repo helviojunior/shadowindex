@@ -209,6 +209,41 @@ def _repo(full_name, clone_url, html_url=None, description=None, default_branch=
     }
 
 
+class GitPlatformError(Exception):
+    """Erro de plataforma (ex.: acesso negado) com status HTTP, p/ o chamador tratar."""
+    def __init__(self, status: int, message: str):
+        self.status = status
+        self.message = message
+        super().__init__(message)
+
+
+def _check_list_status(r, collected: int) -> bool:
+    """Valida a resposta de uma página da listagem de projetos.
+
+    - 200 -> True (segue a paginação).
+    - 401/403 -> SEMPRE levanta (acesso negado): a listagem ficaria silenciosamente
+      incompleta/enganosa (mostraria "0 projetos" como se fosse sucesso).
+    - Outro status sem NADA coletado -> levanta (erro real, não "0 projetos").
+    - Outro status após já ter itens -> False (encerra a paginação com o parcial).
+    """
+    if r.status_code == 200:
+        return True
+    try:
+        body = (r.text or "")[:200].strip()
+    except Exception:  # noqa: BLE001
+        body = ""
+    if r.status_code in (401, 403):
+        raise GitPlatformError(
+            r.status_code,
+            f"Acesso negado ({r.status_code}) ao listar projetos — verifique o "
+            f"token/credencial da instância.{(' ' + body) if body else ''}")
+    if collected == 0:
+        raise GitPlatformError(
+            r.status_code,
+            f"Falha ao listar projetos: HTTP {r.status_code}.{(' ' + body) if body else ''}")
+    return False
+
+
 async def list_projects(platform: str, api_url: Optional[str], token: Optional[str],
                         proxy: Optional[str] = None, variant: Optional[str] = None,
                         org: Optional[str] = None, web_url: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -222,7 +257,7 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
                 r = await c.get(api + "/user/repos",
                                 params={"per_page": PAGE_SIZE, "page": page, "affiliation": "owner,collaborator,organization_member"},
                                 headers=h)
-                if r.status_code != 200:
+                if not _check_list_status(r, len(out)):
                     break
                 data = r.json() or []
                 if not data:
@@ -244,7 +279,7 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
                                 params={"per_page": PAGE_SIZE, "page": page,
                                         "order_by": "id", "sort": "asc", "simple": "true"},
                                 headers=h)
-                if r.status_code != 200:
+                if not _check_list_status(r, len(out)):
                     break
                 data = r.json() or []
                 if not data:
@@ -263,7 +298,7 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
                 r = await c.get(api + "/repos/search",
                                 params={"limit": PAGE_SIZE, "page": page},
                                 headers=h)
-                if r.status_code != 200:
+                if not _check_list_status(r, len(out)):
                     break
                 body = r.json() or {}
                 data = body.get("data") or []
@@ -282,7 +317,7 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
             params = {"role": "member", "pagelen": PAGE_SIZE}
             while url and len(out) < MAX_PROJECTS:
                 r = await c.get(url, params=params, headers=h)
-                if r.status_code != 200:
+                if not _check_list_status(r, len(out)):
                     break
                 body = r.json() or {}
                 for d in (body.get("values") or []):
@@ -302,7 +337,7 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
             start = 0
             while len(out) < MAX_PROJECTS:
                 r = await c.get(api + "/repos", params={"limit": PAGE_SIZE, "start": start}, headers=h)
-                if r.status_code != 200:
+                if not _check_list_status(r, len(out)):
                     break
                 body = r.json() or {}
                 for d in (body.get("values") or []):
@@ -323,6 +358,7 @@ async def list_projects(platform: str, api_url: Optional[str], token: Optional[s
                 return out
             projs_url = f"https://dev.azure.com/{org}/_apis/projects"
             r = await c.get(projs_url, params={"api-version": "7.0"}, headers=h)
+            _check_list_status(r, len(out))  # levanta em 401/403 ou erro inicial
             if r.status_code == 200:
                 for proj in ((r.json() or {}).get("value") or []):
                     pname = proj.get("name")

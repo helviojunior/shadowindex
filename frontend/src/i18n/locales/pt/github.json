@@ -34,7 +34,9 @@
     "empty": "Nenhum repositório ainda. Use a Busca Github para enfileirar clones.",
     "branches": "Branches",
     "commits": "Commits",
-    "viewLeaks": "Ver Leaks"
+    "viewLeaks": "Ver Leaks",
+    "retry": "Tentar novamente",
+    "retryFailed": "Refazer falhados"
   },
   "cloneStatus": {
     "pending": "Pendente",
@@ -67,7 +69,10 @@
     "reindexQueued": "Reprocessamento enfileirado com prioridade alta",
     "reindexReclone": "Clone completo reenfileirado (sem histórico em disco) com prioridade alta",
     "loadCommitsError": "Erro ao carregar commits",
-    "loadTreeError": "Erro ao carregar a árvore do commit"
+    "loadTreeError": "Erro ao carregar a árvore do commit",
+    "retryQueued": "Clone reenfileirado",
+    "retryFailedQueued": "{{count}} repositório(s) com falha reenfileirado(s)",
+    "retryError": "Falha ao reenfileirar o clone"
   },
   "tabs": {
     "objects": "Objetos",

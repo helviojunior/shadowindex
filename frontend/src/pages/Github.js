@@ -54,6 +54,7 @@ export default function Github() {
   const [contentHits, setContentHits] = useState(null);
   const [contentBackend, setContentBackend] = useState('');
   const [searchingContent, setSearchingContent] = useState(false);
+  const [retryBusy, setRetryBusy] = useState(null); // guid em retry, ou 'all'
 
   const loadRepos = useCallback(async () => {
     setLoading(true);
@@ -95,6 +96,36 @@ export default function Github() {
       toast.error(t('toast.searchError'));
     } finally {
       setSearchingContent(false);
+    }
+  };
+
+  // Tenta clonar novamente um repositório com falha (preserva modo/proxy no backend).
+  const retryRepo = async (guid) => {
+    setRetryBusy(guid);
+    try {
+      await axios.post(`${API}/git/repos/${guid}/retry`);
+      toast.success(t('toast.retryQueued'));
+      await Promise.all([loadRepos(), loadStats()]);
+    } catch (e) {
+      console.error(e);
+      toast.error(t('toast.retryError'));
+    } finally {
+      setRetryBusy(null);
+    }
+  };
+
+  // Reenfileira o clone de TODOS os repositórios com falha.
+  const retryFailed = async () => {
+    setRetryBusy('all');
+    try {
+      const res = await axios.post(`${API}/git/repos/retry-failed`);
+      toast.success(t('toast.retryFailedQueued', { count: res.data?.retried ?? 0 }));
+      await Promise.all([loadRepos(), loadStats()]);
+    } catch (e) {
+      console.error(e);
+      toast.error(t('toast.retryError'));
+    } finally {
+      setRetryBusy(null);
     }
   };
 
@@ -204,6 +235,14 @@ export default function Github() {
                 <SelectItem value="failed">{t('cloneStatus.failed')}</SelectItem>
               </SelectContent>
             </Select>
+            {(stats?.failed > 0) && (
+              <Button variant="outline" className="text-amber-500 hover:text-amber-400"
+                onClick={retryFailed} disabled={retryBusy === 'all'}
+                data-testid="git-retry-failed">
+                <RefreshCw className={cn('w-4 h-4 mr-2', retryBusy === 'all' && 'animate-spin')} />
+                {t('table.retryFailed')}
+              </Button>
+            )}
             <Button variant="outline" size="icon" onClick={() => { loadRepos(); loadStats(); }}>
               <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
             </Button>
@@ -265,6 +304,15 @@ export default function Github() {
                   <TableCell><StatusBadge status={r.clone_status} /></TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
+                      {r.clone_status === 'failed' && (
+                        <Button variant="ghost" size="sm" className="h-7 text-amber-500 hover:text-amber-400"
+                          title={t('table.retry')}
+                          disabled={retryBusy === r.guid}
+                          onClick={() => retryRepo(r.guid)}
+                          data-testid="git-retry-repo">
+                          <RefreshCw className={cn('w-3.5 h-3.5 mr-1', retryBusy === r.guid && 'animate-spin')} />{t('table.retry')}
+                        </Button>
+                      )}
                       {r.leaks_count > 0 && (
                         <Button variant="ghost" size="sm" className="h-7 text-red-500 hover:text-red-400"
                           title={t('table.viewLeaks')}

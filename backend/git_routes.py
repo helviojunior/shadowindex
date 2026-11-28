@@ -1260,6 +1260,83 @@ async def reindex_all_repos(db=Depends(get_db)):
     }
 
 
+async def _next_queue_priority(db) -> int:
+    """Prioridade acima de toda a fila ativa."""
+    max_prio = (await db.execute(
+        select(func.max(GitCloneJob.priority)).where(
+            GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"])
+        )
+    )).scalar()
+    return (max_prio or 0) + 1
+
+
+async def _enqueue_repo_retry(db, repo, priority: int):
+    """Reenfileira o clone de um repositório (p/ 'tentar novamente' após falha),
+    PRESERVANDO o modo de clone (clone/dump), o proxy e o auth do último job — caso
+    contrário um repo de Git Dump seria re-tentado como clone normal e falharia."""
+    last = (await db.execute(
+        select(GitCloneJob)
+        .where(GitCloneJob.repo_id == repo.id)
+        .order_by(GitCloneJob.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    clone_mode = (last.clone_mode if last and last.clone_mode else "clone")
+    proxy_id = last.proxy_id if last else None
+    clone_auth = (last.clone_auth if last and last.clone_auth else "anonymous")
+
+    # Cancela jobs ativos ainda não iniciados deste repo para não concorrer.
+    await db.execute(
+        update(GitCloneJob)
+        .where(GitCloneJob.repo_id == repo.id, GitCloneJob.status.in_(["pending", "cloned"]))
+        .values(status="cancelled")
+    )
+
+    repo_url = repo.clone_url or (last.repo_url if last else None) \
+        or f"https://github.com/{repo.full_name}.git"
+    job = GitCloneJob(
+        repo_id=repo.id,
+        repo_url=repo_url,
+        repo_full_name=repo.full_name,
+        clone_auth=clone_auth,
+        proxy_id=proxy_id,
+        clone_mode=clone_mode,
+        status="pending",
+        priority=priority,
+    )
+    db.add(job)
+    repo.clone_status = "pending"
+    return job
+
+
+@router.post("/repos/{guid}/retry")
+async def retry_repo(guid: str, db=Depends(get_db)):
+    """Tenta clonar novamente um repositório (tipicamente após falha). Reenfileira
+    o clone com prioridade alta, preservando modo (clone/dump), proxy e auth."""
+    repo = (await db.execute(select(GitRepo).where(GitRepo.guid == guid))).scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repositório não encontrado")
+    priority = await _next_queue_priority(db)
+    job = await _enqueue_repo_retry(db, repo, priority)
+    await db.commit()
+    await db.refresh(job)
+    return {"job_id": job.id, "clone_mode": job.clone_mode, "priority": priority}
+
+
+@router.post("/repos/retry-failed")
+async def retry_failed_repos(db=Depends(get_db)):
+    """Reenfileira o clone de TODOS os repositórios com status de falha."""
+    repos = (await db.execute(
+        select(GitRepo).where(GitRepo.clone_status == "failed")
+    )).scalars().all()
+    if not repos:
+        return {"retried": 0}
+    priority = await _next_queue_priority(db)
+    for repo in repos:
+        await _enqueue_repo_retry(db, repo, priority)
+    await db.commit()
+    return {"retried": len(repos), "priority": priority}
+
+
 # --------------------------------------------------------------------------
 # Clone jobs
 # --------------------------------------------------------------------------

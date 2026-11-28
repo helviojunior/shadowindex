@@ -168,5 +168,29 @@
     "userAgent": "User-Agent",
     "userAgentHint": "{VERSION} é substituído pela versão atual do ShadowIndex.",
     "preview": "Prévia"
+  },
+  "gitPage": {
+    "title": "Git — Configurações",
+    "subtitle": "Clone, indexação de histórico e Git Dump (.git exposto) do módulo Git.",
+    "history": {
+      "title": "Histórico de commits",
+      "description": "Indexação de todas as versões de cada arquivo ao longo do histórico (todas as branches), não só o HEAD. Requer clone completo.",
+      "toggleLabel": "Indexar todo o histórico de commits",
+      "toggleHelp": "Quando ligado, cada versão de cada arquivo (inclusive em arquivos removidos) é varrida pelo GitLeaks e indexada — é onde segredos costumam ficar esquecidos.",
+      "maxCommitsLabel": "Máx. de commits por repositório",
+      "maxCommitsHelp": "Teto de commits percorridos ao indexar o histórico. 0 = ilimitado. Protege contra repositórios gigantes.",
+      "maxVersionsLabel": "Máx. de versões por arquivo",
+      "maxVersionsHelp": "Quantas versões (commits distintos) são indexadas por arquivo. 0 = ilimitado."
+    },
+    "dump": {
+      "title": "Git Dump (.git exposto)",
+      "description": "Reconstrução de um repositório a partir de um diretório .git EXPOSTO na web (via Request Clone).",
+      "maxObjectsLabel": "Máx. de objetos coletados",
+      "maxObjectsHelp": "Teto de objetos (commits/trees/blobs) baixados de um .git exposto. 0 = ilimitado. Protege contra repositórios gigantes.",
+      "preview": "Limite atual",
+      "unlimited": "ilimitado",
+      "info1": "O download segue a estrutura previsível do Git (HEAD → refs → objetos/packs), então não depende de listagem de diretório.",
+      "info2": "Aumente este limite para capturar repositórios grandes por completo; 0 remove o teto."
+    }
   }
 }

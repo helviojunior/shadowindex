@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,10 +49,32 @@ const Credentials = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     loadCredentials();
   }, []);
+
+  // Deep-link ?edit=<id>: abre a edição da credencial e rola até ela (usado pelo
+  // atalho "Criar credencial" da tela de Leaks, aberto em nova janela).
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (!editId || credentials.length === 0) return;
+    const cred = credentials.find((c) => String(c.id) === String(editId));
+    if (cred) {
+      setActiveTab(cred.credential_type || 'user_password');
+      setEditingId(cred.id);
+      setEditData({ ...cred });
+      setTimeout(() => {
+        const el = document.getElementById(`credential-${cred.id}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 250);
+    }
+    // Remove o parâmetro para não reabrir a edição ao recarregar/salvar.
+    searchParams.delete('edit');
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [credentials]);
 
   const loadCredentials = async () => {
     try {
@@ -709,8 +732,11 @@ const Credentials = () => {
                     {typeCreds.map((cred) => (
                       <div
                         key={cred.id}
+                        id={`credential-${cred.id}`}
                         data-testid={`credential-item-${cred.id}`}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                        className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
+                          editingId === cred.id ? 'border-primary ring-1 ring-primary/40' : 'border-border'
+                        }`}
                       >
                         {editingId === cred.id ? (
                           // Edit mode - simplified for now

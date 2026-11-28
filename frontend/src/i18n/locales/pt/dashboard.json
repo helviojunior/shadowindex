@@ -11,7 +11,8 @@
     "serversWithFiles": "Serv. com Arquivos",
     "leaksDetected": "Leaks Detectados",
     "filesProcessed": "Arquivos Tratados",
-    "downloads": "Downloads"
+    "downloads": "Downloads",
+    "gitRepos": "Repositórios Git"
   },
   "riskScore": {
     "title": "Índice de Risco Geral",

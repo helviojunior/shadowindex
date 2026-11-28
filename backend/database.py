@@ -970,6 +970,7 @@ DEFAULT_SETTINGS = {
     'git_index_history': ('true', 'Indexa TODO o histórico de commits/branches (cada versão de cada arquivo), não apenas o HEAD. Requer clone completo'),
     'git_history_max_commits': ('5000', 'Máximo de commits percorridos por repositório ao indexar histórico (0 = ilimitado). Protege contra repos gigantes'),
     'git_history_max_versions_per_file': ('100', 'Máximo de versões (commits distintos) indexadas por arquivo (0 = ilimitado)'),
+    'git_dump_max_objects': ('1000000', 'Git Dump: número máximo de objetos (commits/trees/blobs) baixados de um .git EXPOSTO na web. Protege contra repositórios gigantes; 0 = ilimitado'),
     # User-Agent global aplicado a TODA chamada HTTP externa. {VERSION} é substituído
     # pela versão atual do ShadowIndex.
     'http_user_agent': ('Mozilla/5.0 (ShadowIndex {VERSION} x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/146.0.0.0 Safari/537.36',
@@ -1167,6 +1168,24 @@ async def apply_pending_migrations():
                 "CREATE INDEX IF NOT EXISTS idx_git_repo_files_repo_head "
                 "ON git_repo_files (repo_id, is_head)"
             ))
+            # Falso positivo retroativo: findings da regra 'curl-auth-user' cuja
+            # "senha" é um placeholder de template/variável (ex.: curl -u admin:{{PASS}}
+            # ou admin:${PASS}) não são credenciais reais. Idempotente: só marca
+            # como FP (nunca desmarca), então re-execuções não sobrescrevem decisões.
+            if await conn.scalar(text("SELECT to_regclass('public.gitleaks_findings')")):
+                await conn.execute(text(
+                    r"""
+                    UPDATE gitleaks_findings
+                    SET is_false_positive = TRUE
+                    WHERE lower(rule_id) = 'curl-auth-user'
+                      AND is_false_positive = FALSE
+                      AND (
+                        coalesce(secret, '') ~ '(\{\{|\}\}|\$\{|\$\(|<[A-Za-z0-9 ._-]*>|\$[A-Za-z_])'
+                        OR coalesce(match, '') ~ '(\{\{|\}\}|\$\{|\$\(|<[A-Za-z0-9 ._-]*>|\$[A-Za-z_])'
+                        OR secret ~ ':\s*$'
+                      )
+                    """
+                ))
         else:
             # SQLite: verificar via pragma
             result = await conn.execute(text("PRAGMA table_info(plugin_instances)"))

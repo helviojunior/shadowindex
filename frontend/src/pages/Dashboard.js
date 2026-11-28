@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { 
   Database, Server, Globe, FileText, Wifi, WifiOff, HardDrive, Download,
   AlertTriangle, Shield, Activity, Search, RefreshCw, Play, FileWarning,
-  Clock, CheckCircle, XCircle, Loader2, FolderSearch, X, Eye, ScanSearch
+  Clock, CheckCircle, XCircle, Loader2, FolderSearch, X, Eye, ScanSearch, GitBranch
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -49,6 +50,7 @@ const formatBytes = (bytes) => {
 
 const Dashboard = () => {
   const { t } = useTranslation('dashboard');
+  const navigate = useNavigate();
   const { offlineMode, setOfflineMode } = useApp();
   const { isConnected: wsConnected } = useWebSocket();
   const [stats, setStats] = useState({
@@ -58,7 +60,8 @@ const Dashboard = () => {
     cacheEntries: 0,
     servers: 0,
     downloadedFiles: 0,
-    totalDownloadSize: 0
+    totalDownloadSize: 0,
+    gitRepos: 0
   });
   const [gitleaksStats, setGitleaksStats] = useState(null);
   const [extensionStats, setExtensionStats] = useState([]);
@@ -220,7 +223,8 @@ const Dashboard = () => {
         servers: (servers.data || []).length,
         downloadedFiles: totalDownloads,
         // Downloads de arquivos (SMB) + arquivos clonados via git clone
-        totalDownloadSize: (downloadStats.data?.total_size_bytes || 0) + (gitStats.data?.total_size_bytes || 0)
+        totalDownloadSize: (downloadStats.data?.total_size_bytes || 0) + (gitStats.data?.total_size_bytes || 0),
+        gitRepos: gitStats.data?.total || 0
       });
 
       if (gitleaks.data) {
@@ -379,7 +383,7 @@ const Dashboard = () => {
       </div>
 
       {/* Linha 1: Top Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card className="border-l-4 border-l-cyan-500">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -400,6 +404,22 @@ const Dashboard = () => {
                 <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('stats.serversWithFiles')}</p>
               </div>
               <Download className="w-8 h-8 text-green-500 opacity-60" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="border-l-4 border-l-indigo-500 cursor-pointer hover:bg-muted/40 transition-colors"
+          onClick={() => navigate('/git')}
+          data-testid="dashboard-git-repos-card"
+        >
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">{stats.gitRepos}</p>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('stats.gitRepos')}</p>
+              </div>
+              <GitBranch className="w-8 h-8 text-indigo-500 opacity-60" />
             </div>
           </CardContent>
         </Card>

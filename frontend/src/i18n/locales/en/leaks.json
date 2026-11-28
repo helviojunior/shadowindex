@@ -120,5 +120,11 @@
   "risk": {
     "jwtExpired": "JWT expired",
     "jwtExpiredTitle": "JWT already expired — severity lowered"
+  },
+  "credFromLeak": {
+    "button": "Create credential",
+    "created": "Credential '{{name}}' created — opening editor",
+    "exists": "A credential with this secret already exists: '{{name}}'",
+    "error": "Failed to create credential"
   }
 }

@@ -11,7 +11,8 @@
     "serversWithFiles": "Serv. with Files",
     "leaksDetected": "Leaks Detected",
     "filesProcessed": "Processed Files",
-    "downloads": "Downloads"
+    "downloads": "Downloads",
+    "gitRepos": "Git Repositories"
   },
   "riskScore": {
     "title": "Overall Risk Score",

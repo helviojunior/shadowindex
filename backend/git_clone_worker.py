@@ -638,7 +638,8 @@ class GitCloneWorker:
         # Modo DUMP: reconstrói o repo a partir de um .git EXPOSTO na web.
         if getattr(job, "clone_mode", "clone") == "dump":
             site_url = repo.clone_url or job.repo_url
-            ok, err = await self._do_dump(clone_dir, site_url, proxy_url)
+            max_objects = await self._get_setting_int_zero(db, "git_dump_max_objects", 1000000)
+            ok, err = await self._do_dump(clone_dir, site_url, proxy_url, max_objects)
             if ok:
                 repo.local_path = repo.guid
                 repo.default_branch = repo.default_branch or await self._detect_branch(clone_dir)
@@ -705,9 +706,10 @@ class GitCloneWorker:
 
         return False, err
 
-    async def _do_dump(self, clone_dir, site_url, proxy_url) -> Tuple[bool, Optional[str]]:
+    async def _do_dump(self, clone_dir, site_url, proxy_url, max_objects=1000000) -> Tuple[bool, Optional[str]]:
         """Reconstrói um repositório a partir de um .git EXPOSTO na web (git-dumper).
-        Resultado é um repo git válido em clone_dir, indexável pelo pipeline normal."""
+        Resultado é um repo git válido em clone_dir, indexável pelo pipeline normal.
+        `max_objects` (0 = ilimitado) limita o total de objetos baixados."""
         if not site_url:
             return False, "URL ausente para dump"
         try:
@@ -715,8 +717,8 @@ class GitCloneWorker:
         except Exception as e:  # noqa: BLE001
             return False, f"git_dumper indisponível: {e}"
         try:
-            logger.info(f"[git dump] reconstruindo a partir de {site_url}")
-            return await git_dumper.dump_git(site_url, clone_dir, proxy_url)
+            logger.info(f"[git dump] reconstruindo a partir de {site_url} (max_objects={max_objects})")
+            return await git_dumper.dump_git(site_url, clone_dir, proxy_url, max_objects=max_objects)
         except Exception as e:  # noqa: BLE001
             return False, str(e)[:500]
 

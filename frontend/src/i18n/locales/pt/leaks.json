@@ -120,5 +120,11 @@
   "risk": {
     "jwtExpired": "JWT expirado",
     "jwtExpiredTitle": "JWT já expirado — criticidade reduzida"
+  },
+  "credFromLeak": {
+    "button": "Criar credencial",
+    "created": "Credencial '{{name}}' criada — abrindo edição",
+    "exists": "Já existe uma credencial com esse segredo: '{{name}}'",
+    "error": "Falha ao criar credencial"
   }
 }

@@ -67,13 +67,11 @@ export default function GitInstanceDetail() {
     } finally { setLoading(false); }
   }, [guid, t]);
 
-  // "Listar projetos": carrega do DB; se nunca listou, faz o refresh automático.
+  // "Listar projetos": SEMPRE busca fresh na plataforma (sem cache). A paginação
+  // e o filtro usam a cópia persistida no DB, mas o clique aqui sempre re-consulta.
   const onListProjects = async () => {
     setListed(true);
-    const data = await loadProjects(0, '');
-    if (data && (data.total || 0) === 0 && !data.refreshed_at) {
-      await doRefresh();
-    }
+    await doRefresh();
   };
 
   const doRefresh = async () => {
