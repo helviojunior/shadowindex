@@ -246,6 +246,22 @@ class ProxyServer(Base):
     password = Column(String, nullable=True)  # Deprecated - use credential_id
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+class DnsOverride(Base):
+    """Override de resolução DNS (hostname -> IP), estilo "Hostname resolution
+    overrides" do Burp. Aplicado no /etc/hosts do container para valer em todo o
+    sistema (clones, httpx, etc.)."""
+    __tablename__ = "dns_overrides"
+
+    id = Column(Integer, primary_key=True, index=True)
+    hostname = Column(String, nullable=False, unique=True, index=True)
+    ip = Column(String, nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False)
+    comment = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+
 class SoapApiUrl(Base):
     __tablename__ = "soap_api_urls"
     

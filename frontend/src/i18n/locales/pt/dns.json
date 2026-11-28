@@ -1,0 +1,18 @@
+{
+  "title": "DNS",
+  "subtitle": "Overrides de resolução (hostname → IP), aplicados no /etc/hosts e válidos para todo o sistema.",
+  "add": {
+    "title": "Adicionar override",
+    "description": "Equivale a uma entrada no hosts da máquina: [IP] [hostname]."
+  },
+  "list": { "title": "Overrides", "empty": "Nenhum override definido" },
+  "fields": { "hostname": "Hostname", "ip": "Endereço IP", "enabled": "Habilitado", "actions": "Ações" },
+  "actions": { "add": "Adicionar" },
+  "toast": {
+    "loadError": "Erro ao carregar overrides",
+    "required": "Informe hostname e IP",
+    "added": "Override adicionado e aplicado",
+    "saved": "Override atualizado e aplicado",
+    "removed": "Override removido e aplicado"
+  }
+}

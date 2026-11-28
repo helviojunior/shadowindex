@@ -131,6 +131,7 @@ const menuStructure = [
     label: 'Configuração',
     children: [
       { id: 'general', path: '/settings', label: 'Gerais' },
+      { id: 'dns', path: '/settings/dns', label: 'DNS' },
       { id: 'critical-search', path: '/settings/critical-search', label: 'Busca Crítica' },
       { id: 'proxy', path: '/proxy-servers', label: 'Proxy Servers' },
       { id: 'credentials', path: '/credentials', label: 'Credenciais' },

@@ -21,6 +21,7 @@ import SqlPresets from "@/pages/SqlPresets";
 import Downloads from "@/pages/Downloads";
 import OCRJobs from "@/pages/OCRJobs";
 import GeneralSettings from "@/pages/GeneralSettings";
+import DnsOverrides from "@/pages/DnsOverrides";
 import CriticalSearchSettings from "@/pages/CriticalSearchSettings";
 import PluginSoapConfig from "@/pages/PluginSoapConfig";
 import PluginDirectConfig from "@/pages/PluginDirectConfig";
@@ -91,6 +92,7 @@ function App() {
                     <Route path="/soap-operations" element={<SoapOperations />} />
                     <Route path="/tools/change-password" element={<ChangeDomainPassword />} />
                     <Route path="/settings" element={<GeneralSettings />} />
+                    <Route path="/settings/dns" element={<DnsOverrides />} />
                     <Route path="/settings/critical-search" element={<CriticalSearchSettings />} />
                     <Route path="/settings/scan-pools" element={<ScanPools />} />
                     <Route path="/plugins/soap" element={<PluginSoapConfig />} />

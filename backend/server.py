@@ -5375,6 +5375,10 @@ app.include_router(router_ad)
 from git_routes import router as router_git
 app.include_router(router_git)
 
+# Overrides de DNS (Configurações -> DNS; aplicados no /etc/hosts)
+from dns_routes import router as router_dns
+app.include_router(router_dns)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -5516,7 +5520,17 @@ async def startup_event():
     
     await init_db()
     print("=== STARTUP: Database initialized ===", flush=True)
-    
+
+    # Reaplica os overrides de DNS no /etc/hosts (o Docker recria o arquivo no restart)
+    try:
+        import dns_hosts
+        from database import AsyncSessionLocal
+        async with AsyncSessionLocal() as _db:
+            n = await dns_hosts.apply_hosts(_db)
+        print(f"=== STARTUP: DNS overrides aplicados ({n}) ===", flush=True)
+    except Exception as _e:
+        logger.warning(f"[startup] falha ao aplicar DNS overrides: {_e}")
+
     # Criar instâncias padrão de plugins se não existirem
     try:
         await create_default_plugin_instances()
