@@ -7,9 +7,9 @@
   "refresh": "Refresh",
   "today": "Today",
   "stats": {
-    "totalServers": "Total Servers",
+    "totalServers": "Servers",
     "serversWithFiles": "Serv. with Files",
-    "leaksDetected": "Leaks Detected",
+    "leaksDetected": "Leaks",
     "filesProcessed": "Processed Files",
     "downloads": "Downloads",
     "gitRepos": "Git Repositories"

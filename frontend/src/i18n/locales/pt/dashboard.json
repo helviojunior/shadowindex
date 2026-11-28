@@ -7,9 +7,9 @@
   "refresh": "Atualizar",
   "today": "Hoje",
   "stats": {
-    "totalServers": "Total Servidores",
+    "totalServers": "Servidores",
     "serversWithFiles": "Serv. com Arquivos",
-    "leaksDetected": "Leaks Detectados",
+    "leaksDetected": "Leaks",
     "filesProcessed": "Arquivos Tratados",
     "downloads": "Downloads",
     "gitRepos": "Repositórios Git"
