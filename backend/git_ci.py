@@ -209,7 +209,9 @@ async def _gitlab_pipelines(c, api, h, full_name, limit, offset):
             tr = await c.get(f"{api}/projects/{pid}/jobs/{jid}/trace", headers=h,
                              audit=False, context="pipelines")
             if tr.status_code == 200 and tr.text:
-                out.append({"ref": f"pipeline-{plid}", "name": f"{plid}/{job.get('name') or jid}",
+                out.append({"ref": f"pipeline-{plid}", "pipeline": str(plid),
+                            "step": job.get("name") or str(jid),
+                            "name": f"{plid}/{job.get('name') or jid}",
                             "status": job.get("status"), "text": _trim(tr.text)})
     return {"supported": True, "note": None, "items": out, "total_available": total}
 
@@ -234,7 +236,9 @@ async def _github_pipelines(c, api, h, full_name, limit, offset):
             lr = await c.get(f"{api}/repos/{full_name}/actions/jobs/{jid}/logs",
                              headers=h, audit=False, context="pipelines")
             if lr.status_code == 200 and lr.text:
-                out.append({"ref": f"run-{run_id}", "name": f"{run_id}/{job.get('name') or jid}",
+                out.append({"ref": f"run-{run_id}", "pipeline": str(run_id),
+                            "step": job.get("name") or str(jid),
+                            "name": f"{run_id}/{job.get('name') or jid}",
                             "status": job.get("conclusion") or job.get("status"), "text": _trim(lr.text)})
     return {"supported": True, "note": None, "items": out, "total_available": total}
 
@@ -261,7 +265,9 @@ async def _bitbucket_pipelines(c, h, full_name, limit, offset):
             lr = await c.get(f"{base}/pipelines/{uuid}/steps/{suuid}/log",
                              headers=h, audit=False, context="pipelines")
             if lr.status_code == 200 and lr.text:
-                out.append({"ref": f"pipeline-{uuid}", "name": f"{(pl.get('build_number') or uuid)}/{step.get('name') or suuid}",
+                out.append({"ref": f"pipeline-{uuid}", "pipeline": str(pl.get("build_number") or uuid),
+                            "step": step.get("name") or str(suuid),
+                            "name": f"{(pl.get('build_number') or uuid)}/{step.get('name') or suuid}",
                             "status": (step.get("state") or {}).get("name"), "text": _trim(lr.text)})
     return {"supported": True, "note": None, "items": out, "total_available": total}
 
@@ -308,7 +314,8 @@ async def _azure_pipelines(c, h, full_name, org, web_url, limit, offset):
             cr = await c.get(f"{base}/builds/{bid}/logs/{logid}", params={"api-version": "7.0"},
                              headers=h, audit=False, context="pipelines")
             if cr.status_code == 200 and cr.text:
-                out.append({"ref": f"build-{bid}", "name": f"{bid}/log-{logid}",
+                out.append({"ref": f"build-{bid}", "pipeline": str(bid),
+                            "step": f"log-{logid}", "name": f"{bid}/log-{logid}",
                             "status": b.get("result"), "text": _trim(cr.text)})
     return {"supported": True, "note": None, "items": out, "total_available": len(builds) or None}
 

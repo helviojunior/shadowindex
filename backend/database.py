@@ -899,7 +899,8 @@ class GitRepo(Base):
     commits_count = Column(Integer, nullable=True)     # nº de commits percorridos
     # CI/CD: contadores e notas das últimas coletas (p/ abas Secrets/Pipeline).
     secrets_count = Column(Integer, nullable=True)
-    pipeline_files_count = Column(Integer, nullable=True)
+    pipeline_files_count = Column(Integer, nullable=True)   # nº de logs/steps coletados
+    pipelines_count = Column(Integer, nullable=True)        # nº de PIPELINES distintos coletados (p/ "baixar mais")
     ci_secrets_note = Column(Text, nullable=True)
     ci_pipelines_note = Column(Text, nullable=True)
     branches_count = Column(Integer, nullable=True)    # nº de branches percorridas
@@ -983,6 +984,11 @@ class GitCloneJob(Base):
     status = Column(String, default="pending")  # pending, running, completed, failed, cancelled
     priority = Column(Integer, default=0)
     current_step = Column(String, nullable=True)  # clone, gitleaks, ocr, index
+    # Controle de estado durável (não depende de memória nem de shutdown gracioso):
+    # heartbeat_at é atualizado enquanto o job roda; um job 'cloning'/'processing'
+    # com heartbeat velho (processo morto/crash/kill) é reenfileirado pelo reaper.
+    heartbeat_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    attempts = Column(Integer, default=0)  # nº de execuções (p/ limitar reprocessos infinitos)
     total_files = Column(Integer, default=0)
     processed_files = Column(Integer, default=0)
     leaks_found = Column(Integer, default=0)
@@ -1236,6 +1242,7 @@ async def apply_pending_migrations():
                 ('history_indexed', 'BOOLEAN DEFAULT FALSE'),
                 ('commits_count', 'INTEGER'), ('branches_count', 'INTEGER'),
                 ('secrets_count', 'INTEGER'), ('pipeline_files_count', 'INTEGER'),
+                ('pipelines_count', 'INTEGER'),
                 ('ci_secrets_note', 'TEXT'), ('ci_pipelines_note', 'TEXT'),
             ])
             await _pg_add_cols('git_clone_jobs', [
@@ -1245,6 +1252,8 @@ async def apply_pending_migrations():
                 ('task_limit', 'INTEGER'),
                 ('task_offset', 'INTEGER'),
                 ('instance_id', 'INTEGER'),
+                ('heartbeat_at', 'TIMESTAMPTZ'),
+                ('attempts', 'INTEGER DEFAULT 0'),
             ])
             await _pg_add_cols('git_repo_files', [
                 ("source", "VARCHAR DEFAULT 'repo'"),

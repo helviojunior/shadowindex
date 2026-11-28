@@ -115,7 +115,7 @@ const menuStructure = [
       { id: 'downloads', path: '/downloads', label: 'Downloads' },
       { id: 'ocr', path: '/ocr', label: 'OCR' },
       { id: 'share-scan-jobs', path: '/jobs/share-scan', label: 'Share Scan' },
-      { id: 'git-clone', path: '/jobs/git', label: 'Clones Git' },
+      { id: 'git-clone', path: '/jobs/git', label: 'Git' },
     ]
   },
   { 

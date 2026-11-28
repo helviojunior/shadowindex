@@ -80,8 +80,8 @@
     "completed": "Concluído",
     "failed": "Falhou",
     "cancelled": "Cancelado",
-    "cloning": "Clonando",
-    "cloned": "Clonado",
+    "cloning": "Baixando",
+    "cloned": "Baixado",
     "processing": "Processando"
   },
   "fields": {

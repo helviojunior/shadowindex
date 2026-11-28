@@ -87,6 +87,39 @@ function findNode(root, path) {
   return node || null;
 }
 
+// Árvore dos logs de pipeline: <id do pipeline>/<step>/<arquivo>.
+function PipeTreeNode({ node, expanded, toggle, onOpen, depth = 0 }) {
+  return (
+    <div>
+      {sortedChildren(node).map((c) => {
+        const pad = { paddingLeft: `${depth * 12 + 8}px` };
+        if (c.type === 'dir') {
+          const open = expanded[c.path] !== false; // aberto por padrão
+          return (
+            <div key={c.path}>
+              <div className="flex items-center gap-1 py-1 text-xs cursor-pointer hover:bg-muted/40 rounded"
+                   style={pad} onClick={() => toggle(c.path)}>
+                {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                {open ? <FolderOpen className="w-3.5 h-3.5 text-amber-500" /> : <Folder className="w-3.5 h-3.5 text-amber-500" />}
+                <span className="font-mono truncate">{c.name}</span>
+              </div>
+              {open && <PipeTreeNode node={c} expanded={expanded} toggle={toggle} onOpen={onOpen} depth={depth + 1} />}
+            </div>
+          );
+        }
+        return (
+          <div key={c.path} className="flex items-center gap-1 py-1 text-xs cursor-pointer hover:bg-muted/50 rounded"
+               style={pad} onClick={() => onOpen(c.file)}>
+            <FileText className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+            <span className="font-mono text-blue-500 break-all">{c.name}</span>
+            {c.file?.status && <span className="text-[10px] text-muted-foreground">· {c.file.status}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Extensões cujo conteúdo normalmente vem de extração/OCR (doc/imagem/pdf).
 const OCR_EXTS = new Set([
   'pdf', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tif', 'tiff', 'webp',
@@ -148,6 +181,7 @@ export default function GitRepoBrowser() {
   const [pfiles, setPfiles] = useState(null);
   const [pnote, setPnote] = useState(null);
   const [collecting, setCollecting] = useState(false);
+  const [pExpanded, setPExpanded] = useState({}); // pastas da árvore de pipelines
 
   // Modal "Identificar credencial vazada".
   const [showLeakModal, setShowLeakModal] = useState(false);
@@ -1314,7 +1348,7 @@ export default function GitRepoBrowser() {
                 <ScrollArea className="flex-1">
                   <div className="p-3 space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-muted-foreground">{t('ci.pipelinesTitle')} · {pfiles?.length || 0}</span>
+                      <span className="text-sm font-medium text-muted-foreground">{t('ci.pipelinesTitle')} · {new Set((pfiles || []).map((f) => f.pipeline_ref).filter(Boolean)).size || (pfiles?.length || 0)}</span>
                       <div className="flex gap-1">
                         <Button size="sm" variant="outline" disabled={collecting} onClick={() => collect('pipelines')} data-testid="collect-pipelines">
                           {collecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}{t('ci.collect')}
@@ -1327,13 +1361,14 @@ export default function GitRepoBrowser() {
                     {pnote && <div className="text-xs text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded p-2">{pnote}</div>}
                     {(pfiles || []).length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">{t('ci.pipelinesEmpty')}</p>
-                    ) : pfiles.map((f) => (
-                      <div key={f.id} className="border rounded p-2 text-sm cursor-pointer hover:bg-muted/50"
-                        onClick={() => { setSelectedFile({ rel_path: f.rel_path, name: f.name, id: f.id }); setSelectedKind('file'); setActiveTab('view'); loadVersionContent(f.id); }}>
-                        <div className="font-mono text-xs text-blue-500 break-all">{f.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{f.pipeline_ref || ''}{f.status ? ` · ${f.status}` : ''}</div>
-                      </div>
-                    ))}
+                    ) : (
+                      <PipeTreeNode
+                        node={buildTree((pfiles || []).map((f) => ({ ...f, rel_path: (f.rel_path || '').replace(/^__pipelines__\//, '') })))}
+                        expanded={pExpanded}
+                        toggle={(p) => setPExpanded((e) => ({ ...e, [p]: e[p] === false ? true : false }))}
+                        onOpen={(f) => { setSelectedFile({ rel_path: f.rel_path, name: f.name, id: f.id }); setSelectedKind('file'); setActiveTab('view'); loadVersionContent(f.id); }}
+                      />
+                    )}
                   </div>
                 </ScrollArea>
               )}

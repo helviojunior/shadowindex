@@ -16,7 +16,7 @@ import logging
 import tempfile
 import mimetypes
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List, Tuple
 
 from sqlalchemy import select, update, delete, func, nullslast, or_
@@ -48,6 +48,8 @@ OCR_MAX_BYTES = 25 * 1024 * 1024  # 25MB cap p/ docs enviados ao Tika
 # tasks realmente vivas no worker. Jobs 'running' sem task viva (reboot/crash) ou
 # presos além do tempo máximo são reenfileirados ('pending') para não travar a fila.
 WATCHDOG_INTERVAL = 30          # segundos entre verificações (NÃO é um timeout)
+HEARTBEAT_TIMEOUT = 180         # s sem heartbeat => job órfão (processo morto) -> reenfileira
+MAX_JOB_ATTEMPTS = 6            # tentativas antes de desistir (evita reprocesso infinito)
 MAX_JOB_SECONDS_DEFAULT = 7200  # backstop absoluto (2h) — setting: git_clone_job_timeout_min (0 desativa)
 STALL_SECONDS_DEFAULT = 600     # sem progresso (bytes/arquivos) por este tempo => travado (setting: git_clone_stall_min)
 
@@ -131,6 +133,7 @@ class GitCloneWorker:
         if self.running:
             return
         self.running = True
+        self._booted = False
         self._active_clone.clear()
         self._active_post.clear()
         self._last_watchdog_clone = 0.0
@@ -203,8 +206,10 @@ class GitCloneWorker:
         # voltam p/ a fila. Respeita as tasks vivas (active sets), então é seguro
         # também quando o supervisor reinicia um loop com tasks ainda rodando.
         try:
+            is_boot = not self._booted
+            self._booted = True
             async with AsyncSessionLocal() as db:
-                await self._reconcile_all_phases(db)
+                await self._reconcile_all_phases(db, boot=is_boot)
         except Exception as e:  # noqa: BLE001
             logger.error(f"[git {phase}] erro no reset de boot: {e}")
 
@@ -302,12 +307,20 @@ class GitCloneWorker:
                 f"cancelado e reenfileirado p/ '{cfg['requeue_status']}'"
             )
 
-    async def _reconcile_all_phases(self, db) -> int:
-        """Reconcilia AMBAS as fases de uma vez: jobs em 'cloning'/'processing' que
-        não têm uma task viva (reboot/crash, ou loop da fase morto) voltam p/ a fila
-        ('pending'/'cloned'). Respeita as tasks vivas (active sets) para não mexer em
-        jobs que estão realmente em execução."""
-        from database import GitCloneJob
+    async def _reconcile_all_phases(self, db, boot: bool = False) -> int:
+        """Controle de estado DURÁVEL dos jobs (independe de memória e de shutdown
+        gracioso): usa o heartbeat gravado no próprio job.
+
+        - Jobs vivos (task em execução) têm o heartbeat renovado aqui.
+        - Jobs 'cloning'/'processing' SEM task viva e com heartbeat velho/nulo são
+          ÓRFÃOS (processo morto/kill/crash) e voltam para a fila automaticamente.
+          No boot, TODOS os 'running' são órfãos (processo novo não roda nada ainda),
+          então a retomada é imediata.
+        - attempts limita reprocessos infinitos: acima de MAX_JOB_ATTEMPTS -> 'failed'.
+        O re-enfileiramento é commitado antes da correção cosmética de status de repo."""
+        from database import GitCloneJob, GitRepo
+        now = datetime.now(timezone.utc)
+        stale_before = now - timedelta(seconds=HEARTBEAT_TIMEOUT)
 
         total = 0
         for running_status, requeue_status, active in (
@@ -315,47 +328,93 @@ class GitCloneWorker:
             ("processing", "cloned", self._active_post),
         ):
             active_ids = set(active.keys())
-            stmt = update(GitCloneJob).where(GitCloneJob.status == running_status)
+            # Renova o heartbeat dos jobs REALMENTE vivos (task em execução).
             if active_ids:
-                stmt = stmt.where(GitCloneJob.id.notin_(active_ids))
-            stmt = stmt.values(status=requeue_status, started_at=None, current_step=None)
-            result = await db.execute(stmt)
-            if result.rowcount:
-                total += result.rowcount
-                logger.warning(
-                    f"[git watchdog] {result.rowcount} job(s) em '{running_status}' "
-                    f"sem task viva -> '{requeue_status}'"
+                await db.execute(
+                    update(GitCloneJob).where(GitCloneJob.id.in_(active_ids)).values(heartbeat_at=now)
                 )
 
-        # Reconcilia STATUS DO REPO órfão: repositório preso em 'pending'/'cloning'
-        # que JÁ tem conteúdo (arquivos indexados ou clone concluído antes) e NÃO tem
-        # mais nenhum job ativo/na fila para avançá-lo. Isso ocorre quando um job foi
-        # cancelado/concluído deixando o clone_status desatualizado. Marca como
-        # 'cloned' para não ficar eternamente "Pendente". Idempotente e seguro.
-        from database import GitRepo
-        live_job = (
-            select(GitCloneJob.id)
-            .where(GitCloneJob.repo_id == GitRepo.id,
-                   GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]))
-            .exists()
-        )
-        repo_fix = (
-            update(GitRepo)
-            .where(GitRepo.clone_status.in_(["pending", "cloning"]))
-            .where(or_((GitRepo.files_count > 0), (GitRepo.cloned_at.isnot(None))))
-            .where(~live_job)
-            .values(clone_status="cloned")
-        )
-        rf = await db.execute(repo_fix)
-        if rf.rowcount:
-            total += rf.rowcount
-            logger.warning(
-                f"[git watchdog] {rf.rowcount} repo(s) presos em pending/cloning sem job "
-                f"ativo e com conteúdo -> 'cloned'"
-            )
+            # Seleciona os ÓRFÃOS: status 'running', sem task viva e (fora do boot)
+            # com heartbeat velho/nulo.
+            orphan_q = select(GitCloneJob).where(GitCloneJob.status == running_status)
+            if active_ids:
+                orphan_q = orphan_q.where(GitCloneJob.id.notin_(active_ids))
+            if not boot:
+                orphan_q = orphan_q.where(or_(GitCloneJob.heartbeat_at.is_(None),
+                                              GitCloneJob.heartbeat_at < stale_before))
+            orphans = (await db.execute(orphan_q)).scalars().all()
+            if not orphans:
+                continue
 
+            requeue_ids, requeue_repos, fail_ids, fail_repos = [], [], [], []
+            for j in orphans:
+                if (j.attempts or 0) >= MAX_JOB_ATTEMPTS:
+                    fail_ids.append(j.id)
+                    if j.repo_id:
+                        fail_repos.append(j.repo_id)
+                else:
+                    requeue_ids.append(j.id)
+                    if running_status == "cloning" and j.repo_id:
+                        requeue_repos.append(j.repo_id)
+
+            if requeue_ids:
+                await db.execute(update(GitCloneJob).where(GitCloneJob.id.in_(requeue_ids))
+                                 .values(status=requeue_status, started_at=None, current_step=None))
+                total += len(requeue_ids)
+                if requeue_repos:
+                    await db.execute(update(GitRepo)
+                                     .where(GitRepo.id.in_(requeue_repos), GitRepo.clone_status == "cloning")
+                                     .values(clone_status="pending"))
+                logger.warning(f"[git watchdog] {len(requeue_ids)} job(s) órfão(s) "
+                               f"'{running_status}' -> re-enfileirado p/ '{requeue_status}'")
+            if fail_ids:
+                await db.execute(update(GitCloneJob).where(GitCloneJob.id.in_(fail_ids))
+                                 .values(status="failed", completed_at=now,
+                                         error_message=f"excedeu {MAX_JOB_ATTEMPTS} tentativas "
+                                                       f"(travamentos/reboots repetidos)"))
+                if fail_repos:
+                    await db.execute(update(GitRepo)
+                                     .where(GitRepo.id.in_(fail_repos),
+                                            GitRepo.clone_status.in_(["pending", "cloning"]))
+                                     .values(clone_status="failed"))
+                total += len(fail_ids)
+                logger.error(f"[git watchdog] {len(fail_ids)} job(s) excederam "
+                             f"{MAX_JOB_ATTEMPTS} tentativas -> 'failed'")
+
+        # COMMIT do re-enfileiramento ANTES de qualquer outra coisa (crítico).
         if total:
             await db.commit()
+
+        # Correção cosmética (isolada, best-effort): repo preso em 'pending'/'cloning'
+        # que já tem conteúdo e NÃO tem mais job ativo/na fila -> 'cloned'. Usa NOT IN
+        # (robusto) e nunca derruba o re-enfileiramento acima.
+        try:
+            live_ids = (
+                select(GitCloneJob.repo_id)
+                .where(GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]),
+                       GitCloneJob.repo_id.isnot(None))
+                .distinct()
+            )
+            repo_fix = (
+                update(GitRepo)
+                .where(GitRepo.clone_status.in_(["pending", "cloning"]),
+                       or_(GitRepo.files_count > 0, GitRepo.cloned_at.isnot(None)),
+                       GitRepo.id.notin_(live_ids))
+                .values(clone_status="cloned")
+            )
+            rf = await db.execute(repo_fix)
+            if rf.rowcount:
+                await db.commit()
+                logger.warning(
+                    f"[git watchdog] {rf.rowcount} repo(s) com conteúdo e sem job ativo "
+                    f"-> 'cloned'"
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[git watchdog] correção de status de repo falhou: {e}")
+            try:
+                await db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
         return total
 
     async def _get_setting_int(self, db, key: str, default: int) -> int:
@@ -454,6 +513,8 @@ class GitCloneWorker:
 
                 job.status = "cloning"
                 job.started_at = datetime.now(timezone.utc)
+                job.heartbeat_at = datetime.now(timezone.utc)
+                job.attempts = (job.attempts or 0) + 1
                 job.current_step = "clone"
                 await db.commit()
 
@@ -569,6 +630,8 @@ class GitCloneWorker:
 
                 job.status = "processing"
                 job.started_at = datetime.now(timezone.utc)
+                job.heartbeat_at = datetime.now(timezone.utc)
+                job.attempts = (job.attempts or 0) + 1
                 job.current_step = "gitleaks"
 
                 # Histórico disponível? (indexação habilitada + clone completo com .git)
@@ -896,10 +959,17 @@ class GitCloneWorker:
         os.makedirs(pdir, exist_ok=True)
         max_text_bytes = await self._get_index_max_bytes(db)
         ctx = self._new_idx_ctx()
+        def _seg(s, fallback):
+            # Sanitiza um segmento de caminho (vira pasta): sem barras nem controle.
+            s = (str(s) if s is not None else "") or fallback
+            return s.replace("/", "_").replace("\\", "_").replace("\x00", "").strip() or fallback
+
         saved = 0
         for it in items:
-            safe = (it.get("name") or f"log-{saved}").replace("/", "_").replace("\\", "_")
-            rel = f"__pipelines__/{safe}.log"
+            # Estrutura em árvore: <id do pipeline>/<step>/<arquivo de build>
+            pipeline_seg = _seg(it.get("pipeline") or it.get("ref"), f"pipeline-{saved}")
+            step_seg = _seg(it.get("step"), f"step-{saved}")
+            rel = f"__pipelines__/{pipeline_seg}/{step_seg}/{step_seg}.log"
             fpath = os.path.join(clone_dir, rel)
             text = it.get("text") or ""
             try:
@@ -913,7 +983,7 @@ class GitCloneWorker:
                 GitRepoFile.source == "pipeline"))
             content = text[:max_text_bytes] if text else None
             gf = GitRepoFile(
-                repo_id=repo.id, repo_guid=repo.guid, rel_path=rel, name=f"{safe}.log",
+                repo_id=repo.id, repo_guid=repo.guid, rel_path=rel, name=f"{step_seg}.log",
                 extension=".log", size=len(text.encode("utf-8", "replace")),
                 mimetype="text/plain", is_binary=False, content=content,
                 content_extracted=bool(content), is_head=True,
@@ -938,6 +1008,12 @@ class GitCloneWorker:
         repo.pipeline_files_count = (await db.execute(
             select(func.count(GitRepoFile.id)).where(
                 GitRepoFile.repo_id == repo.id, GitRepoFile.source == "pipeline")
+        )).scalar() or 0
+        # nº de PIPELINES distintos já coletados (base do offset do "baixar mais").
+        repo.pipelines_count = (await db.execute(
+            select(func.count(func.distinct(GitRepoFile.pipeline_ref))).where(
+                GitRepoFile.repo_id == repo.id, GitRepoFile.source == "pipeline",
+                GitRepoFile.pipeline_ref.isnot(None))
         )).scalar() or 0
         repo.ci_pipelines_note = note
         repo.leaks_count = (await db.execute(

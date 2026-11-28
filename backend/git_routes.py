@@ -1290,7 +1290,8 @@ async def collect_repo_ci(guid: str, req: _CollectRequest, db=Depends(get_db)):
     if active:
         return {"queued": False, "reason": "já há uma coleta em andamento"}
 
-    offset = (repo.pipeline_files_count or 0) if (task == "pipelines" and req.more) else 0
+    # "baixar mais": pula os PIPELINES já coletados (não os arquivos/steps).
+    offset = (repo.pipelines_count or 0) if (task == "pipelines" and req.more) else 0
     cred_id = inst.credential_id if inst.clone_auth == "authenticated" else None
     job = GitCloneJob(
         repo_id=repo.id, repo_url=repo.clone_url or repo.html_url or repo.full_name,

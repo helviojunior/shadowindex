@@ -1,6 +1,6 @@
 {
-  "title": "Jobs de Clone Git",
-  "subtitle": "Pipeline em background para cada repositório: clone → gitleaks → extração → indexação.",
+  "title": "Jobs de Git",
+  "subtitle": "Processamento em background por repositório: clone, coleta de pipelines e de secrets → gitleaks → extração → indexação.",
   "stats": {
     "total": "Total",
     "pending": "Pendentes",
@@ -8,8 +8,8 @@
     "completed": "Concluídos",
     "failed": "Falhas",
     "cancelled": "Cancelados",
-    "cloning": "Clonando",
-    "cloned": "Clonado",
+    "cloning": "Baixando",
+    "cloned": "Baixado",
     "processing": "Processando"
   },
   "table": {
