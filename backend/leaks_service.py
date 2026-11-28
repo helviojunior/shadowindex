@@ -510,6 +510,52 @@ def _auto_false_positive(rule_id: Optional[str], secret: Optional[str], match: O
     return _looks_like_placeholder(pwd) or _looks_like_placeholder(match)
 
 
+async def _resolve_leak_date(db, finding: Dict[str, Any]):
+    """Data do leak p/ gravar junto do registro (desnormalizada):
+    - Git: data do commit (quando o finding já traz commit_date).
+    - Arquivo (SMB): data do arquivo (ServerItem.modified_at) por
+      server_guid + share_name + server_path.
+    - Fallback: data do scan e, por fim, agora.
+    """
+    from database import ServerItem
+    from sqlalchemy import select as _select, and_ as _and
+
+    # Git (defensivo — findings git normalmente não passam por aqui).
+    cd = finding.get('commit_date')
+    if cd:
+        try:
+            return datetime.fromisoformat(cd) if isinstance(cd, str) else cd
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Arquivo: data do arquivo informada pelo plugin.
+    sg = finding.get('extracted_server_guid')
+    sh = finding.get('share_name')
+    sp = finding.get('server_path')
+    if sg and sh and sp:
+        try:
+            modified = (await db.execute(
+                _select(ServerItem.modified_at).where(_and(
+                    ServerItem.server_guid == sg,
+                    ServerItem.share_name == sh,
+                    ServerItem.full_path == sp,
+                ))
+            )).scalar()
+            if modified:
+                return modified
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Fallback: data do scan.
+    sa = finding.get('scanned_at')
+    if sa:
+        try:
+            return datetime.fromisoformat(sa) if isinstance(sa, str) else sa
+        except Exception:  # noqa: BLE001
+            pass
+    return datetime.now(timezone.utc)
+
+
 async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
     """
     Salva um finding no banco de dados.
@@ -595,6 +641,7 @@ async def save_finding_to_db(finding: Dict[str, Any]) -> bool:
                 is_false_positive=_auto_false_positive(
                     finding.get('RuleID', ''), finding.get('Secret'), finding.get('Match')
                 ),
+                leak_date=await _resolve_leak_date(db, finding),
                 scanned_at=datetime.fromisoformat(finding['scanned_at']) if finding.get('scanned_at') else None,
                 raw_data=finding
             )
@@ -663,6 +710,7 @@ async def load_findings_from_db() -> List[Dict[str, Any]]:
                     'commit_hash': f.commit_hash,
                     'commit_author': f.commit_author,
                     'commit_date': f.commit_date.isoformat() if f.commit_date else None,
+                    'leak_date': f.leak_date.isoformat() if f.leak_date else None,
                     'git_file_id': f.git_file_id,
                     'decoded_claims': f.decoded_claims,
                     'risk': _risk_for(f.rule_id, f.secret, f.match),
@@ -1269,6 +1317,7 @@ class GitleaksService:
             'commit_hash': finding.commit_hash,
             'commit_author': finding.commit_author,
             'commit_date': finding.commit_date.isoformat() if finding.commit_date else None,
+            'leak_date': finding.leak_date.isoformat() if finding.leak_date else None,
             'git_file_id': finding.git_file_id,
             'decoded_claims': finding.decoded_claims,
             'risk': _risk_for(finding.rule_id, finding.secret, finding.match),

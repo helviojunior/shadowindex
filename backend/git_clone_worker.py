@@ -903,6 +903,8 @@ class GitCloneWorker:
                 commit_hash=commit_hash,
                 commit_author=(fd.get("Author") or fd.get("Email") or None),
                 commit_date=_parse_leak_date(fd.get("Date")),
+                # Data do leak = data do commit (fallback: agora).
+                leak_date=_parse_leak_date(fd.get("Date")) or datetime.now(timezone.utc),
                 decoded_claims=decoded_claims,
                 scanned_at=datetime.now(timezone.utc),
                 raw_data=fd,

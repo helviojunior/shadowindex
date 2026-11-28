@@ -574,6 +574,11 @@ class GitleaksFinding(Base):
     commit_date = Column(DateTime(timezone=True), nullable=True)
     git_file_id = Column(Integer, nullable=True, index=True)  # liga à versão GitRepoFile, quando houver
 
+    # Data do LEAK (desnormalizada p/ não recalcular nem depender de joins):
+    # repositório Git -> data do commit; arquivo -> data do arquivo (modificação).
+    # Fallback: data do scan. Usada em "Leaks vs. Tempo".
+    leak_date = Column(DateTime(timezone=True), nullable=True, index=True)
+
     # JWT: claims/header decodificados (texto plano) para permitir busca pelo conteúdo.
     decoded_claims = Column(Text, nullable=True)
 
@@ -1145,8 +1150,32 @@ async def apply_pending_migrations():
             await _pg_add_cols('gitleaks_findings', [
                 ('commit_hash', 'VARCHAR'), ('commit_author', 'VARCHAR'),
                 ('commit_date', 'TIMESTAMPTZ'), ('git_file_id', 'INTEGER'),
-                ('decoded_claims', 'TEXT'),
+                ('decoded_claims', 'TEXT'), ('leak_date', 'TIMESTAMPTZ'),
             ])
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_gitleaks_findings_leak_date "
+                "ON gitleaks_findings (leak_date)"
+            ))
+            # Backfill da data do leak nos registros existentes (idempotente):
+            # 1) Git -> data do commit.
+            await conn.execute(text(
+                "UPDATE gitleaks_findings SET leak_date = commit_date "
+                "WHERE leak_date IS NULL AND git_repo_guid IS NOT NULL AND commit_date IS NOT NULL"
+            ))
+            # 2) Arquivo (SMB) -> data do arquivo (ServerItem.modified_at) pelo mesmo
+            #    critério do gráfico (server_guid + share_name + full_path).
+            await conn.execute(text(
+                "UPDATE gitleaks_findings f SET leak_date = si.modified_at "
+                "FROM server_items si "
+                "WHERE f.leak_date IS NULL AND si.modified_at IS NOT NULL "
+                "AND f.extracted_server_guid = si.server_guid "
+                "AND f.share_name = si.share_name AND f.server_path = si.full_path"
+            ))
+            # 3) Fallback -> data do scan e, por fim, criação.
+            await conn.execute(text(
+                "UPDATE gitleaks_findings SET leak_date = COALESCE(scanned_at, created_at) "
+                "WHERE leak_date IS NULL"
+            ))
             await _pg_add_cols('git_repos', [
                 ('history_indexed', 'BOOLEAN DEFAULT FALSE'),
                 ('commits_count', 'INTEGER'), ('branches_count', 'INTEGER'),

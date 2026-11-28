@@ -5276,47 +5276,19 @@ async def get_leaks_over_time(db: AsyncSession = Depends(get_db_readonly)):
     Retorna dados para o gráfico de Leaks vs. Tempo, agrupados por mês/ano
     usando a data de última modificação do arquivo (file_modified).
     """
-    from sqlalchemy import func, extract, case, and_
     from collections import defaultdict
-    
-    # Buscar todos os findings com o ServerItem associado (que tem modified_at do plugin)
-    # Join via server_guid + share_name + server_path == full_path
-    findings_result = await db.execute(
-        select(GitleaksFinding, ServerItem)
-        .outerjoin(
-            ServerItem,
-            and_(
-                GitleaksFinding.extracted_server_guid == ServerItem.server_guid,
-                GitleaksFinding.share_name == ServerItem.share_name,
-                GitleaksFinding.server_path == ServerItem.full_path
-            )
-        )
+
+    # A data do leak já é armazenada no próprio finding (leak_date): commit (git) ou
+    # data do arquivo (SMB), com fallback. Sem joins nem recálculo.
+    rows = (await db.execute(
+        select(GitleaksFinding.leak_date, GitleaksFinding.scanned_at, GitleaksFinding.created_at)
         .where(GitleaksFinding.is_false_positive == False)
-    )
+    )).all()
 
-    rows = findings_result.all()
-
-    # Agrupar por mês/ano da data de modificação do arquivo (informada pelo plugin)
     monthly_counts = defaultdict(int)
 
-    for finding, server_item in rows:
-        file_date = None
-
-        # Data do LEAK (não a do scan):
-        # 1) Repositório Git -> data do COMMIT onde o segredo aparece.
-        if getattr(finding, "git_repo_guid", None) and finding.commit_date:
-            file_date = finding.commit_date
-        # 2) Arquivo (SMB) -> data do arquivo informada pelo plugin (modificação).
-        elif server_item and server_item.modified_at:
-            file_date = server_item.modified_at
-        # 3) Fallbacks: commit_date (git sem repo_guid), depois scan/criação.
-        elif finding.commit_date:
-            file_date = finding.commit_date
-        elif finding.scanned_at:
-            file_date = finding.scanned_at
-        elif finding.created_at:
-            file_date = finding.created_at
-
+    for leak_date, scanned_at, created_at in rows:
+        file_date = leak_date or scanned_at or created_at
         if file_date:
             # Agrupar por mês/ano (formato: "YYYY/MM")
             month_key = file_date.strftime("%Y/%m")
