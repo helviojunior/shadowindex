@@ -5302,16 +5302,21 @@ async def get_leaks_over_time(db: AsyncSession = Depends(get_db_readonly)):
     for finding, server_item in rows:
         file_date = None
 
-        # Usar a data de última modificação do arquivo informada pelo plugin
-        if server_item and server_item.modified_at:
+        # Data do LEAK (não a do scan):
+        # 1) Repositório Git -> data do COMMIT onde o segredo aparece.
+        if getattr(finding, "git_repo_guid", None) and finding.commit_date:
+            file_date = finding.commit_date
+        # 2) Arquivo (SMB) -> data do arquivo informada pelo plugin (modificação).
+        elif server_item and server_item.modified_at:
             file_date = server_item.modified_at
+        # 3) Fallbacks: commit_date (git sem repo_guid), depois scan/criação.
+        elif finding.commit_date:
+            file_date = finding.commit_date
         elif finding.scanned_at:
-            # Fallback: usar data do scan
             file_date = finding.scanned_at
         elif finding.created_at:
-            # Último fallback: usar data de criação do finding
             file_date = finding.created_at
-        
+
         if file_date:
             # Agrupar por mês/ano (formato: "YYYY/MM")
             month_key = file_date.strftime("%Y/%m")

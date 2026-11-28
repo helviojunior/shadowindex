@@ -262,13 +262,18 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
         head_ok = (rc == 0)
         wt_files = _worktree_file_count(dest_dir)
 
-        # Guard-rail nº2: coletamos objetos, mas não conseguimos materializar nada
-        # (pack corrompido/parcial, objetos ausentes). Também é falha clara.
-        if not head_ok and wt_files == 0:
+        # Guard-rail nº2: coletamos objetos e (talvez) andamos no grafo de commits,
+        # mas a árvore de trabalho ficou VAZIA. Um .git real praticamente nunca tem
+        # HEAD sem nenhum arquivo — isso indica dump PARCIAL (trees/blobs ausentes:
+        # recuperamos metadados de commit, mas não o conteúdo). Falha clara, para não
+        # exibir um repositório "clonado" com 0 arquivos.
+        if wt_files == 0:
+            motivo = ("HEAD não resolvido" if not head_ok
+                      else "HEAD resolvido, mas sem árvores/blobs para restaurar")
             return False, (
-                "dump incompleto: objetos coletados, mas não foi possível reconstruir "
-                "o HEAD nem restaurar arquivos (pack parcial/corrompido ou objetos "
-                "ausentes). Reenfileire o clone."
+                "dump parcial: nenhum arquivo foi restaurado da árvore de trabalho "
+                f"({motivo}) — provável download incompleto dos objetos (trees/blobs). "
+                "Reenfileire o clone."
             )
         return True, None
 
