@@ -116,7 +116,9 @@ export default function GitInstances() {
                   <TableCell>
                     {i.whoami?.login ? (
                       <span className="inline-flex items-center gap-1 text-sm"><User className="w-3 h-3" />{i.whoami.login}</span>
-                    ) : <span className="text-muted-foreground text-xs">—</span>}
+                    ) : i.clone_auth === 'anonymous'
+                      ? <span className="text-muted-foreground text-xs italic">{t('detail.anon')}</span>
+                      : <span className="text-muted-foreground text-xs">—</span>}
                   </TableCell>
                   <TableCell>
                     {i.status === 'ok' ? (

@@ -100,6 +100,39 @@ async def delete_override(override_id: int, db=Depends(get_db)):
 
 @router.post("/apply")
 async def apply_overrides(db=Depends(get_db)):
-    """Reaplica todos os overrides habilitados no /etc/hosts."""
-    n = await dns_hosts.apply_hosts(db)
-    return {"applied": n}
+    """Reaplica todos os overrides habilitados no /etc/hosts e testa a resolução."""
+    return await dns_hosts.apply_hosts(db)
+
+
+@router.get("/status")
+async def dns_status(db=Depends(get_db)):
+    """Diagnóstico: reaplica, testa a resolução E o alcance (TCP) do IP dentro do
+    container, e mostra o bloco gerenciado atual do /etc/hosts."""
+    import asyncio
+    import socket as _socket
+
+    res = await dns_hosts.apply_hosts(db)
+    res["hosts_path"] = dns_hosts.HOSTS_PATH
+    res["managed_block"] = dns_hosts.read_managed_block()
+
+    def _tcp(ip, port, timeout=3):
+        s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        try:
+            s.connect((ip, port))
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+        finally:
+            s.close()
+
+    reach = {}
+    for e in res.get("entries", []):
+        ip = e["ip"]
+        if ip in reach:
+            continue
+        r443 = await asyncio.to_thread(_tcp, ip, 443)
+        r80 = await asyncio.to_thread(_tcp, ip, 80)
+        reach[ip] = {"443": r443, "80": r80, "reachable": r443 or r80}
+    res["reachability"] = reach
+    return res

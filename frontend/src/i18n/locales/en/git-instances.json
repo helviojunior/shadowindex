@@ -1,10 +1,27 @@
 {
   "title": "Git Instances",
   "subtitle": "Git platform instances (GitHub, GitLab, Gitea, Bitbucket, Azure DevOps). List and clone projects.",
-  "list": { "title": "Instances", "empty": "No instances registered" },
-  "fields": { "platform": "Platform", "url": "URL", "user": "User", "status": "Status", "proxy": "Proxy" },
-  "status": { "failed": "Failed" },
-  "actions": { "add": "Add Instance", "test": "Test access", "save": "Save instance", "back": "Back", "goToJobs": "View jobs" },
+  "list": {
+    "title": "Instances",
+    "empty": "No instances registered"
+  },
+  "fields": {
+    "platform": "Platform",
+    "url": "URL",
+    "user": "User",
+    "status": "Status",
+    "proxy": "Proxy"
+  },
+  "status": {
+    "failed": "Failed"
+  },
+  "actions": {
+    "add": "Add Instance",
+    "test": "Test access",
+    "save": "Save instance",
+    "back": "Back",
+    "goToJobs": "View jobs"
+  },
   "auth": {
     "label": "Authentication mode",
     "anonymous": "Anonymous",
@@ -12,7 +29,9 @@
     "tokenPlaceholder": "Select a token",
     "noTokens": "No tokens registered. Add a token-type credential."
   },
-  "proxy": { "none": "No proxy" },
+  "proxy": {
+    "none": "No proxy"
+  },
   "new": {
     "title": "Add Git instance",
     "subtitle": "Enter the URL, authenticate and test access. For on-premises the platform is auto-detected.",
@@ -32,7 +51,17 @@
     "filter": "Filter projects...",
     "selectAll": "Select all",
     "cloneSelected": "Enqueue clone ({{count}})",
-    "noProjects": "No projects found"
+    "noProjects": "No projects found",
+    "refresh": "Refresh list",
+    "refreshHint": "Re-fetch projects from the platform",
+    "refreshedAt": "updated at",
+    "project": "Project",
+    "visibility": "Visibility",
+    "private": "Private",
+    "public": "Public",
+    "cloneAll": "Download ALL ({{count}})",
+    "pageOf": "Page {{page}} of {{pages}}",
+    "anon": "Anonymous access"
   },
   "toast": {
     "loadError": "Failed to load",
@@ -42,6 +71,7 @@
     "saved": "Instance saved",
     "projectsError": "Failed to list projects",
     "noSelection": "Select at least one project",
-    "queued": "{{count}} clone(s) queued"
+    "queued": "{{count}} clone(s) queued",
+    "refreshed": "{{count}} project(s) listed"
   }
 }

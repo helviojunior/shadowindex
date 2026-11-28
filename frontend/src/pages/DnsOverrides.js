@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from '@/components/ui/table';
-import { Globe, Plus, Trash2, Pencil, Check, X, RefreshCw } from 'lucide-react';
+import { Globe, Plus, Trash2, Pencil, Check, X, RefreshCw, Stethoscope, CheckCircle, XCircle } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -21,6 +21,18 @@ export default function DnsOverrides() {
   const [form, setForm] = useState({ hostname: '', ip: '', enabled: true });
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
+  const [diag, setDiag] = useState(null);
+  const [diagnosing, setDiagnosing] = useState(false);
+
+  const runDiag = async () => {
+    setDiagnosing(true);
+    try {
+      const res = await axios.get(`${API}/dns-overrides/status`);
+      setDiag(res.data);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message);
+    } finally { setDiagnosing(false); }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,11 +151,44 @@ export default function DnsOverrides() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">{t('list.title')} · {rows.length}</CardTitle>
-          <Button variant="outline" size="icon" onClick={load}>
-            <RefreshCw className={loading ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} />
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={runDiag} disabled={diagnosing} data-testid="dns-diag">
+              {diagnosing ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Stethoscope className="w-4 h-4 mr-2" />}
+              {t('diag.button')}
+            </Button>
+            <Button variant="outline" size="icon" onClick={load}>
+              <RefreshCw className={loading ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
+          {diag && (
+            <div className="mb-4 rounded-lg border border-border p-3 text-sm space-y-2" data-testid="dns-diag-result">
+              <div className="flex items-center gap-2">
+                {diag.written
+                  ? <span className="inline-flex items-center gap-1 text-green-500"><CheckCircle className="w-4 h-4" />{t('diag.written')}</span>
+                  : <span className="inline-flex items-center gap-1 text-red-500"><XCircle className="w-4 h-4" />{t('diag.notWritten')}{diag.error ? `: ${diag.error}` : ''}</span>}
+                <span className="text-xs text-muted-foreground font-mono">{diag.hosts_path}</span>
+              </div>
+              {Object.entries(diag.resolved || {}).map(([host, r]) => (
+                <div key={host} className="flex items-center gap-2 text-xs font-mono">
+                  {r.ok ? <CheckCircle className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                  <span>{host} → {r.got || r.error || '—'}</span>
+                  {!r.ok && r.got && <span className="text-amber-500">({t('diag.expected')} {r.expected})</span>}
+                </div>
+              ))}
+              {Object.entries(diag.reachability || {}).map(([ip, r]) => (
+                <div key={ip} className="flex items-center gap-2 text-xs font-mono">
+                  {r.reachable ? <CheckCircle className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                  <span>{ip}: {t('diag.tcp')} 443={String(r['443'])} · 80={String(r['80'])}</span>
+                  {!r.reachable && <span className="text-red-400">{t('diag.unreachable')}</span>}
+                </div>
+              ))}
+              {diag.managed_block && (
+                <pre className="text-[10px] bg-muted/50 p-2 rounded overflow-auto max-h-32 whitespace-pre-wrap">{diag.managed_block}</pre>
+              )}
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>

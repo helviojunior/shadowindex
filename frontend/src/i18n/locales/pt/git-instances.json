@@ -1,10 +1,27 @@
 {
   "title": "Git Instances",
   "subtitle": "Instâncias de plataformas Git (GitHub, GitLab, Gitea, Bitbucket, Azure DevOps). Liste e clone os projetos.",
-  "list": { "title": "Instâncias", "empty": "Nenhuma instância cadastrada" },
-  "fields": { "platform": "Plataforma", "url": "URL", "user": "Usuário", "status": "Status", "proxy": "Proxy" },
-  "status": { "failed": "Falha" },
-  "actions": { "add": "Add Instance", "test": "Testar acesso", "save": "Salvar instância", "back": "Voltar", "goToJobs": "Ver jobs" },
+  "list": {
+    "title": "Instâncias",
+    "empty": "Nenhuma instância cadastrada"
+  },
+  "fields": {
+    "platform": "Plataforma",
+    "url": "URL",
+    "user": "Usuário",
+    "status": "Status",
+    "proxy": "Proxy"
+  },
+  "status": {
+    "failed": "Falha"
+  },
+  "actions": {
+    "add": "Add Instance",
+    "test": "Testar acesso",
+    "save": "Salvar instância",
+    "back": "Voltar",
+    "goToJobs": "Ver jobs"
+  },
   "auth": {
     "label": "Modo de autenticação",
     "anonymous": "Anônimo",
@@ -12,7 +29,9 @@
     "tokenPlaceholder": "Selecione um token",
     "noTokens": "Nenhum token cadastrado. Cadastre uma credencial do tipo token."
   },
-  "proxy": { "none": "Sem proxy" },
+  "proxy": {
+    "none": "Sem proxy"
+  },
   "new": {
     "title": "Adicionar instância Git",
     "subtitle": "Informe a URL, autentique e teste o acesso. Em on-premises o sistema identifica a plataforma automaticamente.",
@@ -32,7 +51,17 @@
     "filter": "Filtrar projetos...",
     "selectAll": "Selecionar todos",
     "cloneSelected": "Enfileirar clone ({{count}})",
-    "noProjects": "Nenhum projeto encontrado"
+    "noProjects": "Nenhum projeto encontrado",
+    "refresh": "Atualizar lista",
+    "refreshHint": "Rebuscar os projetos na plataforma",
+    "refreshedAt": "atualizado em",
+    "project": "Projeto",
+    "visibility": "Visibilidade",
+    "private": "Privado",
+    "public": "Público",
+    "cloneAll": "Baixar TODOS ({{count}})",
+    "pageOf": "Página {{page}} de {{pages}}",
+    "anon": "Acesso anônimo"
   },
   "toast": {
     "loadError": "Erro ao carregar",
@@ -42,6 +71,7 @@
     "saved": "Instância salva",
     "projectsError": "Falha ao listar projetos",
     "noSelection": "Selecione ao menos um projeto",
-    "queued": "{{count}} clone(s) enfileirado(s)"
+    "queued": "{{count}} clone(s) enfileirado(s)",
+    "refreshed": "{{count}} projeto(s) listados"
   }
 }

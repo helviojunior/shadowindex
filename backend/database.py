@@ -757,6 +757,32 @@ class GitInstance(Base):
     status = Column(String, default="unknown")      # ok|failed|unknown
     error = Column(Text, nullable=True)
     last_tested_at = Column(DateTime(timezone=True), nullable=True)
+    projects_count = Column(Integer, nullable=True)                 # nº de projetos listados (cache)
+    projects_refreshed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+
+class GitInstanceProject(Base):
+    """Projeto/repo listado de uma GitInstance (persistido p/ não refazer a listagem
+    a cada vez). Inclui todos os grupos/subgrupos/orgs acessíveis pelo token."""
+    __tablename__ = "git_instance_projects"
+    __table_args__ = (
+        Index('idx_gip_instance', 'instance_id'),
+        Index('idx_gip_instance_full', 'instance_id', 'full_name', unique=True),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    instance_id = Column(Integer, ForeignKey("git_instances.id", ondelete="CASCADE"), nullable=False)
+    full_name = Column(String, nullable=False)
+    name = Column(String, nullable=True)
+    clone_url = Column(String, nullable=True)
+    html_url = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    default_branch = Column(String, nullable=True)
+    is_private = Column(Boolean, nullable=True)
+    size_kb = Column(BigInteger, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
@@ -1097,6 +1123,10 @@ async def apply_pending_migrations():
             await _pg_add_cols('git_clone_jobs', [
                 ('proxy_id', 'INTEGER'),
                 ("clone_mode", "VARCHAR DEFAULT 'clone'"),
+            ])
+            await _pg_add_cols('git_instances', [
+                ('projects_count', 'INTEGER'),
+                ('projects_refreshed_at', 'TIMESTAMPTZ'),
             ])
             await conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_git_repo_files_repo_path_date "

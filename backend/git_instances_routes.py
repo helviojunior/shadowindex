@@ -11,7 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, func, update
 
-from database import get_db, get_db_readonly, Credential, GitInstance, GitRepo, GitCloneJob
+from database import (
+    get_db, get_db_readonly, Credential, GitInstance, GitInstanceProject,
+    GitRepo, GitCloneJob,
+)
 from github_api import resolve_proxy_url
 import git_platforms as gp
 
@@ -33,7 +36,10 @@ class InstanceCreateRequest(InstanceTestRequest):
 
 
 class CloneReposRequest(BaseModel):
-    repos: List[Dict[str, Any]]            # [{full_name, clone_url, html_url?, description?, default_branch?, size_kb?}]
+    repos: Optional[List[Dict[str, Any]]] = None   # projetos específicos (seleção)
+    full_names: Optional[List[str]] = None         # ou por full_name (seleção)
+    all: bool = False                              # ou TODOS os projetos listados da instância
+    q: Optional[str] = None                        # filtro (quando all=true)
 
 
 async def _get_token(db, credential_id: Optional[int]) -> Optional[str]:
@@ -168,8 +174,18 @@ async def delete_instance(guid: str, db=Depends(get_db)):
     return {"success": True}
 
 
-@router.get("/{guid}/projects")
-async def list_instance_projects(guid: str, db=Depends(get_db_readonly)):
+def _project_dict(p: GitInstanceProject) -> Dict[str, Any]:
+    return {
+        "full_name": p.full_name, "name": p.name, "clone_url": p.clone_url,
+        "html_url": p.html_url, "description": p.description,
+        "default_branch": p.default_branch, "private": p.is_private, "size_kb": p.size_kb,
+    }
+
+
+@router.post("/{guid}/projects/refresh")
+async def refresh_instance_projects(guid: str, db=Depends(get_db)):
+    """(Re)lista os projetos na plataforma (todos os grupos/subtenants acessíveis) e
+    PERSISTE no banco (upsert). Use isto quando quiser atualizar a listagem."""
     inst = (await db.execute(select(GitInstance).where(GitInstance.guid == guid))).scalar_one_or_none()
     if not inst:
         raise HTTPException(status_code=404, detail="Instância não encontrada")
@@ -180,63 +196,141 @@ async def list_instance_projects(guid: str, db=Depends(get_db_readonly)):
                                        inst.variant, inst.org, inst.web_url)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Falha ao listar projetos: {str(e)[:300]}")
-    return {"instance": _instance_dict(inst), "count": len(repos), "projects": repos}
+
+    # Upsert por (instance_id, full_name). Substitui o conjunto anterior.
+    existing = {
+        p.full_name: p for p in (await db.execute(
+            select(GitInstanceProject).where(GitInstanceProject.instance_id == inst.id)
+        )).scalars().all()
+    }
+    seen = set()
+    for r in repos:
+        fn = (r.get("full_name") or "").strip()
+        if not fn or fn in seen:
+            continue
+        seen.add(fn)
+        p = existing.get(fn) or GitInstanceProject(instance_id=inst.id, full_name=fn)
+        p.name = r.get("name")
+        p.clone_url = r.get("clone_url")
+        p.html_url = r.get("html_url")
+        p.description = r.get("description")
+        p.default_branch = r.get("default_branch")
+        p.is_private = r.get("private")
+        p.size_kb = r.get("size_kb")
+        if fn not in existing:
+            db.add(p)
+    # Remove os que não existem mais.
+    for fn, p in existing.items():
+        if fn not in seen:
+            await db.delete(p)
+
+    inst.projects_count = len(seen)
+    inst.projects_refreshed_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"count": len(seen), "refreshed_at": inst.projects_refreshed_at.isoformat()}
+
+
+@router.get("/{guid}/projects")
+async def list_instance_projects(guid: str, q: Optional[str] = None,
+                                  limit: int = 200, offset: int = 0,
+                                  db=Depends(get_db_readonly)):
+    """Lista os projetos PERSISTIDOS da instância (sem bater na API). Paginado p/
+    suportar milhares. Faça /projects/refresh para buscar/atualizar da plataforma."""
+    inst = (await db.execute(select(GitInstance).where(GitInstance.guid == guid))).scalar_one_or_none()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Instância não encontrada")
+    base = select(GitInstanceProject).where(GitInstanceProject.instance_id == inst.id)
+    cnt = select(func.count(GitInstanceProject.id)).where(GitInstanceProject.instance_id == inst.id)
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        base = base.where(GitInstanceProject.full_name.ilike(like))
+        cnt = cnt.where(GitInstanceProject.full_name.ilike(like))
+    total = (await db.execute(cnt)).scalar() or 0
+    rows = (await db.execute(
+        base.order_by(GitInstanceProject.full_name).limit(min(limit, 2000)).offset(offset)
+    )).scalars().all()
+    return {
+        "instance": _instance_dict(inst),
+        "total": total, "count": len(rows), "offset": offset,
+        "refreshed_at": inst.projects_refreshed_at.isoformat() if inst.projects_refreshed_at else None,
+        "projects": [_project_dict(p) for p in rows],
+    }
+
+
+async def _enqueue_project(db, inst, full_name, clone_url, name=None, html_url=None,
+                           description=None, default_branch=None, size_kb=None) -> bool:
+    full_name = (full_name or "").strip()
+    clone_url = (clone_url or "").strip()
+    if not clone_url:
+        return False
+    if not full_name:
+        full_name = clone_url.rsplit("/", 1)[-1].replace(".git", "")
+    repo = (await db.execute(select(GitRepo).where(GitRepo.full_name == full_name))).scalar_one_or_none()
+    if not repo:
+        repo = GitRepo(full_name=full_name)
+        db.add(repo)
+    owner, _, nm = full_name.partition("/")
+    repo.owner = owner or None
+    repo.name = name or (nm or full_name)
+    repo.clone_url = clone_url
+    repo.html_url = html_url
+    repo.description = description
+    repo.default_branch = default_branch
+    repo.size_kb = size_kb
+    repo.source = inst.platform
+    repo.discovered_via = f"instance:{inst.name or inst.base_url}"
+    if repo.clone_status not in ("cloning",):
+        repo.clone_status = "pending"
+    await db.flush()
+    active = (await db.execute(
+        select(GitCloneJob.id).where(
+            GitCloneJob.repo_id == repo.id,
+            GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]),
+        )
+    )).scalar()
+    if active:
+        return False
+    db.add(GitCloneJob(
+        repo_id=repo.id, repo_url=clone_url, repo_full_name=full_name,
+        clone_auth=inst.clone_auth,
+        credential_id=inst.credential_id if inst.clone_auth == "authenticated" else None,
+        proxy_id=inst.proxy_id, status="pending",
+    ))
+    return True
 
 
 @router.post("/{guid}/clone")
 async def clone_instance_projects(guid: str, req: CloneReposRequest, db=Depends(get_db)):
+    """Enfileira o clone. Modos: `repos` (objetos), `full_names` (ids) ou `all=true`
+    (TODOS os projetos listados da instância — suporta milhares, direto do banco)."""
     inst = (await db.execute(select(GitInstance).where(GitInstance.guid == guid))).scalar_one_or_none()
     if not inst:
         raise HTTPException(status_code=404, detail="Instância não encontrada")
-    if not req.repos:
-        raise HTTPException(status_code=400, detail="Nenhum projeto selecionado")
 
     queued = 0
-    for r in req.repos:
-        full_name = (r.get("full_name") or "").strip()
-        clone_url = (r.get("clone_url") or "").strip()
-        if not clone_url:
-            continue
-        if not full_name:
-            full_name = clone_url.rsplit("/", 1)[-1].replace(".git", "")
-
-        repo = (await db.execute(select(GitRepo).where(GitRepo.full_name == full_name))).scalar_one_or_none()
-        if not repo:
-            repo = GitRepo(full_name=full_name)
-            db.add(repo)
-        owner, _, name = full_name.partition("/")
-        repo.owner = owner or None
-        repo.name = r.get("name") or (name or full_name)
-        repo.clone_url = clone_url
-        repo.html_url = r.get("html_url")
-        repo.description = r.get("description")
-        repo.default_branch = r.get("default_branch")
-        repo.size_kb = r.get("size_kb")
-        repo.source = inst.platform
-        repo.discovered_via = f"instance:{inst.name or inst.base_url}"
-        if repo.clone_status not in ("cloning",):
-            repo.clone_status = "pending"
-        await db.flush()
-
-        active = (await db.execute(
-            select(GitCloneJob.id).where(
-                GitCloneJob.repo_id == repo.id,
-                GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]),
-            )
-        )).scalar()
-        if active:
-            continue
-
-        db.add(GitCloneJob(
-            repo_id=repo.id,
-            repo_url=clone_url,
-            repo_full_name=full_name,
-            clone_auth=inst.clone_auth,
-            credential_id=inst.credential_id if inst.clone_auth == "authenticated" else None,
-            proxy_id=inst.proxy_id,
-            status="pending",
-        ))
-        queued += 1
+    if req.all or req.full_names:
+        base = select(GitInstanceProject).where(GitInstanceProject.instance_id == inst.id)
+        if req.full_names:
+            base = base.where(GitInstanceProject.full_name.in_(req.full_names))
+        elif req.q and req.q.strip():
+            base = base.where(GitInstanceProject.full_name.ilike(f"%{req.q.strip()}%"))
+        rows = (await db.execute(base.order_by(GitInstanceProject.full_name))).scalars().all()
+        if not rows:
+            raise HTTPException(status_code=400, detail="Nenhum projeto para clonar (liste/atualize primeiro)")
+        for i, p in enumerate(rows, 1):
+            if await _enqueue_project(db, inst, p.full_name, p.clone_url, p.name, p.html_url,
+                                      p.description, p.default_branch, p.size_kb):
+                queued += 1
+            if i % 200 == 0:
+                await db.commit()  # commit em lotes p/ milhares
+    elif req.repos:
+        for r in req.repos:
+            if await _enqueue_project(db, inst, r.get("full_name"), r.get("clone_url"),
+                                      r.get("name"), r.get("html_url"), r.get("description"),
+                                      r.get("default_branch"), r.get("size_kb")):
+                queued += 1
+    else:
+        raise HTTPException(status_code=400, detail="Nenhum projeto selecionado")
 
     await db.commit()
     return {"queued": queued}

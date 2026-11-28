@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT = 25
 PAGE_SIZE = 100
-MAX_PROJECTS = 5000
+MAX_PROJECTS = 50000
 
 PLATFORMS = ["github", "github_enterprise", "gitlab", "gitea", "bitbucket", "azure_devops"]
 PLATFORM_LABELS = {

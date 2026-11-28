@@ -6,8 +6,10 @@ startup a partir do banco.
 """
 import os
 import re
+import socket
 import ipaddress
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -47,17 +49,19 @@ def _render_block(entries) -> str:
     return "\n".join(lines)
 
 
-def _write_hosts(entries) -> None:
+def _write_hosts(entries) -> Optional[str]:
     """entries: lista de (ip, hostname) habilitados. Reescreve o bloco gerenciado.
-    Trunca e reescreve IN-PLACE (sem os.replace) para funcionar em bind-mount do Docker."""
+    Trunca e reescreve IN-PLACE (sem os.replace) p/ funcionar em bind-mount do Docker.
+    Retorna None em sucesso, ou a mensagem de erro."""
     try:
         with open(HOSTS_PATH, "r") as f:
             content = f.read()
     except FileNotFoundError:
         content = ""
     except Exception as e:  # noqa: BLE001
-        logger.error(f"[dns] não foi possível ler {HOSTS_PATH}: {e}")
-        return
+        msg = f"não foi possível ler {HOSTS_PATH}: {e}"
+        logger.error(f"[dns] {msg}")
+        return msg
 
     base = _strip_block(content).rstrip("\n")
     if entries:
@@ -68,13 +72,17 @@ def _write_hosts(entries) -> None:
     try:
         with open(HOSTS_PATH, "w") as f:
             f.write(new)
+        return None
     except Exception as e:  # noqa: BLE001
-        logger.error(f"[dns] não foi possível escrever {HOSTS_PATH}: {e}")
+        msg = f"não foi possível escrever {HOSTS_PATH}: {e}"
+        logger.error(f"[dns] {msg}")
+        return msg
 
 
-async def apply_hosts(db) -> int:
-    """Lê os overrides habilitados do banco e aplica no /etc/hosts. Retorna a
-    quantidade aplicada."""
+async def apply_hosts(db) -> dict:
+    """Lê os overrides habilitados do banco e aplica no /etc/hosts. Retorna
+    {count, written, error, entries, resolved}."""
+    import asyncio
     from database import DnsOverride
     from sqlalchemy import select
     try:
@@ -83,7 +91,7 @@ async def apply_hosts(db) -> int:
         )).scalars().all()
     except Exception as e:  # noqa: BLE001
         logger.error(f"[dns] erro ao ler overrides: {e}")
-        return 0
+        return {"count": 0, "written": False, "error": str(e), "entries": [], "resolved": {}}
 
     entries = []
     seen = set()
@@ -95,11 +103,26 @@ async def apply_hosts(db) -> int:
         seen.add(host.lower())
         entries.append((ip, host))
 
-    await _run_in_thread(_write_hosts, entries)
-    logger.info(f"[dns] /etc/hosts atualizado com {len(entries)} override(s)")
-    return len(entries)
+    err = await asyncio.to_thread(_write_hosts, entries)
+    # Teste de resolução DENTRO do container (confirma se o /etc/hosts "pegou").
+    resolved = {}
+    for ip, host in entries:
+        try:
+            got = await asyncio.to_thread(socket.gethostbyname, host)
+            resolved[host] = {"expected": ip, "got": got, "ok": got == ip}
+        except Exception as e:  # noqa: BLE001
+            resolved[host] = {"expected": ip, "got": None, "ok": False, "error": str(e)[:120]}
+
+    logger.info(f"[dns] /etc/hosts: {len(entries)} override(s), written={err is None}")
+    return {"count": len(entries), "written": err is None, "error": err,
+            "entries": [{"ip": ip, "hostname": h} for ip, h in entries], "resolved": resolved}
 
 
-async def _run_in_thread(fn, *args):
-    import asyncio
-    await asyncio.to_thread(fn, *args)
+def read_managed_block() -> str:
+    """Retorna o bloco gerenciado atual do /etc/hosts (p/ diagnóstico)."""
+    try:
+        content = open(HOSTS_PATH, "r").read()
+    except Exception:  # noqa: BLE001
+        return ""
+    m = re.search(re.escape(BEGIN) + r".*?" + re.escape(END), content, re.DOTALL)
+    return m.group(0) if m else ""

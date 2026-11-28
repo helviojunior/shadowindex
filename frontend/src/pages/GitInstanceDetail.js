@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
@@ -9,12 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  ArrowLeft, Loader2, DownloadCloud, ListTree, RefreshCw, User, Lock, Search, CheckCircle, XCircle,
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+} from '@/components/ui/table';
+import {
+  ArrowLeft, Loader2, DownloadCloud, ListTree, RefreshCw, User, Lock, Search,
+  CheckCircle, XCircle, ChevronLeft, ChevronRight, UserX,
 } from 'lucide-react';
 import OriginLogo from '@/components/OriginLogo';
 import { logoPlatform } from './GitInstances';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const PAGE = 200;
 
 export default function GitInstanceDetail() {
   const { t } = useTranslation('git-instances');
@@ -22,12 +27,18 @@ export default function GitInstanceDetail() {
   const navigate = useNavigate();
 
   const [inst, setInst] = useState(null);
-  const [projects, setProjects] = useState(null);
-  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [listed, setListed] = useState(false);     // já clicou em "Listar projetos"
+  const [projects, setProjects] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [query, setQuery] = useState('');          // filtro aplicado
+  const [filterInput, setFilterInput] = useState('');
+  const [refreshedAt, setRefreshedAt] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [cloning, setCloning] = useState(false);
   const [retesting, setRetesting] = useState(false);
-  const [filter, setFilter] = useState('');
-  const [selected, setSelected] = useState({}); // full_name -> bool
+  const [selected, setSelected] = useState({});    // full_name -> bool (página atual)
 
   const loadInstance = useCallback(async () => {
     try {
@@ -37,20 +48,48 @@ export default function GitInstanceDetail() {
   }, [guid, t]);
   useEffect(() => { loadInstance(); }, [loadInstance]);
 
-  const loadProjects = useCallback(async () => {
-    setLoadingProjects(true);
+  const loadProjects = useCallback(async (off = 0, q = '') => {
+    setLoading(true);
     try {
-      const res = await axios.get(`${API}/git/instances/${guid}/projects`);
+      const params = new URLSearchParams({ limit: String(PAGE), offset: String(off) });
+      if (q) params.set('q', q);
+      const res = await axios.get(`${API}/git/instances/${guid}/projects?${params.toString()}`);
       setProjects(res.data?.projects || []);
-      if (res.data?.instance) setInst(res.data.instance);
+      setTotal(res.data?.total || 0);
+      setOffset(off);
+      setRefreshedAt(res.data?.refreshed_at || null);
+      setSelected({});
+      return res.data;
     } catch (e) {
       toast.error(e.response?.data?.detail || t('toast.projectsError'));
-      setProjects([]);
-    } finally {
-      setLoadingProjects(false);
-    }
+      return null;
+    } finally { setLoading(false); }
   }, [guid, t]);
 
+  // "Listar projetos": carrega do DB; se nunca listou, faz o refresh automático.
+  const onListProjects = async () => {
+    setListed(true);
+    const data = await loadProjects(0, '');
+    if (data && (data.total || 0) === 0 && !data.refreshed_at) {
+      await doRefresh();
+    }
+  };
+
+  const doRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const res = await axios.post(`${API}/git/instances/${guid}/projects/refresh`);
+      toast.success(t('toast.refreshed', { count: res.data?.count ?? 0 }));
+      setListed(true);
+      setQuery(''); setFilterInput('');
+      await loadProjects(0, '');
+      loadInstance();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || t('toast.projectsError'));
+    } finally { setRefreshing(false); }
+  };
+
+  const applyFilter = () => { setQuery(filterInput.trim()); loadProjects(0, filterInput.trim()); };
   const retest = async () => {
     setRetesting(true);
     try {
@@ -61,43 +100,51 @@ export default function GitInstanceDetail() {
     finally { setRetesting(false); }
   };
 
-  const visible = useMemo(() => {
-    const list = projects || [];
-    const q = filter.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(p => (p.full_name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q));
-  }, [projects, filter]);
-
-  const selectedCount = Object.values(selected).filter(Boolean).length;
-  const allVisibleSelected = visible.length > 0 && visible.every(p => selected[p.full_name]);
-
-  const toggleAll = () => {
+  const selectedNames = Object.keys(selected).filter(k => selected[k]);
+  const pageAllSelected = projects.length > 0 && projects.every(p => selected[p.full_name]);
+  const togglePage = () => {
     const next = { ...selected };
-    const target = !allVisibleSelected;
-    visible.forEach(p => { next[p.full_name] = target; });
+    const target = !pageAllSelected;
+    projects.forEach(p => { next[p.full_name] = target; });
     setSelected(next);
   };
 
-  const enqueueClone = async () => {
-    const repos = (projects || []).filter(p => selected[p.full_name]);
-    if (repos.length === 0) { toast.error(t('toast.noSelection')); return; }
+  const cloneSelected = async () => {
+    if (selectedNames.length === 0) return;
     setCloning(true);
     try {
-      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { repos });
+      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { full_names: selectedNames });
       toast.success(t('toast.queued', { count: res.data?.queued ?? 0 }), {
         action: { label: t('actions.goToJobs'), onClick: () => navigate('/jobs/git') },
       });
       setSelected({});
-    } catch (e) {
-      toast.error(e.response?.data?.detail || e.message);
-    } finally {
-      setCloning(false);
-    }
+    } catch (e) { toast.error(e.response?.data?.detail || e.message); }
+    finally { setCloning(false); }
+  };
+
+  const cloneAll = async () => {
+    setCloning(true);
+    try {
+      const res = await axios.post(`${API}/git/instances/${guid}/clone`, { all: true, q: query || null });
+      toast.success(t('toast.queued', { count: res.data?.queued ?? 0 }), {
+        action: { label: t('actions.goToJobs'), onClick: () => navigate('/jobs/git') },
+      });
+    } catch (e) { toast.error(e.response?.data?.detail || e.message); }
+    finally { setCloning(false); }
   };
 
   if (!inst) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>;
   }
+
+  const whoamiNode = inst.whoami?.login
+    ? <span className="inline-flex items-center gap-1"><User className="w-3.5 h-3.5" />{inst.whoami.login}{inst.whoami.name ? ` (${inst.whoami.name})` : ''}</span>
+    : (inst.clone_auth === 'anonymous'
+        ? <span className="inline-flex items-center gap-1 text-muted-foreground italic"><UserX className="w-3.5 h-3.5" />{t('detail.anon')}</span>
+        : '—');
+
+  const page = Math.floor(offset / PAGE) + 1;
+  const pages = Math.max(1, Math.ceil(total / PAGE));
 
   return (
     <div className="space-y-6">
@@ -112,7 +159,6 @@ export default function GitInstanceDetail() {
         </div>
       </div>
 
-      {/* Info da instância */}
       <Card>
         <CardHeader><CardTitle className="text-lg">{t('detail.info')}</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -124,22 +170,13 @@ export default function GitInstanceDetail() {
               ? <span className="inline-flex items-center gap-1 text-green-500"><CheckCircle className="w-3.5 h-3.5" />OK</span>
               : <span className="inline-flex items-center gap-1 text-red-500" title={inst.error || ''}><XCircle className="w-3.5 h-3.5" />{t('status.failed')}</span>}
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground">whoami</div>
-            {inst.whoami?.login
-              ? <span className="inline-flex items-center gap-1"><User className="w-3.5 h-3.5" />{inst.whoami.login}{inst.whoami.name ? ` (${inst.whoami.name})` : ''}</span>
-              : '—'}
-          </div>
-          {inst.whoami && (inst.whoami.is_admin || inst.whoami.site_admin) && (
-            <div><div className="text-xs text-muted-foreground">{t('detail.admin')}</div><Badge className="bg-red-600 text-white">admin</Badge></div>
-          )}
+          <div><div className="text-xs text-muted-foreground">whoami</div>{whoamiNode}</div>
         </CardContent>
       </Card>
 
-      {/* Ações */}
       <div className="flex flex-wrap gap-2">
-        <Button onClick={loadProjects} disabled={loadingProjects} data-testid="instance-list-projects">
-          {loadingProjects ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ListTree className="w-4 h-4 mr-2" />}
+        <Button onClick={onListProjects} disabled={loading} data-testid="instance-list-projects">
+          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ListTree className="w-4 h-4 mr-2" />}
           {t('detail.listProjects')}
         </Button>
         <Button variant="outline" onClick={retest} disabled={retesting}>
@@ -148,46 +185,83 @@ export default function GitInstanceDetail() {
         </Button>
       </div>
 
-      {/* Projetos */}
-      {projects !== null && (
+      {listed && (
         <Card>
           <CardHeader className="flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
-            <CardTitle className="text-lg">{t('detail.projects')} · {projects.length}</CardTitle>
-            <div className="flex items-center gap-2">
+            <CardTitle className="text-lg">
+              {t('detail.projects')} · {total}
+              {refreshedAt && <span className="ml-2 text-xs text-muted-foreground font-normal">{t('detail.refreshedAt')}: {new Date(refreshedAt).toLocaleString()}</span>}
+            </CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-8 w-64" placeholder={t('detail.filter')} value={filter} onChange={(e) => setFilter(e.target.value)} />
+                <Input className="pl-8 w-56" placeholder={t('detail.filter')} value={filterInput}
+                  onChange={(e) => setFilterInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') applyFilter(); }} />
               </div>
-              <Button onClick={enqueueClone} disabled={cloning || selectedCount === 0} data-testid="instance-clone-selected">
+              <Button variant="outline" onClick={doRefresh} disabled={refreshing} title={t('detail.refreshHint')}>
+                {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                {t('detail.refresh')}
+              </Button>
+              <Button variant="outline" onClick={cloneSelected} disabled={cloning || selectedNames.length === 0}>
+                <DownloadCloud className="w-4 h-4 mr-2" />{t('detail.cloneSelected', { count: selectedNames.length })}
+              </Button>
+              <Button onClick={cloneAll} disabled={cloning || total === 0} data-testid="instance-clone-all">
                 {cloning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DownloadCloud className="w-4 h-4 mr-2" />}
-                {t('detail.cloneSelected', { count: selectedCount })}
+                {t('detail.cloneAll', { count: total })}
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {projects.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">{t('detail.noProjects')}</p>
-            ) : (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 px-2 py-1 border-b border-border">
-                  <Checkbox checked={allVisibleSelected} onCheckedChange={toggleAll} data-testid="instance-select-all" />
-                  <span className="text-xs text-muted-foreground">{t('detail.selectAll')} ({visible.length})</span>
-                </div>
-                <div className="max-h-[55vh] overflow-auto">
-                  {visible.map((p) => (
-                    <label key={p.full_name} className="flex items-start gap-3 px-2 py-2 hover:bg-muted/40 rounded cursor-pointer">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox checked={pageAllSelected} onCheckedChange={togglePage} aria-label={t('detail.selectAll')} />
+                  </TableHead>
+                  <TableHead>{t('detail.project')}</TableHead>
+                  <TableHead>{t('fields.platform')}</TableHead>
+                  <TableHead className="text-right">{t('detail.visibility')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="w-5 h-5 animate-spin inline" /></TableCell></TableRow>
+                ) : projects.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t('detail.noProjects')}</TableCell></TableRow>
+                ) : projects.map((p) => (
+                  <TableRow key={p.full_name} data-testid="instance-project-row">
+                    <TableCell>
                       <Checkbox checked={!!selected[p.full_name]}
                         onCheckedChange={(v) => setSelected(s => ({ ...s, [p.full_name]: !!v }))} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm truncate">{p.full_name}</span>
-                          {p.private && <Lock className="w-3 h-3 text-amber-500" />}
-                          {p.default_branch && <Badge variant="secondary" className="text-[10px]">{p.default_branch}</Badge>}
-                        </div>
-                        {p.description && <div className="text-xs text-muted-foreground line-clamp-1">{p.description}</div>}
-                      </div>
-                    </label>
-                  ))}
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium text-sm">{p.full_name}</div>
+                      {p.description && <div className="text-xs text-muted-foreground line-clamp-1 max-w-xl">{p.description}</div>}
+                    </TableCell>
+                    <TableCell>
+                      {p.default_branch && <Badge variant="secondary" className="text-[10px]">{p.default_branch}</Badge>}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {p.private
+                        ? <span className="inline-flex items-center gap-1 text-amber-500 text-xs"><Lock className="w-3 h-3" />{t('detail.private')}</span>
+                        : <span className="text-muted-foreground text-xs">{t('detail.public')}</span>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {total > PAGE && (
+              <div className="flex items-center justify-between mt-3 text-sm">
+                <span className="text-muted-foreground">{t('detail.pageOf', { page, pages })}</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={offset <= 0 || loading} onClick={() => loadProjects(offset - PAGE, query)}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={offset + PAGE >= total || loading} onClick={() => loadProjects(offset + PAGE, query)}>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             )}

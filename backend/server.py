@@ -5530,8 +5530,8 @@ async def startup_event():
         import dns_hosts
         from database import AsyncSessionLocal
         async with AsyncSessionLocal() as _db:
-            n = await dns_hosts.apply_hosts(_db)
-        print(f"=== STARTUP: DNS overrides aplicados ({n}) ===", flush=True)
+            _r = await dns_hosts.apply_hosts(_db)
+        print(f"=== STARTUP: DNS overrides aplicados ({_r.get('count')}, written={_r.get('written')}) ===", flush=True)
     except Exception as _e:
         logger.warning(f"[startup] falha ao aplicar DNS overrides: {_e}")
 
