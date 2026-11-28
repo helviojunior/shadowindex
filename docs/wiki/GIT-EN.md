@@ -114,6 +114,33 @@ fetching each by its predictable path, plus the **packs**. In short: if
 > text/html`; Git Dump **does not trust the Content-Type** and uses the content
 > (zlib objects, hex refs, `PACK` packs) so it won't discard valid data.
 
+### Finding exposed `.git` (Google Dorks)
+
+To **discover targets** with an exposed `.git` on the internet, use *Google
+Dorks* — queries that exploit Git's predictable file names indexed by search
+engines. Some examples:
+
+```text
+inurl:.git-credentials
+inurl:.gitconfig
+intext:"index of /.git" "parent directory"
+filetype:git -github.com inurl:"/.git"
+(intext:"index of /.git") ("parent directory")
+inurl:ORIG_HEAD
+intitle:"index of" ".gitignore"
+".git" intitle:"Index of"
+"Parent Directory" "Last modified" git
+inurl:git
+```
+
+Once you find a candidate (e.g. `https://target.example/.git/`), just paste the
+site URL into **Request Clone** — the system probes `.git/HEAD` and, if exposed,
+rebuilds the repository (see below). Remember: the dump works even **without**
+an "Index of"/directory listing; the dorks only help you *find* the most obvious
+targets.
+
+> Only use this against targets you are **authorized** to test.
+
 ### How to use it here
 
 1. In **GIT → Request Clone**, enter the **site URL** (e.g.

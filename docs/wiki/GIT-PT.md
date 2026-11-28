@@ -120,6 +120,33 @@ tendo ou não "Index of".
 > conteúdo (objetos zlib, refs em hex, packs `PACK`) para não descartar dados
 > válidos.
 
+### Encontrando `.git` expostos (Google Dorks)
+
+Para **descobrir alvos** com `.git` exposto na internet, use *Google Dorks* —
+consultas que exploram os nomes previsíveis do Git indexados por buscadores.
+Alguns exemplos:
+
+```text
+inurl:.git-credentials
+inurl:.gitconfig
+intext:"index of /.git" "parent directory"
+filetype:git -github.com inurl:"/.git"
+(intext:"index of /.git") ("parent directory")
+inurl:ORIG_HEAD
+intitle:"index of" ".gitignore"
+".git" intitle:"Index of"
+"Parent Directory" "Last modified" git
+inurl:git
+```
+
+Depois de encontrar um candidato (ex.: `https://alvo.exemplo/.git/`), basta
+passar a URL do site em **Request Clone** — o sistema sonda o `.git/HEAD` e, se
+exposto, reconstrói o repositório (veja abaixo). Lembre: o dump funciona mesmo
+**sem** "Index of"/listagem de diretório; os dorks apenas ajudam a *achar* os
+alvos mais óbvios.
+
+> Use apenas em alvos para os quais você tem **autorização**.
+
 ### Como usar aqui
 
 1. Em **GIT → Request Clone**, informe a **URL do site** (ex.:
