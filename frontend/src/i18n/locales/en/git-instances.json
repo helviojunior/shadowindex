@@ -20,7 +20,9 @@
     "test": "Test access",
     "save": "Save instance",
     "back": "Back",
-    "goToJobs": "View jobs"
+    "goToJobs": "View jobs",
+    "duplicate": "Duplicate",
+    "remove": "Delete"
   },
   "auth": {
     "label": "Authentication mode",
@@ -72,6 +74,13 @@
     "projectsError": "Failed to list projects",
     "noSelection": "Select at least one project",
     "queued": "{{count}} clone(s) queued",
-    "refreshed": "{{count}} project(s) listed"
+    "refreshed": "{{count}} project(s) listed",
+    "duplicated": "Configuration duplicated"
+  },
+  "deleteConfirm": {
+    "title": "Delete instance?",
+    "description": "The instance \"{{name}}\" and the projects it listed will be removed. This action cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
   }
 }

@@ -20,7 +20,9 @@
     "test": "Testar acesso",
     "save": "Salvar instância",
     "back": "Voltar",
-    "goToJobs": "Ver jobs"
+    "goToJobs": "Ver jobs",
+    "duplicate": "Duplicar",
+    "remove": "Excluir"
   },
   "auth": {
     "label": "Modo de autenticação",
@@ -72,6 +74,13 @@
     "projectsError": "Falha ao listar projetos",
     "noSelection": "Selecione ao menos um projeto",
     "queued": "{{count}} clone(s) enfileirado(s)",
-    "refreshed": "{{count}} projeto(s) listados"
+    "refreshed": "{{count}} projeto(s) listados",
+    "duplicated": "Configuração duplicada"
+  },
+  "deleteConfirm": {
+    "title": "Excluir instância?",
+    "description": "A instância \"{{name}}\" e os projetos listados por ela serão removidos. Esta ação não pode ser desfeita.",
+    "cancel": "Cancelar",
+    "confirm": "Excluir"
   }
 }

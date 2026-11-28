@@ -164,6 +164,36 @@ async def retest_instance(guid: str, db=Depends(get_db)):
     return _instance_dict(inst)
 
 
+@router.post("/{guid}/duplicate")
+async def duplicate_instance(guid: str, db=Depends(get_db)):
+    """Duplica SOMENTE a configuração da instância (plataforma, URL, auth, proxy,
+    credencial). NÃO copia a listagem de projetos nem as dependências (whoami,
+    status de teste, contadores) — a cópia nasce 'limpa' para ser testada/listada."""
+    inst = (await db.execute(select(GitInstance).where(GitInstance.guid == guid))).scalar_one_or_none()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Instância não encontrada")
+
+    clone = GitInstance(
+        name=f"{inst.name or inst.base_url} (cópia)",
+        platform=inst.platform,
+        base_url=inst.base_url,
+        api_url=inst.api_url,
+        web_url=inst.web_url,
+        variant=inst.variant,
+        org=inst.org,
+        clone_auth=inst.clone_auth,
+        credential_id=inst.credential_id,
+        proxy_id=inst.proxy_id,
+        # NÃO copiados de propósito: whoami, status, error, last_tested_at,
+        # projects_count, projects_refreshed_at e os GitInstanceProject.
+        status="unknown",
+    )
+    db.add(clone)
+    await db.commit()
+    await db.refresh(clone)
+    return _instance_dict(clone)
+
+
 @router.delete("/{guid}")
 async def delete_instance(guid: str, db=Depends(get_db)):
     inst = (await db.execute(select(GitInstance).where(GitInstance.guid == guid))).scalar_one_or_none()

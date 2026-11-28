@@ -9,7 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from '@/components/ui/table';
-import { Server, Plus, RefreshCw, Trash2, CheckCircle, XCircle, User } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Server, Plus, RefreshCw, Trash2, CheckCircle, XCircle, User, Copy } from 'lucide-react';
 import OriginLogo from '@/components/OriginLogo';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -29,6 +33,8 @@ export default function GitInstances() {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [toDelete, setToDelete] = useState(null); // instância aguardando confirmação
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,12 +59,35 @@ export default function GitInstances() {
 
   const openAdd = () => navigate('/git/instances/new');
 
-  const remove = async (e, guid) => {
+  // Abre a confirmação (o delete só ocorre após o usuário confirmar).
+  const askRemove = (e, inst) => {
+    e.stopPropagation();
+    setToDelete(inst);
+  };
+
+  const confirmRemove = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await axios.delete(`${API}/git/instances/${toDelete.guid}`);
+      toast.success(t('toast.removed'));
+      setToDelete(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Duplica apenas a CONFIG da instância (sem projetos listados nem dependências).
+  const duplicate = async (e, inst) => {
     e.stopPropagation();
     try {
-      await axios.delete(`${API}/git/instances/${guid}`);
-      toast.success(t('toast.removed'));
+      const res = await axios.post(`${API}/git/instances/${inst.guid}/duplicate`);
+      toast.success(t('toast.duplicated'));
       load();
+      if (res.data?.guid) navigate(`/git/instances/${res.data.guid}`);
     } catch (err) {
       toast.error(err.response?.data?.detail || err.message);
     }
@@ -128,9 +157,16 @@ export default function GitInstances() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={(e) => remove(e, i.guid)} data-testid="git-instance-remove">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        title={t('actions.duplicate')} onClick={(e) => duplicate(e, i)} data-testid="git-instance-duplicate">
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"
+                        title={t('actions.remove')} onClick={(e) => askRemove(e, i)} data-testid="git-instance-remove">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -138,6 +174,29 @@ export default function GitInstances() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Confirmação de exclusão */}
+      <AlertDialog open={!!toDelete} onOpenChange={(open) => { if (!open) setToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteConfirm.description', { name: toDelete?.name || toDelete?.platform_label || toDelete?.base_url || '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t('deleteConfirm.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmRemove(); }}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              {t('deleteConfirm.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
