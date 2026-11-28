@@ -19,7 +19,7 @@ import traceback
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple
 
-from sqlalchemy import select, update, delete, func, nullslast
+from sqlalchemy import select, update, delete, func, nullslast, or_
 
 logger = logging.getLogger(__name__)
 
@@ -326,6 +326,34 @@ class GitCloneWorker:
                     f"[git watchdog] {result.rowcount} job(s) em '{running_status}' "
                     f"sem task viva -> '{requeue_status}'"
                 )
+
+        # Reconcilia STATUS DO REPO órfão: repositório preso em 'pending'/'cloning'
+        # que JÁ tem conteúdo (arquivos indexados ou clone concluído antes) e NÃO tem
+        # mais nenhum job ativo/na fila para avançá-lo. Isso ocorre quando um job foi
+        # cancelado/concluído deixando o clone_status desatualizado. Marca como
+        # 'cloned' para não ficar eternamente "Pendente". Idempotente e seguro.
+        from database import GitRepo
+        live_job = (
+            select(GitCloneJob.id)
+            .where(GitCloneJob.repo_id == GitRepo.id,
+                   GitCloneJob.status.in_(["pending", "cloning", "cloned", "processing"]))
+            .exists()
+        )
+        repo_fix = (
+            update(GitRepo)
+            .where(GitRepo.clone_status.in_(["pending", "cloning"]))
+            .where(or_((GitRepo.files_count > 0), (GitRepo.cloned_at.isnot(None))))
+            .where(~live_job)
+            .values(clone_status="cloned")
+        )
+        rf = await db.execute(repo_fix)
+        if rf.rowcount:
+            total += rf.rowcount
+            logger.warning(
+                f"[git watchdog] {rf.rowcount} repo(s) presos em pending/cloning sem job "
+                f"ativo e com conteúdo -> 'cloned'"
+            )
+
         if total:
             await db.commit()
         return total
