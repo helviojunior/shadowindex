@@ -264,11 +264,21 @@ export default function Github() {
                   </TableCell>
                   <TableCell><StatusBadge status={r.clone_status} /></TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    {r.html_url && (
-                      <a href={r.html_url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                      {r.leaks_count > 0 && (
+                        <Button variant="ghost" size="sm" className="h-7 text-red-500 hover:text-red-400"
+                          title={t('table.viewLeaks')}
+                          onClick={() => navigate(`/leaks?repo_guid=${r.guid}&repo=${encodeURIComponent(r.full_name)}`)}
+                          data-testid="git-view-leaks">
+                          <AlertTriangle className="w-3.5 h-3.5 mr-1" />{t('table.viewLeaks')}
+                        </Button>
+                      )}
+                      {r.html_url && (
+                        <a href={r.html_url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

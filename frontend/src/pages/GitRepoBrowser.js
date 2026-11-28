@@ -1045,6 +1045,13 @@ export default function GitRepoBrowser() {
               {repo.history_indexed ? t('history.on') : t('history.off')}
             </Badge>
           )}
+          {repo?.leaks_count > 0 && (
+            <Button variant="outline" size="sm" className="text-red-500 border-red-500/40 hover:bg-red-500/10"
+              onClick={() => navigate(`/leaks?repo_guid=${repo.guid}&repo=${encodeURIComponent(repo.full_name)}`)}
+              data-testid="git-browser-view-leaks">
+              <AlertTriangle className="w-4 h-4 mr-2" />{t('table.viewLeaks')} ({repo.leaks_count})
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={reindexRepo} disabled={reindexing} title={t('history.reindexTitle')}>
             {reindexing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <History className="w-4 h-4 mr-2" />}
             {t('history.reindex')}

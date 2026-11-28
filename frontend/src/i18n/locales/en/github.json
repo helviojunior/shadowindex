@@ -33,7 +33,8 @@
     "files": "Files",
     "empty": "No repositories yet. Use Github Search to queue clones.",
     "branches": "Branches",
-    "commits": "Commits"
+    "commits": "Commits",
+    "viewLeaks": "View Leaks"
   },
   "cloneStatus": {
     "pending": "Pending",

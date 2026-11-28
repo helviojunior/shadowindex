@@ -79,7 +79,8 @@ import {
   ChevronsUpDown,
   Check,
   Filter,
-  X
+  X,
+  GitBranch
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -94,6 +95,10 @@ const API = `${BACKEND_URL}/api/v2`;
 const Leaks = () => {
   const { t } = useTranslation('leaks');
   const location = useLocation();
+  // Filtro por repositório Git (vindo da tela de Repositórios: ?repo_guid=&repo=).
+  const _lp = new URLSearchParams(location.search);
+  const repoGuidFilter = _lp.get('repo_guid');
+  const repoNameFilter = _lp.get('repo');
 
   // State para findings
   const [findings, setFindings] = useState([]);
@@ -501,6 +506,9 @@ const Leaks = () => {
   const filteredFiles = useMemo(() => {
     return files.map(file => {
       const filtered = file.findings.filter(f => {
+        // Filtro por repositório Git (deep-link da tela de Repositórios)
+        if (repoGuidFilter && f.git_repo_guid !== repoGuidFilter) return false;
+
         // Filtro FP
         if (fpFilter === 'no_fp' && f.is_false_positive) return false;
         if (fpFilter === 'only_fp' && !f.is_false_positive) return false;
@@ -525,7 +533,7 @@ const Leaks = () => {
       });
       return { ...file, findings: filtered };
     }).filter(file => file.findings.length > 0);
-  }, [files, searchTerm, selectedRules, fpFilter]);
+  }, [files, searchTerm, selectedRules, fpFilter, repoGuidFilter]);
 
   // Helper: todos os fingerprints filtrados visíveis
   const allVisibleFingerprints = useMemo(() => {
@@ -913,6 +921,17 @@ const Leaks = () => {
                 )}
               </div>
             </div>
+
+            {/* Chip de filtro por repositório Git */}
+            {repoGuidFilter && (
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-sm">
+                <GitBranch className="w-3.5 h-3.5 text-primary" />
+                <span>{t('findings.repoFilter')}: <span className="font-medium">{repoNameFilter || repoGuidFilter}</span></span>
+                <button onClick={() => { window.location.href = '/leaks'; }} className="hover:text-primary" title={t('findings.clearRepoFilter')}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* Filters Row */}
             <div className="flex items-center gap-2 flex-wrap">

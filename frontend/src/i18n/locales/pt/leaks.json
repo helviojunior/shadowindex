@@ -37,7 +37,9 @@
     "falsePositives": "Falsos Positivos",
     "filteredCount": "{{count}} de {{total}} findings",
     "emptyTitle": "Nenhum Leak Detectado",
-    "emptyDesc": "Execute um scan para detectar secrets nos arquivos baixados"
+    "emptyDesc": "Execute um scan para detectar secrets nos arquivos baixados",
+    "repoFilter": "Repositório",
+    "clearRepoFilter": "Limpar filtro de repositório"
   },
   "columns": {
     "server": "SERVIDOR",

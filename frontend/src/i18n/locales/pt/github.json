@@ -33,7 +33,8 @@
     "files": "Arquivos",
     "empty": "Nenhum repositório ainda. Use a Busca Github para enfileirar clones.",
     "branches": "Branches",
-    "commits": "Commits"
+    "commits": "Commits",
+    "viewLeaks": "Ver Leaks"
   },
   "cloneStatus": {
     "pending": "Pendente",
