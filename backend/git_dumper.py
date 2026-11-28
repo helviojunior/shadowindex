@@ -93,13 +93,15 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
     sem = asyncio.Semaphore(CONCURRENCY)
 
     async with _client(proxy) as c:
-        async def fetch(rel: str) -> Optional[bytes]:
+        async def fetch(rel: str, audit: bool = False) -> Optional[bytes]:
+            # audit=True nos arquivos de descoberta (HEAD/refs/packs — poucos);
+            # os milhares de objetos usam audit=False p/ não inundar a trilha.
             if rel in fetched:
                 return None
             fetched.add(rel)
             async with sem:
                 try:
-                    r = await c.get(gurl + rel, audit=False)
+                    r = await c.get(gurl + rel, audit=audit, context="dump")
                 except Exception:  # noqa: BLE001
                     return None
             if r.status_code != 200 or not r.content:
@@ -120,9 +122,9 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
             for m in _SHA_RE.finditer(data or b""):
                 objects.add(m.group(0).decode())
 
-        # 1) Arquivos conhecidos -> coleta SHAs.
+        # 1) Arquivos conhecidos -> coleta SHAs. (auditados — são a descoberta)
         for k in KNOWN_FILES:
-            d = await fetch(k)
+            d = await fetch(k, audit=True)
             if d:
                 collect_shas(d)
 
@@ -142,10 +144,10 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
                 if "*" not in rp:
                     ref_paths.add(rp)
         for rp in list(ref_paths):
-            d = await fetch(rp)
+            d = await fetch(rp, audit=True)
             if d:
                 collect_shas(d)
-            dl = await fetch("logs/" + rp)
+            dl = await fetch("logs/" + rp, audit=True)
             if dl:
                 collect_shas(dl)
 
@@ -168,8 +170,8 @@ async def dump_git(url: str, dest_dir: str, proxy: Optional[str] = None,
         except Exception:  # noqa: BLE001
             pass
         for name in pack_names:
-            await fetch(f"objects/pack/pack-{name}.pack")
-            await fetch(f"objects/pack/pack-{name}.idx")
+            await fetch(f"objects/pack/pack-{name}.pack", audit=True)
+            await fetch(f"objects/pack/pack-{name}.idx", audit=True)
 
         if not objects and not pack_names:
             return False, "nenhum objeto/ref encontrado no .git exposto (talvez bloqueado ou vazio)"
