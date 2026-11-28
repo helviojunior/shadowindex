@@ -16,7 +16,7 @@ import {
 import {
   Library, Search, Star, AlertTriangle, FileText,
   Loader2, Clock, CheckCircle, XCircle, RefreshCw, ExternalLink,
-  GitBranch, DownloadCloud,
+  GitBranch, GitCommit, DownloadCloud,
 } from 'lucide-react';
 import OriginLogo from '@/components/OriginLogo';
 import { cn } from '@/lib/utils';
@@ -215,6 +215,8 @@ export default function Github() {
               <TableRow>
                 <TableHead>{t('table.repo')}</TableHead>
                 <TableHead>{t('table.language')}</TableHead>
+                <TableHead className="text-right">{t('table.branches')}</TableHead>
+                <TableHead className="text-right">{t('table.commits')}</TableHead>
                 <TableHead className="text-right">{t('table.stars')}</TableHead>
                 <TableHead className="text-right">{t('table.files')}</TableHead>
                 <TableHead className="text-right">{t('table.leaks')}</TableHead>
@@ -224,7 +226,7 @@ export default function Github() {
             </TableHeader>
             <TableBody>
               {repos.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">{t('table.empty')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{t('table.empty')}</TableCell></TableRow>
               ) : repos.map(r => (
                 <TableRow key={r.guid} className="cursor-pointer" data-testid="git-repo-row"
                           onClick={() => navigate(`/git/${r.guid}`)}>
@@ -243,6 +245,12 @@ export default function Github() {
                     )}
                   </TableCell>
                   <TableCell>{r.language && <Badge variant="outline">{r.language}</Badge>}</TableCell>
+                  <TableCell className="text-right">
+                    <span className="inline-flex items-center gap-1 text-muted-foreground"><GitBranch className="w-3 h-3" />{r.branches_count ?? '—'}</span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className="inline-flex items-center gap-1 text-muted-foreground"><GitCommit className="w-3 h-3" />{r.commits_count ?? '—'}</span>
+                  </TableCell>
                   <TableCell className="text-right">
                     <span className="inline-flex items-center gap-1"><Star className="w-3 h-3" />{r.stars ?? 0}</span>
                   </TableCell>

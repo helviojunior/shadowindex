@@ -31,7 +31,9 @@
     "status": "Status",
     "leaks": "Leaks",
     "files": "Files",
-    "empty": "No repositories yet. Use Github Search to queue clones."
+    "empty": "No repositories yet. Use Github Search to queue clones.",
+    "branches": "Branches",
+    "commits": "Commits"
   },
   "cloneStatus": {
     "pending": "Pending",
@@ -52,7 +54,9 @@
     "size": "Size",
     "loading": "Loading…",
     "openOnGithub": "Open on GitHub",
-    "selectItem": "Select a folder or file"
+    "selectItem": "Select a folder or file",
+    "openOn": "Open on {{platform}}",
+    "openUrl": "Open URL"
   },
   "toast": {
     "loadError": "Failed to load repositories",

@@ -460,15 +460,17 @@ export default function GitRepoBrowser() {
     return map[ct] || ct || '—';
   };
 
-  // Plataforma de origem (GitHub/GitLab/Bitbucket) para os links "ver na origem".
+  // Plataforma de origem para os links "ver na origem" e o botão de abrir.
   const originInfo = useMemo(() => {
     const html = repo?.html_url || '';
-    const h = html.toLowerCase();
-    let platform = 'origin';
-    if (h.includes('github')) platform = 'GitHub';
-    else if (h.includes('gitlab')) platform = 'GitLab';
-    else if (h.includes('bitbucket')) platform = 'Bitbucket';
-    return { html, platform };
+    const s = `${html} ${repo?.clone_url || ''} ${repo?.source || ''}`.toLowerCase();
+    let key = null, label = null;
+    if (s.includes('github')) { key = 'github'; label = 'GitHub'; }
+    else if (s.includes('gitlab')) { key = 'gitlab'; label = 'GitLab'; }
+    else if (s.includes('bitbucket')) { key = 'bitbucket'; label = 'Bitbucket'; }
+    else if (s.includes('dev.azure') || s.includes('visualstudio') || s.includes('azure')) { key = 'azure'; label = 'Azure DevOps'; }
+    else if (s.includes('gitea')) { key = 'gitea'; label = 'Gitea'; }
+    return { html, key, label };
   }, [repo]);
 
   // Commit do conteúdo exibido (árvore-no-commit, versão do arquivo, ou HEAD).
@@ -487,10 +489,10 @@ export default function GitRepoBrowser() {
   const buildOriginUrl = useCallback((line) => {
     const html = originInfo.html;
     const path = selectedFile?.rel_path;
-    if (!html || !path) return null;
+    if (!html || !path || !originInfo.key) return null;  // sem plataforma (ex.: git-dump) -> sem link
     const ref = currentCommitSha || repo?.default_branch || 'HEAD';
-    if (originInfo.platform === 'GitLab') return `${html}/-/blob/${ref}/${path}#L${line}`;
-    if (originInfo.platform === 'Bitbucket') return `${html}/src/${ref}/${path}#lines-${line}`;
+    if (originInfo.key === 'gitlab') return `${html}/-/blob/${ref}/${path}#L${line}`;
+    if (originInfo.key === 'bitbucket') return `${html}/src/${ref}/${path}#lines-${line}`;
     return `${html}/blob/${ref}/${path}#L${line}`;
   }, [originInfo, currentCommitSha, selectedFile, repo]);
 
@@ -901,7 +903,7 @@ export default function GitRepoBrowser() {
                   urlCopiedLabel={t('view.urlCopied')}
                   getShareUrl={buildShareUrl}
                   getOriginUrl={buildOriginUrl}
-                  originLabel={originInfo.platform}
+                  originLabel={originInfo.label}
                 />
               )}
             </div>
@@ -1054,7 +1056,10 @@ export default function GitRepoBrowser() {
           </Button>
           {repo?.html_url && (
             <a href={repo.html_url} target="_blank" rel="noreferrer">
-              <Button variant="outline" size="sm"><ExternalLink className="w-4 h-4 mr-2" />{t('browser.openOnGithub')}</Button>
+              <Button variant="outline" size="sm">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                {originInfo.label ? t('browser.openOn', { platform: originInfo.label }) : t('browser.openUrl')}
+              </Button>
             </a>
           )}
         </div>

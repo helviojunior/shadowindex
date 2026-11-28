@@ -31,7 +31,9 @@
     "status": "Status",
     "leaks": "Leaks",
     "files": "Arquivos",
-    "empty": "Nenhum repositório ainda. Use a Busca Github para enfileirar clones."
+    "empty": "Nenhum repositório ainda. Use a Busca Github para enfileirar clones.",
+    "branches": "Branches",
+    "commits": "Commits"
   },
   "cloneStatus": {
     "pending": "Pendente",
@@ -52,7 +54,9 @@
     "size": "Tamanho",
     "loading": "Carregando…",
     "openOnGithub": "Abrir no GitHub",
-    "selectItem": "Selecione uma pasta ou arquivo"
+    "selectItem": "Selecione uma pasta ou arquivo",
+    "openOn": "Abrir no {{platform}}",
+    "openUrl": "Abrir URL"
   },
   "toast": {
     "loadError": "Falha ao carregar repositórios",
